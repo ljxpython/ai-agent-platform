@@ -1,0 +1,15 @@
+{
+  "origin": "controlled-http-provider-through-official-adapter",
+  "scenario": "disconnected",
+  "tool_message": {
+    "content": "{\"status\":\"error\",\"code\":\"tool.upstream_unavailable\",\"error\":\"工具暂时无法完成请求，请选择其他方式。\",\"error_type\":\"ToolException\",\"name\":\"mcp_query_project_knowledge\",\"recovery\":\"choose_alternative\",\"outcome\":\"failed\"}",
+    "additional_kwargs": {},
+    "response_metadata": {},
+    "type": "tool",
+    "name": "mcp_query_project_knowledge",
+    "id": null,
+    "tool_call_id": "disconnected",
+    "artifact": null,
+    "status": "error"
+  }
+}

@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-09
+last_verified: 2026-10-11
 confidence: medium
 source_project: docs/projects/20260926-sse-event-contract/verification.md
 note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容量(S11)因HTTP/1.1入口阻塞，持续容量/堆增长/三段脱敏样例未验
@@ -27,6 +27,8 @@ note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容
 执行错误投影不是 provider 分类来源。分类在 Runtime 模型边界记录，通过授权诊断 GET 查询；不能从安全消息猜原因或用模型尝试失败覆盖原生 Run 状态。实装与验收见 [可观测性专项](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。本次不代替原容量与浏览器验收，草案状态保留。
 
 Workspace补充：仅完整白名单码或可信Worker类型/稳定message精确投影，字符串保持字符串、对象附固定code/message；未知字符串与对象code为 `runtime_execution_failed`，对象message为 `Runtime execution failed`。没有新增SSE事件、重试参数或独立终态；SDK恢复连接不重发Workspace命令。五码与安全v1诊断字段见 [交接契约](../projects/20261007-agent-workspace-resilience/frontend-handoff.md)。
+
+2026-10-11 知识MCP结果沿现有ToolMessage/SSE/history消费，不新增channel或状态机。公开递归投影剥离 `runtime_resource_bindings` / `__graphharbor_thread_metadata`；成功正文与artifact.structured_content为同一有界来源快照，F04缩减完整字段并同步artifact；供应商错误保持ToolMessage error。真实SSE回放、公开伪造拒绝、Stop无迟到结果见[知识专项](../projects/20261011-project-knowledge-mcp/verification.md)，消费字段见[前端交接](../projects/20261011-project-knowledge-mcp/frontend-handoff.md)。本次不代替浏览器或本标准原容量门禁，状态仍draft。
 
 ## 执行预算通知 v1
 

@@ -1,0 +1,18 @@
+{
+  "upload_enabled": false,
+  "sources_version": 1,
+  "submit_absent_from_catalog": true,
+  "old_query_status": "ok",
+  "old_query_source_count": 2,
+  "content_artifact_equal": true,
+  "capabilities": {
+    "version": 1,
+    "read_enabled": false,
+    "upload_enabled": false,
+    "supported_mime_types": [],
+    "max_file_bytes": 20971520,
+    "disabled_reason": "knowledge_not_configured"
+  },
+  "thread_id": "83ae4c9f-8cd6-43a8-83b4-b644aac9e6ad",
+  "seconds": 28.467
+}

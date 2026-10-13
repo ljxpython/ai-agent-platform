@@ -8,9 +8,10 @@
 
 | 项目权限 | admin | editor | executor |
 | --- | --- | --- | --- |
-| 成员读取、公告读取、Agent读取、Runtime读写 | 是 | 是 | 是 |
+| 成员读取、公告读取、Agent读取、Runtime读取/执行 | 是 | 是 | 是 |
+| 知识读取、知识上传（project.knowledge.read/upload） | 是 | 是 | 是 |
 | 审计读取、公告写入、Agent写入 | 是 | 是 | 否 |
-| 成员写入 | 是 | 否 | 否 |
+| 成员写入、Runtime管理写入（project.runtime.write） | 是 | 否 | 否 |
 
 平台权限以PLATFORM_PERMISSION_MAP为准：super_admin拥有登记的平台权限；operator执行允许的用户资料/状态、目录刷新、公告、配置、服务账号等操作；viewer读取允许的平台资源。角色管理、凭据重置、项目创建/修改/接管、服务账号项目授权由显式权限控制，不能概括成operator能管理所有资源。
 
@@ -36,7 +37,9 @@
 
 三个 GET、参数和真实验证见 [Token 看板接口](../../../../docs/projects/20261011-token-usage-dashboard/03-platform-api-and-security.md)。接口已实现供小规模联调，容量 B01 尚未通过，不能据此开放正式发布。
 
-产品称Agent，权限枚举仍为 `project.assistant.read/write`，不要自行增加第二组权限。网关使用 `project.runtime.read/write`。
+产品称Agent，权限枚举仍为 `project.assistant.read/write`，不要自行增加第二组权限。网关使用 `project.runtime.read/execute/write`；runtime.write不等于启动Agent。上表按现有代码区分执行与管理，不扩大executor权限。
+
+知识面板的四GET要求当前 `project.knowledge.read` 与active项目；MCP任务读取额外核对原Run及Thread read ACL。明确共享上传要求 `project.knowledge.upload`、Thread comment ACL、精确工具/Run与非Plan/offload来源；后台start/activate重新检查原主体、服务账号credential、成员与项目，不依赖Thread继续存活。服务端scope/token不能代替成员授权，前端capability不能代替当前权限。细节与已锁定授权测试见[成员上传专项](../../../../docs/projects/20261012-project-member-knowledge-upload/README.md)。
 
 401为未认证，403为权限不足，缺项目scope为400。资源不存在和生命周期错误按用例处理，不能将所有404等同于越权。
 

@@ -99,7 +99,10 @@ def setup(tmp_path, monkeypatch):
     snapshot = {}
 
     def delegation(**values):
-        if "auth_snapshot" not in values:
+        if (
+            "auth_snapshot" not in values
+            or values.get("operation", "run-create") != "run-create"
+        ):
             return {"authorization": "Bearer synthetic-read"}
         snapshot.update(
             subject="owner",

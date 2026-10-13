@@ -185,6 +185,7 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         content_type: str,
         content_length: int,
         body: AsyncIterator[bytes],
+        file_name: str | None = None,
     ) -> dict[str, Any]: ...
 
     async def upload_thread_file(

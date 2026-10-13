@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from sqlalchemy import inspect
 from sqlalchemy.engine import Engine
@@ -37,6 +38,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
 
     engine = None
+    knowledge_http = httpx.AsyncClient(
+        timeout=10, trust_env=False, follow_redirects=False
+    )
+    app.state.knowledge_http = knowledge_http
     try:
         if settings.platform_db_enabled:
             engine = build_engine(settings.database_url or "")
@@ -53,6 +58,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 await run_in_threadpool(service.ensure_bootstrap_admin)
         yield
     finally:
+        await knowledge_http.aclose()
+        app.state.knowledge_http = None
         if engine is not None:
             await run_in_threadpool(engine.dispose)
         app.state.db_engine = None

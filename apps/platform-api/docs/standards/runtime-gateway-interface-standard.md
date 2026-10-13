@@ -54,6 +54,8 @@
 
 `GET /threads/t/files/content?path=...` 保留认证下载、原字节、private/no-store、nosniff 与 attachment；回退 Office 写入口也须保留已接收文件的 GET MIME/哈希读取路径。fork 继续沿后端授权工作区复制，前端不新增复制或解析状态存储。实际工具字段与前端接续验收见 [F10 交接](../../../../docs/projects/20261010-agent-document-reading/frontend-handoff.md)。
 
+原图片 `PUT /threads/t/images/uploads/{sha256}` 增加可选 `file_name` query，原名验证后转发Runtime；响应仍是`version/path/mime_type/size_bytes/sha256`五字段ImageRef，5MiB上限不变。原bytes、hash、sniff MIME、长度必须与回包一致。Runtime把原名保存到Agent挂载外专用收据，知识interceptor验证后才转换，公开引用不增加原名字段；正规Fork复制收据。PNG/JPEG可知识入库，WebP仅保持原聊天能力。前端正文投影及验证见[知识交接](../../../../docs/projects/20261013-knowledge-documents-platform/frontend-handoff.md)。
+
 ## 身份与参数
 
 请求携带平台认证与 `x-project-id`。Thread归属必须匹配项目；启动/恢复重新检查当前Agent、Graph、模型、工具与成员授权。委托scope.operation区分read和run-create。

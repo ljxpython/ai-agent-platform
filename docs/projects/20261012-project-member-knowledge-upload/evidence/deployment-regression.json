@@ -1,0 +1,38 @@
+{
+  "verified_on": "2026-10-12",
+  "origin": "registered-worktree-live-platform-runtime-worker-and-legacy-rag",
+  "deployment": {
+    "environment_id": "wt_39abb85e02a2",
+    "capability_http_status": 200,
+    "capability": {
+      "version": 1,
+      "read_enabled": false,
+      "upload_enabled": false,
+      "supported_mime_types": [],
+      "max_file_bytes": 20971520,
+      "disabled_reason": "knowledge_not_configured"
+    },
+    "legacy_query_in_catalog": true,
+    "upload_in_catalog": false,
+    "note": "Legacy provider lacks online configuration; this checks safe disabled behavior, not online RAG indexing."
+  },
+  "legacy_query": {
+    "status": "passed",
+    "model": "deepseek-v4.1-flash",
+    "graph": "showcase_demo",
+    "project_alias": "alpha",
+    "thread_id": "59f59577-4b80-4474-ae34-0275d13536a0",
+    "run_id": "31078ca1-c775-4095-a7f8-3927d5ac5d08",
+    "elapsed_seconds": 20.139,
+    "knowledge_status": "ok",
+    "source_count": 2,
+    "checked": "Tool text equals structured_content; public history keeps sources; cross-project access and private binding injection are denied."
+  },
+  "not_checked": [
+    "online ingestion",
+    "LightRAG incremental generation publication",
+    "deduplication model cost",
+    "online worker restart or index rollback",
+    "frontend"
+  ]
+}

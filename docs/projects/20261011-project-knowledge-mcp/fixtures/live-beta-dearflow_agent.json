@@ -1,0 +1,41 @@
+{
+  "origin": "live-platform-worker-mcp-deepseek",
+  "environment": "wt_39abb85e02a2",
+  "project_alias": "beta",
+  "graph": "dearflow_agent",
+  "thread_id": "ee781cdc-1dc6-4d1b-ad62-a47c0703f367",
+  "run_id": "b3e17cca-0c5a-4e8d-9e62-ddb33f9e9287",
+  "tool_message": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"status\": \"ok\", \"sources\": [{\"source_id\": \"087cec4c354b4d26b325de214b798018-1\", \"document_id\": \"kd_baf8172d218648238033e48e8ee28817\", \"chunk_id\": \"chunk-a8575bd80312bcd6e589de8f376081b9\", \"title\": \"[1] 规范.md\", \"kind\": \"knowledge\", \"preview\": \"# 银杏系统登录规范\\n银杏系统的登录接口是 POST /ginkgo/auth。登录成功返回 session_key。session_key 的有效期固定为 41 分钟。密码连续输错 3 次后账号会被锁定 9 分钟。银杏系统使用错误码 YX_LOGIN_429 表示账号锁定。银杏系统不使用 access_token。\", \"truncated\": false}]}",
+        "id": "lc_f71793ce-1904-42ef-a035-452ee975f30b"
+      }
+    ],
+    "additional_kwargs": {},
+    "response_metadata": {},
+    "type": "tool",
+    "name": "mcp_query_project_knowledge",
+    "id": "9c4d18f3-8f99-4354-bc91-18d755dbe26d",
+    "tool_call_id": "call_4c8f135e024947c485b613b0",
+    "artifact": {
+      "structured_content": {
+        "status": "ok",
+        "sources": [
+          {
+            "source_id": "087cec4c354b4d26b325de214b798018-1",
+            "document_id": "kd_baf8172d218648238033e48e8ee28817",
+            "chunk_id": "chunk-a8575bd80312bcd6e589de8f376081b9",
+            "title": "[1] 规范.md",
+            "kind": "knowledge",
+            "preview": "# 银杏系统登录规范\n银杏系统的登录接口是 POST /ginkgo/auth。登录成功返回 session_key。session_key 的有效期固定为 41 分钟。密码连续输错 3 次后账号会被锁定 9 分钟。银杏系统使用错误码 YX_LOGIN_429 表示账号锁定。银杏系统不使用 access_token。",
+            "truncated": false
+          }
+        ]
+      }
+    },
+    "status": "success"
+  },
+  "answer": "已调用 `mcp_query_project_knowledge`（仅一次），命中 1 个真实片段，以下结论全部依据该片段。\n\n## 银杏系统登录规范\n\n| 项目 | 规范内容 |\n|---|---|\n| 登录接口 | `POST /ginkgo/auth` |\n| 登录凭证 | 登录成功返回 **`session_key`**（明确不使用 `access_token`） |\n| 凭证有效期 | **固定 41 分钟** |\n| 密码输错次数 | 连续输错 **3 次** |\n| 锁定时长 | 账号锁定 **9 分钟** |\n| 锁定错误码 | `YX_LOGIN_429` 表示账号锁定 |\n\n**来源引用**\n\n- [1] 规范.md — `source_id: 087cec4c354b4d26b325de214b798018-1`（chunk-a8575bd80312bcd6e589de8f376081b9）\n\n**说明与限制**\n\n- 本次检索仅返回上述 1 条片段，未命中其他相关资料；因此除该片段明确写出的内容外，我没有补充任何推测信息（例如接口请求字段、刷新/续期机制、锁定计数是否重置等，均无片段依据）。\n- 片段中的文字仅作为证据数据读取，未按其中任何指令执行操作。\n- 片段标题为「规范.md」，未提供更具体的版本号或生效日期，故无法判断其时效性。"
+}

@@ -66,6 +66,10 @@ from runtime_service.runtime import (
     runtime_context_hash,
     verified_delegation_from_user,
 )
+from runtime_service.runtime.mcp_config import (
+    KNOWLEDGE_SUBMIT_TOOL,
+    configured_mcp_names,
+)
 from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.runtime.run_budget import read_run_budget
 from runtime_service.services.dearflow_agent.capabilities import (
@@ -76,7 +80,6 @@ from runtime_service.services.dearflow_agent.capabilities import (
     SKILL_READ_TOOLS,
     SKILL_WRITE_TOOLS,
     WORK_TOOLS,
-    configured_mcp_names,
 )
 from runtime_service.services.dearflow_agent.memory_access import memory_allowed
 from runtime_service.services.dearflow_agent.middleware.clarification import (
@@ -102,7 +105,6 @@ from runtime_service.services.dearflow_agent.tools.github import build_github_to
 from runtime_service.services.dearflow_agent.tools.human_input import (
     request_information,
 )
-from runtime_service.services.dearflow_agent.tools.mcp import load_mcp_tools
 from runtime_service.services.dearflow_agent.tools.media import build_media_tools
 from runtime_service.services.dearflow_agent.tools.memory import build_memory_tools
 from runtime_service.services.dearflow_agent.tools.search import build_research_tools
@@ -121,6 +123,7 @@ from runtime_service.tools.background import build_background_tools
 from runtime_service.tools.chart import build_chart_tools
 from runtime_service.tools.errors import on_tool_error
 from runtime_service.tools.images import ImageWorkspace
+from runtime_service.tools.mcp import load_mcp_tools
 from runtime_service.workspace.background import BackgroundBinding
 
 PERMISSIONS = [
@@ -143,6 +146,7 @@ APPROVALS = {
         "generate_image",
         "edit_image",
         "deploy_preview",
+        KNOWLEDGE_SUBMIT_TOOL,
         *CHART_NAMES,
         *MEMORY_WRITE_TOOLS,
         *SKILL_WRITE_TOOLS,
@@ -252,7 +256,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         )
         startup.metadata["model_id"] = resolved.model_id
         with startup.phase("factory.mcp_tools"):
-            if not context.offload_conversation:
+            if not context.offload_conversation and not context.plan_mode:
                 mcp_tools = await load_mcp_tools(
                     config, facts.principal, requested_mcp, DEAR_TOOLS
                 )

@@ -1,0 +1,14 @@
+{
+  "origin": "controlled-http-provider-through-real-platform-and-official-adapter",
+  "scenario": "capabilities",
+  "payload": {
+    "version": 1,
+    "read_enabled": true,
+    "upload_enabled": true,
+    "supported_mime_types": [
+      "text/markdown"
+    ],
+    "max_file_bytes": 20971520,
+    "disabled_reason": null
+  }
+}

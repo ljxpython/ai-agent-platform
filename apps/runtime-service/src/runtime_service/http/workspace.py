@@ -206,6 +206,9 @@ async def fork_workspace(
         return 0
 
     copied = await asyncio.to_thread(_do_copy)
+    from runtime_service.workspace.attachment_receipts import AttachmentReceipts
+
+    await asyncio.to_thread(AttachmentReceipts(source_root).copy_to, target_root)
     return {
         "forked": True,
         "source_thread_id": source_thread_id,

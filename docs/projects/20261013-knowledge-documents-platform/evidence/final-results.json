@@ -1,0 +1,139 @@
+{
+  "date": "2026-10-13",
+  "scope": "non_frontend_platform_knowledge_documents",
+  "worktree": "/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform",
+  "branch": "feat/project-knowledge-mcp",
+  "rag_baseline": "c30e2149ab975a3fc7e1539cc26216c0b9a0242e",
+  "rag_source_changed": false,
+  "api": {
+    "passed": 223,
+    "subtests_passed": 182,
+    "skipped": 0,
+    "seconds": 180.49,
+    "postgresql_concurrency_executed": true,
+    "migration_backends": [
+      "sqlite",
+      "postgresql"
+    ],
+    "report": "final-api-retry.xml"
+  },
+  "runtime": {
+    "passed": 379,
+    "skipped": 5,
+    "warnings": 17,
+    "seconds": 229.02,
+    "skip_reason": "managed background Docker tests are outside the local knowledge scope",
+    "report": "final-runtime.xml"
+  },
+  "rag": {
+    "passed": 119,
+    "skipped": 0,
+    "seconds": 29.03,
+    "host": "Ubuntu",
+    "report": "rag-regression.xml"
+  },
+  "local_stack": {
+    "passed": 5,
+    "skipped": 0,
+    "report": "final-local-stack.xml"
+  },
+  "static": {
+    "backend_python_files": 50,
+    "ruff_check": "passed",
+    "ruff_format_check": "passed",
+    "compileall": "passed",
+    "shell_syntax": "passed",
+    "git_diff_check": "passed"
+  },
+  "live_gates": [
+    {
+      "name": "six_formats_two_agents_shared_query",
+      "report": "formats-live.xml"
+    },
+    {
+      "name": "dedup_fork_restart_permissions_plan",
+      "report": "lifecycle-final.xml"
+    },
+    {
+      "name": "20MiB_submit_stop_ready",
+      "report": "lifecycle-live.xml",
+      "qualification": "file size boundary; large-file case passed, earlier lifecycle failure retained"
+    },
+    {
+      "name": "upload_off_version_1_historical_version_2",
+      "report": "configuration-live.xml"
+    },
+    {
+      "name": "inflight_dedup_two_projects_queue_old_read_disabled_drain",
+      "report": "queue-drain-live.xml"
+    },
+    {
+      "name": "frozen_generation_rollback_restore",
+      "report": "generation-rollback-live.xml"
+    },
+    {
+      "name": "stop_pending_approval_no_late_submission",
+      "report": "pending-stop-final.xml"
+    }
+  ],
+  "rag_process_restart_evidence": "rag-restart.json",
+  "default_smoke_evidence": "default-smoke.json",
+  "initial_final_api_failures": {
+    "failed": 23,
+    "report": "final-api.xml",
+    "cause": "acceptance fixture omitted planning read response and default run-create operation",
+    "fix": "test fixtures only",
+    "retry_all_passed": true
+  },
+  "default_smoke_initial_failure": {
+    "cause": "legacy config lacked EMBEDDING_PROVIDER; source .env injected openai into the 768-dimension Ollama endpoint",
+    "fix": "explicit ollama in isolated knowledge.env; backup retained",
+    "retry_passed": true
+  },
+  "limits": [
+    "frontend browser not executed in this stage",
+    "production deployment and load not verified",
+    "representative business quality dataset not provided",
+    "audio and video deferred"
+  ],
+  "raw_reports": {
+    "final-api-retry.xml": {
+      "xml_tests_including_subtests": 405,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_seconds": 180.179
+    },
+    "final-runtime.xml": {
+      "xml_tests_including_subtests": 384,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 5,
+      "xml_seconds": 228.985
+    },
+    "rag-regression.xml": {
+      "xml_tests_including_subtests": 119,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_seconds": 29.016
+    },
+    "final-local-stack.xml": {
+      "xml_tests_including_subtests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "xml_seconds": 0.551
+    }
+  },
+  "handoff_self_check": {
+    "markdown_files": 20,
+    "local_links_valid": 98,
+    "json_files": 37,
+    "api_dto_fixtures": 7,
+    "runtime_dto_fixtures": 9,
+    "tool_message_equal_pairs": 3,
+    "private_value_scan": "passed",
+    "task_phase_count": 6
+  }
+}

@@ -66,3 +66,17 @@ uv run --frozen python -c 'from cryptography.fernet import Fernet; print(Fernet.
 `OBSERVABILITY_METRICS_TOP_PATHS_LIMIT` 默认10，范围1–50。metrics是进程内快照，不是跨实例持久化指标系统。
 
 prod/production启动要求关闭API文档与bootstrap、覆盖内置默认JWT秘密、配置Runtime委托secret。staging不执行全部生产校验；这些校验不代表生产部署已验收，也不替部署者启用数据库或配置网络。
+
+## 项目知识 MCP
+
+`PLATFORM_KNOWLEDGE_MCP_BINDINGS_JSON` 默认 `{}`，服务端配置可信 `tenant:project UUID` → Runtime MCP resource。当前平台可信tenant为 `__default`，示例 `{"__default:11111111-1111-4111-8111-111111111111":"knowledge_project_a"}`。绑定本身不含凭据，不提供浏览器绑定接口；只在新Thread/create与fork路径内部签发，旧Thread不迁移。删除映射只影响新Thread，撤销须先用现有tool-restrictions deny相关知识工具再撤知识token。
+
+成员资料/任务面板另需 `PLATFORM_API_KNOWLEDGE_CONNECTIONS_JSON`，默认 `{}`，同resource对应 `{base_url,token,scope,knowledge_base_id}`。origin只允许HTTP(S)，不带路径/用户密码/query；token至少32字符且仅保存在服务端私有配置，scope必须与可信binding一致。新增API代理凭据不进入数据库、公开DTO或模型Context。未配置时capabilities返回200/not_configured，资料/任务读取404；不影响原Runtime只读query。
+
+`PLATFORM_API_KNOWLEDGE_UPLOAD_ENABLED=false` 默认关闭新upload授权；启用需 `PLATFORM_API_KNOWLEDGE_KEY_ID=knowledge-v1` 与 `PLATFORM_API_KNOWLEDGE_SECRET`（至少32字节，不同于JWT/委托/completion密钥）。upload/start/activate按当前主体与文件/Run签短租约；read、项目GET以及已受理任务start/activate不受新增写开关阻断，仍复核当前权限与原Run。Runtime配置同一专用key和 `PLATFORM_KNOWLEDGE_AUTHORIZATION_URL` 指向本API `/api/runtime/internal/knowledge/authorize`；新增submit装配开关为 `RUNTIME_KNOWLEDGE_UPLOAD_ENABLED=0/1`。启动未迁移业务数据库，RAG负责原件、任务与索引。
+
+知识HMAC operation request允许固定5秒未来签发时钟差，仍要求未到期且0<exp-iat≤30秒；已过期没有宽限，签名、精确用途/字段、主体/凭据/项目/原Run和撤权检查不变。主机仍需同步时间，不用放大lease替代时钟维护。Runtime来源请求版本由`RUNTIME_KNOWLEDGE_SOURCES_VERSION=1|2`固定，默认1；先完成前端兼容再开启2，回退保留旧v2历史。
+
+新增写能力必须完成RAG在线协议、真实联合验收和前端接续后再开启。精确配置、默认关闭/回退与外部条件见[成员上传部署手册](../../../../docs/projects/20261012-project-member-knowledge-upload/deployment-runbook.md)；文档/可信图片/v2的当前交付见[平台接线专项](../../../../docs/projects/20261013-knowledge-documents-platform/README.md)。
+
+Runtime/知识配置、结果/维护约束见[项目知识MCP规范](../../../runtime-service/docs/standards/project-knowledge-mcp.md)。

@@ -10,6 +10,7 @@ from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from sqlalchemy import MetaData, Table, create_engine, inspect, select, text
 from sqlalchemy.engine import make_url
 
@@ -57,6 +58,10 @@ def test_acceptance_upgrade_preserves_old_rows_and_receipt_facts(
     config = Config(str(app / "alembic.ini"))
     config.set_main_option("script_location", str(app / "migrations"))
     config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
+    scripts = ScriptDirectory.from_config(config)
+    head = scripts.get_current_head()
+    assert scripts.get_revision("20261009_0007") is not None
+    assert scripts.get_revision("20261010_0007") is not None
     command.upgrade(config, start)
     engine = create_engine(url)
     try:
@@ -104,6 +109,11 @@ def test_acceptance_upgrade_preserves_old_rows_and_receipt_facts(
             for c in inspect(engine).get_columns("run_requests")
             if c["name"] in acceptance_columns
         )
+        assert {
+            "run_completion_origins",
+            "run_completion_events",
+            "run_completion_receipts",
+        }.issubset(inspect(engine).get_table_names())
         with engine.begin() as connection:
             assert dict(connection.execute(select(old)).mappings().one()) == before
             row = connection.execute(select(current)).mappings().one()
@@ -120,15 +130,26 @@ def test_acceptance_upgrade_preserves_old_rows_and_receipt_facts(
             )
             receipt = dict(connection.execute(select(current)).mappings().one())
         with pytest.raises(
-            RuntimeError, match="acceptance facts are retained|migration history"
+            RuntimeError,
+            match="acceptance facts are retained|migration history|(acceptance facts|completion history) (are|is) retained",
         ):
             command.downgrade(config, "20261007_0006")
+        with engine.connect() as connection:
+            revisions = set(
+                connection.execute(
+                    text("SELECT version_num FROM alembic_version")
+                ).scalars()
+            )
+            # SQLite may commit the no-op merge downgrade before the destructive branch refuses.
+            assert revisions in ({head}, {"20261009_0007", "20261010_0007"})
+            assert dict(connection.execute(select(current)).mappings().one()) == receipt
+        command.upgrade(config, "head")
         with engine.connect() as connection:
             assert (
                 connection.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "20261011_0009"
+                == head
             )
             assert dict(connection.execute(select(current)).mappings().one()) == receipt
     finally:

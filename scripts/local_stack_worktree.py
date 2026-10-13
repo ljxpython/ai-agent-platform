@@ -29,6 +29,7 @@ CALLBACKS = {
     "PLATFORM_RUNTIME_MODEL_CONFIG_URL": "model-config",
     "PLATFORM_RUNTIME_MESSAGE_AUTH_URL": "message-authorization",
     "PLATFORM_RUNTIME_MEMORY_AUTH_URL": "memory-authorization",
+    "PLATFORM_KNOWLEDGE_AUTHORIZATION_URL": "knowledge/authorize",
 }
 
 
@@ -94,7 +95,10 @@ def reserve(root: Path, common: Path) -> dict:
         used = {
             port
             for entry in registry["environments"].values()
-            for port in entry["ports"].values()
+            for port in (
+                *entry["ports"].values(),
+                *entry.get("knowledge", {}).get("ports", {}).values(),
+            )
         }
         ports = {}
         candidates = list(range(23000, 30000))
@@ -146,7 +150,89 @@ def record(root: Path, common: Path) -> dict:
         key: f"{entry['id']}_{key}" for key in ("runtime", "platform")
     }:
         raise ValueError("Invalid Worktree database allocation")
+    knowledge = entry.get("knowledge")
+    if knowledge is not None and (
+        not isinstance(knowledge, dict)
+        or set(knowledge) != {"source", "ports"}
+        or not isinstance(knowledge["source"], str)
+        or not Path(knowledge["source"]).is_absolute()
+        or set(knowledge["ports"]) != {"mcp", "embedding"}
+        or len(set(knowledge["ports"].values())) != 2
+        or any(
+            type(port) is not int or not 1024 <= port <= 65535
+            for port in knowledge["ports"].values()
+        )
+        or set(knowledge["ports"].values()) & set(entry["ports"].values())
+    ):
+        raise ValueError("Invalid Worktree knowledge allocation")
     return entry
+
+
+def register_knowledge(root: Path, common: Path) -> None:
+    """Register source-service ports already prepared in this environment's private config."""
+    from local_stack_processes import cwd, port_pids, snapshot
+
+    state = root / ".local-stack/knowledge"
+    mcp = json.loads((state / "mcp-process.json").read_text())
+    embedding = json.loads((state / "ollama-process.json").read_text())
+    source = Path(mcp["root"]).resolve()
+    config = read_env(state / "knowledge.env")
+    allocation = {
+        "source": str(source),
+        "ports": {"mcp": mcp["port"], "embedding": embedding["port"]},
+    }
+    if (
+        any(
+            type(port) is not int or not 1024 <= port <= 65535
+            for port in allocation["ports"].values()
+        )
+        or len(set(allocation["ports"].values())) != 2
+        or mcp["env_file"] != str(state / "knowledge.env")
+        or config.get("MCP_HOST") != "127.0.0.1"
+        or config.get("MCP_PORT") != str(mcp["port"])
+        or endpoint(config["EMBEDDING_BASE_URL"])[1] != embedding["port"]
+        or Path(config["KNOWLEDGE_ROOT_DIR"]).resolve() != state / "corpus"
+        or Path(embedding["models"]).resolve() != state / "ollama-models"
+        or not (source / "src/mcp_server.py").is_file()
+        or not (source / ".venv/bin/python").is_file()
+        or not (source / ".venv").resolve().is_relative_to(source)
+    ):
+        raise ValueError("Knowledge resources differ from this Worktree configuration")
+    rows = snapshot()
+    for kind, directory, command in (
+        ("mcp", source, "src/mcp_server.py"),
+        ("embedding", root, "serve"),
+    ):
+        for pid in port_pids(allocation["ports"][kind]):
+            args = rows.get(pid, (0, []))[1]
+            if cwd(pid) != directory or command not in args:
+                raise ValueError("Knowledge port belongs to an external process")
+    with file_lock(common / "local-stacks/registry.lock"):
+        registry = read_registry(common)
+        entry = record(root, common)
+        if mcp["environment"] != entry["id"]:
+            raise ValueError("Knowledge service belongs to another environment")
+        used = {
+            port
+            for path, item in registry["environments"].items()
+            for port in (
+                *item["ports"].values(),
+                *(
+                    item.get("knowledge", {}).get("ports", {}).values()
+                    if path != str(root)
+                    else ()
+                ),
+            )
+        }
+        if used & set(allocation["ports"].values()):
+            raise ValueError("Knowledge ports conflict with a registered environment")
+        entry["knowledge"] = allocation
+        write_json(root / ".local-stack/environment.json", entry)
+        registry["environments"][str(root)] = entry
+        write_json(common / "local-stacks/registry.json", registry)
+    print(
+        f"[knowledge] {entry['id']}: MCP {mcp['port']}, embedding {embedding['port']} registered"
+    )
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -228,6 +314,11 @@ def configs(root: Path, entry: dict) -> tuple[dict[str, str], dict[str, str]]:
     runtime = read_env(root / ".local-stack/runtime.env")
     platform = read_env(root / ".local-stack/platform.env")
     expected_runtime, expected_platform = expected_values(root, entry)
+    # Older initialized stacks derive the new callback from their own registered API.
+    if not runtime.get("PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"):
+        runtime["PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"] = expected_runtime[
+            "PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"
+        ]
     for values, expected in (
         (runtime, expected_runtime),
         (platform, expected_platform),
@@ -533,6 +624,12 @@ def export_environment(
         "RUNTIME_ENV_FILE": str(root / ".local-stack/runtime.env"),
         "PLATFORM_ENV_FILE": str(root / ".local-stack/platform.env"),
     }
+    if entry.get("knowledge"):
+        resources.update(
+            KNOWLEDGE_SOURCE_DIR=entry["knowledge"]["source"],
+            KNOWLEDGE_MCP_PORT=str(entry["knowledge"]["ports"]["mcp"]),
+            KNOWLEDGE_EMBEDDING_PORT=str(entry["knowledge"]["ports"]["embedding"]),
+        )
     if resources_only:
         return resources
     runtime, platform = configs(root, entry)
@@ -558,13 +655,19 @@ def export_environment(
 
 
 def destroy_environment(root: Path, common: Path, confirmation: str | None) -> None:
-    from local_stack_processes import owned
+    from local_stack_processes import owned, port_pids
 
     check_install_directories(root)
     entry = record(root, common)
     if confirmation != entry["id"]:
         raise ValueError(
             f"Destructive cleanup requires destroy --confirm {entry['id']}; databases and Workspace will be deleted"
+        )
+    if any(
+        port_pids(port) for port in entry.get("knowledge", {}).get("ports", {}).values()
+    ):
+        raise ValueError(
+            "Stop the registered knowledge/embedding source services before destroying data"
         )
     for key in (
         "runtime-api",
@@ -593,7 +696,16 @@ def destroy_environment(root: Path, common: Path, confirmation: str | None) -> N
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "action", choices=("run", "init", "seed", "exports", "destroy", "list")
+        "action",
+        choices=(
+            "run",
+            "init",
+            "seed",
+            "exports",
+            "destroy",
+            "list",
+            "knowledge-register",
+        ),
     )
     parser.add_argument("root", type=Path)
     parser.add_argument("arguments", nargs=argparse.REMAINDER)
@@ -646,6 +758,8 @@ def main() -> None:
             )
         elif args.action == "init":
             initialize(root, common, primary)
+        elif args.action == "knowledge-register":
+            register_knowledge(root, common)
         elif args.action == "seed":
             from local_stack_seed import seed_environment
 

@@ -1,0 +1,29 @@
+[
+  {
+    "type": "tool",
+    "name": "mcp_submit_project_knowledge_document",
+    "tool_call_id": "call_00_bqg4m2yYwEQyAN2xZIxI7962",
+    "status": "success",
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"version\": 1, \"job_id\": \"kj_85f0026ff2374eae8f376c6f4fe89334\", \"document_id\": \"kd_ad5b11da90464589b8cc7cec9b0ca56b\", \"file_name\": \"fixture-new.pdf\", \"status\": \"queued\", \"searchable\": false, \"error_code\": null, \"created_at\": \"2026-10-13T06:53:53.640704Z\", \"updated_at\": \"2026-10-13T06:53:53.640704Z\", \"reused\": false}",
+        "id": "lc_e8438ac2-d3b0-45ed-801e-cc788874e80e"
+      }
+    ],
+    "artifact": {
+      "structured_content": {
+        "version": 1,
+        "job_id": "kj_85f0026ff2374eae8f376c6f4fe89334",
+        "document_id": "kd_ad5b11da90464589b8cc7cec9b0ca56b",
+        "file_name": "fixture-new.pdf",
+        "status": "queued",
+        "searchable": false,
+        "error_code": null,
+        "created_at": "2026-10-13T06:53:53.640704Z",
+        "updated_at": "2026-10-13T06:53:53.640704Z",
+        "reused": false
+      }
+    }
+  }
+]

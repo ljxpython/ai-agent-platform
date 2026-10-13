@@ -1,0 +1,47 @@
+{
+  "thread_id": "195f94ef-c23d-4da5-9938-9bee0b311e5f",
+  "run_id": "7b1bba4b-6101-4790-8c00-21a7a6c23d8b",
+  "confirmed_stop": {
+    "version": 1,
+    "stop_id": "1c6869d3-e780-4e91-b4ec-37132e3ee0aa",
+    "thread_id": "195f94ef-c23d-4da5-9938-9bee0b311e5f",
+    "phase": "no_active_run",
+    "requested_at": "2026-10-13T16:04:36.588043+08:00",
+    "accepted_at": "2026-10-13T16:04:37.576885+08:00",
+    "confirmed_at": "2026-10-13T16:04:37.866141+08:00",
+    "target_count": 0,
+    "execution_stopped": true,
+    "resource_cleanup": "not_required",
+    "has_pending_interrupts": true,
+    "queue": {
+      "pending_cancelled_count": 0,
+      "inbox_consumed_count": 0,
+      "inbox_not_consumed_count": 0
+    },
+    "report": {
+      "version": 1,
+      "source": "checkpoint_and_receipts",
+      "checkpoint_id": null,
+      "checkpoint_at": null,
+      "checkpoints": [],
+      "progress": [],
+      "artifacts": [],
+      "uncertainties": [
+        "checkpoint_unavailable",
+        "progress_unavailable"
+      ],
+      "truncated": false,
+      "background_tasks": {
+        "target_count": 0,
+        "cleanup_confirmed_count": 0,
+        "cleanup_unconfirmed_count": 0,
+        "notifications_suppressed_count": 0,
+        "truncated": false
+      }
+    },
+    "reason_code": null,
+    "request_id": "6f3d2ea6a79a4426982df95496139c65"
+  },
+  "no_late_submit": true,
+  "no_new_ingestion": true
+}

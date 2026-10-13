@@ -49,8 +49,23 @@ bash "scripts/local-stack.sh" stop
 - 首次初始化从 23000-29999 随机分配 Web/API/Runtime/Redis 四个端口，排除已登记及当前被占用的端口。分配写入加跨进程锁，登记原子替换。
 - 重启复用原端口；端口被外部程序抢占时明确失败，不强杀、不让某个服务单独漂移。随机与“少见”端口不等于保证空闲。
 - 同一环境操作加锁；不同环境可并发。进程停止须核对命令及真实目录归属，不凭 PID 文件或端口单独决定。
-- API upstream、Runtime self URL、模型/Thread/message/memory 授权回调和前端代理统一生成，指向同一环境。不能手工指向其他 Worktree 或主工作区。
+- API upstream、Runtime self URL、模型/Thread/message/memory/知识授权回调和前端代理统一生成，指向同一环境。不能手工指向其他 Worktree 或主工作区。旧登记环境缺少或空 `PLATFORM_KNOWLEDGE_AUTHORIZATION_URL` 时从本登记API派生，不写回私有配置；显式跨环境地址仍拒绝。知识写开关保持默认关闭。
 - 额外预览/测试服务同样不能硬编码公共端口或抢占登记端口；先使用 OS 分配空闲端口并保留所属进程句柄，结束时仅停止自己启动的进程。长期联调服务应先扩展统一登记再接入。
+
+### 外部源码知识服务
+
+知识MCP与独立Ollama也可登记到本环境，数据/模型/私有配置放 `.local-stack/knowledge/`，知识源码使用自身独立 `.venv`。登记的 `knowledge.source` 指向实际源码目录，`knowledge.ports` 包含MCP/Embedding两端口；平台身份、四个现有端口及数据库保持原分配。复用缓存，不复用其他环境的可写资料/模型目录或安装目录。
+
+维护者先准备 `knowledge.env`、`mcp-process.json`（环境/source/配置路径/端口）与 `ollama-process.json`（模型目录/端口），再执行：
+
+```bash
+bash "scripts/local-stack.sh" knowledge-register
+bash "scripts/local-stack.sh" knowledge-start
+bash "scripts/local-stack.sh" knowledge-restart
+bash "scripts/local-stack.sh" knowledge-stop
+```
+
+登记检查回环地址、本环境corpus/models、源码依赖、监听归属与全登记端口冲突；不自动抢占外来进程。登记后 `start/status/stop` 包含知识服务，最新PID位于本环境 `pids/`。停进程同时核对登记端口、命令及真实目录，不停止同目录其他端口的Ollama。知识服务监听未释放时 `destroy` 拒绝删除；资料销毁仍需原有明确确认。精确配置/版本更新与证据见[知识MCP部署手册](../projects/20261011-project-knowledge-mcp/deployment-runbook.md)。
 
 ## 数据与文件
 

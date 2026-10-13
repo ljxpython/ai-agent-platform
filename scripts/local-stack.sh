@@ -42,6 +42,8 @@ Commands:
   logs     show recent logs; optionally pass runtime-api, runtime-worker,
            platform-api, platform-web or redis
   list     show registered Worktree environments (no secrets)
+  knowledge-register  register prepared knowledge MCP/embedding source resources
+  knowledge-start|knowledge-stop|knowledge-restart  manage registered source services
   destroy  delete a stopped environment's data: destroy --confirm <environment-id>
 
 Environment:
@@ -107,6 +109,7 @@ PY
   RUNTIME_PORT="${RUNTIME_PORT:-${RUNTIME_SERVICE_PORT:-8123}}"
   GRAPH_CONFIG="${RUNTIME_GRAPH_CONFIG_PATH:-$RUNTIME_DIR/langgraph.json}"
   export PLATFORM_THREAD_AUTHORIZATION_URL="${PLATFORM_THREAD_AUTHORIZATION_URL:-http://127.0.0.1:$PLATFORM_API_PORT/api/runtime/internal/thread-authorization}"
+  export PLATFORM_KNOWLEDGE_AUTHORIZATION_URL="${PLATFORM_KNOWLEDGE_AUTHORIZATION_URL:-http://127.0.0.1:$PLATFORM_API_PORT/api/runtime/internal/knowledge/authorize}"
   export RUNTIME_PORT PLATFORM_API_PORT PLATFORM_WEB_PORT
 }
 
@@ -229,6 +232,16 @@ start_process() {
 start_managed_key() {
   local key="$1"
   case "$key" in
+    knowledge-embedding)
+      start_process "$key" "$ROOT_DIR" \
+        "env OLLAMA_MODELS=$(shell_quote "$STATE_DIR/knowledge/ollama-models") OLLAMA_HOST=127.0.0.1:$(shell_quote "$KNOWLEDGE_EMBEDDING_PORT") ollama serve" \
+        "$STATE_DIR/knowledge/ollama.log" "$KNOWLEDGE_EMBEDDING_PORT"
+      ;;
+    knowledge-mcp)
+      start_process "$key" "$KNOWLEDGE_SOURCE_DIR" \
+        "env -u VIRTUAL_ENV -u UV_PROJECT_ENVIRONMENT -u PYTHONPATH uv run --no-sync --frozen --env-file $(shell_quote "$STATE_DIR/knowledge/knowledge.env") python src/mcp_server.py" \
+        "$STATE_DIR/knowledge/mcp.log" "$KNOWLEDGE_MCP_PORT"
+      ;;
     redis)
       start_process redis "$STATE_DIR" \
         "redis-server $(shell_quote "$STATE_DIR/redis.conf")" \
@@ -269,6 +282,8 @@ stop_process() {
       runtime-api) port="$RUNTIME_PORT" ;;
       platform-api) port="$PLATFORM_API_PORT" ;;
       platform-web) port="$PLATFORM_WEB_PORT" ;;
+      knowledge-mcp) port="$KNOWLEDGE_MCP_PORT" ;;
+      knowledge-embedding) port="$KNOWLEDGE_EMBEDDING_PORT" ;;
     esac
   fi
   # PID files can be stale or absent after a manual dev start. Resolve ownership
@@ -458,6 +473,7 @@ start() {
     require_managed_process redis
     check_redis
   fi
+  if [ -n "${KNOWLEDGE_SOURCE_DIR:-}" ]; then knowledge_start; fi
   start_managed_key runtime-api
   start_managed_key runtime-worker
   require_managed_process runtime-worker
@@ -478,6 +494,7 @@ status() {
     "${LOCAL_STACK_ID:-primary}" "$PLATFORM_WEB_PORT" "$PLATFORM_API_PORT" "$RUNTIME_PORT" "$STATE_DIR"
   local keys=(runtime-api runtime-worker platform-api platform-web)
   if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then keys+=(redis); fi
+  if [ -n "${KNOWLEDGE_SOURCE_DIR:-}" ]; then keys+=(knowledge-mcp knowledge-embedding); fi
   for key in "${keys[@]}"; do
     if managed_alive "$key"; then
       printf '%-16s running\n' "$key"
@@ -568,16 +585,36 @@ stop_stack() {
   stop_process runtime-worker
   stop_process runtime-api
   if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then stop_process redis; fi
+  if [ -n "${KNOWLEDGE_SOURCE_DIR:-}" ]; then knowledge_stop; fi
+}
+
+knowledge_start() {
+  [ -n "${KNOWLEDGE_SOURCE_DIR:-}" ] || die "run knowledge-register first"
+  start_managed_key knowledge-embedding
+  wait_http knowledge-embedding "http://127.0.0.1:$KNOWLEDGE_EMBEDDING_PORT/api/tags" 60
+  start_managed_key knowledge-mcp
+  for _ in {1..120}; do
+    if port_in_use "$KNOWLEDGE_MCP_PORT"; then require_managed_process knowledge-mcp; return; fi
+    pid_alive "$(read_pid knowledge-mcp)" || die "knowledge MCP startup failed; inspect private mcp.log"
+    sleep 0.5
+  done
+  die "knowledge MCP startup timeout"
+}
+
+knowledge_stop() {
+  [ -n "${KNOWLEDGE_SOURCE_DIR:-}" ] || die "run knowledge-register first"
+  stop_process knowledge-mcp
+  stop_process knowledge-embedding
 }
 
 command="${1:-help}"
 case "$command" in
-  init|seed|destroy|list)
+  init|seed|destroy|list|knowledge-register)
     "$LOCAL_STACK_PYTHON" "$ROOT_DIR/scripts/local_stack_worktree.py" "$command" "$ROOT_DIR" "${@:2}"
     exit
     ;;
   help|-h|--help) usage; return 0 2>/dev/null || exit 0 ;;
-  stop|status|logs) load_stack_identity --resources-only ;;
+  stop|status|logs|knowledge-start|knowledge-stop|knowledge-restart) load_stack_identity --resources-only ;;
   doctor|migrate|start|restart|restart-one|deps) load_stack_identity ;;
   *) usage >&2; exit 2 ;;
 esac
@@ -591,6 +628,9 @@ case "$command" in
   restart-one) restart_one "${2:-}" ;;
   status) status ;;
   logs) logs "${2:-}" ;;
+  knowledge-start) trap cleanup_startup_failure EXIT; knowledge_start; trap - EXIT ;;
+  knowledge-stop) knowledge_stop ;;
+  knowledge-restart) trap cleanup_startup_failure EXIT; knowledge_stop; knowledge_start; trap - EXIT ;;
   help|-h|--help) usage ;;
   *) usage >&2; exit 2 ;;
 esac

@@ -1,0 +1,26 @@
+{
+  "origin": "controlled-http-provider-through-official-adapter",
+  "scenario": "no_hit",
+  "tool_message": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"status\": \"no_hit\", \"sources\": []}",
+        "id": "lc_214035e5-ce38-4d19-96c3-84c875d9d4b6"
+      }
+    ],
+    "additional_kwargs": {},
+    "response_metadata": {},
+    "type": "tool",
+    "name": "mcp_query_project_knowledge",
+    "id": null,
+    "tool_call_id": "fixture-no_hit",
+    "artifact": {
+      "structured_content": {
+        "status": "no_hit",
+        "sources": []
+      }
+    },
+    "status": "success"
+  }
+}

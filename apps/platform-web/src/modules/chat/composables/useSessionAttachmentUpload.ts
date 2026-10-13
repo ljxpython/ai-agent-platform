@@ -41,15 +41,25 @@ export async function uploadSessionAttachmentsAsync(
             ? metadata.name
             : typeof metadata.filename === "string"
               ? metadata.filename
-              : "image.png";
+              : file instanceof File && file.name
+                ? file.name
+                : "image.png";
         const sha256 = await calculateImageSha256(file);
+        const actualFileName =
+          file instanceof File && file.name
+            ? file.name
+            : typeof metadata.name === "string"
+              ? metadata.name
+              : undefined;
         const ref = await uploadThreadImage(
           projectId,
           targetThreadId,
           sha256,
           file,
+          actualFileName,
         );
-        return createRuntimeImageTextBlock(filename, ref);
+        const shareToKnowledge = Boolean(block.shareToKnowledge);
+        return createRuntimeImageTextBlock(filename, ref, shareToKnowledge);
       }
       if (block.type === "file" && block.file instanceof Blob) {
         const file = block.file as File;
@@ -67,7 +77,8 @@ export async function uploadSessionAttachmentsAsync(
           sha256,
           file,
         );
-        return createRuntimeFileTextBlock(filename, ref);
+        const shareToKnowledge = Boolean(block.shareToKnowledge);
+        return createRuntimeFileTextBlock(filename, ref, shareToKnowledge);
       }
       return item;
     }),

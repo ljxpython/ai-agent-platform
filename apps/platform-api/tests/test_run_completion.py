@@ -60,11 +60,30 @@ from platform_api.modules.runtime_gateway.presentation.http import (
 def fixture(tmp_path):
     schema = None
     if os.getenv("RUN_COMPLETION_PG_TEST") == "1":
-        target = make_url(os.environ["ACCEPTANCE_TEST_PLATFORM_DATABASE_URL"]).set(
+        worktree_url = os.getenv("RUN_COMPLETION_TEST_DATABASE_URL") or os.getenv(
+            "ACCEPTANCE_TEST_PLATFORM_DATABASE_URL"
+        )
+        target = make_url(worktree_url or os.environ["POSTGRES_URI"]).set(
             drivername="postgresql+psycopg"
         )
-        if target.host not in {"127.0.0.1", "localhost", "::1"} or not target.database:
-            raise RuntimeError("An explicit isolated local PostgreSQL URL is required")
+        worktree_database = bool(
+            worktree_url
+            and (target.database or "").startswith("wt_")
+            and (target.database or "").endswith("_platform")
+            and target.username == target.database
+        )
+        if (
+            target.host not in {"127.0.0.1", "localhost", "::1"}
+            or not target.database
+            or (
+                target.database != "graphharbor_event_retention_verify"
+                and not worktree_database
+                and not os.getenv("ACCEPTANCE_TEST_PLATFORM_DATABASE_URL")
+            )
+        ):
+            raise RuntimeError(
+                "Only a disposable or explicit worktree database is allowed"
+            )
         schema = "completion_" + uuid4().hex
         admin = create_engine(target, hide_parameters=True)
         with admin.begin() as conn:

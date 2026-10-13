@@ -81,9 +81,7 @@ def test_deployed_registry_matches_display_declarations():
 
 
 def test_mcp_declarations_reject_malformed_names_and_shapes(monkeypatch):
-    from runtime_service.services.dearflow_agent.capabilities import (
-        configured_mcp_names,
-    )
+    from runtime_service.runtime.mcp_config import configured_mcp_names
 
     for payload in (
         [],
@@ -204,7 +202,7 @@ def test_platform_signed_denial_reaches_every_execution_boundary(monkeypatch):
 
 def test_mcp_disabled_or_unbound_never_connects_and_binding_limits_names(monkeypatch):
     from runtime_service.runtime.resource_bindings import thread_resource_metadata
-    from runtime_service.services.dearflow_agent.tools import mcp
+    from runtime_service.tools import mcp
 
     principal = RuntimePrincipal("u", "t", "p", "viewer", ())
     client = SimpleNamespace(
@@ -229,11 +227,15 @@ def test_mcp_disabled_or_unbound_never_connects_and_binding_limits_names(monkeyp
         json.dumps(
             {
                 "one": {
+                    "scope": {"tenant_id": "t", "project_id": "p"},
                     "transport": "streamable_http",
                     "url": "http://unused",
                     "allowed_tools": ["mcp_one"],
                 },
-                "two": {"allowed_tools": ["mcp_two"]},
+                "two": {
+                    "scope": {"tenant_id": "t", "project_id": "other"},
+                    "allowed_tools": ["mcp_two"],
+                },
             }
         ),
     )

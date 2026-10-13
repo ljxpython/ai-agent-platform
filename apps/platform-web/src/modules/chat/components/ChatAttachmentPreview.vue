@@ -12,15 +12,20 @@ const props = withDefaults(
     block: ChatAttachmentBlock;
     removable?: boolean;
     compact?: boolean;
+    canShareToKnowledge?: boolean;
+    shareToKnowledgeReason?: string;
   }>(),
   {
     removable: false,
     compact: false,
+    canShareToKnowledge: false,
+    shareToKnowledgeReason: "",
   },
 );
 
 const emit = defineEmits<{
   remove: [];
+  "update:shareToKnowledge": [val: boolean];
 }>();
 
 const isImage = computed(() => props.block.type === "image");
@@ -37,7 +42,11 @@ function formatBytes(bytes?: number): string {
 }
 
 const fileTypeLabel = computed(() => {
-  if (isImage.value) return "图片";
+  const sizeStr = formatBytes(props.block.file?.size);
+  if (isImage.value) {
+    const ext = attachmentName.value.split(".").pop()?.toUpperCase() || "图片";
+    return sizeStr ? `${ext} · ${sizeStr}` : ext;
+  }
   const name = attachmentName.value.toLowerCase();
   const mime = (props.block.mimeType || "").toLowerCase();
   let label = "文本文档";
@@ -57,7 +66,6 @@ const fileTypeLabel = computed(() => {
   else if (name.endsWith(".md") || name.endsWith(".markdown"))
     label = "Markdown";
 
-  const sizeStr = formatBytes(props.block.file?.size);
   return sizeStr ? `${label} · ${sizeStr}` : label;
 });
 </script>
@@ -65,7 +73,13 @@ const fileTypeLabel = computed(() => {
 <template>
   <div
     class="pw-panel relative overflow-hidden p-0"
-    :class="compact ? 'max-w-[180px]' : 'max-w-[220px]'"
+    :class="[
+      compact
+        ? 'max-w-[180px]'
+        : isImage
+          ? 'max-w-[240px] min-w-[200px]'
+          : 'max-w-[280px] min-w-[230px]',
+    ]"
   >
     <button
       v-if="removable"
@@ -84,11 +98,79 @@ const fileTypeLabel = computed(() => {
         class="block w-full object-cover"
         :class="compact ? 'h-28' : 'h-36'"
       />
-      <div
-        class="border-t border-gray-100 px-3 py-2 text-xs font-medium text-gray-600 dark:border-dark-700 dark:text-dark-200 truncate"
-        :title="attachmentName"
-      >
-        {{ attachmentName }}
+      <div class="border-t border-gray-100 p-2.5 dark:border-dark-700">
+        <div
+          class="text-xs font-medium text-gray-700 dark:text-dark-200 truncate"
+          :title="attachmentName"
+        >
+          {{ attachmentName }}
+        </div>
+        <div
+          class="mt-1 flex items-center justify-between text-[11px] text-gray-500 dark:text-dark-300"
+        >
+          <span>{{ fileTypeLabel }}</span>
+          <span
+            v-if="
+              block.uploadStatus === 'uploading' ||
+              block.uploadStatus === 'hashing'
+            "
+            class="text-primary-600 dark:text-primary-400 font-medium"
+          >
+            上传中
+          </span>
+          <span
+            v-else-if="block.uploadStatus === 'failed'"
+            class="text-red-600 dark:text-red-400 font-medium"
+          >
+            上传失败
+          </span>
+          <span
+            v-else-if="block.uploadStatus === 'uploaded'"
+            class="text-emerald-600 dark:text-emerald-400 font-medium"
+          >
+            已上传
+          </span>
+        </div>
+
+        <!-- 共享至项目知识库选项 -->
+        <div
+          class="mt-2 flex items-center justify-between border-t border-gray-100 pt-1.5 dark:border-dark-700"
+        >
+          <label
+            class="inline-flex items-center gap-1.5 text-[11px]"
+            :class="
+              canShareToKnowledge
+                ? 'cursor-pointer text-gray-700 dark:text-dark-200'
+                : 'cursor-not-allowed opacity-50 text-gray-400 dark:text-dark-400'
+            "
+            :title="
+              !canShareToKnowledge
+                ? shareToKnowledgeReason
+                : '勾选后发送将一并提交入库至当前项目知识库'
+            "
+          >
+            <input
+              type="checkbox"
+              class="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+              :disabled="!canShareToKnowledge"
+              :checked="Boolean(block.shareToKnowledge)"
+              @change="
+                emit(
+                  'update:shareToKnowledge',
+                  ($event.target as HTMLInputElement).checked,
+                )
+              "
+            />
+            <span class="font-medium">共享至项目知识库</span>
+          </label>
+          <span
+            v-if="!canShareToKnowledge && shareToKnowledgeReason"
+            class="text-[10px] text-gray-400 dark:text-dark-400 truncate max-w-[80px]"
+            :title="shareToKnowledgeReason"
+          >
+            暂不可用
+          </span>
+        </div>
       </div>
     </template>
 
@@ -130,6 +212,46 @@ const fileTypeLabel = computed(() => {
               class="text-emerald-600 dark:text-emerald-400 font-medium"
             >
               · 已上传
+            </span>
+          </div>
+
+          <!-- 共享至项目知识库选项 -->
+          <div
+            class="mt-2.5 flex items-center justify-between border-t border-gray-100 pt-2 dark:border-dark-700"
+          >
+            <label
+              class="inline-flex items-center gap-1.5 text-[11px]"
+              :class="
+                canShareToKnowledge
+                  ? 'cursor-pointer text-gray-700 dark:text-dark-200'
+                  : 'cursor-not-allowed opacity-50 text-gray-400 dark:text-dark-400'
+              "
+              :title="
+                !canShareToKnowledge
+                  ? shareToKnowledgeReason
+                  : '勾选后发送将一并提交入库至当前项目知识库'
+              "
+            >
+              <input
+                type="checkbox"
+                class="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                :disabled="!canShareToKnowledge"
+                :checked="Boolean(block.shareToKnowledge)"
+                @change="
+                  emit(
+                    'update:shareToKnowledge',
+                    ($event.target as HTMLInputElement).checked,
+                  )
+                "
+              />
+              <span class="font-medium">共享至项目知识库</span>
+            </label>
+            <span
+              v-if="!canShareToKnowledge && shareToKnowledgeReason"
+              class="text-[10px] text-gray-400 dark:text-dark-400 truncate max-w-[80px]"
+              :title="shareToKnowledgeReason"
+            >
+              暂不可用
             </span>
           </div>
         </div>

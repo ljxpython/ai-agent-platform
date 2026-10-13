@@ -79,6 +79,8 @@ note: 当前operation枚举为36项；后台元数据/日志/取消与run-accept
 | scope 额外键 | 只允许五个键，未知键拒绝 |
 | 未知顶层 claim | Runtime 严格拒绝 |
 
+2026-10-11 知识MCP真实服务账号链发现Runtime遗漏既有 `credential_id` 顶层白名单/验签结果，已按上表原约束修复并保留UUID/subject核验；从受信用户重建委托时用命名参数保留credential、callback_context和run_acceptance。鉴权相关91项（14项skip）及普通用户/服务账号真实检索后撤权403/provider0见[知识专项](../projects/20261011-project-knowledge-mcp/verification.md)。未新增JWT operation/claim语义，不代表本标准原剩余门禁通过，状态仍draft。
+
 ### 可选运行完成来源（2026-10-09 用户批准）
 
 平台在受理前持久化 origin，再为受管 Run/cron 创建与更新签发可选 `callback_context`。Runtime 验签后只把该字段放入 GraphHarbor 私有受签 context；不进入 State、Prompt、公开 kwargs/SSE。旧 token 没有该字段仍可执行，但没有受管 completion 来源；新 API 遇到旧引擎能力缺失不注入新 claim。

@@ -66,6 +66,9 @@ from platform_api.modules.runtime_gateway.application.clarification import (
 from platform_api.modules.runtime_gateway.application.diagnostics import (
     RuntimeDiagnostics,
 )
+from platform_api.modules.runtime_gateway.application.knowledge_bindings import (
+    build_knowledge_binding,
+)
 from platform_api.modules.runtime_gateway.application.planning import (
     PLAN_GRAPHS,
     execution_id,
@@ -591,6 +594,8 @@ class RuntimeGatewayService:
         title_auto_enabled: bool | Callable[[], bool] = False,
         on_correlation: Callable[[str, Mapping[str, Any]], None] | None = None,
         completion_enabled: bool = False,
+        knowledge_mcp_bindings: Mapping[str, str] | None = None,
+        tenant_id: str = "__default",
     ) -> None:
         self._session_factory = session_factory
         self._upstream = upstream
@@ -609,6 +614,8 @@ class RuntimeGatewayService:
         self._title_auto_enabled = title_auto_enabled
         self._on_correlation = on_correlation
         self._completion_enabled = completion_enabled
+        self._knowledge_mcp_bindings = dict(knowledge_mcp_bindings or {})
+        self._tenant_id = tenant_id
 
     def _emit_correlation(self, event: str, **fields: Any) -> None:
         if self._on_correlation is not None:
@@ -1237,7 +1244,16 @@ class RuntimeGatewayService:
         content_type: str,
         content_length: int,
         body: AsyncIterator[bytes],
+        file_name: str | None = None,
     ) -> dict[str, Any]:
+        if file_name is not None and (
+            not isinstance(file_name, str)
+            or not 0 < len(file_name) <= 200
+            or any(ord(ch) < 32 or ch in "/\\\x7f" for ch in file_name)
+        ):
+            raise BadRequestError(
+                code="image_name_invalid", message="Invalid image name"
+            )
         sha256 = clean_str(sha256).lower()
         if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
             raise BadRequestError(
@@ -1296,6 +1312,7 @@ class RuntimeGatewayService:
             content_type=media_type,
             content_length=content_length,
             body=body,
+            file_name=file_name,
         )
 
         version = ref.get("version") if isinstance(ref, dict) else None
@@ -1308,12 +1325,20 @@ class RuntimeGatewayService:
 
         if (
             not isinstance(ref, dict)
-            or version not in (1, "v1")
+            or type(version) is not int
+            or version != 1
             or not isinstance(path, str)
             or not isinstance(ref_sha256, str)
             or not isinstance(mime_type, str)
-            or not isinstance(size_bytes, int)
-            or size_bytes <= 0
+            or type(size_bytes) is not int
+            or size_bytes != content_length
+            or ref_sha256 != sha256
+            or mime_type != media_type
+            or path
+            != f"/workspace/uploads/{sha256}."
+            + {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}[
+                media_type
+            ]
         ):
             raise PlatformApiError(
                 code="runtime_invalid_image_response",
@@ -2843,6 +2868,21 @@ class RuntimeGatewayService:
             if key not in thread_access.ACL_KEYS
         }
         next_payload["thread_id"] = reserved_thread_id or str(uuid4())
+        binding = build_knowledge_binding(
+            self._knowledge_mcp_bindings,
+            self._tenant_id,
+            project_id,
+            next_payload["thread_id"],
+        )
+        if binding:
+            managed = ensure_dict(
+                next_payload["metadata"].get("runtime_resource_bindings")
+            )
+            next_payload["metadata"]["runtime_resource_bindings"] = {
+                **managed,
+                "schema": "runtime-resource-bindings/v1",
+                **binding,
+            }
         next_payload["if_exists"] = "raise"
         next_payload = _promote_thread_graph_id(next_payload)
         upstream = self._upstream

@@ -1,0 +1,45 @@
+{
+  "origin": "controlled-http-provider-through-official-adapter",
+  "scenario": "ok",
+  "tool_message": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"status\": \"ok\", \"sources\": [{\"source_id\": \"fixture:1\", \"document_id\": \"kd_00000000000000000000000000000001\", \"chunk_id\": \"chunk-1\", \"title\": \"[1] 同名规范.md\", \"kind\": \"knowledge\", \"preview\": \"受控协议片段。受控协议片段。\", \"truncated\": false}, {\"source_id\": \"fixture:2\", \"document_id\": \"kd_00000000000000000000000000000002\", \"chunk_id\": \"chunk-2\", \"title\": \"[2] 同名规范.md\", \"kind\": \"knowledge\", \"preview\": \"受控协议片段。受控协议片段。\", \"truncated\": false}]}",
+        "id": "lc_4b798643-997a-4e68-8bad-d1bfeb0c436e"
+      }
+    ],
+    "additional_kwargs": {},
+    "response_metadata": {},
+    "type": "tool",
+    "name": "mcp_query_project_knowledge",
+    "id": null,
+    "tool_call_id": "fixture-ok",
+    "artifact": {
+      "structured_content": {
+        "status": "ok",
+        "sources": [
+          {
+            "source_id": "fixture:1",
+            "document_id": "kd_00000000000000000000000000000001",
+            "chunk_id": "chunk-1",
+            "title": "[1] 同名规范.md",
+            "kind": "knowledge",
+            "preview": "受控协议片段。受控协议片段。",
+            "truncated": false
+          },
+          {
+            "source_id": "fixture:2",
+            "document_id": "kd_00000000000000000000000000000002",
+            "chunk_id": "chunk-2",
+            "title": "[2] 同名规范.md",
+            "kind": "knowledge",
+            "preview": "受控协议片段。受控协议片段。",
+            "truncated": false
+          }
+        ]
+      }
+    },
+    "status": "success"
+  }
+}

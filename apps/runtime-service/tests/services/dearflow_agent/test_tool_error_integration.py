@@ -10,10 +10,10 @@ from langchain_mcp_adapters.interceptors import MCPToolCallRequest
 
 from runtime_service.runtime import RuntimeAuthError
 from runtime_service.runtime.errors import RuntimeWorkspaceError
-from runtime_service.services.dearflow_agent.tools import mcp
 from runtime_service.services.dearflow_agent.workspace.backend import (
     DearWorkspaceBackend,
 )
+from runtime_service.tools import mcp
 from runtime_service.tools.images import ImageWorkspace
 
 

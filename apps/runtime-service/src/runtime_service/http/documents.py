@@ -8,6 +8,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from runtime_service.auth.platform import authenticate
 from runtime_service.runtime.tool_access import require_tool_access
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
+from runtime_service.workspace.attachment_receipts import AttachmentReceipts
 from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
 from runtime_service.workspace.file_refs import MAX_FILE_BYTES as MAX_BYTES
 from runtime_service.workspace.file_refs import MIME_EXT
@@ -81,13 +82,15 @@ async def upload_thread_file(
         chunks.append(chunk)
     data = b"".join(chunks)
     try:
-        return await asyncio.to_thread(
+        ref = await asyncio.to_thread(
             DocumentWorkspace(root).put,
             data,
             sha256,
             mime,
             request.query_params.get("file_name"),
         )
+        await asyncio.to_thread(AttachmentReceipts(root).record, ref)
+        return ref
     except DocumentError as exc:
         raise HTTPException(
             exc.status_code, {"code": exc.code, "message": str(exc)}

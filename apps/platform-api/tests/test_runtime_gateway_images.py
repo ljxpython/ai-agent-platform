@@ -111,6 +111,7 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
         ) as client:
             response = await client.put(
                 f"/api/langgraph/threads/thread-1/images/uploads/{sha}",
+                params={"file_name": "架构图.png"},
                 content=data,
                 headers={
                     "x-project-id": "proj-1",
@@ -124,6 +125,27 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["version"], 1)
         self.assertEqual(body["sha256"], sha)
         self.assertEqual(body["mime_type"], "image/png")
+        self.assertEqual(
+            self.upstream.upload_thread_image.call_args.kwargs["file_name"],
+            "架构图.png",
+        )
+        self.assertEqual(
+            set(body), {"version", "path", "mime_type", "size_bytes", "sha256"}
+        )
+
+        self.upstream.upload_thread_image.reset_mock()
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=self.app), base_url="http://test"
+        ) as client:
+            for name in ("../private.png", "", "line\nfeed.png", "a" * 201):
+                response = await client.put(
+                    f"/api/langgraph/threads/thread-1/images/uploads/{sha}",
+                    params={"file_name": name},
+                    content=data,
+                    headers={"x-project-id": "proj-1", "content-type": "image/png"},
+                )
+                self.assertEqual(response.status_code, 400)
+        self.upstream.upload_thread_image.assert_not_awaited()
 
         # Verify delegation token
         self.assertEqual(len(self.delegation_calls), 1)

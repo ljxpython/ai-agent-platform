@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import signal
@@ -84,6 +85,14 @@ def port_pids(port: int | None) -> set[int]:
 
 
 def default_port(key: str) -> int | None:
+    if key.startswith("knowledge-"):
+        variable = (
+            "KNOWLEDGE_MCP_PORT"
+            if key == "knowledge-mcp"
+            else "KNOWLEDGE_EMBEDDING_PORT"
+        )
+        value = os.environ.get(variable)
+        return int(value) if value and value.isdigit() else None
     if key == "platform-api":
         val = os.environ.get("PLATFORM_API_PORT")
         return int(val) if val and val.isdigit() else 2142
@@ -111,6 +120,10 @@ def is_within(path: Path | None, parent: Path) -> bool:
 
 def matches(key: str, args: list[str]) -> bool:
     names = [Path(arg).name for arg in args]
+    if key == "knowledge-mcp":
+        return "src/mcp_server.py" in args
+    if key == "knowledge-embedding":
+        return "ollama" in names and "serve" in args
     if key == "redis":
         return "redis-server" in names
     if key == "platform-web":
@@ -131,6 +144,15 @@ def matches(key: str, args: list[str]) -> bool:
 
 
 def process_directory(root: Path, key: str) -> Path:
+    if key.startswith("knowledge-"):
+        entry = json.loads((root / ".local-stack/environment.json").read_text())
+        if not entry.get("knowledge") or entry["root"] != str(root.resolve()):
+            raise ValueError("Knowledge resources are not registered for this Worktree")
+        return (
+            Path(entry["knowledge"]["source"]).resolve()
+            if key == "knowledge-mcp"
+            else root.resolve()
+        )
     if key == "redis":
         directory = root / ".local-stack"
     else:
@@ -151,6 +173,9 @@ def owned(
 
     rows = snapshot()
     selected: set[int] = set()
+    knowledge_listeners = (
+        port_pids(target_port) if key.startswith("knowledge-") else None
+    )
 
     # 1. 快速短路扫描：只有符合命令行特征或引用了本工程目录的进程，才进行 cwd 检查
     for pid, (_, args) in rows.items():
@@ -158,7 +183,9 @@ def owned(
             continue
         if key == "redis" and not matches(key, args):
             continue
-        if key.startswith("runtime-"):
+        if knowledge_listeners is not None and pid not in knowledge_listeners:
+            continue
+        if key.startswith(("runtime-", "knowledge-")):
             is_candidate = matches(key, args)
         else:
             is_candidate = matches(key, args) or any(dir_str in a for a in args)
@@ -173,6 +200,8 @@ def owned(
             if pid in rows and pid not in selected:
                 args = rows[pid][1]
                 if key == "redis" and not matches(key, args):
+                    continue
+                if key.startswith("knowledge-") and not matches(key, args):
                     continue
                 exe = Path(args[0]) if args else None
                 proc_cwd = cwd(pid)
@@ -208,7 +237,8 @@ def owned(
         if parent_pid > 1 and parent_pid in rows and parent_pid not in selected:
             p_args = rows[parent_pid][1]
             candidate_parent = matches(key, p_args) or (
-                not key.startswith("runtime-") and any(dir_str in a for a in p_args)
+                not key.startswith(("runtime-", "knowledge-"))
+                and any(dir_str in a for a in p_args)
             )
             if candidate_parent and (key != "redis" or matches(key, p_args)):
                 p_cwd = cwd(parent_pid)
@@ -264,7 +294,10 @@ def stop(root: Path, key: str, port: int | None = None) -> None:
             for p in pids:
                 if key == "redis" and not matches(key, snapshot().get(p, (0, []))[1]):
                     continue
-                if p in targets or cwd(p) == directory or is_within(cwd(p), directory):
+                if p in targets or (
+                    not key.startswith("knowledge-")
+                    and (cwd(p) == directory or is_within(cwd(p), directory))
+                ):
                     try:
                         os.kill(p, signal.SIGKILL)
                     except ProcessLookupError:

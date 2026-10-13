@@ -10,6 +10,8 @@ from deepagents.middleware._message_eviction import _extract_text_from_message
 from deepagents.middleware.filesystem import NUM_CHARS_PER_TOKEN, FilesystemMiddleware
 from langchain_core.messages import ToolMessage
 
+from runtime_service.tools.knowledge import KNOWLEDGE_TOOL, fit_knowledge_message
+
 
 # shortcut: uses DeepAgents 0.7.8 private eviction hooks; revalidate on upgrades.
 class ResultFilesystemMiddleware(FilesystemMiddleware):
@@ -35,6 +37,10 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
     def _process_large_message(
         self, message: ToolMessage, resolved_backend: BackendProtocol
     ) -> tuple[ToolMessage, bool]:
+        if message.name == KNOWLEDGE_TOOL and self._tool_token_limit_before_evict:
+            return fit_knowledge_message(
+                message, NUM_CHARS_PER_TOKEN * self._tool_token_limit_before_evict
+            ), False
         return FilesystemMiddleware._process_large_message(
             self._scoped(message), message, resolved_backend
         )
@@ -42,6 +48,10 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
     async def _aprocess_large_message(
         self, message: ToolMessage, resolved_backend: BackendProtocol
     ) -> tuple[ToolMessage, bool]:
+        if message.name == KNOWLEDGE_TOOL and self._tool_token_limit_before_evict:
+            return fit_knowledge_message(
+                message, NUM_CHARS_PER_TOKEN * self._tool_token_limit_before_evict
+            ), False
         return await FilesystemMiddleware._aprocess_large_message(
             self._scoped(message), message, resolved_backend
         )

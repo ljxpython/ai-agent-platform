@@ -665,6 +665,8 @@ def get_runtime_gateway_service(
         completion_enabled=settings.runtime_completion_enabled,
         title_timeout_seconds=getattr(settings, "title_timeout_seconds", 8.0),
         title_auto_enabled=lambda: settings.title_auto_enabled,
+        knowledge_mcp_bindings=settings.knowledge_mcp_bindings,
+        tenant_id=context.tenant.tenant_id or "__default",
     )
 
 
@@ -1088,6 +1090,7 @@ async def upload_thread_image(
         content_type=content_type,
         content_length=content_length,
         body=request.stream(),
+        file_name=request.query_params.get("file_name"),
     )
     return _redact_runtime_private_fields(ref)
 

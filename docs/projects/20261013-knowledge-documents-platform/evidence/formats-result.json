@@ -1,0 +1,45 @@
+{
+  "model": "deepseek-v4.1-flash",
+  "member_roles": [
+    "project_executor",
+    "project_editor"
+  ],
+  "documents": [
+    {
+      "name": "fixture-old.md",
+      "document_id": "kd_73373bef741f4284a8a85165c1a028e4",
+      "receipt_status": "ready"
+    },
+    {
+      "name": "fixture-new.pdf",
+      "document_id": "kd_ad5b11da90464589b8cc7cec9b0ca56b",
+      "receipt_status": "queued"
+    },
+    {
+      "name": "fixture-handbook.docx",
+      "document_id": "kd_1ec769eacad74180ae31d8e4cb3ce415",
+      "receipt_status": "queued"
+    },
+    {
+      "name": "fixture-release.pptx",
+      "document_id": "kd_46484feebeba4e51b4c1c0c8ced1c09e",
+      "receipt_status": "queued"
+    },
+    {
+      "name": "fixture-recovery.png",
+      "document_id": "kd_2bd225daf5084be68e57b9c45b32b0a3",
+      "receipt_status": "queued"
+    },
+    {
+      "name": "fixture-recovery.jpg",
+      "document_id": "kd_90b85bca0209407da5f6cde1f9d8dc0d",
+      "receipt_status": "queued"
+    }
+  ],
+  "v2_old_new": true,
+  "v2_images": true,
+  "bytes_limits": {
+    "documents": 20971520,
+    "images": 5242880
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "items": [
+    {
+      "document_id": "kd_73373bef741f4284a8a85165c1a028e4",
+      "file_name": "fixture-old.md",
+      "mime_type": "text/markdown",
+      "size_bytes": 130,
+      "status": "ready",
+      "searchable": true,
+      "published_at": "2026-10-13T06:46:22.601283Z"
+    },
+    {
+      "document_id": "kd_ad5b11da90464589b8cc7cec9b0ca56b",
+      "file_name": "fixture-new.pdf",
+      "mime_type": "application/pdf",
+      "size_bytes": 1867,
+      "status": "ready",
+      "searchable": true,
+      "published_at": "2026-10-13T06:54:16.841881Z"
+    },
+    {
+      "document_id": "kd_1ec769eacad74180ae31d8e4cb3ce415",
+      "file_name": "fixture-handbook.docx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "size_bytes": 53481,
+      "status": "ready",
+      "searchable": true,
+      "published_at": "2026-10-13T06:55:48.285437Z"
+    },
+    {
+      "document_id": "kd_46484feebeba4e51b4c1c0c8ced1c09e",
+      "file_name": "fixture-release.pptx",
+      "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "size_bytes": 45697,
+      "status": "ready",
+      "searchable": true,
+      "published_at": "2026-10-13T06:57:09.549839Z"
+    },
+    {
+      "document_id": "kd_2bd225daf5084be68e57b9c45b32b0a3",
+      "file_name": "fixture-recovery.png",
+      "mime_type": "image/png",
+      "size_bytes": 21481,
+      "status": "ready",
+      "searchable": true,
+      "published_at": "2026-10-13T07:15:54.146161Z"
+    },
+    {
+      "document_id": "kd_90b85bca0209407da5f6cde1f9d8dc0d",
+      "file_name": "fixture-recovery.jpg",
+      "mime_type": "image/jpeg",
+      "size_bytes": 30636,
+      "status": "ready",
+      "searchable": true,
+      "published_at": "2026-10-13T07:16:55.618665Z"
+    },
+    {
+      "document_id": "kd_ddaff3b70acb4c7aacc6fbc85cfe8d95",
+      "file_name": "boundary-20MiB.pdf",
+      "mime_type": "application/pdf",
+      "size_bytes": 20971520,
+      "status": "ready",
+      "searchable": true,
+      "published_at": "2026-10-13T07:23:37.364742Z"
+    },
+    {
+      "document_id": "kd_e683f531eb034b77ae0d7d5b4df32246",
+      "file_name": "queue-alpha.md",
+      "mime_type": "text/markdown",
+      "size_bytes": 107,
+      "status": "ready",
+      "searchable": true,
+      "published_at": "2026-10-13T07:47:10.926225Z"
+    }
+  ],
+  "total": 8
+}

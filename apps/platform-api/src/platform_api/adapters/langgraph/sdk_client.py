@@ -629,6 +629,8 @@ def redact_runtime_private_fields(
                 or key
                 in {
                     "callback_context",
+                    "runtime_resource_bindings",
+                    "__graphharbor_thread_metadata",
                     "origin_ref",
                     "runtime_context_token",
                     "__graphharbor_runtime_context",

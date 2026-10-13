@@ -1,0 +1,104 @@
+{
+  "items": [
+    {
+      "version": 1,
+      "job_id": "kj_300c024e3e81485698d9279116b6c261",
+      "document_id": "kd_e683f531eb034b77ae0d7d5b4df32246",
+      "file_name": "queue-alpha.md",
+      "status": "ready",
+      "searchable": true,
+      "error_code": null,
+      "created_at": "2026-10-13T07:45:18.254824Z",
+      "updated_at": "2026-10-13T07:47:10.926225Z"
+    },
+    {
+      "version": 1,
+      "job_id": "kj_43e13008fb5547db8c143662648dafc2",
+      "document_id": "kd_ddaff3b70acb4c7aacc6fbc85cfe8d95",
+      "file_name": "boundary-20MiB.pdf",
+      "status": "ready",
+      "searchable": true,
+      "error_code": null,
+      "created_at": "2026-10-13T07:23:22.978234Z",
+      "updated_at": "2026-10-13T07:23:37.364742Z"
+    },
+    {
+      "version": 1,
+      "job_id": "kj_3e6ad10fc88b4bde972e115471c6cf91",
+      "document_id": "kd_90b85bca0209407da5f6cde1f9d8dc0d",
+      "file_name": "fixture-recovery.jpg",
+      "status": "ready",
+      "searchable": true,
+      "error_code": null,
+      "created_at": "2026-10-13T07:16:18.019334Z",
+      "updated_at": "2026-10-13T07:16:55.618665Z"
+    },
+    {
+      "version": 1,
+      "job_id": "kj_a0a954e833a5411b9b638004339d1b32",
+      "document_id": "kd_2bd225daf5084be68e57b9c45b32b0a3",
+      "file_name": "fixture-recovery.png",
+      "status": "ready",
+      "searchable": true,
+      "error_code": null,
+      "created_at": "2026-10-13T07:15:20.453775Z",
+      "updated_at": "2026-10-13T07:15:54.146161Z"
+    },
+    {
+      "version": 1,
+      "job_id": "kj_8bc7199abd8c49c38d22759a1ff82da4",
+      "document_id": "kd_2bd225daf5084be68e57b9c45b32b0a3",
+      "file_name": "fixture-recovery.png",
+      "status": "failed",
+      "searchable": true,
+      "error_code": "knowledge_authorization_denied",
+      "created_at": "2026-10-13T06:57:30.972519Z",
+      "updated_at": "2026-10-13T06:57:31.179284Z"
+    },
+    {
+      "version": 1,
+      "job_id": "kj_84a8c2a2bf6d4179a8c3343d06fac231",
+      "document_id": "kd_46484feebeba4e51b4c1c0c8ced1c09e",
+      "file_name": "fixture-release.pptx",
+      "status": "ready",
+      "searchable": true,
+      "error_code": null,
+      "created_at": "2026-10-13T06:56:18.347636Z",
+      "updated_at": "2026-10-13T06:57:09.549839Z"
+    },
+    {
+      "version": 1,
+      "job_id": "kj_5722a2a1a215469f9f6df70a884ca086",
+      "document_id": "kd_1ec769eacad74180ae31d8e4cb3ce415",
+      "file_name": "fixture-handbook.docx",
+      "status": "ready",
+      "searchable": true,
+      "error_code": null,
+      "created_at": "2026-10-13T06:54:32.531869Z",
+      "updated_at": "2026-10-13T06:55:48.285437Z"
+    },
+    {
+      "version": 1,
+      "job_id": "kj_85f0026ff2374eae8f376c6f4fe89334",
+      "document_id": "kd_ad5b11da90464589b8cc7cec9b0ca56b",
+      "file_name": "fixture-new.pdf",
+      "status": "ready",
+      "searchable": true,
+      "error_code": null,
+      "created_at": "2026-10-13T06:53:53.640704Z",
+      "updated_at": "2026-10-13T06:54:16.841881Z"
+    },
+    {
+      "version": 1,
+      "job_id": "kj_826cb4e7184d4affa8d1701403b5d8b6",
+      "document_id": "kd_73373bef741f4284a8a85165c1a028e4",
+      "file_name": "fixture-old.md",
+      "status": "ready",
+      "searchable": true,
+      "error_code": null,
+      "created_at": "2026-10-13T06:46:04.844154Z",
+      "updated_at": "2026-10-13T06:46:22.601283Z"
+    }
+  ],
+  "total": 9
+}

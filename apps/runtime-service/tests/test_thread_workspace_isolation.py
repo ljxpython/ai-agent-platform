@@ -110,6 +110,11 @@ def _fork_workspace_token(thread_id: str) -> str:
 
 
 def test_fork_workspace_copies_files_and_remains_isolated(monkeypatch, tmp_path):
+    import hashlib
+
+    from runtime_service.workspace.attachment_receipts import AttachmentReceipts
+    from runtime_service.workspace.documents import DocumentWorkspace
+
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", SECRET)
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_ISSUER", "runtime-test")
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_AUDIENCE", "runtime-service")
@@ -129,6 +134,11 @@ def test_fork_workspace_copies_files_and_remains_isolated(monkeypatch, tmp_path)
     (source_root / "hello.txt").write_text("Hello from source!", encoding="utf-8")
     (source_root / "docs").mkdir(parents=True, exist_ok=True)
     (source_root / "docs" / "design.md").write_text("# Design doc", encoding="utf-8")
+    raw = b"fork attachment"
+    ref = DocumentWorkspace(source_root).put(
+        raw, hashlib.sha256(raw).hexdigest(), "text/plain", "original.txt"
+    )
+    AttachmentReceipts(source_root).record(ref)
 
     fork_token = _fork_workspace_token(target_thread_id)
 
@@ -146,7 +156,8 @@ def test_fork_workspace_copies_files_and_remains_isolated(monkeypatch, tmp_path)
     assert response.status_code == 200
     data = response.json()
     assert data["forked"] is True
-    assert data["files_copied"] == 2
+    assert data["files_copied"] == 3
+    assert AttachmentReceipts(target_root).require(ref)
 
     # 验证复制成功
     assert (target_root / "hello.txt").exists()
