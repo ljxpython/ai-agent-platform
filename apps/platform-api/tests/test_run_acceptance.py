@@ -226,11 +226,11 @@ def test_completion_starts_new_execution_and_signs_final_context(setup, monkeypa
     upstream.get_thread_run = AsyncMock(return_value={"status": "success"})
     upstream.list_thread_runs = AsyncMock(return_value=[])
     run_id = str(uuid4())
-    upstream.create_run_with_acceptance.side_effect = (
-        lambda thread, body, key, digest: (
-            receipt(thread, key, digest) | {"run_id": run_id}
-        )
-    )
+
+    def _side_effect(thread, body, key, digest):
+        return receipt(thread, key, digest) | {"run_id": run_id}
+
+    upstream.create_run_with_acceptance.side_effect = _side_effect
     request = SimpleNamespace(
         app=SimpleNamespace(
             state=SimpleNamespace(settings=settings, db_session_factory=factory)
