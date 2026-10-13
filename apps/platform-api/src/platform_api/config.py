@@ -5,8 +5,42 @@ import re
 from typing import Any
 from uuid import UUID
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class KnowledgeConnection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    base_url: str
+    token: str = Field(min_length=32, repr=False)
+    scope: dict[str, str]
+    knowledge_base_id: str | None = Field(default=None, pattern=r"^kb_[a-f0-9]{32}$")
+
+    @model_validator(mode="after")
+    def validate_connection(self):
+        from urllib.parse import urlsplit
+
+        parsed = urlsplit(self.base_url)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or parsed.path not in {"", "/"}
+        ):
+            raise ValueError("knowledge URL must be a managed HTTP origin")
+        if set(self.scope) != {"tenant_id", "project_id"} or any(
+            not v or v != v.strip() for v in self.scope.values()
+        ):
+            raise ValueError("invalid knowledge connection scope")
+        if not self.token.isascii() or any(
+            ord(c) < 33 or ord(c) == 127 for c in self.token
+        ):
+            raise ValueError("invalid knowledge token")
+        self.base_url = self.base_url.rstrip("/")
+        return self
 
 
 class Settings(BaseSettings):
@@ -39,6 +73,12 @@ class Settings(BaseSettings):
     knowledge_mcp_bindings: dict[str, str] = Field(
         default_factory=dict, validation_alias="PLATFORM_KNOWLEDGE_MCP_BINDINGS_JSON"
     )
+    knowledge_connections: dict[str, KnowledgeConnection] = Field(
+        default_factory=dict, validation_alias="PLATFORM_API_KNOWLEDGE_CONNECTIONS_JSON"
+    )
+    knowledge_upload_enabled: bool = False
+    knowledge_key_id: str = "knowledge-v1"
+    knowledge_secret: str = Field(default="", repr=False)
 
     platform_db_enabled: bool = False
     platform_db_auto_create: bool = False
@@ -121,6 +161,32 @@ class Settings(BaseSettings):
             raise ValueError("app_env must be one of local/dev/staging/prod/production")
 
         is_production = normalized_env in {"prod", "production"}
+        for resource, connection in self.knowledge_connections.items():
+            scope = connection.scope
+            if (
+                self.knowledge_mcp_bindings.get(
+                    f"{scope['tenant_id']}:{scope['project_id']}"
+                )
+                != resource
+            ):
+                raise ValueError("knowledge connections must match trusted bindings")
+        if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", self.knowledge_key_id):
+            raise ValueError("invalid knowledge key ID")
+        if self.knowledge_secret and (
+            len(self.knowledge_secret.encode()) < 32
+            or self.knowledge_secret
+            in {
+                self.runtime_delegation_secret,
+                self.runtime_completion_secret,
+                self.jwt_access_secret,
+                self.jwt_refresh_secret,
+            }
+        ):
+            raise ValueError(
+                "knowledge requires a separate secret of at least 32 bytes"
+            )
+        if self.knowledge_upload_enabled and not self.knowledge_secret:
+            raise ValueError("knowledge upload requires its dedicated secret")
         if self.platform_db_enabled and not self.database_url:
             raise ValueError(
                 "PLATFORM_API_DATABASE_URL is required when platform_db_enabled=true"

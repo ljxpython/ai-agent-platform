@@ -48,6 +48,7 @@ export type ChatImageAttachmentBlock = {
   runtimeImageRef?: RuntimeImageRef;
   errorMessage?: string;
   metadata?: Record<string, unknown>;
+  shareToKnowledge?: boolean;
 };
 
 export type ChatFileAttachmentBlock = {
@@ -59,6 +60,7 @@ export type ChatFileAttachmentBlock = {
   runtimeFileRef?: RuntimeFileRef;
   errorMessage?: string;
   metadata?: Record<string, unknown>;
+  shareToKnowledge?: boolean;
 };
 
 export type ChatAttachmentBlock =
@@ -85,10 +87,17 @@ export function isRuntimeImageTextBlock(
 export function createRuntimeImageTextBlock(
   filename: string,
   ref: RuntimeImageRef,
+  shareToKnowledge?: boolean,
 ): ChatRuntimeImageTextBlock {
+  const lines = [`[图片附件] ${filename}`, JSON.stringify(ref)];
+  if (shareToKnowledge) {
+    lines.push(
+      "用户明确要求将此附件共享到当前项目知识库；通过 mcp_submit_project_knowledge_document 提交，收到回执后继续对话，不等待解析。",
+    );
+  }
   return {
     type: "text",
-    text: `[图片附件] ${filename}\n${ref.path}`,
+    text: lines.join("\n"),
     extras: {
       runtime_image: ref,
     },
@@ -115,10 +124,17 @@ export function isRuntimeFileTextBlock(
 export function createRuntimeFileTextBlock(
   filename: string,
   ref: RuntimeFileRef,
+  shareToKnowledge?: boolean,
 ): ChatRuntimeFileTextBlock {
+  const lines = [`[文档附件] ${filename}`, JSON.stringify(ref)];
+  if (shareToKnowledge) {
+    lines.push(
+      "用户明确要求将此附件共享到当前项目知识库；通过 mcp_submit_project_knowledge_document 提交，收到回执后继续对话，不等待解析。",
+    );
+  }
   return {
     type: "text",
-    text: `[文档附件] ${filename}\n${ref.path}`,
+    text: lines.join("\n"),
     extras: {
       runtime_file: ref,
     },

@@ -1,0 +1,241 @@
+{
+  "verified_on": "2026-10-12",
+  "rag": {
+    "path": "/Users/lijiaxin/PyCharmMiscProject/research/rag-anything-use",
+    "commit": "5be564ae5b28d010cf9beb26bc19ef11e7425cdd",
+    "branch": "main",
+    "remote_main": "5be564ae5b28d010cf9beb26bc19ef11e7425cdd",
+    "business_source_modified": false
+  },
+  "platform": {
+    "worktree": "/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform",
+    "branch": "feat/project-knowledge-mcp",
+    "scope": "repair verification; no business-source changes or deployment"
+  },
+  "regressions": [
+    {
+      "service": "rag-anything-use",
+      "passed": 78,
+      "duration_seconds": 39.35,
+      "command": "uv run --frozen --env-file \".env\" pytest \"tests/\" -q --tb=short"
+    },
+    {
+      "service": "platform-api",
+      "passed": 17,
+      "duration_seconds": 11.13,
+      "command": "uv run --frozen python -m pytest \"tests/test_knowledge_member_upload.py\" \"tests/test_knowledge_authorization.py\" -q --tb=short"
+    },
+    {
+      "service": "runtime-service",
+      "passed": 91,
+      "warnings": "5 existing SWIG deprecations",
+      "duration_seconds": 43.98,
+      "command": "uv run --frozen pytest \"tests/tools/test_knowledge_upload.py\" \"tests/tools/test_knowledge_upload_http.py\" \"tests/services/test_knowledge_composition.py\" -q --tb=short"
+    }
+  ],
+  "repairs": {
+    "background_operation_identity_and_fresh_request": "passed",
+    "read_only_lost_ack_lookup": "passed"
+  },
+  "provider_protocol": {
+    "duration_seconds": 178.512,
+    "checks": {
+      "actual_platform_start_activate_and_invalid_requests": true,
+      "accepted_job_survives_thread_deletion": true,
+      "lost_ack_read_only_after_write_pause": true,
+      "real_worker_ready_and_old_new_mcp_sources": true,
+      "revoked_job_no_model_calls": true,
+      "revoked_start_activate_denied": true,
+      "published_snapshot_unchanged": true
+    },
+    "models": {
+      "llm": "deepseek-v4.1-flash",
+      "embedding": "text-embedding-v4",
+      "dimensions": 1024
+    },
+    "receipts": [
+      {
+        "version": 1,
+        "job_id": "kj_5917e2232f7b42caaddca905324d706b",
+        "document_id": "kd_354c258a256a46a5a3a917bbb0aecab9",
+        "file_name": "fixture-A.md",
+        "status": "ready",
+        "searchable": true,
+        "error_code": null,
+        "created_at": "2026-10-12T13:51:06.673804Z",
+        "updated_at": "2026-10-12T13:52:21.503771Z"
+      },
+      {
+        "version": 1,
+        "job_id": "kj_1eff5dafff8c45849acebe3ee37f2997",
+        "document_id": "kd_59383e757df4432bbb09719d4c82e03e",
+        "file_name": "fixture-B.md",
+        "status": "ready",
+        "searchable": true,
+        "error_code": null,
+        "created_at": "2026-10-12T13:52:27.577143Z",
+        "updated_at": "2026-10-12T13:53:52.087558Z"
+      }
+    ],
+    "revoked_receipt": {
+      "version": 1,
+      "job_id": "kj_0379eda01e42446db6ce46c7744954e4",
+      "document_id": "kd_9530bfee29e142a88059c890f707e712",
+      "file_name": "fixture-C.md",
+      "status": "failed",
+      "searchable": false,
+      "error_code": "knowledge_authorization_denied",
+      "created_at": "2026-10-12T13:53:59.719593Z",
+      "updated_at": "2026-10-12T13:53:59.933140Z"
+    },
+    "usage_kind_counts": {
+      "kj_5917e2232f7b42caaddca905324d706b": {
+        "parse": 1,
+        "embedding": 12,
+        "llm_cache_miss": 4,
+        "graph_extraction": 2
+      },
+      "kj_1eff5dafff8c45849acebe3ee37f2997": {
+        "parse": 1,
+        "embedding": 10,
+        "llm_cache_miss": 4,
+        "graph_extraction": 2
+      }
+    },
+    "authorization_status_counts": {
+      "upload:200": 12,
+      "start:200": 3,
+      "start:403": 5,
+      "activate:200": 3,
+      "activate:403": 4,
+      "upload:403": 2
+    },
+    "scope": "Actual Platform API HTTP + isolated SQL/IAM/Run + actual RAG HTTP/MCP/supervisor + real model providers"
+  },
+  "runtime_adapter": {
+    "accepted": {
+      "phase": "accepted",
+      "receipt": {
+        "version": 1,
+        "job_id": "kj_83c74dee6e2e4d9e91ff42309d17b4bd",
+        "document_id": "kd_e95eb2c48ddc4ce992756ae88f117229",
+        "file_name": "runtime-contract.md",
+        "status": "queued",
+        "searchable": false,
+        "error_code": null,
+        "created_at": "2026-10-12T14:37:44.715539Z",
+        "updated_at": "2026-10-12T14:37:44.715539Z",
+        "reused": false
+      },
+      "recovered": {
+        "version": 1,
+        "job_id": "kj_83c74dee6e2e4d9e91ff42309d17b4bd",
+        "document_id": "kd_e95eb2c48ddc4ce992756ae88f117229",
+        "file_name": "runtime-contract.md",
+        "status": "queued",
+        "searchable": false,
+        "error_code": null,
+        "created_at": "2026-10-12T14:37:44.715539Z",
+        "updated_at": "2026-10-12T14:37:44.715539Z",
+        "reused": true
+      }
+    },
+    "ready": {
+      "phase": "ready",
+      "receipt": {
+        "version": 1,
+        "job_id": "kj_83c74dee6e2e4d9e91ff42309d17b4bd",
+        "document_id": "kd_e95eb2c48ddc4ce992756ae88f117229",
+        "file_name": "runtime-contract.md",
+        "status": "ready",
+        "searchable": true,
+        "error_code": null,
+        "created_at": "2026-10-12T14:37:44.715539Z",
+        "updated_at": "2026-10-12T14:39:56.101582Z"
+      },
+      "duplicates": [
+        {
+          "version": 1,
+          "job_id": "kj_83c74dee6e2e4d9e91ff42309d17b4bd",
+          "document_id": "kd_e95eb2c48ddc4ce992756ae88f117229",
+          "file_name": "runtime-contract.md",
+          "status": "ready",
+          "searchable": true,
+          "error_code": null,
+          "created_at": "2026-10-12T14:37:44.715539Z",
+          "updated_at": "2026-10-12T14:39:56.101582Z",
+          "reused": true
+        },
+        {
+          "version": 1,
+          "job_id": "kj_83c74dee6e2e4d9e91ff42309d17b4bd",
+          "document_id": "kd_e95eb2c48ddc4ce992756ae88f117229",
+          "file_name": "runtime-contract.md",
+          "status": "ready",
+          "searchable": true,
+          "error_code": null,
+          "created_at": "2026-10-12T14:37:44.715539Z",
+          "updated_at": "2026-10-12T14:39:56.101582Z",
+          "reused": true
+        }
+      ],
+      "other_member_http_reads": true
+    },
+    "checks": {
+      "runtime_trusted_attachment_official_mcp_queued": true,
+      "runtime_lost_ack_actual_get_same_job": true,
+      "actual_background_authorization_ready": true,
+      "runtime_mcp_job_ready": true,
+      "concurrent_same_hash_no_new_jobs_or_usage": true,
+      "other_member_actual_platform_http_reads": true,
+      "public_receipts_no_private_credentials": true
+    },
+    "usage_events": 21,
+    "jobs": 1,
+    "limitations": [
+      "isolated SQL/IAM/Run with trusted Runtime ToolRuntime fixture; no actual Agent Worker or browser",
+      "ACK loss injected after actual MCP acceptance",
+      "MD small corpus; no production/load acceptance"
+    ],
+    "passed": true,
+    "duration_seconds": 141.466
+  },
+  "unsuccessful_probe_attempts": [
+    {
+      "attempt": 1,
+      "kind": "test harness error",
+      "cause": "Initial attempt assertion expected 0; store uses 1 for the first accepted attempt. Fixed probe assertion; no business-source change or model invocation."
+    },
+    {
+      "attempt": 2,
+      "kind": "actual background build failed",
+      "result": "accepted and same-job recovery passed, actual builder failed, safe cause and builder log not captured before fixture cleanup; root cause undetermined",
+      "evidence": ".local-stack/evidence/member-knowledge-upload/rag-5be564a/runtime-real.failure.json"
+    },
+    {
+      "attempt": 3,
+      "kind": "passed",
+      "duration_seconds": 141.466,
+      "note": "Successful isolated rebuild does not establish external model reliability. In-progress diagnostic observed one unknown graph_extraction event."
+    }
+  ],
+  "frontend_scope": "Source inspected; capabilities/documents/jobs use mocked routes, F02 asserts assistant visibility and a screenshot only. Browser suite not rerun; not RAG acceptance evidence.",
+  "remaining_v02": [
+    "actual Agent Worker/ordinary member upload and another member old/new query",
+    "cross-Run concurrent same hash while processing",
+    "Agent Stop and target online worker restart",
+    "joint candidate failure/CAS/version rollback",
+    "representative large files/load and model latency/cost reliability"
+  ],
+  "deployment": {
+    "registered_stack_upload_switches": "unchanged, disabled",
+    "production_changed": false,
+    "git_commit_or_push": false
+  },
+  "limitations": [
+    "MD small synthetic corpus on macOS; no Linux/PDF/Office/load acceptance",
+    "Runtime trusted ToolRuntime fixture with official adapter; no actual Agent Worker or browser",
+    "Lost ACK injected after actual MCP acceptance",
+    "No exactly-once guarantee for external model billing; no verified price/currency"
+  ]
+}

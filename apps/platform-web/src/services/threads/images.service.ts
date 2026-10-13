@@ -36,7 +36,9 @@ export function isValidImageRef(val: unknown): val is RuntimeImageRef {
   }
   if (
     typeof obj.mime_type !== "string" ||
-    !ALLOWED_IMAGE_MIMES.includes(obj.mime_type as (typeof ALLOWED_IMAGE_MIMES)[number])
+    !ALLOWED_IMAGE_MIMES.includes(
+      obj.mime_type as (typeof ALLOWED_IMAGE_MIMES)[number],
+    )
   ) {
     return false;
   }
@@ -65,11 +67,17 @@ export async function uploadThreadImage(
   threadId: string,
   sha256: string,
   file: Blob,
+  fileName?: string,
 ): Promise<RuntimeImageRef> {
+  const params: Record<string, string> = {};
+  if (fileName && fileName.trim()) {
+    params.file_name = fileName.trim();
+  }
   const { data } = await platformHttpClient.put<RuntimeImageRef>(
     `/api/langgraph/threads/${encodeURIComponent(threadId)}/images/uploads/${encodeURIComponent(sha256)}`,
     file,
     {
+      params,
       headers: {
         "x-project-id": projectId,
         "Content-Type": file.type,

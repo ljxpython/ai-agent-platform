@@ -64,6 +64,7 @@ def _resolve_plane(path: str) -> AuditPlane:
     if path in {
         "/api/runtime/internal/background-task-delivery",
         "/api/runtime/internal/background-task-authorization",
+        "/api/runtime/internal/knowledge/authorize",
     }:
         return AuditPlane.RUNTIME_GATEWAY
     return AuditPlane.CONTROL_PLANE
@@ -88,6 +89,23 @@ def _resolve_action(
     method = request.method
     segments = _route_segments(path)
     action_override = clean_str(request.action_override)
+    if method == "POST" and path == "/api/runtime/internal/knowledge/authorize":
+        return (
+            "runtime.knowledge.authorization.checked",
+            "knowledge_job",
+            clean_str((request.metadata or {}).get("job_id")),
+        )
+    if (
+        method == "GET"
+        and len(segments) >= 5
+        and segments[:2] == ["api", "projects"]
+        and segments[3] == "knowledge"
+    ):
+        return (
+            f"project.knowledge.{segments[4]}.read",
+            "knowledge_job" if segments[4] == "jobs" else "project",
+            clean_str(segments[5] if len(segments) == 6 else segments[2]),
+        )
     if method == "POST" and path in {
         "/api/runtime/internal/background-task-delivery",
         "/api/runtime/internal/background-task-authorization",
@@ -791,6 +809,9 @@ def _resolve_metadata(
                     "task_id",
                     "event_id",
                     "origin_run_id",
+                    "job_id",
+                    "resource_id",
+                    "knowledge_request_id",
                 }
                 and isinstance(value, (str, int, float, bool))
             }

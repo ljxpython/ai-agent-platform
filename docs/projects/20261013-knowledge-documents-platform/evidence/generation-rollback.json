@@ -1,0 +1,49 @@
+{
+  "old_version_documents": {
+    "items": [
+      {
+        "document_id": "kd_73373bef741f4284a8a85165c1a028e4",
+        "file_name": "fixture-old.md",
+        "mime_type": "text/markdown",
+        "size_bytes": 130,
+        "status": "ready",
+        "searchable": true,
+        "published_at": "2026-10-13T06:46:22.601283Z"
+      }
+    ],
+    "total": 1
+  },
+  "newer_job_ready_but_hidden": {
+    "version": 1,
+    "job_id": "kj_a0a954e833a5411b9b638004339d1b32",
+    "document_id": "kd_2bd225daf5084be68e57b9c45b32b0a3",
+    "file_name": "fixture-recovery.png",
+    "status": "ready",
+    "searchable": false,
+    "error_code": null,
+    "created_at": "2026-10-13T07:15:20.453775Z",
+    "updated_at": "2026-10-13T07:15:54.146161Z"
+  },
+  "query_old_version": {
+    "status": "ok",
+    "sources": [
+      {
+        "source_id": "c7cc3f8745664522bfc3ffd40d79fd54-1",
+        "document_id": "kd_73373bef741f4284a8a85165c1a028e4",
+        "chunk_id": "chunk-738a803aa7da9c61c1663a983b8ca711",
+        "title": "[1] fixture-old.md",
+        "kind": "knowledge",
+        "preview": "# Orion backup policy\nOrion backup retention is 35 days. Restoration drills happen every 14 days. Public marker PLATFORM-6394-OLD.",
+        "truncated": false,
+        "locator": {
+          "unit": "unknown",
+          "start": null,
+          "end": null,
+          "block_type": "text"
+        }
+      }
+    ],
+    "sources_version": 2
+  },
+  "ingestion_usage_unchanged": true
+}

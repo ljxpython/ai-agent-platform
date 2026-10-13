@@ -66,7 +66,10 @@ from runtime_service.runtime import (
     runtime_context_hash,
     verified_delegation_from_user,
 )
-from runtime_service.runtime.mcp_config import configured_mcp_names
+from runtime_service.runtime.mcp_config import (
+    KNOWLEDGE_SUBMIT_TOOL,
+    configured_mcp_names,
+)
 from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.runtime.run_budget import read_run_budget
 from runtime_service.services.dearflow_agent.capabilities import (
@@ -143,6 +146,7 @@ APPROVALS = {
         "generate_image",
         "edit_image",
         "deploy_preview",
+        KNOWLEDGE_SUBMIT_TOOL,
         *CHART_NAMES,
         *MEMORY_WRITE_TOOLS,
         *SKILL_WRITE_TOOLS,

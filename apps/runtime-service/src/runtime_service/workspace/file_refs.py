@@ -46,7 +46,7 @@ def validate_file_ref(value: object) -> FileRef:
     if not isinstance(value, dict) or set(value) != set(FileRef.__annotations__):
         raise ValueError("invalid_file_ref")
     digest, ext = validate_file_path(value["path"])
-    name = value["file_name"]
+    validate_file_name(value["file_name"])
     if (
         type(value["version"]) is not int
         or value["version"] != 1
@@ -55,9 +55,16 @@ def validate_file_ref(value: object) -> FileRef:
         or value["sha256"] != digest
         or value["mime_type"] not in MIME_EXT
         or MIME_EXT[value["mime_type"]] != ext
-        or not isinstance(name, str)
+    ):
+        raise ValueError("invalid_file_ref")
+    return FileRef(**value)
+
+
+def validate_file_name(name: object) -> str:
+    if (
+        not isinstance(name, str)
         or not 0 < len(name) <= 200
         or any(ord(ch) < 32 or ch in "/\\\x7f" for ch in name)
     ):
         raise ValueError("invalid_file_ref")
-    return FileRef(**value)
+    return name

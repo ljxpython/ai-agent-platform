@@ -140,7 +140,7 @@ class KnowledgeBindingTest(unittest.IsolatedAsyncioTestCase):
                 )
 
     def test_fresh_database_has_single_migration_head(self):
-        self.assertEqual(
-            ScriptDirectory.from_config(Config("alembic.ini")).get_heads(),
-            ["20261011_0008"],
-        )
+        scripts = ScriptDirectory.from_config(Config("alembic.ini"))
+        self.assertEqual(len(scripts.get_heads()), 1)
+        for revision in ("20261007_0006", "20261009_0007"):
+            self.assertIsNotNone(scripts.get_revision(revision))

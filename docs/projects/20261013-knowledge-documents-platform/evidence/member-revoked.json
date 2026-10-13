@@ -1,0 +1,11 @@
+{
+  "denial": {
+    "error": {
+      "code": "project_role_missing",
+      "message": "Project role missing",
+      "details": []
+    },
+    "request_id": "9fff35cc82b94bce998bc34ff1584695"
+  },
+  "extra_model_events": 0
+}

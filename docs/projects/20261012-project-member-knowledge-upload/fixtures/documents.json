@@ -1,0 +1,18 @@
+{
+  "origin": "controlled-http-provider-through-real-platform-and-official-adapter",
+  "scenario": "documents",
+  "payload": {
+    "items": [
+      {
+        "document_id": "kd_22222222222222222222222222222222",
+        "file_name": "知识契约.md",
+        "mime_type": "text/markdown",
+        "size_bytes": 43,
+        "status": "ready",
+        "searchable": true,
+        "published_at": "2026-10-12T00:01:00Z"
+      }
+    ],
+    "total": 1
+  }
+}

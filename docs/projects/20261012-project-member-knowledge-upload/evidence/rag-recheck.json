@@ -1,0 +1,214 @@
+{
+  "verified_on": "2026-10-12",
+  "rag_commit": "febe70a",
+  "platform_worktree": "/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform",
+  "platform_branch": "feat/project-knowledge-mcp",
+  "rag_tests": {
+    "passed": 67,
+    "duration_seconds": 32.62
+  },
+  "platform_member_and_authorization_tests": {
+    "passed": 17,
+    "duration_seconds": 10.9
+  },
+  "protocol": {
+    "platform": "real Platform API, isolated SQL/IAM/Run fixture",
+    "rag": "unmodified source, actual HTTP/MCP and supervisor",
+    "baselines": {
+      "upload": 200,
+      "start": 200,
+      "activate": 200
+    },
+    "rag_authorization": {
+      "start": {
+        "status": 403,
+        "error_code": "knowledge_upload_denied",
+        "missing_fields": [
+          "audience",
+          "exp",
+          "file_name",
+          "graph_id",
+          "iat",
+          "issuer",
+          "mime_type",
+          "nonce",
+          "sha256",
+          "size_bytes"
+        ]
+      },
+      "activate": {
+        "status": 403,
+        "error_code": "knowledge_upload_denied",
+        "missing_fields": [
+          "audience",
+          "exp",
+          "file_name",
+          "graph_id",
+          "iat",
+          "issuer",
+          "mime_type",
+          "nonce",
+          "sha256",
+          "size_bytes"
+        ]
+      }
+    },
+    "upload_http_status": 200,
+    "accepted": {
+      "version": 1,
+      "job_id": "kj_d1743f60070d4b33a5c0b17762df0e15",
+      "document_id": "kd_a5b9964aa38a4bec940117282e613d48",
+      "file_name": "verification.md",
+      "status": "queued",
+      "searchable": false,
+      "error_code": null,
+      "created_at": "2026-10-12T12:04:18.418329Z",
+      "updated_at": "2026-10-12T12:04:18.418329Z",
+      "reused": false
+    },
+    "lost_ack_lookup": {
+      "actual_status": 405,
+      "expected_status": 200,
+      "allow": "PUT"
+    },
+    "worker_receipt": {
+      "version": 1,
+      "job_id": "kj_d1743f60070d4b33a5c0b17762df0e15",
+      "document_id": "kd_a5b9964aa38a4bec940117282e613d48",
+      "file_name": "verification.md",
+      "status": "failed",
+      "searchable": false,
+      "error_code": "knowledge_authorization_denied",
+      "created_at": "2026-10-12T12:04:18.418329Z",
+      "updated_at": "2026-10-12T12:04:18.622986Z"
+    },
+    "persisted_identity_missing_fields": [
+      "audience",
+      "exp",
+      "file_name",
+      "graph_id",
+      "iat",
+      "issuer",
+      "mime_type",
+      "nonce",
+      "sha256",
+      "size_bytes"
+    ],
+    "external_usage_rows": 0
+  },
+  "real_model_first_attempt": {
+    "authorization_provider": "local signed authorization stub",
+    "llm_model": "deepseek-v4.1-flash",
+    "embedding_model": "text-embedding-v4",
+    "embedding_dimensions": 1024,
+    "extra_body": {
+      "thinking": {
+        "type": "disabled"
+      }
+    },
+    "status": "failed",
+    "error_code": "knowledge_processing_failed",
+    "embedding_http_requests": 1,
+    "graph_extraction_http_requests": 4,
+    "llm_total_tokens": 42616,
+    "llm_completion_tokens": 27175,
+    "reasoning_tokens": [
+      2236,
+      8192,
+      8192,
+      8192
+    ],
+    "provider_reported_cost": 0.016570206,
+    "currency": null,
+    "amount": null,
+    "retry_result": "passed"
+  },
+  "conclusion": "blocked",
+  "limitations": [
+    "direct HTTP/MCP with isolated SQL fixture; no Runtime Agent or browser upload chain",
+    "no production or Linux/PDF/Office/representative load acceptance",
+    "real IAM upload/start/activate cannot pass until RAG protocol fields are fixed"
+  ],
+  "real_model_second_attempt": {
+    "checks": {
+      "http_mcp_queued": true,
+      "real_worker_ready": true,
+      "duplicate_zero_new_usage": true,
+      "mcp_old_and_new_sources": true,
+      "rollback_searchable": true,
+      "published_files_unchanged": true
+    },
+    "duration_seconds": 288.883,
+    "model_provider": "current .env, real HTTP providers",
+    "authorization_provider": "local signed authorization stub, not production IAM",
+    "documents": {
+      "A": {
+        "events": {
+          "parse": 1,
+          "embedding": 11,
+          "llm_cache_miss": 4,
+          "graph_extraction": 3
+        },
+        "embedding_stages": {
+          "new_chunks": 1,
+          "graph_embedding": 10
+        },
+        "llm_total_tokens": 30333,
+        "reasoning_tokens": [
+          4746,
+          8192,
+          5611
+        ],
+        "provider_reported_cost": 0.011581085999999999,
+        "currency": null,
+        "amount": null
+      },
+      "B": {
+        "events": {
+          "parse": 1,
+          "embedding": 12,
+          "llm_cache_miss": 4,
+          "graph_extraction": 3
+        },
+        "embedding_stages": {
+          "new_chunks": 1,
+          "affected_graph_merge": 1,
+          "graph_embedding": 10
+        },
+        "llm_total_tokens": 29846,
+        "reasoning_tokens": [
+          2290,
+          8192,
+          7547
+        ],
+        "provider_reported_cost": 0.011301486,
+        "currency": null,
+        "amount": null
+      }
+    },
+    "receipts": [
+      {
+        "version": 1,
+        "job_id": "kj_8cc18b15b7144cbeaa4046c2adf1aa24",
+        "document_id": "kd_1fb8e064e40543268f909d263be6c784",
+        "file_name": "fixture-A.md",
+        "status": "ready",
+        "searchable": true,
+        "error_code": null,
+        "created_at": "2026-10-12T12:07:44.228898Z",
+        "updated_at": "2026-10-12T12:09:57.510480Z"
+      },
+      {
+        "version": 1,
+        "job_id": "kj_d457be239c344ec7be6631bcb90daef9",
+        "document_id": "kd_d6f92b9c82b84650a4b9654178be6267",
+        "file_name": "fixture-B.md",
+        "status": "ready",
+        "searchable": true,
+        "error_code": null,
+        "created_at": "2026-10-12T12:10:04.233947Z",
+        "updated_at": "2026-10-12T12:12:03.923362Z"
+      }
+    ]
+  }
+}

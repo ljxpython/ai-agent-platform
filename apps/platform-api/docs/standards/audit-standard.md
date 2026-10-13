@@ -20,7 +20,7 @@ plane为control_plane/runtime_gateway/system_internal；result为success/failed/
 
 ## 敏感数据
 
-仅对有Content-Length且不超过64KiB的JSON响应临时捕获以提取目标ID，不持久化整份响应或SSE正文。metadata包含query、client_ip、user_agent、目标、结果及响应大小等，额外业务metadata只保留reason与受信后台回调的有界 task/event/thread/origin_run ID。
+仅对有Content-Length且不超过64KiB的JSON响应临时捕获以提取目标ID，不持久化整份响应或SSE正文。metadata包含query、client_ip、user_agent、目标、结果及响应大小等，额外业务metadata只保留reason与受信后台回调的有界 task/event/thread/origin_run ID，以及知识授权的operation/knowledge_request_id/job_id/resource_id。
 
 query当前原样进入审计，禁止在URL携带token、密码或模型密钥。不得将Authorization、Cookie、原始请求体或模型凭据加入metadata。公开响应过滤不能代替日志和审计数据最小化。
 
@@ -47,3 +47,9 @@ list/detail 记录 `runtime.background_task.read`，output 记录 `runtime.backg
 两个精确 HMAC 入口记录 `runtime.background_task.delivery.checked` 与 `runtime.background_task.authorization.checked`。验证签名/源请求后绑定原主体和scope，只允许 task_id/event_id/thread_id/origin_run_id 及安全reason；没有绑定主体的未知回执查询不能伪造owner。`checked` 的HTTP成功也可能返回 unknown/blocked，不等同通知已接受或模型已执行。
 
 本增量复用HTTP审计短事务，不新增审计outbox或承诺无丢失；原始命令、日志、签名、模型引用与控制handle全部排除。动作、脱敏与实际权限证据见[后台专项](../../../../docs/projects/20261009-agent-generic-production-capabilities/verification.md)。
+
+## 知识成员上传审计（2026-10-12 用户批准）
+
+四公开GET分别记录 `project.knowledge.capabilities.read`、`project.knowledge.documents.read`、`project.knowledge.jobs.read`；jobs的list/detail共用动作，绑定当前项目和可用job目标。精确HMAC入口记录 `runtime.knowledge.authorization.checked`，校验后绑定原可信主体、tenant/project，并只保留operation/knowledge_request_id/job_id/resource_id。读取回执、HTTP成功或grant签发都不证明解析、计费或索引发布完成，RAG保留其执行事实。
+
+不记录FileRef全文、原件正文、Bearer、grant/签名、候选目录或原始上游错误。新增安全metadata经过既有允许名单，真实审计数据库断言与协议链证据见[成员上传验证](../../../../docs/projects/20261012-project-member-knowledge-upload/verification.md)。复用原HTTP短事务，不新增审计队列或跨服务原子保证。

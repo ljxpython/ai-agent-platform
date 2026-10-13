@@ -1,0 +1,111 @@
+{
+  "status": "ok",
+  "sources": [
+    {
+      "source_id": "56037a4d709840509763ad589180b9dd-1",
+      "document_id": "kd_ad5b11da90464589b8cc7cec9b0ca56b",
+      "chunk_id": "chunk-0c85819da72697c701b11ef78bd66205",
+      "title": "[1] fixture-new.pdf",
+      "kind": "knowledge",
+      "preview": "Orion backup retention is 35 days.\n\nBackup restoration drills happen every 14 days.",
+      "truncated": false,
+      "locator": {
+        "unit": "page",
+        "start": 1,
+        "end": 2,
+        "block_type": "text"
+      }
+    },
+    {
+      "source_id": "56037a4d709840509763ad589180b9dd-2",
+      "document_id": "kd_73373bef741f4284a8a85165c1a028e4",
+      "chunk_id": "chunk-738a803aa7da9c61c1663a983b8ca711",
+      "title": "[2] fixture-old.md",
+      "kind": "knowledge",
+      "preview": "# Orion backup policy\nOrion backup retention is 35 days. Restoration drills happen every 14 days. Public marker PLATFORM-6394-OLD.",
+      "truncated": false,
+      "locator": {
+        "unit": "unknown",
+        "start": null,
+        "end": null,
+        "block_type": "text"
+      }
+    },
+    {
+      "source_id": "56037a4d709840509763ad589180b9dd-3",
+      "document_id": "kd_46484feebeba4e51b4c1c0c8ced1c09e",
+      "chunk_id": "chunk-0f7b15369039503b60f4186133c59036",
+      "title": "[3] fixture-release.pptx",
+      "kind": "knowledge",
+      "preview": "Orion release policy\n\nProduction releases happen on Tuesday at 09:30 UTC.\n\nRelease verification\n\nThe rollback window is 18 minutes.",
+      "truncated": false,
+      "locator": {
+        "unit": "slide",
+        "start": 1,
+        "end": 2,
+        "block_type": "text"
+      }
+    },
+    {
+      "source_id": "56037a4d709840509763ad589180b9dd-4",
+      "document_id": "kd_46484feebeba4e51b4c1c0c8ced1c09e",
+      "chunk_id": "chunk-5fb55ecf78c4514222259badfcfb4969",
+      "title": "[4] fixture-release.pptx",
+      "kind": "knowledge",
+      "preview": "Image Content Analysis:\n- Section Path: None\n- Neighbor Text: Production releases happen on Tuesday at 09:30 UTC. Release verification The rollback window is 18 minutes.\nImage Path: asset:cfe45ab01487474c9dca3bbc\nCaptions: None\nFootnotes: None\n\nVisual Analysis: The image is a text-only document excerpt with a plain white background. It contains three left-aligned lines of black sans-serif text, with generous vertical spacing between lines. There are no borders, logos, icons, charts, diagrams, photographs, or other graphic elements. The complete text, transcribed verbatim, is:\n\n'Orion emergency recovery'\n'The recovery code is DR-4826.'\n'The recovery time objective is 45 minutes.'\n\nThe first line functions as a heading or title, establishing the subject as emergency recovery for Orion. The s",
+      "truncated": true,
+      "locator": {
+        "unit": "slide",
+        "start": 2,
+        "end": 2,
+        "block_type": "image"
+      }
+    },
+    {
+      "source_id": "56037a4d709840509763ad589180b9dd-5",
+      "document_id": "kd_2bd225daf5084be68e57b9c45b32b0a3",
+      "chunk_id": "chunk-8257d4cae5fc5e398856d1e6e240572e",
+      "title": "[5] fixture-recovery.png",
+      "kind": "knowledge",
+      "preview": "Image Content Analysis:\n- Section Path: None\n- Neighbor Text: None\nImage Path: asset:4a1591271a0309ed349fa782\nCaptions: None\nFootnotes: None\n\nVisual Analysis: The image is a plain text-based slide or document excerpt displayed on a solid white or near-white background. The layout is simple: three distinct lines of black, sans-serif text are left-aligned and positioned in the upper-left area of the frame, leaving substantial empty white space to the right and below. The first line functions as a title and reads exactly: \"Orion emergency recovery\". Below a blank line, the second text line reads exactly: \"The recovery code is DR-4826.\" Below another blank line, the third text line reads exactly: \"The recovery time objective is 45 minutes.\" There are no diagrams, charts, flowcharts, arrows, no",
+      "truncated": true,
+      "locator": {
+        "unit": "unknown",
+        "start": null,
+        "end": null,
+        "block_type": "image"
+      }
+    },
+    {
+      "source_id": "56037a4d709840509763ad589180b9dd-6",
+      "document_id": "kd_1ec769eacad74180ae31d8e4cb3ce415",
+      "chunk_id": "chunk-05dda3191e452467133185367aba1946",
+      "title": "[6] fixture-handbook.docx",
+      "kind": "knowledge",
+      "preview": "Image Content Analysis:\n- Section Path: None\n- Neighbor Text: Orion service handbook A production incident must be acknowledged within 7 minutes.\nImage Path: asset:972bffc5d5d8f69921b8abe1\nCaptions: None\nFootnotes: None\n\nVisual Analysis: The image is a plain, minimalist document excerpt or slide with a solid white background and left-aligned black sans-serif text. There are no diagrams, charts, flowcharts, photographs, illustrations, icons, borders, axes, legends, annotations, captions, or footnotes. The text appears in three short, vertically separated blocks. The first block is a heading: 'Orion emergency recovery'. The second block is a body sentence: 'The recovery code is DR-4826.' The third block is another body sentence: 'The recovery time objective is 45 minutes.' The heading identi",
+      "truncated": true,
+      "locator": {
+        "unit": "unknown",
+        "start": null,
+        "end": null,
+        "block_type": "image"
+      }
+    },
+    {
+      "source_id": "56037a4d709840509763ad589180b9dd-7",
+      "document_id": "kd_90b85bca0209407da5f6cde1f9d8dc0d",
+      "chunk_id": "chunk-96725852996ee211f70f448953986cea",
+      "title": "[7] fixture-recovery.jpg",
+      "kind": "knowledge",
+      "preview": "Image Content Analysis:\n- Section Path: None\n- Neighbor Text: None\nImage Path: asset:a975070d89fcbfd7627553ac\nCaptions: None\nFootnotes: None\n\nVisual Analysis: The image is a minimalist text-only graphic on a plain white background. It presents three separate left-aligned blocks of black sans-serif text with blank vertical spacing between each block. The top block is a heading: 'Orion emergency recovery'. The middle block is a sentence: 'The recovery code is DR-4826.' The bottom block is a sentence: 'The recovery time objective is 45 minutes.' There are no borders, images, icons, charts, legends, or other graphical elements. The layout suggests an excerpt from a procedure, slide, or instructional document. The heading introduces the topic; the following lines specify two key operational par",
+      "truncated": true,
+      "locator": {
+        "unit": "unknown",
+        "start": null,
+        "end": null,
+        "block_type": "image"
+      }
+    }
+  ],
+  "sources_version": 2
+}

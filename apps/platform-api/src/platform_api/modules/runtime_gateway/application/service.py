@@ -1242,7 +1242,16 @@ class RuntimeGatewayService:
         content_type: str,
         content_length: int,
         body: AsyncIterator[bytes],
+        file_name: str | None = None,
     ) -> dict[str, Any]:
+        if file_name is not None and (
+            not isinstance(file_name, str)
+            or not 0 < len(file_name) <= 200
+            or any(ord(ch) < 32 or ch in "/\\\x7f" for ch in file_name)
+        ):
+            raise BadRequestError(
+                code="image_name_invalid", message="Invalid image name"
+            )
         sha256 = clean_str(sha256).lower()
         if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
             raise BadRequestError(
@@ -1301,6 +1310,7 @@ class RuntimeGatewayService:
             content_type=media_type,
             content_length=content_length,
             body=body,
+            file_name=file_name,
         )
 
         version = ref.get("version") if isinstance(ref, dict) else None
@@ -1313,12 +1323,20 @@ class RuntimeGatewayService:
 
         if (
             not isinstance(ref, dict)
-            or version not in (1, "v1")
+            or type(version) is not int
+            or version != 1
             or not isinstance(path, str)
             or not isinstance(ref_sha256, str)
             or not isinstance(mime_type, str)
-            or not isinstance(size_bytes, int)
-            or size_bytes <= 0
+            or type(size_bytes) is not int
+            or size_bytes != content_length
+            or ref_sha256 != sha256
+            or mime_type != media_type
+            or path
+            != f"/workspace/uploads/{sha256}."
+            + {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}[
+                media_type
+            ]
         ):
             raise PlatformApiError(
                 code="runtime_invalid_image_response",

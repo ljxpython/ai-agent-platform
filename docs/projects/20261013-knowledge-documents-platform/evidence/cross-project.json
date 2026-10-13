@@ -1,0 +1,11 @@
+{
+  "admin_other_kb": {
+    "error": {
+      "code": "knowledge_not_found",
+      "message": "Knowledge resource not found",
+      "details": []
+    },
+    "request_id": "aeacc1e959f2450cb41e4b169be44ca9"
+  },
+  "member_other_scope_denied": true
+}

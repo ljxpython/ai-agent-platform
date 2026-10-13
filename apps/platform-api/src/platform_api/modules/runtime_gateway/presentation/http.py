@@ -1089,6 +1089,7 @@ async def upload_thread_image(
         content_type=content_type,
         content_length=content_length,
         body=request.stream(),
+        file_name=request.query_params.get("file_name"),
     )
     return _redact_runtime_private_fields(ref)
 

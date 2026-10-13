@@ -29,6 +29,7 @@ CALLBACKS = {
     "PLATFORM_RUNTIME_MODEL_CONFIG_URL": "model-config",
     "PLATFORM_RUNTIME_MESSAGE_AUTH_URL": "message-authorization",
     "PLATFORM_RUNTIME_MEMORY_AUTH_URL": "memory-authorization",
+    "PLATFORM_KNOWLEDGE_AUTHORIZATION_URL": "knowledge/authorize",
 }
 
 
@@ -313,6 +314,11 @@ def configs(root: Path, entry: dict) -> tuple[dict[str, str], dict[str, str]]:
     runtime = read_env(root / ".local-stack/runtime.env")
     platform = read_env(root / ".local-stack/platform.env")
     expected_runtime, expected_platform = expected_values(root, entry)
+    # Older initialized stacks derive the new callback from their own registered API.
+    if not runtime.get("PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"):
+        runtime["PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"] = expected_runtime[
+            "PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"
+        ]
     for values, expected in (
         (runtime, expected_runtime),
         (platform, expected_platform),

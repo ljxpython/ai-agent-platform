@@ -87,11 +87,14 @@ def setup(tmp_path, monkeypatch):
         create_run_with_acceptance=AsyncMock(),
         get_run_acceptance=AsyncMock(),
         create_thread_run=AsyncMock(),
+        get_thread_state=AsyncMock(return_value={"values": {}}),
     )
     upstream.with_forwarded_headers = Mock(return_value=upstream)
     snapshot = {}
 
     def delegation(**values):
+        if values.get("operation", "run-create") != "run-create":
+            return {"authorization": "Bearer synthetic-read"}
         snapshot.update(
             subject="owner",
             credential_id=None,
@@ -125,7 +128,10 @@ def setup(tmp_path, monkeypatch):
     )
     service._validate_run_options = Mock()
     service._load_thread = AsyncMock(
-        return_value={"metadata": {"graph_id": data["graph_id"]}}
+        return_value={
+            "thread_id": data["thread_id"],
+            "metadata": {"graph_id": data["graph_id"]},
+        }
     )
     service._attach_runtime_model_reference = Mock(
         side_effect=lambda **kw: kw["payload"]

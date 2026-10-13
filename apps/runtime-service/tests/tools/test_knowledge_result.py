@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from deepagents.backends import FilesystemBackend
 from langchain_core.messages import ToolMessage
+from langchain_mcp_adapters.interceptors import MCPToolCallRequest
 from mcp.types import CallToolResult, TextContent
 
 from runtime_service.middlewares.filesystem import ResultFilesystemMiddleware
@@ -84,7 +85,9 @@ def test_interceptor_preserves_cancellation():
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(
             knowledge_result_interceptor(
-                SimpleNamespace(name=KNOWLEDGE_TOOL),
+                MCPToolCallRequest(
+                    name=KNOWLEDGE_TOOL, args={"query": "test"}, server_name="bound"
+                ),
                 AsyncMock(side_effect=asyncio.CancelledError),
             )
         )
@@ -160,3 +163,131 @@ def test_same_name_across_scopes_and_scope_denial_before_discovery(monkeypatch):
     monkeypatch.setenv("RUNTIME_MCP_CONNECTIONS_JSON", json.dumps(connections))
     with pytest.raises(ValueError):
         configured_mcp_names()
+
+
+def v2_payload(count=1, **locator):
+    data = payload(count)
+    data["sources_version"] = 2
+    for source in data["sources"]:
+        source["locator"] = {
+            "unit": "page",
+            "start": 3,
+            "end": 5,
+            "block_type": "table",
+            **locator,
+        }
+    return data
+
+
+@pytest.mark.parametrize(
+    "locator",
+    [
+        {},
+        {"unit": "slide", "start": 2, "end": 2, "block_type": "image"},
+        {"unit": "unknown", "start": None, "end": None, "block_type": None},
+    ],
+)
+def test_v2_locator_survives_projection_and_budget(locator):
+    from runtime_service.tools.knowledge import fit_knowledge_message
+
+    response = project_knowledge_result(result(v2_payload(8, **locator)))
+    assert not response.isError and response.structuredContent["sources_version"] == 2
+    message = ToolMessage(
+        content=response.content[0].text,
+        tool_call_id="v2",
+        artifact={"structured_content": response.structuredContent},
+    )
+    fitted = fit_knowledge_message(message, 1600)
+    assert fitted.status != "error"
+    assert len(fitted.content) <= 1600
+    assert json.loads(fitted.content) == fitted.artifact["structured_content"]
+    assert all(
+        s["locator"] == v2_payload(**locator)["sources"][0]["locator"]
+        for s in fitted.artifact["structured_content"]["sources"]
+    )
+    assert (
+        "PRIVATE" not in fitted.model_dump_json()
+        and "SECRET" not in fitted.model_dump_json()
+    )
+    assert response.structuredContent["sources_version"] == 2
+
+
+@pytest.mark.parametrize(
+    "locator",
+    [
+        {"unit": "url"},
+        {"start": True},
+        {"start": 0},
+        {"start": "3"},
+        {"start": 6, "end": 5},
+        {"end": None},
+        {"block_type": "html"},
+        {"unit": "unknown"},
+        {"path": "/PRIVATE"},
+        {"url": "https://evil.invalid"},
+    ],
+)
+def test_invalid_v2_locator_fails_closed(locator):
+    safe = project_knowledge_result(result(v2_payload(**locator)))
+    assert safe.isError
+    assert safe.content[0].text == '{"code":"knowledge_retrieval_failed"}'
+
+
+@pytest.mark.parametrize("version", [True, 2.0, "2", 3, None])
+def test_unknown_sources_version_is_not_silently_downgraded(version):
+    assert project_knowledge_result(
+        result({**v2_payload(), "sources_version": version})
+    ).isError
+
+
+@pytest.mark.parametrize("version", ["1", "2"])
+def test_request_version_is_server_owned_and_hidden_from_model(monkeypatch, version):
+    monkeypatch.setenv("RUNTIME_KNOWLEDGE_SOURCES_VERSION", version)
+    schema = {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+            "query": {"type": "string"},
+            "top_k": {"type": "integer"},
+            "sources_version": {"enum": [1, 2]},
+        },
+    }
+    tool = SimpleNamespace(name=KNOWLEDGE_TOOL, args_schema=schema)
+    mcp._knowledge_schema(tool)
+    assert "sources_version" not in tool.args_schema["properties"]
+    request = MCPToolCallRequest(
+        name=KNOWLEDGE_TOOL,
+        args={"query": "test", "sources_version": 99},
+        server_name="bound",
+    )
+    handler = AsyncMock(
+        return_value=result(v2_payload() if version == "2" else payload())
+    )
+    safe = asyncio.run(knowledge_result_interceptor(request, handler))
+    assert not safe.isError
+    sent = handler.call_args.args[0].args
+    assert sent == (
+        {"query": "test", "sources_version": 2} if version == "2" else {"query": "test"}
+    )
+    monkeypatch.setenv("RUNTIME_KNOWLEDGE_SOURCES_VERSION", "invalid")
+    with pytest.raises(ValueError):
+        asyncio.run(knowledge_result_interceptor(request, handler))
+
+
+def test_provider_cannot_silently_change_selected_version(monkeypatch):
+    monkeypatch.setenv("RUNTIME_KNOWLEDGE_SOURCES_VERSION", "2")
+    request = MCPToolCallRequest(
+        name=KNOWLEDGE_TOOL, args={"query": "test"}, server_name="bound"
+    )
+    handler = AsyncMock(return_value=result(payload()))
+    assert asyncio.run(knowledge_result_interceptor(request, handler)).isError
+
+
+def test_v2_requires_locator_and_preserves_empty_no_hit():
+    data = v2_payload()
+    del data["sources"][0]["locator"]
+    assert project_knowledge_result(result(data)).isError
+    safe = project_knowledge_result(
+        result({"status": "no_hit", "sources": [], "sources_version": 2})
+    )
+    assert not safe.isError and safe.structuredContent["sources_version"] == 2

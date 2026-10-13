@@ -7,6 +7,7 @@ from platform_api.modules.agents.presentation import router as assistants_router
 from platform_api.modules.announcements.router import router as announcements_router
 from platform_api.modules.audit.router import router as audit_router
 from platform_api.modules.identity.router import router as identity_router
+from platform_api.modules.knowledge.router import router as knowledge_router
 from platform_api.modules.projects.router import router as projects_router
 from platform_api.modules.runtime_catalog.presentation import (
     router as runtime_catalog_router,
@@ -30,6 +31,7 @@ api_router = APIRouter()
 api_router.include_router(system_router)
 api_router.include_router(identity_router)
 api_router.include_router(projects_router)
+api_router.include_router(knowledge_router)
 api_router.include_router(users_router)
 api_router.include_router(service_accounts_router)
 api_router.include_router(announcements_router)

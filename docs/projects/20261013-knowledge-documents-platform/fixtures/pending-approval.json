@@ -1,0 +1,35 @@
+{
+  "interrupts": [
+    {
+      "value": {
+        "action_requests": [
+          {
+            "name": "mcp_submit_project_knowledge_document",
+            "args": {
+              "file_ref": {
+                "version": 1,
+                "path": "/workspace/uploads/f39ece52454be0038a08534a95aaf20977e3a09a3993ede5aadff476c9a9f2cd.png",
+                "mime_type": "image/png",
+                "size_bytes": 21481,
+                "sha256": "f39ece52454be0038a08534a95aaf20977e3a09a3993ede5aadff476c9a9f2cd"
+              }
+            },
+            "description": "Tool execution requires approval\n\nTool: mcp_submit_project_knowledge_document\nArgs: {'file_ref': {'version': 1, 'path': '/workspace/uploads/f39ece52454be0038a08534a95aaf20977e3a09a3993ede5aadff476c9a9f2cd.png', 'mime_type': 'image/png', 'size_bytes': 21481, 'sha256': 'f39ece52454be0038a08534a95aaf20977e3a09a3993ede5aadff476c9a9f2cd'}}"
+          }
+        ],
+        "review_configs": [
+          {
+            "action_name": "mcp_submit_project_knowledge_document",
+            "allowed_decisions": [
+              "approve",
+              "edit",
+              "reject"
+            ]
+          }
+        ]
+      },
+      "id": "4ec20cb7b11123b6afe90ee443681d29"
+    }
+  ],
+  "tool_receipt_present": false
+}

@@ -12,6 +12,7 @@ from PIL import Image
 
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.webapp import app
+from runtime_service.workspace.attachment_receipts import AttachmentReceipts
 from runtime_service.workspace.scoped import resolve_thread_workspace
 
 SECRET = "r1-test-secret-with-at-least-32-bytes"
@@ -90,6 +91,7 @@ async def test_upload_and_read_image_flow(graph_id):
         # 1. Successful upload
         resp = await client.put(
             f"/internal/threads/{thread_id}/images/uploads/{sha256}",
+            params={"file_name": "架构图.png"},
             content=png_bytes,
             headers={
                 "Authorization": f"Bearer {upload_token}",
@@ -101,6 +103,8 @@ async def test_upload_and_read_image_flow(graph_id):
         assert ref["version"] == 1
         assert ref["sha256"] == sha256
         assert ref["path"] == f"/workspace/uploads/{sha256}.png"
+        root = resolve_thread_workspace("tenant-a", "project-a", thread_id, graph_id)
+        assert AttachmentReceipts(root).require_image(ref)["file_name"] == "架构图.png"
 
         # 2. Idempotent upload
         resp_idemp = await client.put(
@@ -110,6 +114,25 @@ async def test_upload_and_read_image_flow(graph_id):
         )
         assert resp_idemp.status_code == 200
         assert resp_idemp.json() == ref
+        assert AttachmentReceipts(root).require_image(ref)["file_name"] == "架构图.png"
+
+        invalid_name = await client.put(
+            f"/internal/threads/{thread_id}/images/uploads/{sha256}",
+            params={"file_name": "../secret.png"},
+            content=png_bytes,
+            headers={"Authorization": f"Bearer {upload_token}"},
+        )
+        assert invalid_name.status_code == 400
+
+        mismatched_mime = await client.put(
+            f"/internal/threads/{thread_id}/images/uploads/{sha256}",
+            content=png_bytes,
+            headers={
+                "Authorization": f"Bearer {upload_token}",
+                "Content-Type": "image/jpeg",
+            },
+        )
+        assert mismatched_mime.status_code == 415
 
         # 3. Read image
         resp_read = await client.get(

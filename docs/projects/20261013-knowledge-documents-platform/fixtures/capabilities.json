@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "read_enabled": true,
+  "upload_enabled": true,
+  "supported_mime_types": [
+    "text/plain",
+    "text/markdown",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "image/png",
+    "image/jpeg"
+  ],
+  "max_file_bytes": 20971520,
+  "disabled_reason": null
+}

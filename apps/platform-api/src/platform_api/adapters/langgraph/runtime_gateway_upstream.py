@@ -527,12 +527,14 @@ class LangGraphRuntimeGatewayUpstream:
         content_type: str,
         content_length: int,
         body: AsyncIterator[bytes],
+        file_name: str | None = None,
     ) -> dict[str, Any]:
         return await self._http.upload_image(
             f"/internal/threads/{thread_id}/images/uploads/{sha256}",
             body=body,
             content_type=content_type,
             content_length=content_length,
+            params={"file_name": file_name} if file_name is not None else None,
         )
 
     async def read_thread_image(

@@ -765,6 +765,7 @@ def test_receipt_preserving_migration_round_trip(database):
 
     from alembic import command
     from alembic.config import Config
+    from alembic.script import ScriptDirectory
     from sqlalchemy import create_engine
     from sqlalchemy.pool import NullPool
 
@@ -776,6 +777,9 @@ def test_receipt_preserving_migration_round_trip(database):
     config.set_main_option(
         "script_location", str(Path(db.__file__).with_name("migrations"))
     )
+    scripts = ScriptDirectory.from_config(config)
+    assert scripts.get_revision("0003_token_budget") is not None
+    assert scripts.get_revision("0003_background_tasks") is not None
     engine = create_engine(
         "postgresql+psycopg://",
         creator=lambda: psycopg.connect(database),
@@ -796,7 +800,7 @@ def test_receipt_preserving_migration_round_trip(database):
                 connection.execute(
                     "SELECT version_num FROM runtime_app_alembic_version"
                 ).fetchone()["version_num"]
-                == "0003_background_tasks"
+                == scripts.get_current_head()
             )
     finally:
         engine.dispose()

@@ -39,7 +39,8 @@ describe("images.service", () => {
       path: "/workspace/uploads/test.png",
       mime_type: "image/png",
       size_bytes: 1024,
-      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      sha256:
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     };
     expect(isValidImageRef(valid)).toBe(true);
 
@@ -63,7 +64,9 @@ describe("images.service", () => {
     const blob = new Blob(["hello world"], { type: "text/plain" });
     const hash = await calculateFileSha256(blob);
     // sha256 of "hello world"
-    expect(hash).toBe("b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9");
+    expect(hash).toBe(
+      "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+    );
   });
 
   it("uploads an image and validates returned RuntimeImageRef", async () => {
@@ -72,7 +75,8 @@ describe("images.service", () => {
       path: "/workspace/uploads/pic.png",
       mime_type: "image/png",
       size_bytes: 11,
-      sha256: "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+      sha256:
+        "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
     };
     platformHttpClientMock.put.mockResolvedValueOnce({ data: payload });
 
@@ -88,6 +92,40 @@ describe("images.service", () => {
       "/api/langgraph/threads/th-1/images/uploads/b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
       file,
       {
+        params: {},
+        headers: {
+          "x-project-id": "proj-1",
+          "Content-Type": "image/png",
+        },
+      },
+    );
+  });
+
+  it("uploads an image with optional fileName query", async () => {
+    const payload = {
+      version: 1,
+      path: "/workspace/uploads/custom.png",
+      mime_type: "image/png",
+      size_bytes: 11,
+      sha256:
+        "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+    };
+    platformHttpClientMock.put.mockResolvedValueOnce({ data: payload });
+
+    const file = new File(["hello world"], "custom.png", { type: "image/png" });
+    const result = await uploadThreadImage(
+      "proj-1",
+      "th-1",
+      "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+      file,
+      "custom.png",
+    );
+    expect(result).toEqual(payload);
+    expect(platformHttpClientMock.put).toHaveBeenCalledWith(
+      "/api/langgraph/threads/th-1/images/uploads/b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+      file,
+      {
+        params: { file_name: "custom.png" },
         headers: {
           "x-project-id": "proj-1",
           "Content-Type": "image/png",

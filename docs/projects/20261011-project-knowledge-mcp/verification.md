@@ -1,6 +1,6 @@
 # 项目知识 MCP - 验证计划与记录
 
-**状态：blocked。** 非前端文本/MCP开发、本机部署及当前可执行验收完成；PDF/Office解析和业务语料质量缺条件。前端由同事接续，本轮未进行浏览器验收。用户已批准方案与本地源码启动，无再次审批阻塞。
+**当前状态：非前端与通用多格式验收完成；仅原业务题集B02仍blocked，前端接续。** 2026-10-13由[承接专项](../20261013-knowledge-documents-platform/verification.md)完成Ubuntu PDF/Office/图片真实链与非前端Final，环境B01已解除。下文2026-10-11数据保留当时的验证与缺条件边界，不作为最新状态；前端浏览器由同事继续。
 
 执行日期：2026-10-11。P/K实际目录见[README](README.md)；证据保留在本Worktree `.local-stack/evidence/`、`.local-stack/knowledge/`，私有配置不导出。已有测试名称、skip、只读源码核验与合成资料结果分别标注，不替代真实业务验收。
 

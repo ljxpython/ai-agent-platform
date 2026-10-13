@@ -44,6 +44,8 @@ export type PermissionCode =
   | "project.runtime.read"
   | "project.runtime.write"
   | "project.runtime.execute"
+  | "project.knowledge.read"
+  | "project.knowledge.upload"
   | "platform.model.read"
   | "platform.model.write";
 

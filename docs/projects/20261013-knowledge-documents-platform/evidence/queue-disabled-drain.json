@@ -1,0 +1,74 @@
+{
+  "alpha_processing": {
+    "version": 1,
+    "job_id": "kj_300c024e3e81485698d9279116b6c261",
+    "document_id": "kd_e683f531eb034b77ae0d7d5b4df32246",
+    "file_name": "queue-alpha.md",
+    "status": "parsing",
+    "searchable": false,
+    "error_code": null,
+    "created_at": "2026-10-13T07:45:18.254824Z",
+    "updated_at": "2026-10-13T07:45:18.335894Z"
+  },
+  "beta_queued": {
+    "version": 1,
+    "job_id": "kj_7554ebfa3ae14cfca50cff60d02a91fd",
+    "document_id": "kd_02487a5a40a54c9197afdfaa9e20e5f9",
+    "file_name": "queue-beta.md",
+    "status": "queued",
+    "searchable": false,
+    "error_code": null,
+    "created_at": "2026-10-13T07:45:56.218544Z",
+    "updated_at": "2026-10-13T07:45:56.218544Z"
+  },
+  "duplicate": {
+    "version": 1,
+    "job_id": "kj_300c024e3e81485698d9279116b6c261",
+    "document_id": "kd_e683f531eb034b77ae0d7d5b4df32246",
+    "file_name": "queue-alpha.md",
+    "status": "parsing",
+    "searchable": false,
+    "error_code": null,
+    "created_at": "2026-10-13T07:45:18.254824Z",
+    "updated_at": "2026-10-13T07:45:18.335894Z",
+    "reused": true
+  },
+  "counts_before_duplicate": {
+    "usage": 284,
+    "jobs": 9,
+    "documents": 8,
+    "requests": 15
+  },
+  "counts_after_duplicate": {
+    "usage": 284,
+    "jobs": 9,
+    "documents": 8,
+    "requests": 16
+  },
+  "duplicate_extra_ingestion_events": 0,
+  "frozen_snapshot_unchanged": true,
+  "old_query_during_build": true,
+  "new_upload_disabled": true,
+  "ready_alpha": {
+    "version": 1,
+    "job_id": "kj_300c024e3e81485698d9279116b6c261",
+    "document_id": "kd_e683f531eb034b77ae0d7d5b4df32246",
+    "file_name": "queue-alpha.md",
+    "status": "ready",
+    "searchable": true,
+    "error_code": null,
+    "created_at": "2026-10-13T07:45:18.254824Z",
+    "updated_at": "2026-10-13T07:47:10.926225Z"
+  },
+  "ready_beta": {
+    "version": 1,
+    "job_id": "kj_7554ebfa3ae14cfca50cff60d02a91fd",
+    "document_id": "kd_02487a5a40a54c9197afdfaa9e20e5f9",
+    "file_name": "queue-beta.md",
+    "status": "ready",
+    "searchable": true,
+    "error_code": null,
+    "created_at": "2026-10-13T07:45:56.218544Z",
+    "updated_at": "2026-10-13T07:47:21.608472Z"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "platform_worktree": "/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform",
+  "platform_branch": "feat/project-knowledge-mcp",
+  "rag_commit": "c30e2149ab975a3fc7e1539cc26216c0b9a0242e",
+  "runtime_backend": "local",
+  "rag_parser_host": "Ubuntu",
+  "embedding_dimensions": 1024,
+  "model": "deepseek-v4.1-flash",
+  "frontend_modified_this_phase": false,
+  "production_deployed": false
+}

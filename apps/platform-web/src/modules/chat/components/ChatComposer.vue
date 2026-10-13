@@ -13,6 +13,11 @@ import {
   CHAT_ATTACHMENT_ACCEPT,
   type ChatAttachmentBlock,
 } from "@/utils/chat-content";
+import { useAuthorization } from "@/composables/useAuthorization";
+import {
+  getKnowledgeCapabilities,
+  type KnowledgeCapabilities,
+} from "@/services/knowledge/knowledge.service";
 import ChatAttachmentPreview from "./ChatAttachmentPreview.vue";
 import ChatModelSelector from "./ChatModelSelector.vue";
 import ThreadAccessPolicySelect from "./ThreadAccessPolicySelect.vue";
@@ -163,6 +168,213 @@ function combineVoiceDraft(base: string, finalVoice: string): string {
     return `${base}${finalVoice}`;
   }
   return `${base}\n${finalVoice}`;
+}
+
+// --- 知识库上传门禁与指令装配逻辑 ---
+let authInstance: ReturnType<typeof useAuthorization> | null = null;
+try {
+  authInstance = useAuthorization();
+} catch {
+  // 无 authorization 环境（如部分隔离单测）
+}
+
+const knowledgeCapabilities = ref<KnowledgeCapabilities | null>(null);
+let currentCapabilitiesReqId = 0;
+
+const SUPPORTED_KNOWLEDGE_MIMES = new Set([
+  "text/plain",
+  "text/markdown",
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "image/png",
+  "image/jpeg",
+]);
+
+function pruneInvalidKnowledgeShares() {
+  props.attachments.forEach((att) => {
+    if (att.shareToKnowledge && !getKnowledgeGate(att).canShare) {
+      att.shareToKnowledge = false;
+    }
+  });
+}
+
+watch(
+  () => props.projectId,
+  async (pId) => {
+    const reqId = ++currentCapabilitiesReqId;
+    if (!pId) {
+      knowledgeCapabilities.value = null;
+      pruneInvalidKnowledgeShares();
+      return;
+    }
+    try {
+      const caps = await getKnowledgeCapabilities(pId);
+      if (reqId === currentCapabilitiesReqId) {
+        knowledgeCapabilities.value = caps;
+        pruneInvalidKnowledgeShares();
+      }
+    } catch {
+      if (reqId === currentCapabilitiesReqId) {
+        knowledgeCapabilities.value = null;
+        pruneInvalidKnowledgeShares();
+      }
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.planMode,
+  () => {
+    pruneInvalidKnowledgeShares();
+  },
+);
+
+function getKnowledgeGate(attachment: ChatAttachmentBlock): {
+  canShare: boolean;
+  reason: string;
+} {
+  if (props.planMode) {
+    return { canShare: false, reason: "规划模式下严禁提交入库" };
+  }
+  const hasPermission = authInstance
+    ? authInstance.currentProjectCan("project.knowledge.upload")
+    : true;
+  if (!hasPermission) {
+    return { canShare: false, reason: "当前角色无上传知识库权限" };
+  }
+  if (!knowledgeCapabilities.value?.upload_enabled) {
+    return {
+      canShare: false,
+      reason:
+        knowledgeCapabilities.value?.disabled_reason || "项目未启用知识入库",
+    };
+  }
+
+  // 生成的图表或临时图片（无本地原件，严禁入库）
+  const path = (attachment.metadata?.path as string) || "";
+  if (
+    path.startsWith("/workspace/generated/") ||
+    path.startsWith("/workspace/charts/") ||
+    path.startsWith("/workspace/outputs/")
+  ) {
+    return { canShare: false, reason: "生成图片不支持加入知识库" };
+  }
+
+  const file = attachment.file;
+  const fileName = (
+    file?.name ||
+    (attachment.metadata?.name as string) ||
+    ""
+  ).toLowerCase();
+
+  // WebP 仅限普通聊天，不入库
+  if (
+    fileName.endsWith(".webp") ||
+    (attachment.mimeType || "").toLowerCase() === "image/webp"
+  ) {
+    return { canShare: false, reason: "WebP 格式不支持加入知识库" };
+  }
+
+  // 归一化 MIME 探测
+  let mime = (attachment.mimeType || file?.type || "").toLowerCase();
+  if (!mime) {
+    if (fileName.endsWith(".md") || fileName.endsWith(".markdown")) {
+      mime = "text/markdown";
+    } else if (fileName.endsWith(".txt")) {
+      mime = "text/plain";
+    } else if (fileName.endsWith(".pdf")) {
+      mime = "application/pdf";
+    } else if (fileName.endsWith(".docx")) {
+      mime =
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    } else if (fileName.endsWith(".pptx")) {
+      mime =
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    } else if (fileName.endsWith(".png")) {
+      mime = "image/png";
+    } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+      mime = "image/jpeg";
+    }
+  }
+
+  const serverSupported = new Set(
+    knowledgeCapabilities.value?.supported_mime_types || [],
+  );
+  const isSupported =
+    SUPPORTED_KNOWLEDGE_MIMES.has(mime) &&
+    (serverSupported.size === 0 || serverSupported.has(mime));
+
+  if (!isSupported) {
+    return {
+      canShare: false,
+      reason: "知识库不支持该格式（支持 TXT/MD/PDF/DOCX/PPTX/PNG/JPEG）",
+    };
+  }
+
+  // 大小限制：图片强制 5MiB 硬上限，文档走 max_file_bytes
+  const isImage = attachment.type === "image" || mime.startsWith("image/");
+  if (isImage) {
+    const maxImageBytes = 5 * 1024 * 1024; // 5MiB
+    if (file && file.size > maxImageBytes) {
+      return { canShare: false, reason: "超出入库图片上限（5MB）" };
+    }
+  } else {
+    const maxBytes =
+      knowledgeCapabilities.value?.max_file_bytes || 20 * 1024 * 1024;
+    if (file && file.size > maxBytes) {
+      return { canShare: false, reason: "超出入库文件上限（20MB）" };
+    }
+  }
+
+  return { canShare: true, reason: "" };
+}
+
+function handleUpdateShareToKnowledge(index: number, val: boolean) {
+  const block = props.attachments[index];
+  if (block) {
+    block.shareToKnowledge = val;
+    if (val) {
+      if (!composerModel.value.trim()) {
+        composerModel.value = "请把本条消息的附件加入当前项目知识库";
+      }
+    } else {
+      if (
+        composerModel.value.trim() === "请把本条消息的附件加入当前项目知识库"
+      ) {
+        composerModel.value = "";
+      }
+    }
+  }
+}
+
+function ensureKnowledgeDirectiveBeforeSend() {
+  const sharedAttachments = props.attachments.filter((a) => a.shareToKnowledge);
+  if (sharedAttachments.length > 0) {
+    const text = composerModel.value.trim();
+    if (!text) {
+      composerModel.value = "请把本条消息的附件加入当前项目知识库";
+    } else if (
+      !text.includes("加入当前项目知识库") &&
+      !text.includes("加入知识库")
+    ) {
+      const names = sharedAttachments
+        .map((f) => f.file?.name || (f.metadata?.name as string) || "附件")
+        .join("、");
+      composerModel.value = `${text}\n\n【指令】请将本条消息所附的 ${names} 加入当前项目知识库。`;
+    }
+  }
+}
+
+function handleSendAction() {
+  ensureKnowledgeDirectiveBeforeSend();
+  emit("send");
+}
+
+function handleQueueAction() {
+  ensureKnowledgeDirectiveBeforeSend();
+  emit("queue");
 }
 
 const voiceInput = useVoiceInput({
@@ -399,10 +611,10 @@ function handleKeydown(event: KeyboardEvent) {
       return;
     }
     if (isQueueMode.value) {
-      emit("queue");
+      handleQueueAction();
     } else {
       if (props.canSendFreshMessage || props.canQueue) {
-        emit("send");
+        handleSendAction();
       }
     }
   } else {
@@ -533,7 +745,12 @@ defineExpose({
           :key="`composer-attachment-${index}`"
           :block="attachment"
           removable
+          :can-share-to-knowledge="getKnowledgeGate(attachment).canShare"
+          :share-to-knowledge-reason="getKnowledgeGate(attachment).reason"
           @remove="emit('remove-attachment', index)"
+          @update:share-to-knowledge="
+            handleUpdateShareToKnowledge(index, $event)
+          "
         />
       </div>
 
@@ -794,7 +1011,7 @@ defineExpose({
                 class="flex h-8 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-xs font-medium text-white shadow-xs transition-all hover:bg-blue-700 active:scale-95 disabled:opacity-50"
                 :disabled="isStopBlocked || isVoiceActive"
                 title="排队加入执行队列"
-                @click="emit('queue')"
+                @click="handleQueueAction"
               >
                 <BaseIcon name="sparkle" size="xs" />
                 <span>补充要求</span>
@@ -845,7 +1062,7 @@ defineExpose({
                 :disabled="!canSubmitFreshOrQueue"
                 :title="sendButtonLabel"
                 :aria-label="sendButtonLabel"
-                @click="emit('send')"
+                @click="handleSendAction"
               >
                 <svg
                   class="h-4 w-4 fill-none stroke-current stroke-[2.5]"

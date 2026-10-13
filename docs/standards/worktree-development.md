@@ -1,7 +1,7 @@
 ---
 status: active
 approved_on: 2026-10-10
-last_verified: 2026-10-11
+last_verified: 2026-10-12
 source_project: docs/projects/20261010-worktree-local-stack/
 ---
 
@@ -47,7 +47,7 @@ bash "scripts/local-stack.sh" stop
 - 首次初始化从 23000-29999 随机分配 Web/API/Runtime/Redis 四个端口，排除已登记及当前被占用的端口。分配写入加跨进程锁，登记原子替换。
 - 重启复用原端口；端口被外部程序抢占时明确失败，不强杀、不让某个服务单独漂移。随机与“少见”端口不等于保证空闲。
 - 同一环境操作加锁；不同环境可并发。进程停止须核对命令及真实目录归属，不凭 PID 文件或端口单独决定。
-- API upstream、Runtime self URL、模型/Thread/message/memory 授权回调和前端代理统一生成，指向同一环境。不能手工指向其他 Worktree 或主工作区。
+- API upstream、Runtime self URL、模型/Thread/message/memory/知识授权回调和前端代理统一生成，指向同一环境。不能手工指向其他 Worktree 或主工作区。旧登记环境缺少或空 `PLATFORM_KNOWLEDGE_AUTHORIZATION_URL` 时从本登记API派生，不写回私有配置；显式跨环境地址仍拒绝。知识写开关保持默认关闭。
 - 额外预览/测试服务同样不能硬编码公共端口或抢占登记端口；先使用 OS 分配空闲端口并保留所属进程句柄，结束时仅停止自己启动的进程。长期联调服务应先扩展统一登记再接入。
 
 ### 外部源码知识服务

@@ -46,6 +46,8 @@ class PermissionCode(StrEnum):
     PROJECT_RUNTIME_READ = "project.runtime.read"
     PROJECT_RUNTIME_EXECUTE = "project.runtime.execute"
     PROJECT_RUNTIME_WRITE = "project.runtime.write"
+    PROJECT_KNOWLEDGE_READ = "project.knowledge.read"
+    PROJECT_KNOWLEDGE_UPLOAD = "project.knowledge.upload"
 
 
 class PolicyReason(StrEnum):
@@ -119,6 +121,12 @@ PLATFORM_PERMISSION_MAP: dict[PermissionCode, frozenset[PlatformRole]] = {
 }
 
 PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
+    PermissionCode.PROJECT_KNOWLEDGE_READ: frozenset(
+        {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
+    ),
+    PermissionCode.PROJECT_KNOWLEDGE_UPLOAD: frozenset(
+        {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
+    ),
     PermissionCode.PROJECT_MEMBER_READ: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
     ),

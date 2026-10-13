@@ -7,6 +7,8 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from runtime_service.auth.platform import authenticate
 from runtime_service.runtime.tool_access import require_tool_access
 from runtime_service.tools.images import ImageWorkspace, ImageWorkspaceError
+from runtime_service.workspace.attachment_receipts import AttachmentReceipts
+from runtime_service.workspace.file_refs import validate_file_name
 from runtime_service.workspace.image_refs import UPLOAD_MAX_BYTES, ImageRef
 from runtime_service.workspace.scoped import resolve_thread_workspace
 
@@ -68,6 +70,13 @@ async def upload_thread_image(
         thread_id, authorization, "image-upload"
     )
 
+    file_name = request.query_params.get("file_name")
+    try:
+        if file_name is not None:
+            validate_file_name(file_name)
+    except ValueError as exc:
+        raise HTTPException(400, detail={"code": "image_name_invalid"}) from exc
+
     chunks: list[bytes] = []
     total_bytes = 0
     async for chunk in request.stream():
@@ -90,6 +99,15 @@ async def upload_thread_image(
 
     try:
         ref = await asyncio.to_thread(ws.put_upload, data, sha256)
+        mime = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+        length = request.headers.get("content-length")
+        if mime and mime != ref["mime_type"]:
+            raise HTTPException(415, detail={"code": "image_mime_unsupported"})
+        if length is not None and (not length.isdigit() or int(length) != len(data)):
+            raise HTTPException(400, detail={"code": "image_length_required"})
+        await asyncio.to_thread(
+            AttachmentReceipts(workspace_root).record_image, ref, file_name
+        )
         return ref
     except ImageWorkspaceError as exc:
         raise HTTPException(

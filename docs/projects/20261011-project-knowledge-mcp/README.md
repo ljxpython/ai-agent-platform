@@ -1,6 +1,6 @@
 # 项目知识检索 MCP 接入
 
-**状态：blocked（非前端文本/MCP开发与本地部署已完成；PDF/Office、业务语料质量门禁缺环境/资料。前端由同事接续）。**
+**当前状态：非前端实现与通用多格式验收已完成；原业务语料质量门禁B02仍blocked，前端接续。** 2026-10-13更新：PDF/Office环境B01由Ubuntu真实平台链解除，最新上传/图片/v2、生命周期与Final见[承接专项](../20261013-knowledge-documents-platform/verification.md)。下文2026-10-11交付与验收数据保留历史。
 
 启动日：2026-10-11；治理改动。用户已明确“方案评审通过”“同意，基于源码在本地开发、启动和联调”“把除了前端的开发项都开发完成”，并授权提交与推送源码。本地部署已授权；未部署生产。
 
@@ -23,7 +23,7 @@
 
 知识工程24项测试、API59项相关回归、Runtime74项相关回归及11项真实模型关键链通过；平台全量检查存在旧失败，已在HEAD源码快照复现并列于[验证记录](verification.md)，不标“全仓全绿”。
 
-- **B01：** Intel macOS x86_64/Python3.13无锁定Torch2.11 wheel。已尝试documents frozen安装，文本基础环境可用；未降核心锁/Python或引入Docker。需要兼容ARM Mac/Linux环境完成PDF/Office解析。
+- **B01已解除：** Intel macOS x86_64/Python3.13无锁定Torch2.11 wheel的事实仍在；2026-10-13已在Ubuntu完成PDF/DOCX/PPTX/PNG/JPEG真实上传解析/发布/检索，不再请求新兼容环境，未降锁或引入Docker。
 - **B02：** 未提供10–20份代表性业务资料/标注问题。需要资料路径及允许的模型环境，才能完成业务召回/引用/无答案门槛。
 - **F1B：** 前端同事完成来源卡联验、必要的小适配与浏览器F01–F10。本轮交接已完成，不冒充浏览器验收。
 
@@ -36,7 +36,7 @@ bash "scripts/local-stack.sh" status
 bash "scripts/local-stack.sh" knowledge-restart
 ```
 
-服务保留运行供同事接续。最新登记与启停见[部署手册](deployment-runbook.md)，不要把这些端口套用到其他worktree。
+2026-10-13验收后所属服务已停止，资料保留；旧768库显式固定Ollama、新上传关闭/来源1，最新恢复步骤见[联调交接](../20261013-knowledge-documents-platform/deployment-handoff.md)。最新登记与启停沿[部署手册](deployment-runbook.md)，不要把这些端口套用到其他worktree。
 
 ## 导航
 

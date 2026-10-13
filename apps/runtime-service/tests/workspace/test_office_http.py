@@ -7,6 +7,7 @@ from test_image_http import SECRET, _make_token
 from workspace.test_office_documents import docx_bytes, pptx_bytes, replace_member
 
 from runtime_service.webapp import app
+from runtime_service.workspace.attachment_receipts import AttachmentReceipts
 from runtime_service.workspace.document_reader import DOCX_MIME, PPTX_MIME
 from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
 from runtime_service.workspace.scoped import resolve_thread_workspace
@@ -81,6 +82,8 @@ def test_signed_office_upload_download_hash_and_scope(
                 "tenant-a", "project-a", "thread-1", "showcase_demo"
             )
             assert len(list((root / "uploads").iterdir())) == 1
+            assert AttachmentReceipts(root).require(ref)
+            assert not AttachmentReceipts(root).io.root.is_relative_to(root)
             # Rehearse removing Office writes while preserving authorized existing downloads.
             with monkeypatch.context() as rollback:
 

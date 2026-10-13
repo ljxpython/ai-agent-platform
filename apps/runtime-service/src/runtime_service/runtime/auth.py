@@ -325,17 +325,17 @@ def verify_delegation_claims(
         if any(actual.get(key) != value for key, value in expected_scope.items()):
             raise _invalid("runtime.auth.invalid_principal", "scope")
     return VerifiedDelegation(
-        principal,
-        policy,
-        scope,
-        context_claim,
-        _optional_correlation(claims, "request_id"),
-        _optional_correlation(claims, "platform_trace_id"),
-        _optional_callback_context(claims),
-        _parse_run_acceptance(
+        principal=principal,
+        policy=policy,
+        scope=scope,
+        context_hash=context_claim,
+        request_id=_optional_correlation(claims, "request_id"),
+        platform_trace_id=_optional_correlation(claims, "platform_trace_id"),
+        callback_context=_optional_callback_context(claims),
+        run_acceptance=_parse_run_acceptance(
             claims.get("run_acceptance"), principal, scope, credential_id
         ),
-        credential_id,
+        credential_id=credential_id,
     )
 
 

@@ -241,6 +241,7 @@ class LangGraphRuntimeClient:
         body: AsyncIterator[bytes],
         content_type: str,
         content_length: int,
+        params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         headers = self._headers(
@@ -257,6 +258,7 @@ class LangGraphRuntimeClient:
                 response = await client.request(
                     method="PUT",
                     url=self._url(path),
+                    params=dict(params) if params is not None else None,
                     content=body,
                     headers=headers,
                 )

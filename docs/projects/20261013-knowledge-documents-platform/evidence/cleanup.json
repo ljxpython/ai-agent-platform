@@ -1,0 +1,27 @@
+{
+  "rag_pid": 163126,
+  "rag_stopped": true,
+  "remote_port_closed": true,
+  "remote_data_preserved": true,
+  "tunnel_pid": 48088,
+  "tunnel_stopped": true,
+  "local_forward_closed": true,
+  "configuration_restored": true,
+  "upload_enabled": false,
+  "sources_version": 1,
+  "local_stack_stopped": true,
+  "local_ports_closed": {
+    "PLATFORM_WEB_PORT": 25457,
+    "PLATFORM_API_PORT": 24748,
+    "RUNTIME_PORT": 23512,
+    "LOCAL_STACK_REDIS_PORT": 24741,
+    "knowledge_mcp": 63311,
+    "knowledge_embedding": 65417
+  },
+  "runtime_platform_config_matches_backups": true,
+  "legacy_embedding_provider": "ollama",
+  "legacy_embedding_dim": 768,
+  "legacy_provider_explicit_fix": true,
+  "postgres_and_workspaces_preserved": true,
+  "smoke_query_source_count": 2
+}

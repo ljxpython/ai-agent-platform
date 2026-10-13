@@ -132,6 +132,19 @@ def validate_image_ref(
     )
 
 
+def validate_uploaded_image_ref(value: object) -> ImageRef:
+    if not isinstance(value, dict) or set(value) != set(ImageRef.__annotations__):
+        raise ImageRefValidationError("invalid uploaded ImageRef fields")
+    ref = validate_image_ref(value, max_bytes=UPLOAD_MAX_BYTES)
+    folder, filename = validate_image_path(ref["path"])
+    if (
+        folder != "uploads"
+        or _EXT_TO_MIME[filename.rsplit(".", 1)[-1]] != ref["mime_type"]
+    ):
+        raise ImageRefValidationError("invalid uploaded image path or MIME")
+    return ref
+
+
 def parse_image_reference_block(block: Mapping[str, Any]) -> ImageRef | None:
     """Extract and validate ImageRef from a text block extras.runtime_image if present."""
     if not isinstance(block, Mapping):

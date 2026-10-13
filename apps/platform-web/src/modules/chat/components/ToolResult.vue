@@ -14,6 +14,7 @@ import MessageContent from "./MessageContent.vue";
 import SubagentCard from "./SubagentCard.vue";
 import ThreadImage from "./ThreadImage.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import KnowledgeSubmissionCard from "./KnowledgeSubmissionCard.vue";
 
 const props = defineProps<{
   tool: ToolItem;
@@ -22,7 +23,12 @@ const props = defineProps<{
   threadId?: string;
 }>();
 const emit = defineEmits<{ inspect: [tool: ToolItem] }>();
-const expanded = ref(false);
+const isKnowledgeTool = computed(
+  () =>
+    props.tool.name === "mcp_submit_project_knowledge_document" ||
+    props.tool.name === "mcp_get_project_knowledge_ingest_job",
+);
+const expanded = ref(isKnowledgeTool.value);
 const input = computed(() => asObject(props.tool.input));
 const errorInfo = computed(() => {
   if (props.tool.status !== "error") return undefined;
@@ -232,6 +238,12 @@ const displayTitle = computed(() => {
   if (props.tool.name === "submit_plan") {
     return "提交执行计划审批";
   }
+  if (
+    props.tool.name === "mcp_submit_project_knowledge_document" ||
+    props.tool.name === "mcp_get_project_knowledge_ingest_job"
+  ) {
+    return "项目知识库入库";
+  }
   return props.tool.name;
 });
 const displaySubtitle = computed(() => {
@@ -380,7 +392,17 @@ function formatDocumentWarning(
   return "文档读取提示：存在未识别的格式限制";
 }
 
+export type KnowledgeLocator = {
+  unit?: "page" | "slide" | "unknown" | string;
+  start?: number | null;
+  end?: number | null;
+  block_type?: "text" | "table" | "image" | string;
+};
+
 export type EvidenceSourceItem = {
+  source_id?: string;
+  document_id?: string;
+  chunk_id?: string;
   source_url?: string;
   title?: string;
   kind?: string;
@@ -391,6 +413,7 @@ export type EvidenceSourceItem = {
   preview?: string;
   truncated?: boolean;
   read_scope?: string;
+  locator?: KnowledgeLocator;
 };
 
 const evidenceSources = computed<EvidenceSourceItem[]>(() => {
@@ -402,16 +425,23 @@ const evidenceSources = computed<EvidenceSourceItem[]>(() => {
       return;
     }
     const ev = item as EvidenceSourceItem;
-    const idKey = ev.content_hash || ev.source_url || ev.title;
+    // 严格杜绝仅按 title 粗暴去重：优先使用 source_id / chunk_id / content_hash
     if (
-      !list.some(
-        (existing) =>
-          (existing.content_hash &&
-            existing.content_hash === ev.content_hash) ||
-          (idKey &&
-            existing.source_url === ev.source_url &&
-            existing.title === ev.title),
-      )
+      !list.some((existing) => {
+        if (ev.source_id && existing.source_id) {
+          return existing.source_id === ev.source_id;
+        }
+        if (ev.chunk_id && existing.chunk_id) {
+          return existing.chunk_id === ev.chunk_id;
+        }
+        if (ev.content_hash && existing.content_hash) {
+          return existing.content_hash === ev.content_hash;
+        }
+        if (ev.source_url && existing.source_url) {
+          return existing.source_url === ev.source_url;
+        }
+        return false;
+      })
     ) {
       list.push(ev);
     }
@@ -427,6 +457,54 @@ const evidenceSources = computed<EvidenceSourceItem[]>(() => {
 
   return list;
 });
+
+function formatLocator(locator?: KnowledgeLocator): string | null {
+  if (!locator || !locator.unit) return null;
+  const unit = locator.unit;
+  const start = locator.start;
+  const end = locator.end;
+  const blockType = locator.block_type;
+
+  let blockTypeSuffix = "";
+  if (blockType === "table") {
+    blockTypeSuffix = " · 表格";
+  } else if (blockType === "image") {
+    blockTypeSuffix = " · 图片";
+  }
+
+  if (unit === "page") {
+    if (
+      typeof start === "number" &&
+      typeof end === "number" &&
+      start > 0 &&
+      end > 0
+    ) {
+      if (start === end) {
+        return `第 ${start} 页${blockTypeSuffix}`;
+      } else if (start < end) {
+        return `第 ${start}–${end} 页${blockTypeSuffix}`;
+      } else {
+        return `第 ${start} 页${blockTypeSuffix}`;
+      }
+    } else if (typeof start === "number" && start > 0) {
+      return `第 ${start} 页${blockTypeSuffix}`;
+    }
+    return `页码未知${blockTypeSuffix}`;
+  }
+
+  if (unit === "slide") {
+    if (typeof start === "number" && start > 0) {
+      return `第 ${start} 张幻灯片${blockTypeSuffix}`;
+    }
+    return `幻灯片位置未知${blockTypeSuffix}`;
+  }
+
+  if (unit === "unknown") {
+    return "定位未知";
+  }
+
+  return null;
+}
 
 const sourcesExpanded = ref(false);
 
@@ -897,6 +975,13 @@ $ {{ input.command }}</pre
           </div>
         </div>
       </template>
+      <template v-else-if="isKnowledgeTool">
+        <KnowledgeSubmissionCard
+          :tool="tool"
+          :project-id="projectId"
+          :is-awaiting-review="isAwaitingReview"
+        />
+      </template>
       <template v-else>
         <p class="text-xs text-gray-500">参数</p>
         <pre
@@ -907,7 +992,12 @@ $ {{ input.command }}</pre
       <div
         v-if="
           tool.output !== undefined &&
-          !['write_todos', 'parse_document'].includes(tool.name)
+          ![
+            'write_todos',
+            'parse_document',
+            'mcp_submit_project_knowledge_document',
+            'mcp_get_project_knowledge_ingest_job',
+          ].includes(tool.name)
         "
         class="max-h-96 overflow-auto"
       >
@@ -1027,7 +1117,7 @@ $ {{ input.command }}</pre
           >
             <div
               v-for="(src, sIdx) in evidenceSources"
-              :key="src.content_hash || sIdx"
+              :key="src.source_id || src.chunk_id || src.content_hash || sIdx"
               class="rounded-md border border-gray-200/80 bg-white p-2.5 text-xs shadow-2xs dark:border-dark-700 dark:bg-dark-800"
             >
               <div
@@ -1040,8 +1130,16 @@ $ {{ input.command }}</pre
                   >
                     {{ getSourceKindBadge(src).label }}
                   </span>
+                  <span
+                    v-if="formatLocator(src.locator)"
+                    class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 dark:border-dark-700 dark:bg-dark-900/60 dark:text-dark-200"
+                  >
+                    {{ formatLocator(src.locator) }}
+                  </span>
                   <a
-                    v-if="src.source_url"
+                    v-if="
+                      src.source_url && !src.source_url.startsWith('asset:')
+                    "
                     :href="src.source_url"
                     target="_blank"
                     rel="noopener noreferrer"

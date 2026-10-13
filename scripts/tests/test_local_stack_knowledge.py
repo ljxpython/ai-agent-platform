@@ -114,6 +114,12 @@ class KnowledgeRegistrationTests(unittest.TestCase):
                 set(processes.owned(self.root, "knowledge-embedding", 65417)), {11}
             )
 
+    def test_knowledge_callback_uses_only_own_registered_api(self):
+        entry = {"ports": dict(zip(stack.PORT_KEYS, range(23100, 23104)))}
+        runtime, _ = stack.expected_values(self.root, entry)
+        expected = f"http://127.0.0.1:{entry['ports']['PLATFORM_API_PORT']}/api/runtime/internal/knowledge/authorize"
+        self.assertEqual(runtime["PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"], expected)
+
 
 if __name__ == "__main__":
     unittest.main()
