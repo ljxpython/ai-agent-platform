@@ -42,6 +42,7 @@ SCHEMA_TABLES = {
     "checkpoint_migrations",
     "store_migrations",
     "runtime_schema",
+    "runtime_usage_projection_state",
     "_local_stack_seed",
 }
 
@@ -292,7 +293,8 @@ def seed_environment(
     states = {}
     for kind, _, key, values in databases:
         with psycopg.connect(
-            values[key].replace("postgresql+psycopg:", "postgresql:"), connect_timeout=30
+            values[key].replace("postgresql+psycopg:", "postgresql:"),
+            connect_timeout=30,
         ) as target:
             states[kind] = seed_state(target, entry, kind)
     if any(state[0] == "existing-data-retained" for state in states.values()):

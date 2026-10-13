@@ -69,7 +69,7 @@ def _assert_source_active(connection, identity):
         raise RuntimeWorkspaceError("background_task_denied")
 
 
-def reserve_task(identity, binding_digest, request_digest, host, timeout):
+def reserve_task(identity, binding_digest, request_digest, host, timeout, node_id=None):
     submission = submission_key(identity)
     with connect() as connection:
         # The host is deliberately small (16 tasks); serialize reservations, not I/O.
@@ -143,6 +143,12 @@ def reserve_task(identity, binding_digest, request_digest, host, timeout):
             "INSERT INTO runtime_run_resources(resource_id,thread_id,run_id,kind) VALUES(%s,%s,%s,'background_task')",
             (resource, identity["thread_id"], identity["origin_run_id"]),
         )
+        if node_id:
+            connection.execute(
+                "UPDATE runtime_background_tasks SET sandbox_node_id=%s WHERE task_id=%s",
+                (node_id, task_id),
+            )
+            row["sandbox_node_id"] = node_id
         return row, True
 
 
@@ -245,7 +251,9 @@ def _commit_observation(row, status, cleanup, state, reason, output, delay):
         if current["cancel_requested_at"] and status not in TERMINAL:
             status = "cancel_requested"
         delivery = current["delivery_state"]
-        if status in {"succeeded", "failed", "timed_out"} and delivery == "not_ready":
+        if status == "failed" and cleanup == "not_required":
+            delivery = "suppressed"
+        elif status in {"succeeded", "failed", "timed_out"} and delivery == "not_ready":
             delivery = "pending"
         if current["cancel_requested_at"] or current["stop_id"]:
             delivery = "suppressed"

@@ -155,6 +155,17 @@ def _evidence(workspace, runtime: ToolRuntime, records: list[dict]):
     artifacts = []
     summaries = []
     io = ImageWorkspace(workspace.root)
+    from runtime_service.workspace.target import RemoteWorkspace
+
+    if isinstance(workspace.root, RemoteWorkspace):
+        return workspace.root.call(
+            "research_evidence",
+            records=records,
+            tool_call_id=runtime.tool_call_id,
+            thread_id=info.thread_id,
+            run_id=info.run_id,
+            namespace=info.checkpoint_ns,
+        )
     directory = io._directory(("sources",), create=True)
     try:
         for record in records:

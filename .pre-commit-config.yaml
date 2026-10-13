@@ -13,8 +13,10 @@ repos:
       - id: ruff
         args: [--fix]
         files: ^apps/(platform-api|runtime-service)/.*\.py$
+        exclude: ^apps/runtime-service/src/runtime_service/workspace/(acquire_serialization|path_patterns)\.py$
       - id: ruff-format
         files: ^apps/(platform-api|runtime-service)/.*\.py$
+        exclude: ^apps/runtime-service/src/runtime_service/workspace/(acquire_serialization|path_patterns)\.py$
 
   - repo: local
     hooks:

@@ -9,7 +9,6 @@ from uuid import uuid4
 import fitz
 from langchain_core.tools import ToolException
 
-from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.file_refs import (
     MAX_FILE_BYTES,
     MIME_EXT,
@@ -17,6 +16,7 @@ from runtime_service.workspace.file_refs import (
     validate_file_path,
     validate_file_ref,
 )
+from runtime_service.workspace.image_io import ImageWorkspace
 
 
 class DocumentError(ToolException):
@@ -101,6 +101,10 @@ class DocumentWorkspace:
         self.io = ImageWorkspace(root)
 
     def read(self, path: str) -> tuple[bytes, FileRef]:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.io.root, RemoteWorkspace):
+            return tuple(self.io.root.call("document.read", path=path))
         try:
             digest, ext = validate_file_path(path)
         except ValueError:
@@ -126,6 +130,12 @@ class DocumentWorkspace:
     def put(
         self, data: bytes, digest: str, mime: str, name: str | None = None
     ) -> FileRef:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.io.root, RemoteWorkspace):
+            return self.io.root.call(
+                "document.put", data=data, digest=digest, mime=mime, name=name
+            )
         ext = MIME_EXT.get(mime)
         if ext is None:
             raise DocumentError("unsupported_file_type", 415)

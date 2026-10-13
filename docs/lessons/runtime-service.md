@@ -122,6 +122,24 @@
 
 ---
 
+## [坑] 远端 Docker 不能只改 DOCKER_HOST
+
+- **场景：** Runtime 与 Docker daemon 分属不同宿主机，保留本地开发并接入远端沙箱。
+- **错误：** 仅替换 DOCKER_HOST，继续用 Runtime 本机 Path 读写文件；bind mount 的源路径实际属于 daemon 宿主机，导致附件、技能、产物或恢复链路失效。
+- **正确：** 将执行和文件操作统一路由到持久绑定的 Sandbox Node，Node 使用本机 socket 与本机 Workspace；unknown 只回查原操作 ID，禁止换节点或回退重放。
+- **日期：** 2026-10-13；用户批准沉淀，设计与验证见[远端沙箱专项](../projects/20261012-runtime-remote-docker-sandbox/README.md)。
+
+---
+
+## [坑] 容器与数据必须分开回收
+
+- **场景：** 用户结束运行、空闲容器退场，之后重开同一 Thread 恢复文件。
+- **错误：** 将删除容器等同于删除 Workspace，或在恢复时自动创建空目录掩盖原数据缺失。
+- **正确：** 容器按租约与任务状态回收，Workspace 独立保留；retained、unknown、未确认日志或回执保护数据，精确清理须核对归属与未决资源；恢复只挂载已存在目录，旧 PTY 进程内存不恢复。
+- **日期：** 2026-10-13；用户批准沉淀，生命周期与恢复证据见[远端沙箱专项](../projects/20261012-runtime-remote-docker-sandbox/verification.md)。
+
+---
+
 ## [坑] 序号分配顺序不等于事务提交顺序
 
 - **场景：** 数据库使用自增序列维护脏数据标记或操作版本日志，后台异步任务批量消费并清理低水位记录。

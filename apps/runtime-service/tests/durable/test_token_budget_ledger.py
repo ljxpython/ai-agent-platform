@@ -125,6 +125,10 @@ def test_old_runtime_reads_extended_ledger_and_preserves_budget_facts(
     scope = identity()
     repo.begin_collection(scope, {"version": 1, "max_tokens": 10, "warn_at_tokens": 8})
     repo.finish_collection(scope, False, "token_budget_exhausted")
+    with psycopg.connect(ledger_dsn) as connection:
+        original_head = connection.execute(
+            "SELECT version_num FROM runtime_app_alembic_version"
+        ).fetchall()
     archive = subprocess.check_output(
         ["rtk", "proxy", "git", "archive", "HEAD", "apps/runtime-service/src"],
         cwd=Path(__file__).resolve().parents[4],
@@ -172,9 +176,12 @@ assert result['token_budget']['stop_code'] == 'token_budget_exhausted', result
     )
     assert result.returncode == 0, result.stderr
     with psycopg.connect(ledger_dsn) as connection:
-        assert connection.execute(
-            "SELECT version_num FROM runtime_app_alembic_version"
-        ).fetchall() == [("0005_usage_projection",)]
+        assert (
+            connection.execute(
+                "SELECT version_num FROM runtime_app_alembic_version"
+            ).fetchall()
+            == original_head
+        )
     snapshot = repo.read_budget(scope)
     assert snapshot["policy"]["max_tokens"] == 10
     assert snapshot["stop_code"] == "token_budget_exhausted"

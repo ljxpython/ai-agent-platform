@@ -1,0 +1,50 @@
+{
+  "mode": "public-remote-node-controlled-image-provider-real-chart",
+  "image_provider_controlled": true,
+  "checks": [
+    {
+      "name": "generated-public-bytes",
+      "passed": true,
+      "ref": {
+        "path": "/workspace/generated/1459e339d2e7447dab7bdb5bdb0b0d66.png",
+        "sha256": "36fe6ab71ec56fa1fc84326e4673fbf028c6ad2eb5051ce5a9e6cb0d07c85f4c",
+        "mime_type": "image/png",
+        "size_bytes": 77
+      }
+    },
+    {
+      "name": "edited-public-bytes",
+      "passed": true,
+      "ref": {
+        "path": "/workspace/generated/d0332a156f9e4fc2a6316cc568362867.png",
+        "sha256": "9fa0f2ae2b655c877690c6ed5649dad9f248147f7e21d0f8011636c20d627162",
+        "mime_type": "image/png",
+        "size_bytes": 75
+      }
+    }
+  ],
+  "operations": {
+    "generation": {
+      "id": "4ba8867bb5bb4b8aa677ea871f0cf3da",
+      "status": "completed",
+      "seconds": 0.342
+    },
+    "edit": {
+      "id": "84726633b61b413bbdfc8220a2484098",
+      "status": "completed",
+      "seconds": 0.033
+    },
+    "vision": {
+      "id": "c1769b52645f4000a82843bc3cc747e1",
+      "status": "submitted_once"
+    }
+  },
+  "status": "failed",
+  "thread_id": "be4c4fbe-6985-4ca8-a224-dab4c290570b",
+  "failure_type": "ToolException",
+  "thread_delete_status": 200,
+  "cleanup": {
+    "status": "deleting",
+    "eligible": false
+  }
+}

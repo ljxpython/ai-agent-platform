@@ -1,0 +1,191 @@
+{
+  "mode": "remote-public-platform",
+  "results": [
+    {
+      "name": "public-fork-isolation-and-exact-grace-cleanup",
+      "passed": true,
+      "seconds": 1.814,
+      "facts": {
+        "fork_thread": "eae34efc-a589-4f18-a81e-d6fd397eccf0",
+        "source_unchanged": true,
+        "grace_apply_refused": true
+      }
+    },
+    {
+      "name": "public-actual-share-revocation",
+      "passed": true,
+      "seconds": 0.621,
+      "facts": {
+        "shared_download_hash": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+        "revoked_statuses": [
+          403,
+          403,
+          403,
+          403,
+          403,
+          403
+        ]
+      }
+    },
+    {
+      "name": "public-api-success-performance-and-mixed-two-slots",
+      "passed": true,
+      "seconds": 7.874,
+      "facts": {
+        "success_metrics": {
+          "read": {
+            "n": 12,
+            "failures": 0,
+            "p50_ms": 127.77,
+            "p95_ms": 146.8
+          },
+          "preview": {
+            "n": 12,
+            "failures": 0,
+            "p50_ms": 126.6,
+            "p95_ms": 157.2
+          },
+          "tree": {
+            "n": 12,
+            "failures": 0,
+            "p50_ms": 126.72,
+            "p95_ms": 137.57
+          },
+          "two_terminal_cleanup_ms": 654.12
+        },
+        "two_slots_mixed_reads": 16,
+        "third_before_effect": true
+      }
+    },
+    {
+      "name": "public-real-model-parallel-upload-and-foreground-stop",
+      "passed": true,
+      "facts": {
+        "parallel_task_results": 2,
+        "parallel_parent_run_id": "35b0199f-a4b6-4651-84ec-f85b0498e545",
+        "concurrent_upload": true,
+        "thread_id": "a3af065b-6063-4c24-b035-df5d6d0d4cff",
+        "stop_id": "d1c35fec-d1fe-4b84-abf4-6f505964d92a",
+        "stop_phase": "stopped",
+        "cleanup": "confirmed",
+        "side_effect_count": 1,
+        "deleted_thread_interrupt_history_protected": true
+      },
+      "recovered_by": "Original Run, resource and Stop IDs; no command resubmission"
+    }
+  ],
+  "operations": {
+    "parallel-children": {
+      "thread": "a3af065b-6063-4c24-b035-df5d6d0d4cff",
+      "key": "public-joint-5f0bea07693047cc83fa92aa76864743",
+      "body": {
+        "assistant_id": "dearflow_agent",
+        "input": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "\u540c\u65f6\u59d4\u6d3e\u4e24\u4e2a general-purpose \u5b50\u667a\u80fd\u4f53\uff0c\u5206\u522b\u7528 read_file \u8bfb\u53d6 /workspace/uploads/035667f5ab532501459eaf0ceb96493f72f28f6795563c62aea77cc0ac6c93c5.txt \u5e76\u8fd4\u56de\u539f\u6587\uff0c\u7981\u6b62\u641c\u7d22\u3001execute\u3001\u5199\u6587\u4ef6\u3002\u7236\u56fe\u53ea\u6c47\u603b\u8fd9\u4e24\u6761\u7ed3\u679c\u3002"
+            }
+          ]
+        }
+      },
+      "run_id": "35b0199f-a4b6-4651-84ec-f85b0498e545"
+    },
+    "foreground-stop": {
+      "thread": "a3af065b-6063-4c24-b035-df5d6d0d4cff",
+      "key": "public-joint-df46fe4057e542698e68ff9042748a73",
+      "body": {
+        "assistant_id": "dearflow_agent",
+        "input": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "\u53ea\u8c03\u7528\u4e00\u6b21 execute\uff0c\u539f\u6837\u547d\u4ee4 printf stopped-once >> \"$RUNTIME_WORKSPACE_ROOT/work/stop-once\"; sleep 45\uff0c\u7b49\u5f85\u7ed3\u679c\u3002\u7981\u6b62\u5176\u4ed6\u5de5\u5177\u6216\u91cd\u590d\u6267\u884c\uff0c\u9075\u5b88\u5ba1\u6279\u3002"
+            }
+          ]
+        }
+      },
+      "run_id": "b0ea16d3-d7c0-4c04-bb37-0f0105cf1d92",
+      "approval_run_id": "8014928f-7685-4246-baf8-ce064188c41a"
+    }
+  },
+  "created_threads": [
+    "eae34efc-a589-4f18-a81e-d6fd397eccf0",
+    "a3af065b-6063-4c24-b035-df5d6d0d4cff"
+  ],
+  "errors": [
+    {
+      "type": "AssertionError",
+      "message": "{\"error\":{\"code\":\"langgraph_upstream_request_failed\",\"message\":\"Runtime request failed\",\"details\":[],\"extra\":{\"upstream\":\"langgraph\",\"upstream_status_code\":500}},\"request_id\":\"10193bb6965b46b1a2487ad82c89a0ae\"}"
+    },
+    {
+      "type": "AttributeError",
+      "message": "'NoneType' object has no attribute 'get'"
+    },
+    {
+      "type": "DocumentError",
+      "message": "workspace_cleanup_protected"
+    }
+  ],
+  "acl_user_id": "564abc41-6d8b-4ee7-be34-1d7507109b29",
+  "status": "passed",
+  "capacity_request_id": "923fd3ad-b1bc-4fca-8825-eae7e151aeb3",
+  "stop_cancel_key": "joint-cancel-c84bcffe680c40df91d7b14e2128ce27",
+  "stop_receipt": {
+    "version": 1,
+    "stop_id": "00df60c0-cf9f-4fd2-b855-982019e0bb20",
+    "thread_id": "a3af065b-6063-4c24-b035-df5d6d0d4cff",
+    "phase": "accepted",
+    "requested_at": "2026-10-13T09:35:40.107317+08:00",
+    "accepted_at": null,
+    "confirmed_at": null,
+    "target_count": null,
+    "execution_stopped": null,
+    "resource_cleanup": "pending",
+    "has_pending_interrupts": null,
+    "queue": {
+      "pending_cancelled_count": null,
+      "inbox_consumed_count": null,
+      "inbox_not_consumed_count": null
+    },
+    "report": null,
+    "reason_code": null,
+    "request_id": "c7278f8921ac48e8be6faadf3902b36f"
+  },
+  "stop_approvals": {
+    "236497a73044b366f0677a17938f0743": {
+      "key": "joint-stop-approval-892deab78b03419f8c881d1dcf4d1385",
+      "body": {
+        "236497a73044b366f0677a17938f0743": {
+          "decisions": [
+            {
+              "type": "approve"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "active_stop_cancel_key": "joint-cancel-1c81428945cf4a379b69955806c83377",
+  "active_stop_receipt": {
+    "version": 1,
+    "stop_id": "d1c35fec-d1fe-4b84-abf4-6f505964d92a",
+    "thread_id": "a3af065b-6063-4c24-b035-df5d6d0d4cff",
+    "phase": "accepted",
+    "requested_at": "2026-10-13T09:38:49.437963+08:00",
+    "accepted_at": null,
+    "confirmed_at": null,
+    "target_count": null,
+    "execution_stopped": null,
+    "resource_cleanup": "pending",
+    "has_pending_interrupts": null,
+    "queue": {
+      "pending_cancelled_count": null,
+      "inbox_consumed_count": null,
+      "inbox_not_consumed_count": null
+    },
+    "report": null,
+    "reason_code": null,
+    "request_id": "8b85aa2a70a14d48bbd878c486cf8167"
+  }
+}

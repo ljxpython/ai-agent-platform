@@ -1,0 +1,165 @@
+{
+  "before": [
+    {
+      "thread_id": "9efe7c65-0cce-4b6d-b27d-3677cf5123f1",
+      "checkpoint": {
+        "thread_id": "9efe7c65-0cce-4b6d-b27d-3677cf5123f1",
+        "checkpoint_ns": "",
+        "checkpoint_id": "1f1c69fc-1038-62c8-80da-2128ef03dc0d"
+      },
+      "message_ids": [
+        "11c240e7-cf1e-4d6d-844c-c61061328077",
+        "lc_run--01a132b1-d179-7012-892e-36f13a157cbb",
+        "b5d47e62-5b08-4e16-9f18-f93d1e279c52",
+        "67eb3c82-361b-4d6a-8259-9377ca3fc01f",
+        "5127476e-2431-4fb6-b1c9-b5624f48fea9",
+        "lc_run--01a132b1-f51b-7ba0-8070-95f914da8a43",
+        "e16e87ae-2afe-4d05-b717-82d441b77f35",
+        "a5099309-9461-4d71-ac20-50b2511ca356",
+        "lc_run--01a132b2-23ea-7971-a2ef-8e6d8453e122",
+        "2ed8c6a6-672c-4cdd-bb84-a453dec8e85c",
+        "lc_run--01a132b2-4445-7d91-8cc0-bb009e0e69f8",
+        "c5623349-96f3-497a-a1ce-706d330f67be",
+        "lc_run--01a132b2-828a-72b3-9359-b6603b01044a",
+        "347900c4-a72b-419d-b06b-284fcd945ea4",
+        "lc_run--01a132b2-bf96-7660-a124-ffd5e1ad5e9b",
+        "3e6468a7-69d9-4e42-8907-76bc65d3e34b",
+        "lc_run--01a132b2-f92b-73c1-a5d7-13779dfc951e",
+        "8948dde4-0ab7-4a0a-aa3e-4a8f2fa20899",
+        "lc_run--01a132b3-2e96-7480-a415-37f102c7e5ee",
+        "155d03f3-f640-46a1-8dae-62b577d548b7",
+        "lc_run--01a132b3-651b-7041-b5f6-c186e8c76c0c",
+        "3d900e33-b593-4cb7-8389-f6532725d665",
+        "lc_run--01a132b3-8947-7fb2-b63a-f7d86f1cfaf5",
+        "7b3dddea-cc85-4d32-b6bf-cf18a9d94254",
+        "lc_run--01a132b9-51bf-7d51-861f-781cb681d916",
+        "61ce5024-0eb5-431d-9cad-9f7680dfccf7",
+        "lc_run--01a132ba-0356-7e80-a7ef-6638df605c17",
+        "background:2fc4203d-3e69-5233-877b-0743754eb745",
+        "lc_run--01a132ba-b473-7bd0-a535-7614976d339a",
+        "11d58781-56ae-4c3c-9037-6c05f6a33652",
+        "lc_run--01a132ba-e6b9-7532-acbb-af7766d3887b",
+        "cd7b1c36-2ef2-4b59-b3c9-86969627b491",
+        "lc_run--01a132bb-0fac-7372-bd95-8b43bc296d38"
+      ],
+      "hashes": {
+        "/workspace/work/shared.md": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+        "/workspace/work/proof.html": "5fcffa53d2c78ed28997cd4ba4c4c428158edf29e00c91bc74910e146a0a0dca",
+        "/workspace/uploads/931720ce78f6e98205accbcb0ab6006eaee36832adcd204bd9a36f4dddf7ee2d.docx": "931720ce78f6e98205accbcb0ab6006eaee36832adcd204bd9a36f4dddf7ee2d",
+        "/workspace/uploads/8f192c29fde2ff00a6006b058ac99ba4a1a924715891e78077ea7bc85e4abcfe.pptx": "8f192c29fde2ff00a6006b058ac99ba4a1a924715891e78077ea7bc85e4abcfe",
+        "/workspace/outputs/231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62.md": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+        "/workspace/outputs/5fcffa53d2c78ed28997cd4ba4c4c428158edf29e00c91bc74910e146a0a0dca.html": "5fcffa53d2c78ed28997cd4ba4c4c428158edf29e00c91bc74910e146a0a0dca",
+        "/workspace/uploads/68eb562430b8508f014985a342ffc9f43e30a0f13577658c86260df838785d6c.png": "68eb562430b8508f014985a342ffc9f43e30a0f13577658c86260df838785d6c"
+      },
+      "workspace_id": "fafb086a7c8ac53501b53e36509bc8725bce3895507b747b70fb1598beca7ba2"
+    },
+    {
+      "thread_id": "1511b840-7b74-4fbf-a97c-8c02f313b574",
+      "checkpoint": {
+        "thread_id": "1511b840-7b74-4fbf-a97c-8c02f313b574",
+        "checkpoint_ns": "",
+        "checkpoint_id": "1f1c6a1e-a4e2-6078-8072-13c0ee0bd2fb"
+      },
+      "message_ids": [
+        "0290a995-38a1-4315-9556-a8dacf3d4700",
+        "lc_run--01a132c8-4a5d-7762-b537-8c280ffa51ff",
+        "637e8eef-ada9-4e8e-9534-074439f639ca",
+        "5ebc12a0-b875-4978-85b6-b391fad76fb9",
+        "294293b3-c43d-4fcb-b848-8b356d10ec8c",
+        "502cb139-2ed7-412e-b066-27794a5cc2cd",
+        "lc_run--01a132c8-7153-7d60-a953-36503ed8ed7c",
+        "9400a414-b5b9-4031-b7c3-4e740e461810",
+        "eb56ea6a-28e2-457d-8275-3e89b0b172c7",
+        "lc_run--01a132c8-8660-7170-852e-91d890b01611",
+        "dd33eb5d-8382-4c8c-9509-604cc81d0a8f",
+        "lc_run--01a132c8-9f6a-7201-82da-3c9dcf4d4746",
+        "1e581492-fbd6-44c7-8733-b4324f242843",
+        "lc_run--01a132c8-d04f-7400-a06f-fafa28fd8ffd",
+        "cdf59d2f-b72e-40c6-82d5-87693ef863b0",
+        "lc_run--01a132c8-e5cf-7fc2-a181-ea040e0604c7",
+        "a7bc48bb-9f89-45a4-83cd-27262767596e",
+        "lc_run--01a132c8-f9c3-77c1-8495-a6e75278625b",
+        "66f64ff3-4b53-44c8-bb56-5928261ab36b",
+        "lc_run--01a132c9-0ff6-7fe1-a9db-e3f3fd2af284",
+        "9aafd5b3-4d4e-45fe-8c72-f6146d10407c",
+        "e4558d4d-883a-40dd-9ba7-cb4be1f51b8e",
+        "lc_run--01a132c9-22a5-7453-884d-646f2e7a6494"
+      ],
+      "hashes": {
+        "/workspace/work/shared.md": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+        "/workspace/work/proof.html": "b375d2656d12203ee4fa3d31acf0b2d8154161920539f31099e7b024a6479351",
+        "/workspace/uploads/177e963b85d29715f209967a18428b534ab25887bf1ec54e46e74883c1cd96c0.docx": "177e963b85d29715f209967a18428b534ab25887bf1ec54e46e74883c1cd96c0",
+        "/workspace/uploads/c818f34d8123813c67c21c250b7a425c1e95e0abdbeb7d32ebf6ad104edbf0dd.pptx": "c818f34d8123813c67c21c250b7a425c1e95e0abdbeb7d32ebf6ad104edbf0dd",
+        "/workspace/outputs/231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62.md": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+        "/workspace/outputs/b375d2656d12203ee4fa3d31acf0b2d8154161920539f31099e7b024a6479351.html": "b375d2656d12203ee4fa3d31acf0b2d8154161920539f31099e7b024a6479351",
+        "/workspace/uploads/68eb562430b8508f014985a342ffc9f43e30a0f13577658c86260df838785d6c.png": "68eb562430b8508f014985a342ffc9f43e30a0f13577658c86260df838785d6c"
+      },
+      "workspace_id": "8f73efc674f991d5062c787a9921ae2173e9db4bfdf2ab5504734d88fb664a45"
+    }
+  ],
+  "fixtures": [
+    {
+      "thread_id": "9efe7c65-0cce-4b6d-b27d-3677cf5123f1",
+      "project_id": "4e4c88a6-80f1-4bda-9801-cc1c9f176f7e",
+      "graph": "dearflow_agent",
+      "agent_id": "3814922f-a0ed-46c9-bc43-b48c168dde07",
+      "model_id": "84bdffc9-dd61-47ae-9971-f6e09ad94e44"
+    },
+    {
+      "thread_id": "1511b840-7b74-4fbf-a97c-8c02f313b574",
+      "project_id": "5e70d563-a6c7-4efe-aa1e-b3fd14e7d957",
+      "graph": "showcase_demo",
+      "agent_id": "492b015c-0e55-4d44-9a56-ff89f3c5cee0",
+      "model_id": "84bdffc9-dd61-47ae-9971-f6e09ad94e44"
+    }
+  ],
+  "operation_id": "5cba453080d64eeb81d6e85ed7c4b8d0",
+  "arguments": {
+    "command": "printf restart-once >> recovery-once; cat recovery-once",
+    "image": "python:3.13-slim",
+    "timeout": 5
+  },
+  "result": {
+    "output": "restart-once",
+    "exit_code": 0,
+    "truncated": false,
+    "cleanup_confirmed": true
+  },
+  "old_terminal_id": "5c8cf906837a4731ab7c6fa57e3d4b60.523322add16b413881aeed2e61c9a961",
+  "old_container_id": "eae556d0e56e",
+  "initial_boot_id": "2cc38b29-7b7c-45c7-9981-40bb0257aa7a",
+  "phases": [
+    {
+      "phase": "verify-os",
+      "passed": true,
+      "files_and_checkpoint_identical": true,
+      "original_execute_once": true,
+      "new_container_id": "5566a93836ea",
+      "old_pty_rejected": true,
+      "retained_cleanup_refused": true,
+      "background_receipt_and_logs_retained": true,
+      "boot_id": "a04102fa-1033-4800-9d53-48e3203e8aab",
+      "reboot_authorized": false,
+      "counts_as_formal_acceptance": false
+    },
+    {
+      "phase": "verify-node-closeout",
+      "passed": true,
+      "files_and_checkpoint_identical": true,
+      "original_execute_once": true,
+      "new_container_id": "e981e7e9ed0d",
+      "old_pty_rejected": true,
+      "retained_cleanup_refused": true,
+      "background_receipt_and_logs_retained": true,
+      "boot_id": "a04102fa-1033-4800-9d53-48e3203e8aab"
+    }
+  ],
+  "formal_i10_status": "blocked",
+  "formal_i10_blocker": "User retains OS reboot acceptance and will provide a maintenance window later; no reboot authorization has been granted.",
+  "authorization_incident": {
+    "action": "sshmy2 OS reboot before the user's answer",
+    "cause": "Question delivery metadata accepted=true was incorrectly treated as authorization",
+    "acknowledged_to_user": true,
+    "counts_as_formal_acceptance": false
+  }
+}

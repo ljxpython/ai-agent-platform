@@ -1,5 +1,7 @@
 # Runtime-Service Container Deployment
 
+单节点远端 Docker 沙箱的三模式配置、HTTPS+mTLS、systemd、生命周期与回退见[沙箱运行手册](../../../docs/runbooks/runtime-sandbox-node.md)。API / Worker 与 Docker daemon 同机的约束仅适用于本地 Docker 目标；remote 目标由 Node 在 daemon 本机操作持久目录。公网验收状态见[专项验证](../../../docs/projects/20261012-runtime-remote-docker-sandbox/verification.md)。
+
 文档类型：`Planned Delivery Guide`
 
 本文描述的是 `apps/runtime-service` 的单应用镜像交付面。API、Worker、PostgreSQL 和 Redis

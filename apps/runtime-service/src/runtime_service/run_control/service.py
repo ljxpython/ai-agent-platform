@@ -156,6 +156,14 @@ async def _advance_claim(row):
         saver = get_checkpointer()
         if not await _settle_inbox(row, saver):
             return await asyncio.to_thread(repository.save_stop, row, phase="stopping")
+        from runtime_service.run_control.resources import reconcile_remote_resources
+
+        await asyncio.to_thread(
+            reconcile_remote_resources,
+            row["thread_id"],
+            [target["run_id"] for target in current["targets"]],
+            cancel=True,
+        )
         report = await build_report(row, saver)
         phase = "stopped" if current["target_count"] else "no_active_run"
         if report["resource_cleanup"] in {"pending", "unconfirmed"}:
@@ -222,6 +230,9 @@ async def _reconcile_loop():
     while True:
         try:
             await advance_stop()
+            from runtime_service.run_control.resources import reconcile_remote_resources
+
+            await asyncio.to_thread(reconcile_remote_resources)
         except Exception as exc:
             logger.warning("Stop recovery unavailable kind=%s", type(exc).__name__)
         await asyncio.sleep(1)

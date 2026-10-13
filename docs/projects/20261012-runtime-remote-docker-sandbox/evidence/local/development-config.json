@@ -1,0 +1,18 @@
+{
+  "runtime_env_matches_baseline": true,
+  "backend": "local",
+  "docker_test_overrides_removed": true,
+  "permissions": "0600",
+  "platform_database_diagnostics_removed": true,
+  "note": "API HTTP 200 and worker process owned by this Worktree; no shared infrastructure stopped",
+  "runtime_api_ready": true,
+  "runtime_worker_restarted": true,
+  "restart_readiness_exceeded_120s": true,
+  "local_backend": "local",
+  "platform_health": true,
+  "rotated_delegation_authenticated_thread_search_status": 200,
+  "elapsed_seconds": 1.83,
+  "fixture_cleanup_status": 200,
+  "local_delegation_key_rotated": true,
+  "runtime_worker_ownership_verified": true
+}

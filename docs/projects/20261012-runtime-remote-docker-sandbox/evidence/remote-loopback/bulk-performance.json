@@ -1,0 +1,15 @@
+{
+  "bytes": 10485750,
+  "upload_seconds": 5.847699588019168,
+  "download_seconds": 5.601423854997847,
+  "rss_before": {
+    "runtime": 229654528,
+    "node": 216686592
+  },
+  "rss_after": {
+    "runtime": 292573184,
+    "node": 326975488
+  },
+  "readiness_and_read_max_seconds": 0.6720778709859587,
+  "mode": "remote-loopback"
+}

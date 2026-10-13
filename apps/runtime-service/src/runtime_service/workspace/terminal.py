@@ -22,9 +22,12 @@ from uuid import uuid4
 
 from langchain_core.tools import ToolException
 
-from runtime_service.tools.images import ImageWorkspace
+from runtime_service.workspace.docker_policy import (
+    docker_workspace_args,
+    runtime_backend,
+)
 from runtime_service.workspace.documents import DocumentError
-from runtime_service.workspace.execution import docker_workspace_args, runtime_backend
+from runtime_service.workspace.image_io import ImageWorkspace
 from runtime_service.workspace.scoped import resolve_thread_workspace
 
 BUFFER_BYTES = 1024 * 1024
@@ -39,7 +42,7 @@ def terminal_enabled() -> bool:
 
 
 class TerminalSession:
-    def __init__(self, identifier, owner, request_id, rows, cols):
+    def __init__(self, identifier, owner, request_id, rows, cols, *, node=None):
         self.id, self.owner, self.request_id = identifier, owner, request_id
         self.created = self.last_input = time.monotonic()
         self.finished = None
@@ -52,9 +55,18 @@ class TerminalSession:
         self.process = None
         self.fd = None
         self.container = None
+        self.node_cleanup = node.get("cleanup") if node else None
         self.rows, self.cols = rows, cols
         tenant, project, thread, graph, _ = owner
-        self.root = resolve_thread_workspace(tenant, project, thread, graph)
+        self.root = (
+            node["root"]
+            if node
+            else resolve_thread_workspace(tenant, project, thread, graph)
+        )
+        self.docker_command = (
+            node["docker_command"] if node else [shutil.which("docker") or "docker"]
+        )
+        self.docker_environment = node["environment"] if node else None
         try:
             self.backend = runtime_backend()
         except ValueError as exc:
@@ -79,7 +91,12 @@ class TerminalSession:
             "ENV": "/dev/null",
         }
         command = ["/bin/sh", "-i"]
-        if self.backend == "docker":
+        if node:
+            self.backend = "docker"
+            self.container = node["container"]
+            command = node["command"]
+            env.update(node["environment"])
+        elif self.backend == "docker":
             docker = shutil.which("docker")
             if not docker:
                 raise DocumentError("terminal_docker_unavailable", 503)
@@ -283,7 +300,7 @@ class TerminalSession:
                 try:
                     result = subprocess.run(
                         [
-                            shutil.which("docker") or "docker",
+                            *self.docker_command,
                             "exec",
                             self.container,
                             "stty",
@@ -295,6 +312,7 @@ class TerminalSession:
                             str(cols),
                         ],
                         capture_output=True,
+                        env=self.docker_environment,
                         timeout=5,
                         check=False,
                     )
@@ -335,14 +353,18 @@ class TerminalSession:
                 pass
             if self.container:
                 try:
+                    if self.node_cleanup:
+                        self.node_cleanup()
+                        return self.describe()
                     result = subprocess.run(
                         [
-                            shutil.which("docker") or "docker",
+                            *self.docker_command,
                             "rm",
                             "-f",
                             self.container,
                         ],
                         stdout=subprocess.DEVNULL,
+                        env=self.docker_environment,
                         stderr=subprocess.DEVNULL,
                         timeout=10,
                         check=False,
@@ -370,6 +392,30 @@ class TerminalManager:
         self.janitor = None
 
     def create(self, owner, request_id, rows, cols):
+        from runtime_service.workspace.target import sandbox_target
+
+        if type(self) is TerminalManager and sandbox_target() == "remote":
+            from runtime_service.workspace.remote_backend import RemoteWorkspaceBackend
+            from runtime_service.workspace.remote_terminal import terminal_workspace
+
+            workspace = RemoteWorkspaceBackend(terminal_workspace(owner))
+            workspace.prepare()
+            workspace.publish_skills([])
+            return workspace.root.call(
+                "terminal.create",
+                owner=owner[-1],
+                request_id=request_id,
+                rows=rows,
+                cols=cols,
+                skills=workspace.skills_root.digest,
+                image=(
+                    os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim")
+                    if owner[3] == "showcase_demo"
+                    else os.getenv(
+                        "RUNTIME_WORKSPACE_IMAGE", "runtime-agent-workspace:p5"
+                    )
+                ),
+            )
         if not terminal_enabled():
             raise DocumentError("terminal_disabled", 409)
         with self.lock:
@@ -384,7 +430,7 @@ class TerminalManager:
             ):
                 raise DocumentError("terminal_session_limit", 429)
             identifier = self.instance + "." + uuid4().hex
-            session = TerminalSession(identifier, owner, request_id, rows, cols)
+            session = self.create_session(identifier, owner, request_id, rows, cols)
             self.sessions[identifier] = session
             if self.janitor is None:
                 self.stop.clear()
@@ -394,7 +440,16 @@ class TerminalManager:
                 self.janitor.start()
             return session.describe()
 
+    def create_session(self, identifier, owner, request_id, rows, cols):
+        return TerminalSession(identifier, owner, request_id, rows, cols)
+
     def get(self, owner, identifier):
+        from runtime_service.workspace.target import sandbox_target
+
+        if type(self) is TerminalManager and sandbox_target() == "remote":
+            from runtime_service.workspace.remote_terminal import RemoteTerminalSession
+
+            return RemoteTerminalSession(owner, identifier)
         with self.lock:
             if not identifier.startswith(self.instance + "."):
                 raise DocumentError("terminal_instance_changed", 409)
@@ -404,6 +459,12 @@ class TerminalManager:
             return session
 
     def list(self, owner):
+        from runtime_service.workspace.target import sandbox_target
+
+        if type(self) is TerminalManager and sandbox_target() == "remote":
+            from runtime_service.workspace.remote_terminal import terminal_workspace
+
+            return terminal_workspace(owner).call("terminal.list", owner=owner[-1])
         with self.lock:
             return {
                 "items": [

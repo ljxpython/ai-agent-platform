@@ -232,10 +232,16 @@ def configs(root: Path, entry: dict) -> tuple[dict[str, str], dict[str, str]]:
         (runtime, expected_runtime),
         (platform, expected_platform),
     ):
-        if any(values.get(key) != value for key, value in expected.items()):
+        if any(
+            values.get(key) != value
+            for key, value in expected.items()
+            if key != "RUNTIME_BACKEND"
+        ):
             raise ValueError(
                 "Worktree resource addresses differ from the registered environment"
             )
+    if runtime.get("RUNTIME_BACKEND", "local") not in {"local", "docker"}:
+        raise ValueError("RUNTIME_BACKEND must be local or docker")
     for key, value in (
         ("runtime", runtime.get("DATABASE_URI", "")),
         ("platform", platform.get("PLATFORM_API_DATABASE_URL", "")),

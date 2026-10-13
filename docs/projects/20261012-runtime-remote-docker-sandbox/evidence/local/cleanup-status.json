@@ -1,0 +1,11 @@
+{
+  "thread_id": "c1b0e316-421c-4a3d-b4f8-003735bc4ebf",
+  "project_id": "35878831-14b4-4a8d-870c-a3401f465359",
+  "public_delete_status": 404,
+  "cleanup_confirmed": true,
+  "method": "exact isolated fixture after read-only ownership and no-work verification",
+  "runtime_thread_absent": true,
+  "workspace_removed": true,
+  "binding_status": "purged",
+  "completed_at": "2026-10-12T22:24:52.183664+00:00"
+}

@@ -43,6 +43,11 @@ class ExecutionSkillsMiddleware(SkillsMiddleware):
             or not re.fullmatch(r"skills-[0-9a-f]{64}", ref.get("directory", ""))
         ):
             raise RuntimeAuthError("runtime.skill.snapshot_missing")
+        from runtime_service.workspace.remote_backend import RemoteWorkspaceBackend
+
+        if isinstance(self.workspace, RemoteWorkspaceBackend):
+            self.workspace.restore_skills(ref)
+            return
         root = self.workspace.root.parent / ref["directory"]
         # ponytail: hash the bounded snapshot on access; cache only with an immutable storage guarantee.
         if (
@@ -60,6 +65,15 @@ class ExecutionSkillsMiddleware(SkillsMiddleware):
         if not run_id:
             raise RuntimeAuthError("runtime.skill.execution_required")
         self.workspace.prepare()
+        from runtime_service.workspace.remote_backend import RemoteWorkspaceBackend
+
+        if isinstance(self.workspace, RemoteWorkspaceBackend):
+            docs = (
+                SkillStorage().documents(scope, enabled_only=True)
+                if self.custom_enabled
+                else []
+            )
+            return self.workspace.publish_skills(docs, run_id=str(run_id))
         directory = self.workspace.root.parent / ".skill-executions"
         directory.mkdir(exist_ok=True)
         key = hashlib.sha256(str(run_id).encode()).hexdigest()

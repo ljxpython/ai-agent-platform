@@ -1,0 +1,120 @@
+{
+  "checked_at_utc": "2026-10-13T05:59:59.929620+00:00",
+  "scope": "read-only media closeout checks; not independent Final or formal I10",
+  "local_config": {
+    "RUNTIME_BACKEND": "local",
+    "RUNTIME_SANDBOX_TARGET": "local",
+    "RUNTIME_BACKGROUND_TASKS_ENABLED": "0"
+  },
+  "local_baseline_byte_equal": true,
+  "local_services_running": [
+    "runtime-api",
+    "runtime-worker",
+    "platform-api",
+    "platform-web",
+    "redis"
+  ],
+  "local_runtime_and_api_ready": true,
+  "private_files_600_and_ignored": 10,
+  "unresolved_background_count": 0,
+  "remote": {
+    "services": {
+      "docker.service": "active",
+      "runtime-sandbox-node.service": "active",
+      "site_total.service": "active"
+    },
+    "active_sandbox_container_count": 0,
+    "node_19111_listens": true,
+    "docker_tcp_listeners": 0,
+    "boot_id": "a04102fa-1033-4800-9d53-48e3203e8aab",
+    "image_hashes": {
+      "d82bb925248e782f7ff40ff13e9d8221cd89ad3897fd89e5c39bbee49429fcdf": "d98a5f95ecc771273de0bd9dc8abcb8906aec9695bfcdf13bcaf343545f593fa",
+      "43b4a9ab8f3768097cb6dda2547f3faccfc2c480c708f380ba961374aee3ae2a": "d98a5f95ecc771273de0bd9dc8abcb8906aec9695bfcdf13bcaf343545f593fa"
+    },
+    "installed_source_hashes": {
+      "workspace/acquire_serialization.py": "8cfed7b1aa098be5bb376f459247f1d92636606ba45a9902d9d186570147f9d2",
+      "workspace/path_patterns.py": "09925243e0ef0ccf6380840f4ef55aa6b3f201ccf0989f818e2da6c0b16ec3fa",
+      "workspace/third_party/deerflow/LICENSE": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "workspace/third_party/deerflow/PROVENANCE.md": "a9118fb442e5ab2008768d6f423518e80425915fd5eb805a626221a775c22f69",
+      "workspace/image_io.py": "84e346a22dd1084fc083cfa3d11027725f76fca32c459b9932d1623ad66aa851",
+      "tools/images.py": "3b66efb136fef5981090f77b79558895f8c42f079bda1285087f7c1e6d1e74e4",
+      "services/dearflow_agent/tools/media.py": "33b1cddb2ace2c7e11ec91255175573f25a62d5f37bb9bde94452283337fbe3d"
+    },
+    "original_caller_policy_content_equal": true
+  },
+  "regression_database": {
+    "name": "wt_f58309b22539_sandbox_regression_9f139d6c",
+    "owner_and_comment_verified": true,
+    "retained_for_final": true
+  },
+  "vendor_and_license_hash_equal": true,
+  "latest_wheel_sha256_verified": true,
+  "secrets_scan": {
+    "checked_at_utc": "2026-10-13T06:14:19.276934+00:00",
+    "text_files": 182,
+    "private_values_compared": 25,
+    "includes_user_designated_image_key": true,
+    "known_public_defaults_and_path_keys_excluded": [
+      "PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD",
+      "RUNTIME_SANDBOX_NODE_AUTH_FILE",
+      "RUNTIME_SANDBOX_NODE_CA_FILE",
+      "RUNTIME_SANDBOX_NODE_CLIENT_CERT_FILE",
+      "RUNTIME_SANDBOX_NODE_CLIENT_KEY_FILE"
+    ],
+    "findings": []
+  },
+  "compileall_passed": true,
+  "no_os_reboot": true,
+  "formal_i10_status": "blocked",
+  "independent_final_executed": false,
+  "previous_checks": [
+    {
+      "checked_at_utc": "2026-10-13T03:58:23.716298+00:00",
+      "scope": "read-only closeout checks; not independent Final or formal I10"
+    }
+  ],
+  "media_tasks_readonly": [
+    {
+      "id": "a1ef89b7-0d2f-498d-83a5-6597ad6fa2e4",
+      "operation": "generate_image",
+      "status": "succeeded",
+      "attempts": 1,
+      "origin_run_id": "None",
+      "error_code": null,
+      "thread_id": "9696a5ec-227b-4050-9c88-08e75ae2a400"
+    },
+    {
+      "id": "334dfb59-38b2-4e3b-823e-831aabf056e9",
+      "operation": "edit_image",
+      "status": "unknown",
+      "attempts": 1,
+      "origin_run_id": "3fef33cc-5c2a-473b-a7a1-c90c87377566",
+      "error_code": "submission_or_delivery_unknown",
+      "thread_id": "9696a5ec-227b-4050-9c88-08e75ae2a400"
+    },
+    {
+      "id": "27218251-519e-465d-aae2-8a9d58b22bf2",
+      "operation": "edit_image",
+      "status": "unknown",
+      "attempts": 1,
+      "origin_run_id": "d8950b9c-6661-4c97-aa7f-970bc3f9d8bc",
+      "error_code": "submission_or_delivery_unknown",
+      "thread_id": "a2a06cbf-e152-49b9-8aab-d29cd9f58146"
+    }
+  ],
+  "media_workspaces_retained": true,
+  "media_private_files_600_and_ignored": 14,
+  "provider_response_retained": false,
+  "new_purchase_submitted_in_readonly_closeout": false,
+  "deployed_node_baseline_wheel_sha256": "d2060adc55be99ef77f89d189db055e15ae776e18e3efaa64e522b2bdef87738",
+  "runtime_caller_candidate_wheel_sha256": "6259790469c1bc3d26822a214c6232aecfe6bda6005e87190da7bb52a5eea383",
+  "runtime_caller_candidate_source_and_license_verified": true,
+  "media_related_compile_passed": true,
+  "media_related_ruff_check_and_format_passed": true,
+  "media_acceptance_status": {
+    "generation": "done",
+    "edit": "deferred",
+    "real_edit_result": "unknown"
+  },
+  "document_check_new_errors": []
+}

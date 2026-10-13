@@ -12,7 +12,6 @@ from pathlib import Path
 
 from langchain_core.tools import ToolException
 
-from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.artifact_refs import (
     ARTIFACT_MIMES,
     ArtifactWorkspace,
@@ -20,6 +19,7 @@ from runtime_service.workspace.artifact_refs import (
 )
 from runtime_service.workspace.documents import DocumentError
 from runtime_service.workspace.file_refs import MAX_FILE_BYTES
+from runtime_service.workspace.image_io import ImageWorkspace
 from runtime_service.workspace.media import validate_media
 from runtime_service.workspace.schemas import WorkspaceEntry, WorkspacePage
 
@@ -58,6 +58,18 @@ class WorkspaceBrowser:
         limit: int = 100,
         artifacts_only: bool = False,
     ) -> WorkspacePage:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.root, RemoteWorkspace):
+            return WorkspacePage.model_validate(
+                self.root.call(
+                    "browser.list",
+                    path=path,
+                    cursor=cursor,
+                    limit=limit,
+                    artifacts_only=artifacts_only,
+                )
+            )
         parts = path_parts(path)
         if not 1 <= limit <= 200:
             raise DocumentError("invalid_workspace_limit")
@@ -149,6 +161,10 @@ class WorkspaceBrowser:
             os.close(directory)
 
     def read_file(self, path: str) -> tuple[bytes, dict]:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.root, RemoteWorkspace):
+            return tuple(self.root.call("browser.read", path=path))
         parts = path_parts(path)
         if not parts:
             raise DocumentError("workspace_not_file", 415)
@@ -178,6 +194,10 @@ class WorkspaceBrowser:
         }
 
     def preview(self, path: str) -> tuple[bytes, str]:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.root, RemoteWorkspace):
+            return tuple(self.root.call("browser.preview", path=path))
         data, ref = self.read_file(path)
         kind = ref["preview_kind"]
         if kind == "download":
@@ -208,6 +228,10 @@ class WorkspaceBrowser:
         ).encode(), "application/json"
 
     def create_archive(self) -> tuple[bytes, str]:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.root, RemoteWorkspace):
+            return tuple(self.root.call("browser.archive"))
         import io
         import zipfile
 

@@ -24,7 +24,7 @@ from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_u
 from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.execution import runtime_backend
-from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_hash
+from runtime_service.workspace.scoped import resolve_thread_workspace, thread_scope_hash
 
 _PACKAGE = "runtime_service.services.demo.showcase_demo"
 
@@ -36,8 +36,9 @@ class _ThreadWorkspaceBackend(FilesystemBackend):
     def __init__(self, tenant_id: str, project_id: str, thread_id: str) -> None:
         self.scope = (tenant_id, project_id, thread_id)
         self._id = thread_scope_hash(tenant_id, project_id, thread_id)
-        base = os.getenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", ".runtime/showcase")
-        root = hashed_thread_root(base, tenant_id, project_id, thread_id)
+        root = resolve_thread_workspace(
+            tenant_id, project_id, thread_id, "showcase_demo"
+        ).parent
         if root.is_symlink():
             raise RuntimeAuthError("runtime.workspace.invalid_path")
         super().__init__(root_dir=root, virtual_mode=True)
@@ -136,6 +137,15 @@ class LocalWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
 
 
 def create_workspace(tenant_id: str, project_id: str, thread_id: str):
+    from runtime_service.workspace.target import sandbox_target
+
+    if sandbox_target() == "remote":
+        from runtime_service.workspace.remote_backend import RemoteWorkspaceBackend
+        from runtime_service.workspace.scoped import resolve_thread_workspace
+
+        return RemoteWorkspaceBackend(
+            resolve_thread_workspace(tenant_id, project_id, thread_id, "showcase_demo")
+        )
     try:
         kind = runtime_backend()
     except RuntimeWorkspaceError as exc:
@@ -148,12 +158,17 @@ def create_workspace(tenant_id: str, project_id: str, thread_id: str):
 
 def build_backend(workspace: _ThreadWorkspaceBackend | None) -> CompositeBackend:
     """Resource paths are package-relative; model-visible paths stay portable."""
+    from runtime_service.workspace.remote_backend import (
+        RemoteSkillsBackend,
+        RemoteWorkspaceBackend,
+    )
+
     return CompositeBackend(
-        default=workspace
-        if workspace is not None
-        else DockerWorkspaceBackend("probe", "probe", "probe"),
+        default=workspace if workspace is not None else StateBackend(),
         routes={
-            "/skills/": FilesystemBackend(
+            "/skills/": RemoteSkillsBackend(workspace)
+            if isinstance(workspace, RemoteWorkspaceBackend)
+            else FilesystemBackend(
                 root_dir=str(files(_PACKAGE).joinpath("skills")), virtual_mode=True
             ),
             "/conversation_history/": StateBackend(),

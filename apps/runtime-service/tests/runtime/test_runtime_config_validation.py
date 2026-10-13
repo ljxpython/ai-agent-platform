@@ -89,3 +89,66 @@ def test_token_budget_requires_usage_and_storage(tmp_path, monkeypatch, enabled)
     monkeypatch.setenv("RUNTIME_USAGE_ENABLED", enabled)
     monkeypatch.setenv("DATABASE_URI", "postgresql://test/test")
     assert module.validate(_write(tmp_path, _base())) == []
+
+
+def test_remote_config_fails_closed_and_local_needs_no_node(tmp_path, monkeypatch):
+    for key in list(module.os.environ):
+        if key.startswith(
+            ("RUNTIME_SANDBOX_", "RUNTIME_BACKEND", "RUNTIME_EXECUTION_HOST_ID")
+        ):
+            monkeypatch.delenv(key)
+    assert (
+        module.validate(
+            _write(
+                tmp_path,
+                _base(RUNTIME_BACKEND="local", RUNTIME_SANDBOX_TARGET="remote"),
+            )
+        )
+        == []
+    )
+    errors = module.validate(
+        _write(
+            tmp_path, _base(RUNTIME_BACKEND="docker", RUNTIME_SANDBOX_TARGET="remote")
+        )
+    )
+    assert any("Sandbox Node configuration" in error for error in errors)
+    assert any("DATABASE_URI" in error for error in errors)
+
+
+def test_remote_config_validates_project_env_without_local_docker(
+    tmp_path, monkeypatch
+):
+    from workspace.test_node_certificates import generator
+
+    from runtime_service.workspace.target import NodeConnection
+
+    root = tmp_path.resolve()
+    secrets = root / "secrets"
+    generator()(secrets, "127.0.0.1", "test-host", "127.0.0.1/32")
+    values = _base(
+        RUNTIME_BACKEND="docker",
+        RUNTIME_SANDBOX_TARGET="remote",
+        DATABASE_URI="postgresql://isolated/test",
+        RUNTIME_SANDBOX_NODE_URL="https://127.0.0.1:19111",
+        RUNTIME_SANDBOX_NODE_ID="test-node",
+        RUNTIME_EXECUTION_HOST_ID="test-host",
+        RUNTIME_SANDBOX_NODE_AUTH_FILE=str(secrets / "caller-token"),
+        RUNTIME_SANDBOX_NODE_CA_FILE=str(secrets / "ca.pem"),
+        RUNTIME_SANDBOX_NODE_CLIENT_CERT_FILE=str(secrets / "client.pem"),
+        RUNTIME_SANDBOX_NODE_CLIENT_KEY_FILE=str(secrets / "client-key.pem"),
+    )
+    for key in values:
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(module, "_settings", lambda path: values)
+    path = _write(root, values)
+    assert module.validate(path) == []
+    connection = NodeConnection.load(values)
+    assert connection.token not in repr(connection)
+    token = secrets / "caller-token"
+    token.chmod(0o644)
+    assert any("Sandbox Node configuration" in error for error in module.validate(path))
+    token.chmod(0o600)
+    values["RUNTIME_SANDBOX_NODE_URL"] = "http://127.0.0.1:19111"
+    assert any("Sandbox Node configuration" in error for error in module.validate(path))
+    values["RUNTIME_SANDBOX_NODE_URL"] = "https://127.0.0.1:99999"
+    assert any("Sandbox Node configuration" in error for error in module.validate(path))

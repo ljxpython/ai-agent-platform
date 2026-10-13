@@ -66,6 +66,35 @@ def fake_image_client(monkeypatch):
     return calls
 
 
+@pytest.mark.parametrize("operation", ["generate_image", "edit_image"])
+def test_provider_asset_download_failure_is_unknown_without_retry(
+    monkeypatch, tmp_path, operation
+):
+    calls = fake_image_client(monkeypatch)
+    monkeypatch.setenv("RUNTIME_IMAGE_ASSET_HOSTS", "approved.invalid")
+
+    async def returned_url(self, **kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            data=[
+                SimpleNamespace(
+                    b64_json=None, url="https://unapproved.invalid/private?token=CANARY"
+                )
+            ]
+        )
+
+    monkeypatch.setattr(images.AsyncOpenAI, "generate", returned_url)
+    monkeypatch.setattr(images.AsyncOpenAI, "edit", returned_url)
+    workspace = images.ImageWorkspace(tmp_path)
+    kwargs = {"prompt": "one authorized purchase"}
+    if operation == "edit_image":
+        kwargs["image_path"] = workspace.save(png(), "generated")
+    tools = {item.name: item for item in images.build_image_tools(workspace)}
+    with pytest.raises(ToolException, match="^image_submission_unknown$") as error:
+        asyncio.run(tools[operation].coroutine(**kwargs))
+    assert "CANARY" not in str(error.value) and len(calls) == 1
+
+
 @pytest.mark.parametrize("decision", ["approve", "reject"])
 def test_generate_requires_approval_without_platform_permission(
     build, monkeypatch, decision

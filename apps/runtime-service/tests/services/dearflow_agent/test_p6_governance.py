@@ -1017,7 +1017,7 @@ def test_migrations_idempotent_concurrent_and_preserve_data(dsn):
             db.execute(
                 "SELECT version_num FROM runtime_app_alembic_version"
             ).fetchone()["version_num"]
-            == "0001_application"
+            == "0008_sandbox_resource_binding"
         )
         assert (
             db.execute("SELECT to_regclass('dear_skill_versions') AS name").fetchone()[
@@ -1086,7 +1086,24 @@ def test_migration_failure_rolls_back_without_stamping(dsn):
 
     change(MemoryStorage(dsn), "save", 0, fact={"text": "preserved"})
     with connect(dsn) as db:
-        db.execute("DROP TABLE runtime_app_alembic_version, dear_skills")
+        schema = db.execute("SELECT current_schema() AS name").fetchone()["name"]
+        assert schema.startswith("dear_p6_")
+        tables = db.execute(
+            "SELECT tablename FROM pg_tables WHERE schemaname=%s "
+            "AND tablename <> 'dear_memory'",
+            (schema,),
+        ).fetchall()
+        for table in tables:
+            db.execute(
+                sql.SQL("DROP TABLE {} CASCADE").format(
+                    sql.Identifier(schema, table["tablename"])
+                )
+            )
+        db.execute(
+            "DROP FUNCTION runtime_usage_assign_slot(), "
+            "runtime_usage_merge_versions(text[], text[]), runtime_usage_mark_dirty() CASCADE"
+        )
+        db.execute("DROP SEQUENCE runtime_usage_projection_generation")
         db.execute(
             "ALTER TABLE dear_memory ALTER COLUMN document TYPE text USING document::text"
         )

@@ -41,8 +41,10 @@ def test_parallel_children_are_isolated_and_follow_parent_cancel(
 
         class Model(BindableFakeMessagesChatModel):
             async def _agenerate(self, messages, **kwargs):
-                assert (TIMEOUT_WRAPUP_INSTRUCTION in messages[0].text) == wrapup
                 human = next(m.content for m in messages if isinstance(m, HumanMessage))
+                assert (TIMEOUT_WRAPUP_INSTRUCTION in messages[0].text) == (
+                    wrapup and human == "parent-private-input"
+                )
                 if human == "parent-private-input":
                     result = (
                         AIMessage(content="done")

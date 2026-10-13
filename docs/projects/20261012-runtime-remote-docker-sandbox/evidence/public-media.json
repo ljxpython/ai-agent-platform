@@ -1,0 +1,18 @@
+{
+  "mode": "public-remote-node-real-image-chart-providers",
+  "checks": [],
+  "operations": {
+    "generation": {
+      "id": "58221f38d8ae44358c66f3bfb3ccb154",
+      "status": "submitted_once"
+    }
+  },
+  "status": "failed",
+  "thread_id": "e3575b80-38f4-4ac5-9d09-84893a8cff2f",
+  "failure_type": "ToolException",
+  "thread_delete_status": 200,
+  "cleanup": {
+    "status": "deleting",
+    "eligible": false
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "checked_at_utc": "2026-10-13T06:18:46.857516+00:00",
+  "scope": "changed/untracked Markdown links, anchors, tables, fences, sandbox progress and media evidence boundaries; Phase only",
+  "markdown_files": 24,
+  "local_links_checked": 439,
+  "markdown_anchors_checked": 9,
+  "tables_checked": 42,
+  "capabilities": [
+    "C01",
+    "C02",
+    "C03",
+    "C04",
+    "C05",
+    "C06",
+    "C07",
+    "C08",
+    "C09",
+    "C10",
+    "C11",
+    "C12",
+    "C13",
+    "C14",
+    "C15",
+    "C16",
+    "C17",
+    "C18"
+  ],
+  "completed_tasks": 13,
+  "phase_task_records": 13,
+  "remaining_tasks": [
+    "T13",
+    "T14",
+    "T15"
+  ],
+  "remaining_gate": "I10 maintenance window and explicit sshmy2 OS reboot authorization",
+  "generation_acceptance": "done",
+  "edit_acceptance": "deferred",
+  "new_errors": [],
+  "preexisting_missing_links": [
+    "apps/runtime-service/deploy/README.md:218: missing link ../../../docs/quickstart/deployment-guide.md",
+    "docs/FEATURES.md:36: missing link apps/platform-web/docs/changes/20260923-fix-zombie-clarification-on-thread-switch.md",
+    "docs/FEATURES.md:171: missing link quickstart/deployment-guide.md",
+    "docs/FEATURES.md:171: missing link quickstart/operator-handoff.md",
+    "docs/FEATURES.md:188: missing link apps/platform-web/docs/changes/20261007-prompt-queue-unconfirmed-deadlock-and-switch-healing.md"
+  ],
+  "repository_existing_local_path_errors": 42,
+  "independent_final_executed": false
+}

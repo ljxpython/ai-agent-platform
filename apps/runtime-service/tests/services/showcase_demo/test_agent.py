@@ -553,8 +553,11 @@ def test_bound_workspace_cannot_be_reused_by_another_tenant(build):
     asyncio.run(run())
 
 
-def test_probe_has_no_io_and_cannot_be_invoked(monkeypatch, tmp_path):
+@pytest.mark.parametrize("target", ["local", "remote"])
+def test_probe_has_no_io_and_cannot_be_invoked(monkeypatch, tmp_path, target):
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path / "absent"))
+    monkeypatch.setenv("RUNTIME_BACKEND", "docker")
+    monkeypatch.setenv("RUNTIME_SANDBOX_TARGET", target)
 
     def forbidden(*args, **kwargs):
         pytest.fail("Probe attempted external model/backend initialization")
@@ -562,6 +565,7 @@ def test_probe_has_no_io_and_cannot_be_invoked(monkeypatch, tmp_path):
     monkeypatch.setattr(agent, "build_model", forbidden)
     monkeypatch.setattr(agent, "fetch_model_bundle", forbidden)
     monkeypatch.setattr(DockerWorkspaceBackend, "prepare", forbidden)
+    monkeypatch.setattr(DockerWorkspaceBackend, "__init__", forbidden)
 
     async def run():
         graph = await agent.get_agent({})

@@ -1,0 +1,7 @@
+{
+  "runtime-prod": {
+    "certificate_cn": "runtime-prod",
+    "token_sha256": "REPLACE_WITH_SHA256_OF_A_RANDOM_32_BYTE_TOKEN",
+    "allowed_ips": ["203.0.113.10/32"]
+  }
+}

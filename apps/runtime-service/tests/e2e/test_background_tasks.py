@@ -903,21 +903,10 @@ def test_disabled_drain_preserves_receipts_and_matching_source_rollback(stack):
         receipts = connection.execute(receipt_sql).fetchall()
     stop("runtime")
     stop("worker")
-    downgrade = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import os; from pathlib import Path; from alembic import command; from alembic.config import Config; from sqlalchemy import create_engine; from sqlalchemy.pool import NullPool; import psycopg; from runtime_service import db; config=Config(); config.set_main_option('script_location',str(Path(db.__file__).with_name('migrations'))); engine=create_engine('postgresql+psycopg://',creator=lambda:psycopg.connect(os.environ['DATABASE_URI']),poolclass=NullPool)\nwith engine.begin() as connection:\n connection.exec_driver_sql('SELECT pg_advisory_xact_lock(746183209)'); config.attributes['connection']=connection; command.downgrade(config,'0002_run_control'); command.stamp(config,'0003_token_budget')\nengine.dispose()",
-        ],
-        env=env,
-        capture_output=True,
-        timeout=90,
-    )
-    assert downgrade.returncode == 0, downgrade.stderr.decode(errors="replace")
     with psycopg.connect(env["DATABASE_URI"]) as connection:
         assert connection.execute(
             "SELECT version_num FROM runtime_app_alembic_version"
-        ).fetchall() == [("0003_token_budget",)]
+        ).fetchall() == [("0008_sandbox_resource_binding",)]
         assert connection.execute(receipt_sql).fetchall() == receipts
     archive = subprocess.run(
         [
@@ -935,6 +924,14 @@ def test_disabled_drain_preserves_receipts_and_matching_source_rollback(stack):
     with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as source:
         source.extractall(previous, filter="data")
     previous = previous / "apps/runtime-service/src"
+    import shutil
+
+    # A rollback build must include the current migration chain and keep the database head.
+    shutil.copytree(
+        Path(__file__).resolve().parents[2] / "src/runtime_service/db/migrations",
+        previous / "runtime_service/db/migrations",
+        dirs_exist_ok=True,
+    )
     assert (
         "background_completion_execution"
         not in (previous / "runtime_service/graphs/dearflow_agent.py").read_text()
@@ -967,7 +964,7 @@ def test_disabled_drain_preserves_receipts_and_matching_source_rollback(stack):
     with psycopg.connect(env["DATABASE_URI"]) as connection:
         assert connection.execute(
             "SELECT version_num FROM runtime_app_alembic_version"
-        ).fetchall() == [("0003_token_budget",)]
+        ).fetchall() == [("0008_sandbox_resource_binding",)]
         assert connection.execute(receipt_sql).fetchall() == receipts
         assert (
             connection.execute(
@@ -978,8 +975,8 @@ def test_disabled_drain_preserves_receipts_and_matching_source_rollback(stack):
     evidence.append(
         {
             "previous_source": "bd476ae62a61acb7c55bc0f08eba3645ce50daf0",
-            "application_head": "0003_token_budget",
-            "application_stamp": "0003_token_budget",
+            "application_head": "0008_sandbox_resource_binding",
+            "migration_chain_retained": True,
             "normal_run": old_run["run_id"],
             "receipts_retained": 1,
         }

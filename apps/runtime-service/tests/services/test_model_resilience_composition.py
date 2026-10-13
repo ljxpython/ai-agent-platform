@@ -104,7 +104,11 @@ def install_models(monkeypatch, module, tmp_path, primary_script, backup_script)
     def build(resolved, **kwargs):
         construction.append((resolved.model_id, kwargs.get("max_retries")))
         if "max_retries" not in kwargs or kwargs["max_retries"] is None:
-            return ScriptedModel(responses=[], script=[AIMessage("summary")])
+            return ScriptedModel(
+                responses=[],
+                script=[AIMessage("summary")],
+                profile=models[resolved.model_id].profile,
+            )
         return models[resolved.model_id]
 
     monkeypatch.setattr(module, "build_model", build)

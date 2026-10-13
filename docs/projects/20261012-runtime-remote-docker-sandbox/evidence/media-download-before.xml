@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="2" time="17.587" timestamp="2026-10-13T13:04:19.326500+08:00" hostname="lijiaxindeMacBook-Pro.local"><testcase classname="tests.services.showcase_demo.test_images_chart" name="test_provider_asset_download_failure_is_unknown_without_retry[generate_image]" time="0.034"><failure message="AssertionError: &#10;- Image download failed; check the configured asset host and image size.&#10;+ image_submission_unknown">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x116c34c30&gt;
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-26/test_provider_asset_download_f0')
+operation = 'generate_image'
+
+    @pytest.mark.parametrize("operation", ["generate_image", "edit_image"])
+    def test_provider_asset_download_failure_is_unknown_without_retry(monkeypatch, tmp_path, operation):
+        calls = fake_image_client(monkeypatch)
+        monkeypatch.setenv("RUNTIME_IMAGE_ASSET_HOSTS", "approved.invalid")
+
+        async def returned_url(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(data=[SimpleNamespace(b64_json=None, url="https://unapproved.invalid/private?token=CANARY")])
+
+        monkeypatch.setattr(images.AsyncOpenAI, "generate", returned_url)
+        monkeypatch.setattr(images.AsyncOpenAI, "edit", returned_url)
+        workspace = images.ImageWorkspace(tmp_path)
+        kwargs = {"prompt": "one authorized purchase"}
+        if operation == "edit_image":
+            kwargs["image_path"] = workspace.save(png(), "generated")
+        tools = {item.name: item for item in images.build_image_tools(workspace)}
+        with pytest.raises(ToolException, match="^image_submission_unknown$") as error:
+&gt;           asyncio.run(tools[operation].coroutine(**kwargs))
+
+tests/services/showcase_demo/test_images_chart.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+src/runtime_service/tools/images.py:193: in generate_image
+    raise _handle_image_provider_error(exc) from None
+src/runtime_service/tools/images.py:191: in generate_image
+    return await _extract_and_save_image(result, "Image generation")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/runtime_service/tools/images.py:154: in _extract_and_save_image
+    data = await download_image(item.url, allowed_hosts=hosts)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+url = 'https://unapproved.invalid/private?token=CANARY'
+
+    async def download_image(url: str, *, allowed_hosts: set[str]) -&gt; bytes:
+        """Only accept operator-approved asset hosts; no redirects or ambient credentials."""
+        try:
+            parsed = urlsplit(url)
+            if (
+                parsed.scheme != "https"
+                or parsed.hostname not in allowed_hosts
+                or parsed.port not in (None, 443)
+                or parsed.username
+                or parsed.password
+            ):
+                raise ValueError("Unapproved asset URL")
+            async with (
+                httpx.AsyncClient(timeout=45, trust_env=False) as client,
+                client.stream("GET", url) as response,
+            ):
+                response.raise_for_status()
+                data = bytearray()
+                async for chunk in response.aiter_bytes(65536):
+                    data.extend(chunk)
+                    if len(data) &gt; MAX_BYTES:
+                        raise ValueError("Oversized image")
+            image_type(bytes(data))
+            return bytes(data)
+        except (httpx.HTTPError, ValueError, ToolException):
+&gt;           raise ToolException(
+                "Image download failed; check the configured asset host and image size."
+            ) from None
+E           langchain_core.tools.base.ToolException: Image download failed; check the configured asset host and image size.
+
+src/runtime_service/tools/images.py:57: ToolException
+
+During handling of the above exception, another exception occurred:
+
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x116c34c30&gt;
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-26/test_provider_asset_download_f0')
+operation = 'generate_image'
+
+    @pytest.mark.parametrize("operation", ["generate_image", "edit_image"])
+    def test_provider_asset_download_failure_is_unknown_without_retry(monkeypatch, tmp_path, operation):
+        calls = fake_image_client(monkeypatch)
+        monkeypatch.setenv("RUNTIME_IMAGE_ASSET_HOSTS", "approved.invalid")
+
+        async def returned_url(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(data=[SimpleNamespace(b64_json=None, url="https://unapproved.invalid/private?token=CANARY")])
+
+        monkeypatch.setattr(images.AsyncOpenAI, "generate", returned_url)
+        monkeypatch.setattr(images.AsyncOpenAI, "edit", returned_url)
+        workspace = images.ImageWorkspace(tmp_path)
+        kwargs = {"prompt": "one authorized purchase"}
+        if operation == "edit_image":
+            kwargs["image_path"] = workspace.save(png(), "generated")
+        tools = {item.name: item for item in images.build_image_tools(workspace)}
+&gt;       with pytest.raises(ToolException, match="^image_submission_unknown$") as error:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError:
+E       - Image download failed; check the configured asset host and image size.
+E       + image_submission_unknown
+
+tests/services/showcase_demo/test_images_chart.py:85: AssertionError</failure></testcase><testcase classname="tests.services.showcase_demo.test_images_chart" name="test_provider_asset_download_failure_is_unknown_without_retry[edit_image]" time="0.058"><failure message="AssertionError: &#10;- Image download failed; check the configured asset host and image size.&#10;+ image_submission_unknown">monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x116c34d60&gt;
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-26/test_provider_asset_download_f1')
+operation = 'edit_image'
+
+    @pytest.mark.parametrize("operation", ["generate_image", "edit_image"])
+    def test_provider_asset_download_failure_is_unknown_without_retry(monkeypatch, tmp_path, operation):
+        calls = fake_image_client(monkeypatch)
+        monkeypatch.setenv("RUNTIME_IMAGE_ASSET_HOSTS", "approved.invalid")
+
+        async def returned_url(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(data=[SimpleNamespace(b64_json=None, url="https://unapproved.invalid/private?token=CANARY")])
+
+        monkeypatch.setattr(images.AsyncOpenAI, "generate", returned_url)
+        monkeypatch.setattr(images.AsyncOpenAI, "edit", returned_url)
+        workspace = images.ImageWorkspace(tmp_path)
+        kwargs = {"prompt": "one authorized purchase"}
+        if operation == "edit_image":
+            kwargs["image_path"] = workspace.save(png(), "generated")
+        tools = {item.name: item for item in images.build_image_tools(workspace)}
+        with pytest.raises(ToolException, match="^image_submission_unknown$") as error:
+&gt;           asyncio.run(tools[operation].coroutine(**kwargs))
+
+tests/services/showcase_demo/test_images_chart.py:86:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+src/runtime_service/tools/images.py:237: in edit_image
+    raise _handle_image_provider_error(exc) from None
+src/runtime_service/tools/images.py:235: in edit_image
+    return await _extract_and_save_image(result, "Image editing")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/runtime_service/tools/images.py:154: in _extract_and_save_image
+    data = await download_image(item.url, allowed_hosts=hosts)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+url = 'https://unapproved.invalid/private?token=CANARY'
+
+    async def download_image(url: str, *, allowed_hosts: set[str]) -&gt; bytes:
+        """Only accept operator-approved asset hosts; no redirects or ambient credentials."""
+        try:
+            parsed = urlsplit(url)
+            if (
+                parsed.scheme != "https"
+                or parsed.hostname not in allowed_hosts
+                or parsed.port not in (None, 443)
+                or parsed.username
+                or parsed.password
+            ):
+                raise ValueError("Unapproved asset URL")
+            async with (
+                httpx.AsyncClient(timeout=45, trust_env=False) as client,
+                client.stream("GET", url) as response,
+            ):
+                response.raise_for_status()
+                data = bytearray()
+                async for chunk in response.aiter_bytes(65536):
+                    data.extend(chunk)
+                    if len(data) &gt; MAX_BYTES:
+                        raise ValueError("Oversized image")
+            image_type(bytes(data))
+            return bytes(data)
+        except (httpx.HTTPError, ValueError, ToolException):
+&gt;           raise ToolException(
+                "Image download failed; check the configured asset host and image size."
+            ) from None
+E           langchain_core.tools.base.ToolException: Image download failed; check the configured asset host and image size.
+
+src/runtime_service/tools/images.py:57: ToolException
+
+During handling of the above exception, another exception occurred:
+
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x116c34d60&gt;
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-26/test_provider_asset_download_f1')
+operation = 'edit_image'
+
+    @pytest.mark.parametrize("operation", ["generate_image", "edit_image"])
+    def test_provider_asset_download_failure_is_unknown_without_retry(monkeypatch, tmp_path, operation):
+        calls = fake_image_client(monkeypatch)
+        monkeypatch.setenv("RUNTIME_IMAGE_ASSET_HOSTS", "approved.invalid")
+
+        async def returned_url(self, **kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(data=[SimpleNamespace(b64_json=None, url="https://unapproved.invalid/private?token=CANARY")])
+
+        monkeypatch.setattr(images.AsyncOpenAI, "generate", returned_url)
+        monkeypatch.setattr(images.AsyncOpenAI, "edit", returned_url)
+        workspace = images.ImageWorkspace(tmp_path)
+        kwargs = {"prompt": "one authorized purchase"}
+        if operation == "edit_image":
+            kwargs["image_path"] = workspace.save(png(), "generated")
+        tools = {item.name: item for item in images.build_image_tools(workspace)}
+&gt;       with pytest.raises(ToolException, match="^image_submission_unknown$") as error:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError:
+E       - Image download failed; check the configured asset host and image size.
+E       + image_submission_unknown
+
+tests/services/showcase_demo/test_images_chart.py:85: AssertionError</failure></testcase></testsuite></testsuites>

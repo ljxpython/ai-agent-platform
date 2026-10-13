@@ -120,6 +120,22 @@ def validate(path: Path) -> list[str]:
             errors.append(
                 "RUNTIME_TOKEN_BUDGET_ENABLED requires a migrated Usage database"
             )
+    backend = settings.get("RUNTIME_BACKEND", "docker")
+    target = settings.get("RUNTIME_SANDBOX_TARGET", "local")
+    if backend not in {"local", "docker"} or target not in {"local", "remote"}:
+        errors.append("RUNTIME_BACKEND or RUNTIME_SANDBOX_TARGET is invalid")
+    elif backend == "docker" and target == "remote":
+        from runtime_service.errors import RuntimeWorkspaceError
+        from runtime_service.workspace.target import NodeConnection
+
+        try:
+            NodeConnection.load(settings)
+        except RuntimeWorkspaceError:
+            errors.append(
+                "Remote Sandbox Node configuration or secret files are invalid"
+            )
+        if not _present(settings, "DATABASE_URI"):
+            errors.append("Remote Sandbox Node requires a migrated DATABASE_URI")
     return errors
 
 

@@ -155,12 +155,22 @@ async def graph(config):
         def _prepare(self):
             super()._prepare()
             record("prepare", run_id=self.metadata.get("run_id"))
-            target = self.workspace.root / "work/retained.txt"
-            try:
-                with target.open("x") as stream:
-                    stream.write("user version")
-            except FileExistsError:
-                pass
+            from runtime_service.workspace.target import RemoteWorkspace
+
+            if isinstance(self.workspace.root, RemoteWorkspace):
+                path = "/workspace/work/retained.txt"
+                if (
+                    self.workspace.root.call("read", path=path).get("error")
+                    == "file_not_found"
+                ):
+                    self.workspace.root.call("write", path=path, content="user version")
+            else:
+                target = self.workspace.root / "work/retained.txt"
+                try:
+                    with target.open("x") as stream:
+                        stream.write("user version")
+                except FileExistsError:
+                    pass
             if getattr(self, "prompt", None) == "infra-pg" and not recorded(
                 "pg-disconnect"
             ):

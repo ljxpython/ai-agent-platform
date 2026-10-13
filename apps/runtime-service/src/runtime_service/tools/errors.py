@@ -199,7 +199,7 @@ _FAILURE_BY_TOOL = {
     **dict.fromkeys(_CHART_NAMES, {"chart_provider_failed", "chart_image_missing"}),
 }
 _MESSAGES = {
-    "background_task_not_supported": "当前环境不支持后台执行，本次调用未登记任务。短任务可改用 execute（默认30秒、最大60秒）；长任务请拆分或选择支持后台执行的环境。",
+    "background_task_not_supported": "当前环境不支持后台执行，本次调用未启动后台任务。短任务可改用 execute（默认30秒、最大60秒）；长任务请拆分或选择支持后台执行的环境。",
     "background_task_disabled": "后台新任务已关闭，本次调用未登记任务。已有任务仍可查询或取消。短任务可改用 execute（默认30秒、最大60秒）；长任务请拆分或选择支持后台执行的环境。",
     "tool.invalid_input": "工具输入不符合要求，请修正参数后继续。",
     "tool.upstream_unavailable": "工具暂时无法完成请求，请选择其他方式。",

@@ -57,7 +57,6 @@ load_stack_identity() {
   eval "$exports"
   PID_DIR="$STATE_DIR/pids"
   LOG_DIR="$STATE_DIR/logs"
-  if [ "$LOCAL_STACK_WORKTREE" = 1 ] && [ -z "$RUNTIME_BACKEND_OVERRIDE" ]; then RUNTIME_BACKEND_OVERRIDE=local; fi
 }
 
 die() {

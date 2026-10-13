@@ -1,7 +1,7 @@
 ---
 status: active
 approved_on: 2026-10-10
-last_verified: 2026-10-11
+last_verified: 2026-10-13
 source_project: docs/projects/20261010-worktree-local-stack/
 ---
 
@@ -44,6 +44,7 @@ bash "scripts/local-stack.sh" stop
 
 - 环境 ID 为 `wt_<随机ID>`，绑定 Worktree 的真实路径，切换分支不变。不要复制 `.local-stack/` 到另一个目录。
 - 后台任务新环境默认关闭，不继承主环境的开启状态；显式启用在所属 runtime.env 设置 `RUNTIME_BACKGROUND_TASKS_ENABLED=1`，Docker 启动/重启带 `RUNTIME_BACKEND=docker`。API/Worker 的执行 host 固定派生为登记 ID，后台日志固定在所属 `.local-stack/background-logs/<环境ID>/`，不接受继承的共享 host/外部日志目录。切换 backend 或升级原共享 `worktree-host` 环境前，先用原执行域排空未结任务，禁止跨域接管；[接续证据](../projects/20261011-background-acceptance-closeout/implementation/03-schema-and-local-stack-isolation.md)。
+- 初始化默认 local；所属 `runtime.env` 的显式 docker 选择在启动/重启时生效，优先级为显式 shell `RUNTIME_BACKEND` → 所属 env → local 默认值。远端沙箱另设 `RUNTIME_SANDBOX_TARGET=remote`，API/Worker 读取同一 env；客户端 CA/证书/私钥/token 留在本 Worktree 私有目录。切换存储位置前核实持久绑定，既有 Thread 不能靠改 env 迁移；[沙箱手册](../runbooks/runtime-sandbox-node.md)。
 - `<git-common-dir>/local-stacks/registry.json` 是关联 Worktree 共用的资源登记表，不存秘密。`list` 可以查看登记；禁止直接编辑来抢占分配。
 - 首次初始化从 23000-29999 随机分配 Web/API/Runtime/Redis 四个端口，排除已登记及当前被占用的端口。分配写入加跨进程锁，登记原子替换。
 - 重启复用原端口；端口被外部程序抢占时明确失败，不强杀、不让某个服务单独漂移。随机与“少见”端口不等于保证空闲。
@@ -74,6 +75,8 @@ bash "scripts/local-stack.sh" stop
 | 定时任务、长期记忆、store、旧技能版本、Redis 队列、Workspace 文件 | 不复制，避免历史内容污染新测试以及定时任务重复自动执行 |
 
 导入有完成标记后不追随主库变更，Worktree 内修改互不影响。源库停机、模型密文无法解密或白名单表结构不同会明确失败，目标事务回滚；另一个已经完成的库可在重试时复用。工具不清空已有环境来重新导入，也不自动复制未知新表。初始 Workspace 为空，依赖旧会话文件的配置需在新环境准备对应测试文件。
+
+迁移自动创建的 `runtime_usage_projection_state` 是初始化元数据，不算用户已有业务数据，也不从源库复制。Workspace 位置、资源/取消/后台回执等事实仍不复制，防止新环境认领源环境资源。
 
 ### 本地模型选型与默认策略
 

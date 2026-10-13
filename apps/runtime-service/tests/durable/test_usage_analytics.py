@@ -179,7 +179,7 @@ def test_real_aggregation_call_time_scope_distinct_top_other_and_late_upsert(
         revisions = conn.execute(
             "SELECT version_num FROM runtime_app_alembic_version"
         ).fetchall()
-        assert revisions == [("0005_usage_projection",)]
+        assert revisions == [("0008_sandbox_resource_binding",)]
     with (
         _connection() as (conn, _),
         pytest.raises(psycopg.errors.ReadOnlySqlTransaction),

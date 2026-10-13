@@ -1,0 +1,8 @@
+{
+  "mode": "offline-synthetic-client",
+  "response_retention_passed": true,
+  "private_mode_600": true,
+  "second_submission_blocked": true,
+  "live_provider_calls": 0,
+  "passed": true
+}

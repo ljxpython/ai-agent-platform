@@ -1,0 +1,42 @@
+[
+  {
+    "version": 1,
+    "task_id": "4bf83f68-4c64-4121-8c3c-1098503a22fc",
+    "thread_id": "6602d92d-01b1-4d12-b627-8c2b6c2b05f5",
+    "graph_id": "dearflow_agent",
+    "origin_run_id": "5bd2a81f-89ff-47e2-81e7-e6e8b3f9ccb9",
+    "status": "succeeded",
+    "reason_code": null,
+    "exit_code": 0,
+    "created_at": "2026-10-13T04:09:42.248486+08:00",
+    "started_at": "2026-10-13T04:09:47.775597+08:00",
+    "finished_at": "2026-10-13T04:16:20.024994+08:00",
+    "deadline_at": "2026-10-13T04:24:42.206515+08:00",
+    "updated_at": "2026-10-13T04:16:42.908779+08:00",
+    "cleanup_state": "confirmed",
+    "output": {
+      "available": true,
+      "retained_bytes": 10,
+      "omitted_bytes": 0,
+      "truncated": false,
+      "updated_at": "2026-10-13T04:16:20.024994+08:00"
+    },
+    "delivery": {
+      "state": "suppressed",
+      "event_id": "ba06fbb6-4862-5a48-af8e-857ecb41b946",
+      "run_id": null,
+      "reason_code": "background_task_disabled"
+    },
+    "allowed_actions": [
+      "read",
+      "logs"
+    ]
+  },
+  {
+    "previous_source": "bd476ae62a61acb7c55bc0f08eba3645ce50daf0",
+    "application_head": "0008_sandbox_resource_binding",
+    "migration_chain_retained": true,
+    "normal_run": "8a271bcb-f6f0-4d57-8731-3f76e2f87bd1",
+    "receipts_retained": 1
+  }
+]

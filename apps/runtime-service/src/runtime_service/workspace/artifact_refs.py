@@ -8,9 +8,9 @@ from uuid import uuid4
 
 from langchain_core.tools import ToolException
 
-from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.documents import DocumentError, validate_document
 from runtime_service.workspace.file_refs import MAX_FILE_BYTES, MIME_EXT
+from runtime_service.workspace.image_io import ImageWorkspace
 from runtime_service.workspace.media import MEDIA_MIMES, validate_media
 
 ARTIFACT_MIMES = {
@@ -80,6 +80,10 @@ class ArtifactWorkspace:
         self.io = ImageWorkspace(root)
 
     def read(self, path: str) -> tuple[bytes, dict]:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.io.root, RemoteWorkspace):
+            return tuple(self.io.root.call("artifact.read", path=path))
         if (
             not isinstance(path, str)
             or not path.startswith("/workspace/outputs/")
@@ -126,6 +130,10 @@ class ArtifactWorkspace:
         }
 
     def publish(self, path: str) -> dict:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.io.root, RemoteWorkspace):
+            return self.io.root.call("artifact.publish", path=path)
         if (
             not path.startswith(
                 ("/workspace/work/", "/workspace/generated/", "/workspace/charts/")
@@ -184,6 +192,10 @@ class ArtifactWorkspace:
             return hashlib.sha256(item.name.encode("utf-8")).hexdigest()
 
     def list_artifacts(self, *, cursor: str | None = None, limit: int = 100) -> dict:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(self.io.root, RemoteWorkspace):
+            return self.io.root.call("artifact.list", cursor=cursor, limit=limit)
         from runtime_service.workspace.browser import WorkspaceBrowser
 
         page = WorkspaceBrowser(self.io.root).list_directory(

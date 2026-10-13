@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "dearflow_agent-office-history",
+    "background-original-accepted-run-suppressed-notification-log-after-leave",
+    "dearflow_agent-html-preview-authenticated-download-hash",
+    "showcase_demo-office-history",
+    "showcase_demo-html-preview-authenticated-download-hash"
+  ],
+  "browserErrors": [],
+  "passed": true
+}

@@ -24,6 +24,16 @@
 
 阅读资料 → 复制 Showcase 的边界模式 → 在所属 Service 显式装配 → 编写最小测试 → 本地运行 → 更新文档和变更记录 → 提交评审。
 
+## Workspace 执行目标与恢复
+
+`RUNTIME_BACKEND=local` 保留宿主执行；`docker` 结合 `RUNTIME_SANDBOX_TARGET=local|remote` 选择 Docker 位置，target 缺省为 local。本地栈仍默认 local。API/Worker 必须使用同一所属 env、执行域和位置事实源，remote 缺配置时前置失败，不回退宿主命令。
+
+本地 Docker 的 Runtime、daemon 与挂载源使用同一宿主绝对路径；remote 的 Node、daemon 与挂载源同机，Runtime 经公网 HTTPS+mTLS/caller 执行域认证访问 Node，Docker TCP API 不开放。工作区位置由 Runtime 应用库绑定到 execution host/tenant/project/thread/graph，不接受 Thread metadata 改绑；remote 不维护本地可写副本。
+
+文件、execute、PTY、Office、后台和 fork 使用同一绑定。容器结束或超时删除计算资源，保留 Thread 的文件目录；同 Thread 新容器挂原目录。既有绑定丢目录、deleting/purged、节点变更明确失败，不能创建空目录假恢复；unknown 不重放。后台历史仍按原节点对账，回执/日志由 Runtime 持久确认后才删除。
+
+精确工作区清理默认 report，只有核实删除/孤儿、经过宽限且无未决资源的目录才可 mark/apply。实现和门禁见[专项](../../../../docs/projects/20261012-runtime-remote-docker-sandbox/README.md)，配置、运维与备份边界见[运行手册](../../../../docs/runbooks/runtime-sandbox-node.md)。公网未验收前不将 remote 标为生产可用。
+
 ## 通用文档读取
 
 复用 `DocumentWorkspace`、六字段 `FileRef v1` 与公共 `tools/documents.py:build_document_tools()`；DOCX/PPTX 上传只存原字节，不自动转换或持久派生 Markdown。`DocumentToolsMiddleware.tools` 沿官方 Agent 装配同一工具，消息已有附件引用，不逐轮枚举 uploads 注入 SystemMessage。

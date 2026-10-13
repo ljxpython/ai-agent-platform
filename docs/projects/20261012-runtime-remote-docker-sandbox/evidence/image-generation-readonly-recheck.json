@@ -1,0 +1,25 @@
+{
+  "real_provider": "wawapii.com",
+  "model": "gpt-image-2.5-flare",
+  "generation_task_status": "succeeded",
+  "generation_attempts": 1,
+  "generation_sha256": "d98a5f95ecc771273de0bd9dc8abcb8906aec9695bfcdf13bcaf343545f593fa",
+  "size_bytes": 563829,
+  "dimensions": [
+    1024,
+    1024
+  ],
+  "center_rgb": [
+    6,
+    109,
+    248
+  ],
+  "corner_rgb": [
+    253,
+    254,
+    254
+  ],
+  "blue_circle_white_background": true,
+  "new_purchase_submitted": false,
+  "passed": true
+}

@@ -1,0 +1,39 @@
+{
+  "mode": "local",
+  "graph": "dearflow_agent",
+  "threadId": "912cb368-369f-4f6a-ac84-4b1c691d066e",
+  "marker": "sandbox-local-e6f3f067",
+  "tools": [
+    {
+      "name": "parse_document",
+      "status": "success"
+    },
+    {
+      "name": "execute",
+      "status": "success"
+    },
+    {
+      "name": "read_file",
+      "status": "success"
+    },
+    {
+      "name": "present_artifacts",
+      "status": "success"
+    }
+  ],
+  "artifact": {
+    "version": 1,
+    "artifact_id": "37cc81077ecd6c07c1f4afdbf247a1ab423f14ccfb5497972131f494421cc637",
+    "path": "/workspace/outputs/37cc81077ecd6c07c1f4afdbf247a1ab423f14ccfb5497972131f494421cc637.md",
+    "file_name": "37cc81077ecd6c07c1f4afdbf247a1ab423f14ccfb5497972131f494421cc637.md",
+    "mime_type": "text/markdown",
+    "size_bytes": 22,
+    "sha256": "37cc81077ecd6c07c1f4afdbf247a1ab423f14ccfb5497972131f494421cc637",
+    "kind": "text",
+    "preview_kind": "markdown"
+  },
+  "browserErrors": [],
+  "transientQueryFailures": [],
+  "approvalReloads": 2,
+  "failedRequests": []
+}

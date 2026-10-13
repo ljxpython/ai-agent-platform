@@ -1,0 +1,11 @@
+{
+  "url": "https://152.136.27.196:19111",
+  "checked_at_utc": "2026-10-13T00:20:11.660475+00:00",
+  "public_network_verified": true,
+  "readiness": {
+    "ready": true,
+    "version": 1,
+    "node_id": "sshmy2"
+  },
+  "elapsed_seconds": 0.108
+}

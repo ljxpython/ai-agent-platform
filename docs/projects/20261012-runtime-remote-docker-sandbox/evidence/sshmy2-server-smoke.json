@@ -1,0 +1,23 @@
+{
+  "mode": "sshmy2-server-local-mtls",
+  "node_id": "server-smoke-95fce4319fa8",
+  "python": "3.13.16",
+  "file_execute_once": true,
+  "terminal": true,
+  "background_signed_receipt_ack": true,
+  "office_docx": true,
+  "fork_isolation": true,
+  "sqlite_workspace_backup_restore": true,
+  "restored_sha256": "200651a8b2d5912f692db89468a7d47d86a3ed6844f48f1b15f2be1d9c9a7e5e",
+  "public_network_verified": false,
+  "wheel_sha256": "335caa732a3f24a0610958cb6ff5018b17596e69ba01b89192311c8fe5a87f64",
+  "installed_engine_matches_wheel": true,
+  "mit_license_matches_wheel": true,
+  "node_service_active": true,
+  "node_resources": {
+    "MemoryCurrent": 178307072,
+    "TasksCurrent": 8
+  },
+  "port_19111_listening": true,
+  "docker_tcp_listening": false
+}

@@ -182,12 +182,19 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     )
 
     backend = build_backend(workspace)
-    image_workspace = ImageWorkspace(
-        None if workspace is None else workspace.cwd / "workspace"
+    from runtime_service.workspace.remote_backend import RemoteWorkspaceBackend
+
+    workspace_root = (
+        workspace.root
+        if isinstance(workspace, RemoteWorkspaceBackend)
+        else None
+        if workspace is None
+        else workspace.cwd / "workspace"
     )
+    image_workspace = ImageWorkspace(workspace_root)
     image_middleware = ImageToolsMiddleware(image_workspace, pii_config)
     document_middleware = DocumentToolsMiddleware(
-        None if workspace is None else workspace.cwd / "workspace",
+        workspace_root,
         execution_image=os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"),
     )
     chart_tools = build_chart_tools(image_workspace)
@@ -371,7 +378,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                     None
                     if workspace is None
                     else BackgroundBinding(
-                        workspace.cwd / "workspace",
+                        workspace_root,
                         os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"),
                         workspace.scope,
                         "showcase_demo",

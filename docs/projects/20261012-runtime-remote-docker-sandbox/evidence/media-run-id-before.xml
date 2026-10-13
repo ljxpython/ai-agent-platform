@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="12.104" timestamp="2026-10-13T12:40:30.271123+08:00" hostname="lijiaxindeMacBook-Pro.local"><testcase classname="tests.services.dearflow_agent.test_p5_media" name="test_image_tools_idempotency_multi_reference_cancel_and_invalid_result" time="1.837"><failure message="AssertionError: assert 'None' == 'worker-run'&#10;  &#10;  - worker-run&#10;  + None">storage = &lt;runtime_service.services.dearflow_agent.external_task_storage.ExternalTaskStorage object at 0x112283620&gt;
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-24/test_image_tools_idempotency_m0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x113618770&gt;
+
+    def test_image_tools_idempotency_multi_reference_cancel_and_invalid_result(
+        storage, tmp_path, monkeypatch
+    ):
+        from runtime_service.tools import images
+
+        monkeypatch.setenv("DATABASE_URI", storage.dsn)
+        for name in ("IMAGE_25_KEY", "IMAGE_25_URL", "IMAGE_25_MODEL"):
+            monkeypatch.setenv(name, "fixture")
+        facts = SimpleNamespace(
+            scope=SimpleNamespace(assistant_id="dearflow_agent", thread_id="thread"),
+            principal=SimpleNamespace(
+                tenant_id="tenant", project_id="project", user_id="user"
+            ),
+        )
+        monkeypatch.setattr(media, "verified_delegation_from_user", lambda _: facts)
+        runtime = SimpleNamespace(
+            server_info=SimpleNamespace(user={}),
+            execution_info=SimpleNamespace(thread_id="thread", run_id=None),
+            config={"metadata": {"run_id": "worker-run"}},
+            tool_call_id="approved-call",
+        )
+        calls = []
+        started = asyncio.Event()
+
+        class Provider:
+            def __init__(self, **kwargs):
+                assert kwargs["max_retries"] == 0
+                self.images = self
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                pass
+
+            async def generate(self, **kwargs):
+                calls.append(kwargs)
+                if kwargs["prompt"] == "cancel":
+                    started.set()
+                    await asyncio.Event().wait()
+                payload = b"not an image" if kwargs["prompt"] == "invalid" else png()
+                return SimpleNamespace(
+                    data=[SimpleNamespace(b64_json=base64.b64encode(payload).decode())]
+                )
+
+            async def edit(self, **kwargs):
+                return await self.generate(**kwargs)
+
+        monkeypatch.setattr(images, "AsyncOpenAI", Provider)
+        workspace = ImageWorkspace(tmp_path / "workspace")
+        workspace.root.mkdir()
+        tools = {t.name: t for t in media.build_media_tools(workspace)}
+
+        async def run():
+            first = await tools["generate_image"].coroutine(
+                prompt="one", idempotency_key="same", runtime=runtime
+            )
+            again = await tools["generate_image"].coroutine(
+                prompt="one", idempotency_key="same", runtime=runtime
+            )
+            assert first == again and len(calls) == 1
+            assert first["status"] == "succeeded"
+            assert storage.get(
+                ("tenant", "project", "user", "thread"), first["task_id"]
+            )["origin_run_id"] == "worker-run"
+            ref = first["result"]["runtime_images"][0]
+            assert workspace.read_asset(ref["path"])[1] == ref
+            edited = await tools["edit_image"].coroutine(
+                image_path=ref["path"],
+                prompt="edit",
+                idempotency_key="edit",
+                runtime=runtime,
+                reference_images=[ref["path"]],
+            )
+            assert edited["status"] == "succeeded" and len(calls[-1]["image"]) == 2
+            assert (
+                await tools["generate_image"].coroutine(
+                    prompt="invalid", idempotency_key="invalid", runtime=runtime
+                )
+            )["status"] == "unknown"
+            before = len(calls)
+            unknown = await tools["generate_image"].coroutine(
+                prompt="invalid", idempotency_key="invalid", runtime=runtime
+            )
+            assert (
+                unknown["status"] == "unknown"
+                and not unknown["result"]
+                and len(calls) == before
+            )
+            task = asyncio.create_task(
+                tools["generate_image"].coroutine(
+                    prompt="cancel", idempotency_key="cancel", runtime=runtime
+                )
+            )
+            await asyncio.wait_for(started.wait(), 5)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+            before = len(calls)
+            assert (
+                await tools["generate_image"].coroutine(
+                    prompt="cancel", idempotency_key="cancel", runtime=runtime
+                )
+            )["status"] == "unknown"
+            assert len(calls) == before
+
+&gt;       asyncio.run(run())
+
+tests/services/dearflow_agent/test_p5_media.py:207:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/runners.py:195: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/base_events.py:725: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    async def run():
+        first = await tools["generate_image"].coroutine(
+            prompt="one", idempotency_key="same", runtime=runtime
+        )
+        again = await tools["generate_image"].coroutine(
+            prompt="one", idempotency_key="same", runtime=runtime
+        )
+        assert first == again and len(calls) == 1
+        assert first["status"] == "succeeded"
+&gt;       assert storage.get(
+            ("tenant", "project", "user", "thread"), first["task_id"]
+        )["origin_run_id"] == "worker-run"
+E       AssertionError: assert 'None' == 'worker-run'
+E
+E         - worker-run
+E         + None
+
+tests/services/dearflow_agent/test_p5_media.py:163: AssertionError</failure></testcase></testsuite></testsuites>

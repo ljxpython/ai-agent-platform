@@ -1,0 +1,242 @@
+{
+  "started_at_utc": "2026-10-13T04:33:01.865677+00:00",
+  "mode": "real-provider-platform-worker-public-remote-node",
+  "image_provider_controlled": false,
+  "provider_base_url": "https://wawapii.com/v1",
+  "provider_model": "gpt-image-2.5-flare",
+  "config_source": "user-designated .my_best/.env; image keys only",
+  "old_provider_preflight": {
+    "status_code": 512,
+    "page_title": "订单状态异常",
+    "new_purchase_submitted": false
+  },
+  "new_provider_preflight": {
+    "status_code": 200,
+    "configured_model_listed": true
+  },
+  "operations": {
+    "generation": {
+      "request_id": "real-image-ae8fe424c6194120ac76cd7fde18c368",
+      "submission_status": "accepted_once",
+      "run_ids": [
+        "5e2308c8-38be-48b9-b3cb-b9ebbce4e358",
+        "8d2cd151-0ae8-4189-b3bc-cdd65b0a1818"
+      ],
+      "run_status": "success",
+      "phase_seconds": 64.17,
+      "task_id": "a1ef89b7-0d2f-498d-83a5-6597ad6fa2e4",
+      "idempotency_key": "generate-4d9ecf3ff83243209a5281681f73af24",
+      "status": "succeeded",
+      "attempts": 1,
+      "origin_run_id": "None",
+      "error_code": null,
+      "approval_ref": "call_5ae48244d04b4cb08421950f",
+      "origin_run_id_matches_business_run": false
+    },
+    "edit": {
+      "request_id": "real-image-d3b2c717dab84d0aa693732c3a74c5fb",
+      "submission_status": "accepted_once",
+      "run_ids": [
+        "54f1ce32-f6c2-4687-bca3-48aa111f8096",
+        "3fef33cc-5c2a-473b-a7a1-c90c87377566"
+      ],
+      "run_status": "error",
+      "phase_seconds": 54.149,
+      "task_id": "334dfb59-38b2-4e3b-823e-831aabf056e9",
+      "idempotency_key": "edit-4885e1ef3cc4488081e118057b0ca563",
+      "status": "unknown",
+      "attempts": 1,
+      "origin_run_id": "3fef33cc-5c2a-473b-a7a1-c90c87377566",
+      "approval_ref": "call_413041d262964255922a223a",
+      "error_code": "submission_or_delivery_unknown"
+    },
+    "edit_second": {
+      "request_id": "real-image-d3c1374f45e7430f890125aa4aaa4e30",
+      "submission_status": "accepted_once",
+      "run_ids": [
+        "8babba83-1390-481f-8b05-6d7f9941147f",
+        "d8950b9c-6661-4c97-aa7f-970bc3f9d8bc"
+      ],
+      "run_status": "success",
+      "phase_seconds": 45.288,
+      "task_id": "27218251-519e-465d-aae2-8a9d58b22bf2",
+      "idempotency_key": "edit-61d98cac7011421f81f88b7aec036766",
+      "status": "unknown",
+      "attempts": 1,
+      "origin_run_id": "d8950b9c-6661-4c97-aa7f-970bc3f9d8bc",
+      "error_code": "submission_or_delivery_unknown",
+      "approval_ref": "call_00_ET_Y6zU0vj0V9yfnLKUf5vC1531"
+    }
+  },
+  "checks": [
+    {
+      "name": "generation-remote-public-bytes",
+      "passed": true,
+      "ref": {
+        "path": "/workspace/generated/b9c7986af6ad4082bf1e5fee68a31e87.png",
+        "sha256": "d98a5f95ecc771273de0bd9dc8abcb8906aec9695bfcdf13bcaf343545f593fa",
+        "version": 1,
+        "mime_type": "image/png",
+        "size_bytes": 563829
+      },
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "image_format": "PNG",
+      "authenticated_image_and_workspace_download_equal": true,
+      "workspace_download_nosniff": true,
+      "image_gateway_nosniff": null,
+      "local_artifact": ".local-stack/image-provider-validation/generation.png"
+    },
+    {
+      "name": "generation-fork-remote-public-bytes",
+      "passed": true,
+      "ref": {
+        "path": "/workspace/generated/b9c7986af6ad4082bf1e5fee68a31e87.png",
+        "sha256": "d98a5f95ecc771273de0bd9dc8abcb8906aec9695bfcdf13bcaf343545f593fa",
+        "version": 1,
+        "mime_type": "image/png",
+        "size_bytes": 563829
+      },
+      "dimensions": [
+        1024,
+        1024
+      ],
+      "image_format": "PNG",
+      "authenticated_image_and_workspace_download_equal": true,
+      "workspace_download_nosniff": true,
+      "image_gateway_nosniff": null,
+      "local_artifact": ".local-stack/image-provider-validation/generation-fork.png"
+    }
+  ],
+  "approvals": [
+    {
+      "phase": "generation",
+      "interrupt_id": "da76bbb82711bac931f2b35d9dba8a4a",
+      "tool": "generate_image"
+    },
+    {
+      "phase": "edit",
+      "interrupt_id": "43934576af47f67d1b0ad79d7aa908d6",
+      "tool": "edit_image"
+    },
+    {
+      "phase": "edit_second",
+      "interrupt_id": "ae814c44c5794d488440eab3b27fc33f",
+      "tool": "edit_image"
+    }
+  ],
+  "formal_i10_status": "blocked",
+  "thread_id": "9696a5ec-227b-4050-9c88-08e75ae2a400",
+  "project_id": "4e4c88a6-80f1-4bda-9801-cc1c9f176f7e",
+  "graph": "dearflow_agent",
+  "model_id": "84bdffc9-dd61-47ae-9971-f6e09ad94e44",
+  "initial_attempt": {
+    "status": "blocked",
+    "failure_type": "AssertionError",
+    "failure": "",
+    "stop_confirmation_error_type": "AssertionError",
+    "remote_config_retained_pending_stop": true,
+    "finished_at_utc": "2026-10-13T04:36:52.452970+00:00"
+  },
+  "resume_started_at_utc": "2026-10-13T05:25:17.634859+00:00",
+  "resumed_generation_without_resubmission": true,
+  "initial_generation_origin_defect": {
+    "historical_row_unchanged": true,
+    "fixed_before_edit": true
+  },
+  "local_baseline_restored_byte_equal": true,
+  "resume_attempts": [
+    {
+      "status": "failed",
+      "failure_type": "KeyError",
+      "finished_at_utc": "2026-10-13T04:52:42.829213+00:00"
+    },
+    {
+      "status": "failed",
+      "failure_type": "AssertionError",
+      "failure": "edit Run ended as error",
+      "finished_at_utc": "2026-10-13T04:55:58.035689+00:00"
+    },
+    {
+      "status": "failed",
+      "failure_type": "AssertionError",
+      "failure": "edit_second Run exceeded bounded acceptance deadline",
+      "finished_at_utc": "2026-10-13T05:18:16.709344+00:00"
+    }
+  ],
+  "remote_binding": {
+    "target": "remote",
+    "node_id": "sshmy2",
+    "workspace_id": "d82bb925248e782f7ff40ff13e9d8221cd89ad3897fd89e5c39bbee49429fcdf",
+    "execution_host": "wt_f58309b22539"
+  },
+  "second_edit_authorization": {
+    "answer": "允许再做一次编辑（可能计费）",
+    "original_unknown_task_retained": true
+  },
+  "status": "partial",
+  "second_edit_queue_recovery": {
+    "source_thread_id": "9696a5ec-227b-4050-9c88-08e75ae2a400",
+    "unused_run": "eda4cca2-79fe-4290-89a2-a538daa05057",
+    "unused_run_status": "interrupted",
+    "unused_run_reason": "cancel_requested",
+    "provider_task_created": false,
+    "provider_response_retained": false,
+    "public_checkpoint_interrupt_count": 0,
+    "engine_thread_interrupt_count": 1,
+    "strategy": "existing platform fork from completed generation checkpoint",
+    "source_checkpoint_id": "1f1c6bf6-d78c-676a-8020-03fad154a895",
+    "original_history_unchanged": true,
+    "superseded_queue_attempt": {
+      "request_id": "real-image-9107a564741246dba34b866cec68cbf7",
+      "submission_status": "accepted_once",
+      "run_ids": [
+        "eda4cca2-79fe-4290-89a2-a538daa05057"
+      ]
+    }
+  },
+  "edit_thread_id": "a2a06cbf-e152-49b9-8aab-d29cd9f58146",
+  "edit_remote_binding": {
+    "target": "remote",
+    "node_id": "sshmy2",
+    "workspace_id": "43b4a9ab8f3768097cb6dda2547f3faccfc2c480c708f380ba961374aee3ae2a",
+    "execution_host": "wt_f58309b22539"
+  },
+  "failure_type": "AssertionError",
+  "failure": "edit_second task is unknown",
+  "stop_confirmed": true,
+  "finished_at_utc": "2026-10-13T05:27:26.292275+00:00",
+  "generation_acceptance": "done",
+  "edit_acceptance": "deferred",
+  "edit_deferral": {
+    "decision": "user",
+    "answer": "我没有wawapii的结果查询方式,还有问题就等下再验证吧",
+    "new_purchase_authorized": false,
+    "unknown_receipts_retained": true,
+    "edit_second_task_id": "27218251-519e-465d-aae2-8a9d58b22bf2"
+  },
+  "retention_fixture_audit": {
+    "requested_graph": "ignored private graph",
+    "effective_graph": "registered apps/runtime-service/langgraph.json",
+    "worktree_export_overrode_process_config": true,
+    "live_response_retained": false,
+    "live_asset_gate_entered": false,
+    "fixture_failure_owned_by_agent": true,
+    "pre_purchase_drift_guard_added": true,
+    "offline_selfchecks_passed": true
+  },
+  "original_generation_rechecked_readonly": true,
+  "recovery_query_status": "no_confirmed_query_for_original_sync_edit",
+  "fixture_cleanup": {
+    "policy": "retained",
+    "original_generation_remote_hash_unchanged": true,
+    "fork_generation_remote_hash_unchanged": true,
+    "durable_task_rows_retained": 3,
+    "attempts_per_task": 1,
+    "active_sandbox_containers": 0,
+    "unresolved_background_count": 0,
+    "no_history_rewrite": true
+  }
+}

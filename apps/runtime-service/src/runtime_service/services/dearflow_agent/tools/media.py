@@ -47,6 +47,10 @@ def build_media_tools(
             raise ToolException("Media requires a trusted Dear Agent Run.")
         if facts.scope.thread_id and facts.scope.thread_id != str(info.thread_id):
             raise ToolException("Media thread scope mismatch.")
+        # Worker metadata identifies the business Run; execution_info may omit it.
+        run_id = (runtime.config.get("metadata") or {}).get("run_id") or info.run_id
+        if not isinstance(run_id, str) or not run_id:
+            raise ToolException("Media requires a trusted Dear Agent Run.")
         scope = (
             facts.principal.tenant_id,
             facts.principal.project_id,
@@ -55,7 +59,7 @@ def build_media_tools(
         )
         if not os.environ.get("DATABASE_URI"):
             raise ToolException("Media task storage is not configured.")
-        return ExternalTaskStorage(os.environ["DATABASE_URI"]), scope, str(info.run_id)
+        return ExternalTaskStorage(os.environ["DATABASE_URI"]), scope, run_id
 
     async def submit(runtime, key, operation, request, invoke):
         storage, scope, run = context(runtime)

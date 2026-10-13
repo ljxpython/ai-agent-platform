@@ -1,0 +1,35 @@
+{
+  "wheel": "langgraph_open_teach-0.1.2-py3-none-any.whl",
+  "wheel_sha256": "d2060adc55be99ef77f89d189db055e15ae776e18e3efaa64e522b2bdef87738",
+  "local_reader_image": "runtime-agent-workspace:wt_f58309b22539-sandbox-v2",
+  "local_reader_digest": "sha256:f38ea9235511656b34a34f6b91bd8c216fbc814659e5b5d6f61af44b3f07e7b7",
+  "sshmy2_reader_image": "runtime-agent-workspace:p5-v2",
+  "sshmy2_reader_digest": "sha256:c5e2d7d284ebad7ab731cef388d44eb075e5d2f3bad4e7572eadb257c303f50d",
+  "vendor_commit": "cc664451f03140b376611f329ae400c313530bdb",
+  "license_in_wheel_and_images_verified": true,
+  "previous_deployed_wheel_sha256": "335caa732a3f24a0610958cb6ff5018b17596e69ba01b89192311c8fe5a87f64",
+  "latest_wheel_server_deployment_verified": true,
+  "last_change": "Showcase schema-only StateBackend; terminal capacity mapped to existing 429; vendor/license/source byte equality verified after installation.",
+  "deployment_restarted_only_node_service": true,
+  "wheel_scope": "deployed sshmy2 Sandbox Node baseline; built before media caller fixes",
+  "runtime_caller_candidate": {
+    "built_at_utc": "2026-10-13T06:01:37.848161+00:00",
+    "path": ".local-stack/media-closeout-package/langgraph_open_teach-0.1.2-py3-none-any.whl",
+    "wheel_sha256": "6259790469c1bc3d26822a214c6232aecfe6bda6005e87190da7bb52a5eea383",
+    "source_files_match": [
+      "runtime_service/tools/images.py",
+      "runtime_service/services/dearflow_agent/tools/media.py",
+      "runtime_service/workspace/acquire_serialization.py",
+      "runtime_service/workspace/path_patterns.py",
+      "runtime_service/workspace/third_party/deerflow/LICENSE",
+      "runtime_service/workspace/third_party/deerflow/PROVENANCE.md",
+      "runtime_service/workspace/image_io.py"
+    ],
+    "sandbox_node_modules_match_current_source": 12,
+    "license_verified": true,
+    "deployed_to_sshmy2": false,
+    "contains_media_run_origin_and_download_unknown_fixes": true,
+    "caller_validation": "current Worktree editable Runtime API/Worker and isolated regression",
+    "node_requires_update_for_media_only_fixes": false
+  }
+}

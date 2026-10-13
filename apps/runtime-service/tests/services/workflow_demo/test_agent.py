@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -73,8 +74,10 @@ def test_internal_model_rebuild_keeps_outer_budget_and_actual_prompt(monkeypatch
             remaining=30,
         )
         graph = await get_agent(cfg)
-        await graph.ainvoke({"message": "first"}, _config("workflow-budget"))
-        await graph.ainvoke({"message": "second"}, _config("workflow-budget"))
+        await graph.ainvoke({"messages": [("user", "first")]}, cfg)
+        # Reusing metadata.run_id resumes the original invocation in LangGraph.
+        second = {**cfg, "metadata": {**cfg["metadata"], "run_id": str(uuid4())}}
+        await graph.ainvoke({"messages": [("user", "second")]}, second)
         assert len(budgets) == 2 and budgets[0] is budgets[1]
         assert all(TIMEOUT_WRAPUP_INSTRUCTION in prompt for prompt in prompts)
 

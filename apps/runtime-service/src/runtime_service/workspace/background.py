@@ -10,12 +10,14 @@ import re
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
+from weakref import WeakValueDictionary
 
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.run_control.resources import wait_cleanup
-from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.workspace.execution import docker_workspace_args, runtime_backend
 
 MAX_LOG_BYTES = 1024 * 1024
+_DOCKER_CONTROLS = WeakValueDictionary()
 
 
 @dataclass(frozen=True)
@@ -44,6 +46,14 @@ def labels(row):
 
 
 async def docker(*args, timeout=12, limit=65536):
+    slots = _DOCKER_CONTROLS.setdefault(
+        asyncio.get_running_loop(), asyncio.Semaphore(8)
+    )
+    async with slots:
+        return await _docker_control(*args, timeout=timeout, limit=limit)
+
+
+async def _docker_control(*args, timeout=12, limit=65536):
     creation = asyncio.create_task(
         asyncio.create_subprocess_exec(
             "docker",
@@ -79,6 +89,10 @@ async def docker(*args, timeout=12, limit=65536):
 
 
 async def inspect_task_container(row):
+    if row.get("sandbox_node_id"):
+        from runtime_service.workspace.remote_background import background_call
+
+        return await background_call(row, "inspect")
     if row["execution_host_id"] != host_id():
         raise RuntimeWorkspaceError("background_task_control_unavailable")
     code, data = await docker(
@@ -105,6 +119,20 @@ async def inspect_task_container(row):
 
 
 async def create_task_container(row, binding, command, timeout):
+    from runtime_service.workspace.target import RemoteWorkspace
+
+    if isinstance(binding.workspace, RemoteWorkspace):
+        from runtime_service.workspace.remote_background import background_call
+
+        return await background_call(
+            row,
+            "create",
+            image=binding.image,
+            command=command,
+            timeout=timeout,
+            runner_secret=row["runner_secret"],
+            skills=getattr(binding.skills, "digest", None),
+        )
     if runtime_backend() != "docker":
         raise RuntimeWorkspaceError("background_task_not_supported")
     # The Docker daemon cannot resolve paths inside the Runtime container. Embed
@@ -158,6 +186,10 @@ async def create_task_container(row, binding, command, timeout):
 
 
 async def start_task_container(row):
+    if row.get("sandbox_node_id"):
+        from runtime_service.workspace.remote_background import background_call
+
+        return await background_call(row, "start")
     state = await inspect_task_container(row)
     if state is not None and state["Status"] == "created":
         await docker("start", state["id"])
@@ -166,6 +198,10 @@ async def start_task_container(row):
 
 
 async def stop_task_container(row):
+    if row.get("sandbox_node_id"):
+        from runtime_service.workspace.remote_background import background_call
+
+        return await background_call(row, "stop")
     state = await inspect_task_container(row)
     if state is not None and state["Running"]:
         await docker("stop", "--time=10", state["id"], timeout=15)
@@ -177,6 +213,11 @@ async def stop_task_container(row):
 
 
 async def remove_task_container(row):
+    if row.get("sandbox_node_id"):
+        from runtime_service.workspace.remote_background import background_call
+
+        # Only the Runtime reconciler calls this after its terminal snapshot commits.
+        return await background_call(row, "remove", acknowledged=True)
     state = await inspect_task_container(row)
     if state is None:
         return True
@@ -220,6 +261,11 @@ def decode_snapshots(data):
 
 
 async def read_task_output(row):
+    if row.get("sandbox_node_id"):
+        from runtime_service.workspace.remote_background import background_call
+
+        result = await background_call(row, "output")
+        return tuple(result) if result is not None else None
     state = await inspect_task_container(row)
     if state is None:
         return None
@@ -230,9 +276,18 @@ async def read_task_output(row):
 
 
 async def read_task_receipt(row):
+    if row.get("sandbox_node_id"):
+        from runtime_service.workspace.remote_background import background_call
+
+        data = await background_call(row, "receipt")
+        return verify_receipt(data, row)
     code, data = await docker("logs", "--tail=1", row["container_id"])
     if code:
         return None
+    return verify_receipt(data, row)
+
+
+def verify_receipt(data, row):
     try:
         value = json.loads(data)
         receipt = value["receipt"]

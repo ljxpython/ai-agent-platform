@@ -32,10 +32,9 @@ from runtime_service.workspace.media import validate_media
 
 @pytest.fixture
 def storage():
-    dsn = os.getenv(
-        "RUNTIME_MESSAGE_TEST_DSN",
-        "postgresql://lijiaxin@127.0.0.1:5432/graphharbor_web_refactor_20260910",
-    )
+    dsn = os.getenv("RUNTIME_MESSAGE_TEST_DSN")
+    if not dsn:
+        pytest.skip("RUNTIME_MESSAGE_TEST_DSN must name an isolated test database")
     schema = "dear_p5_" + uuid4().hex
     with psycopg.connect(dsn) as db:
         db.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
@@ -98,8 +97,16 @@ def png(color="red"):
     return output.getvalue()
 
 
+@pytest.mark.parametrize(
+    ("execution_run", "metadata"),
+    [
+        (None, {"run_id": "worker-run"}),
+        ("trace-run", {"run_id": "worker-run"}),
+        ("worker-run", {}),
+    ],
+)
 def test_image_tools_idempotency_multi_reference_cancel_and_invalid_result(
-    storage, tmp_path, monkeypatch
+    storage, tmp_path, monkeypatch, execution_run, metadata
 ):
     from runtime_service.tools import images
 
@@ -115,7 +122,8 @@ def test_image_tools_idempotency_multi_reference_cancel_and_invalid_result(
     monkeypatch.setattr(media, "verified_delegation_from_user", lambda _: facts)
     runtime = SimpleNamespace(
         server_info=SimpleNamespace(user={}),
-        execution_info=SimpleNamespace(thread_id="thread", run_id="run"),
+        execution_info=SimpleNamespace(thread_id="thread", run_id=execution_run),
+        config={"metadata": metadata},
         tool_call_id="approved-call",
     )
     calls = []
@@ -159,6 +167,12 @@ def test_image_tools_idempotency_multi_reference_cancel_and_invalid_result(
         )
         assert first == again and len(calls) == 1
         assert first["status"] == "succeeded"
+        assert (
+            storage.get(("tenant", "project", "user", "thread"), first["task_id"])[
+                "origin_run_id"
+            ]
+            == "worker-run"
+        )
         ref = first["result"]["runtime_images"][0]
         assert workspace.read_asset(ref["path"])[1] == ref
         edited = await tools["edit_image"].coroutine(
@@ -324,6 +338,7 @@ def test_provider_accepts_but_drops_receipt_without_second_submission(
     runtime = SimpleNamespace(
         server_info=SimpleNamespace(user={}),
         execution_info=SimpleNamespace(thread_id="thread", run_id="first-run"),
+        config={},
         tool_call_id="approved-call",
     )
     workspace = ImageWorkspace(tmp_path / "workspace")

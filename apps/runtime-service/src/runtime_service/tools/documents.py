@@ -224,12 +224,14 @@ def build_document_tools(workspace: Path | None, *, execution_image: str | None 
             )
         except ValueError as exc:
             raise DocumentError(str(exc)) from None
-        if (
-            workspace is None
-            or not execution_image
-            or not (workspace / "work").is_dir()
-            or (workspace / "work").is_symlink()
-        ):
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if workspace is None or not execution_image:
+            raise DocumentError("office_reader_unavailable")
+        if isinstance(workspace, RemoteWorkspace):
+            if not (await asyncio.to_thread(workspace.call, "is_prepared"))["prepared"]:
+                raise DocumentError("office_reader_unavailable")
+        elif not (workspace / "work").is_dir() or (workspace / "work").is_symlink():
             raise DocumentError("office_reader_unavailable")
         request = {
             "file_path": file_path,

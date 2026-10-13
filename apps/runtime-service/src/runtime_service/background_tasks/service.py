@@ -79,6 +79,23 @@ async def start_task(identity, binding, command, timeout=900):
             host,
         ]
     )
+    from runtime_service.workspace.target import RemoteWorkspace
+
+    remote = isinstance(binding.workspace, RemoteWorkspace)
+    if remote:
+        bound = repository.digest(
+            [
+                "remote",
+                binding.workspace.execution_host,
+                binding.workspace.node_id,
+                binding.workspace.workspace_id,
+                binding.graph_id,
+                binding.scope,
+                binding.image,
+                getattr(binding.skills, "digest", None),
+                binding.protected,
+            ]
+        )
     request_digest = repository.digest([command, timeout, bound])
     if existing is not None:
         if (
@@ -86,13 +103,21 @@ async def start_task(identity, binding, command, timeout=900):
             or existing["request_digest"] != request_digest
         ):
             raise RuntimeWorkspaceError("background_task_idempotency_conflict")
+        if existing["cleanup_state"] == "not_required" and existing.get(
+            "reason_code"
+        ) in {
+            "background_task_not_supported",
+            "background_task_disabled",
+        }:
+            raise BackgroundTaskNotStarted(existing["reason_code"])
         return existing
 
     async def reserve():
         await asyncio.to_thread(check_space)
-        return await asyncio.to_thread(
-            repository.reserve_task, identity, bound, request_digest, host, timeout
-        )
+        arguments = (identity, bound, request_digest, host, timeout)
+        if remote:
+            arguments += (binding.workspace.node_id,)
+        return await asyncio.to_thread(repository.reserve_task, *arguments)
 
     try:
         row, fresh = await reserve()
@@ -110,6 +135,15 @@ async def start_task(identity, binding, command, timeout=900):
             row["container_id"] = state["id"]
             state = await start_task_container(row)
             return await _observe(row, state)
+        except BackgroundTaskNotStarted as exc:
+            await asyncio.to_thread(
+                repository.save,
+                row,
+                status="failed",
+                cleanup="not_required",
+                reason=exc.code,
+            )
+            raise
         except RuntimeWorkspaceError:
             return await asyncio.to_thread(
                 repository.save,

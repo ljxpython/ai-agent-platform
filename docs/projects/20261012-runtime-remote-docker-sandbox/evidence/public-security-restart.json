@@ -1,0 +1,19 @@
+{
+  "checked_at_utc": "2026-10-13T01:11:47.858632+00:00",
+  "checks": [
+    "untrusted-client",
+    "expired-client",
+    "wrong-san",
+    "no-token",
+    "wrong-protocol",
+    "plaintext-and-docker-tcp-refused",
+    "actual-public-source-ip-denied",
+    "policy-restored-and-node-restart-original-id-data"
+  ],
+  "public_network_verified": true,
+  "source_ip_policy_restored": true,
+  "node_process_restart_verified": true,
+  "server_os_restart_verified": false,
+  "workspace_id": "b491a70717167ce486f6578f1edc11ba1229edcc3a72c19dee52f84eefbf1722",
+  "retained_sha256": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b"
+}

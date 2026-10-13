@@ -1,0 +1,10 @@
+{
+  "readiness_roundtrip": {
+    "n": 12,
+    "failures": 0,
+    "p50_ms": 18.79,
+    "p95_ms": 271.12
+  },
+  "server_resource_observation": "python          103368  11\npython          313916  10\nactive\nactive\nactive\n",
+  "single_sample_not_production_slo": true
+}

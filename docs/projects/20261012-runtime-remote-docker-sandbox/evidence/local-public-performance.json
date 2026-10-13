@@ -1,0 +1,35 @@
+{
+  "mode": "local",
+  "metrics": {
+    "bulk": {
+      "bytes": 10485760,
+      "sha256": "52111de7d45936c82eb635b27a3e26a35f62d9575d135b3db59b9f6004a32476",
+      "upload_seconds": 0.412,
+      "download_seconds": 0.392,
+      "upload_mib_per_second": 24.264,
+      "download_mib_per_second": 25.503
+    },
+    "read": {
+      "n": 12,
+      "failures": 0,
+      "p50_ms": 185.69,
+      "p95_ms": 218.27
+    },
+    "preview": {
+      "n": 12,
+      "failures": 0,
+      "p50_ms": 217.47,
+      "p95_ms": 400.08
+    },
+    "tree": {
+      "n": 12,
+      "failures": 0,
+      "p50_ms": 217.14,
+      "p95_ms": 282.79
+    }
+  },
+  "errors": [],
+  "thread_id": "28f9bdfd-cb1d-46c6-80e1-bdfcf083ff1b",
+  "status": "passed",
+  "thread_delete_status": 200
+}

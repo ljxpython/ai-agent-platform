@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import time
 from pathlib import Path
 from uuid import uuid4
@@ -12,9 +11,17 @@ from uuid import uuid4
 from deepagents.backends.protocol import ExecuteResponse
 from langchain_core.callbacks.manager import adispatch_custom_event
 
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.errors import RuntimeWorkspaceError
+from runtime_service.workspace.docker_policy import (
+    MAX_OUTPUT as MAX_OUTPUT,
+)
+from runtime_service.workspace.docker_policy import (
+    docker_workspace_args as docker_workspace_args,
+)
+from runtime_service.workspace.docker_policy import (
+    runtime_backend as runtime_backend,
+)
 
-MAX_OUTPUT = 128 * 1024
 logger = logging.getLogger(__name__)
 
 
@@ -141,64 +148,6 @@ async def _report(fields: dict) -> None:
         pass
 
 
-def runtime_backend() -> str:
-    backend = os.getenv("RUNTIME_BACKEND", "docker")
-    if backend not in {"local", "docker"}:
-        raise RuntimeWorkspaceError("runtime.workspace.backend_invalid")
-    return backend
-
-
-def docker_workspace_args(
-    workspace: Path,
-    *,
-    image: str,
-    name: str,
-    skills: Path | None = None,
-    protected: bool = False,
-    background: bool = False,
-) -> list[str]:
-    """Share the same mount and resource policy between commands and terminals."""
-    if not workspace.is_dir() or workspace.is_symlink():
-        raise RuntimeWorkspaceError("runtime.workspace.unavailable")
-    if not image or image.startswith("-"):
-        raise RuntimeWorkspaceError("runtime.workspace.image_invalid")
-    args = [
-        "docker",
-        "create" if background else "run",
-        *([] if background else ["--rm"]),
-        "--pull=never",
-        "--name",
-        name,
-        "--network=none",
-        "--read-only",
-        "--cap-drop=ALL",
-        "--user",
-        f"{os.getuid()}:{os.getgid()}",
-        "--security-opt=no-new-privileges",
-        "--pids-limit=64",
-        "--memory=256m",
-        "--cpus=1",
-        "--ulimit",
-        "fsize=8388608:8388608",
-        "--tmpfs",
-        "/tmp:rw,nosuid,nodev,size=16777216",
-        "--mount",
-        f"type=bind,src={workspace},dst=/workspace"
-        + (",readonly" if protected else ""),
-    ]
-    if protected:
-        args += ["--mount", f"type=bind,src={workspace / 'work'},dst=/workspace/work"]
-        args += [
-            "--env",
-            "RUNTIME_WORKSPACE_ROOT=/workspace",
-            "--env",
-            "RUNTIME_SKILLS_ROOT=/skills",
-        ]
-    if skills is not None:
-        args += ["--mount", f"type=bind,src={skills},dst=/skills,readonly"]
-    return [*args, "--workdir", "/workspace/work" if protected else "/workspace", image]
-
-
 async def execute_in_workspace(
     workspace: Path,
     command: str,
@@ -213,6 +162,19 @@ async def execute_in_workspace(
     seconds = 30 if timeout is None else timeout
     if type(seconds) is not int or not 1 <= seconds <= 60:
         raise ValueError("timeout must be between 1 and 60 seconds")
+    from runtime_service.workspace.target import RemoteWorkspace
+
+    if isinstance(workspace, RemoteWorkspace):
+        from runtime_service.workspace.node_client import execute
+
+        return await execute(
+            workspace,
+            command,
+            image=image,
+            timeout=seconds,
+            skills=skills,
+            protected=protected,
+        )
     name = f"runtime-{uuid4().hex}"
     started = time.monotonic()
     deadline = started + seconds + 15

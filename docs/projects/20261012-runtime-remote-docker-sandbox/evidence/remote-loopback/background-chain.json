@@ -1,0 +1,110 @@
+{
+  "mode": "remote-loopback",
+  "completed": {
+    "version": 1,
+    "task_id": "e1295a81-c9bd-4802-8a56-d381c1ae8869",
+    "thread_id": "680c2a3c-c7e8-4c79-a847-6d690d883962",
+    "graph_id": "dearflow_agent",
+    "origin_run_id": "c9620e31-5475-4319-95e7-129e80f491e8",
+    "status": "succeeded",
+    "reason_code": null,
+    "exit_code": 0,
+    "created_at": "2026-10-13T04:12:04.371988+08:00",
+    "started_at": "2026-10-13T04:12:18.705612+08:00",
+    "finished_at": "2026-10-13T04:12:50.438271+08:00",
+    "deadline_at": "2026-10-13T04:12:34.361034+08:00",
+    "updated_at": "2026-10-13T04:13:40.473816+08:00",
+    "cleanup_state": "confirmed",
+    "output": {
+      "available": true,
+      "retained_bytes": 15,
+      "omitted_bytes": 0,
+      "truncated": false,
+      "updated_at": "2026-10-13T04:12:50.438271+08:00"
+    },
+    "delivery": {
+      "state": "accepted",
+      "event_id": "069f9c0a-a4e0-510b-b7f2-f6b2a34f67e6",
+      "run_id": "eb3c055e-2d7b-41aa-adcd-62a4035f9ebd",
+      "reason_code": null
+    },
+    "allowed_actions": [
+      "read",
+      "logs"
+    ]
+  },
+  "cancelled": {
+    "version": 1,
+    "task_id": "b102c715-3999-443c-9a26-fba063751d46",
+    "thread_id": "8fdeea99-0e1c-4ffe-b011-f44d52006318",
+    "graph_id": "dearflow_agent",
+    "origin_run_id": "67d3b707-9695-4c37-9ca7-9590e961442f",
+    "status": "cancelled",
+    "reason_code": null,
+    "exit_code": -15,
+    "created_at": "2026-10-13T04:16:05.860570+08:00",
+    "started_at": "2026-10-13T04:16:13.374307+08:00",
+    "finished_at": "2026-10-13T04:17:18.688533+08:00",
+    "deadline_at": "2026-10-13T04:19:05.848791+08:00",
+    "updated_at": "2026-10-13T04:17:26.948994+08:00",
+    "cleanup_state": "confirmed",
+    "output": {
+      "available": true,
+      "retained_bytes": 7,
+      "omitted_bytes": 0,
+      "truncated": false,
+      "updated_at": "2026-10-13T04:17:18.688533+08:00"
+    },
+    "delivery": {
+      "state": "suppressed",
+      "event_id": "3c381c0b-2c4e-53bf-ab23-7c96e09c5f21",
+      "run_id": null,
+      "reason_code": null
+    },
+    "allowed_actions": [
+      "read",
+      "logs"
+    ]
+  },
+  "stop": {
+    "version": 1,
+    "stop_id": "d3d7a5a2-049c-4af7-93dc-fdbd0b7d9444",
+    "thread_id": "8fdeea99-0e1c-4ffe-b011-f44d52006318",
+    "phase": "no_active_run",
+    "requested_at": "2026-10-13T04:17:02.011295+08:00",
+    "accepted_at": "2026-10-13T04:17:05.244131+08:00",
+    "confirmed_at": "2026-10-13T04:17:29.835293+08:00",
+    "target_count": 0,
+    "execution_stopped": true,
+    "resource_cleanup": "confirmed",
+    "has_pending_interrupts": false,
+    "queue": {
+      "pending_cancelled_count": 0,
+      "inbox_consumed_count": 0,
+      "inbox_not_consumed_count": 0
+    },
+    "report": {
+      "version": 1,
+      "source": "checkpoint_and_receipts",
+      "checkpoint_id": null,
+      "checkpoint_at": null,
+      "checkpoints": [],
+      "progress": [],
+      "artifacts": [],
+      "uncertainties": [
+        "checkpoint_unavailable",
+        "progress_unavailable"
+      ],
+      "truncated": false,
+      "background_tasks": {
+        "target_count": 1,
+        "cleanup_confirmed_count": 1,
+        "cleanup_unconfirmed_count": 0,
+        "notifications_suppressed_count": 1,
+        "truncated": false
+      }
+    },
+    "reason_code": null,
+    "request_id": "bbc5f87803d24c1789334db5df324930"
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "checked_at_utc": "2026-10-13T00:37:38.150960+00:00",
+  "mode": "remote-public-platform",
+  "marker": "public-chain-65c2c2d2f2",
+  "results": [
+    {
+      "name": "dearflow_agent-terminal-proxy",
+      "passed": true,
+      "elapsed_seconds": 2.525,
+      "facts": {
+        "thread_id": "9efe7c65-0cce-4b6d-b27d-3677cf5123f1",
+        "input_once": true,
+        "sha256": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+        "terminal_id": "31a3294b5159472f804576fdd53ec5c5.381473ea71b64088addfa5a6e830d9be"
+      }
+    },
+    {
+      "name": "dearflow_agent-real-model-office-image-skills-child-artifacts",
+      "passed": true,
+      "elapsed_seconds": 41.237,
+      "facts": {
+        "thread_id": "9efe7c65-0cce-4b6d-b27d-3677cf5123f1",
+        "graph": "dearflow_agent",
+        "tools": [
+          "read_file",
+          "ls",
+          "read_file",
+          "write_todos",
+          "parse_document",
+          "parse_document",
+          "execute",
+          "task",
+          "write_file",
+          "present_artifacts",
+          "present_artifacts",
+          "write_todos"
+        ],
+        "attachments": [
+          {
+            "version": 1,
+            "path": "/workspace/uploads/931720ce78f6e98205accbcb0ab6006eaee36832adcd204bd9a36f4dddf7ee2d.docx",
+            "file_name": "proof.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "size_bytes": 36595,
+            "sha256": "931720ce78f6e98205accbcb0ab6006eaee36832adcd204bd9a36f4dddf7ee2d"
+          },
+          {
+            "version": 1,
+            "path": "/workspace/uploads/8f192c29fde2ff00a6006b058ac99ba4a1a924715891e78077ea7bc85e4abcfe.pptx",
+            "file_name": "proof.pptx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "size_bytes": 29156,
+            "sha256": "8f192c29fde2ff00a6006b058ac99ba4a1a924715891e78077ea7bc85e4abcfe"
+          }
+        ],
+        "image_path": "/workspace/uploads/68eb562430b8508f014985a342ffc9f43e30a0f13577658c86260df838785d6c.png",
+        "artifacts": [
+          {
+            "version": 1,
+            "artifact_id": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+            "path": "/workspace/outputs/231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62.md",
+            "file_name": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62.md",
+            "mime_type": "text/markdown",
+            "size_bytes": 23,
+            "sha256": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+            "kind": "text",
+            "preview_kind": "markdown"
+          },
+          {
+            "version": 1,
+            "artifact_id": "5fcffa53d2c78ed28997cd4ba4c4c428158edf29e00c91bc74910e146a0a0dca",
+            "path": "/workspace/outputs/5fcffa53d2c78ed28997cd4ba4c4c428158edf29e00c91bc74910e146a0a0dca.html",
+            "file_name": "5fcffa53d2c78ed28997cd4ba4c4c428158edf29e00c91bc74910e146a0a0dca.html",
+            "mime_type": "text/html",
+            "size_bytes": 49,
+            "sha256": "5fcffa53d2c78ed28997cd4ba4c4c428158edf29e00c91bc74910e146a0a0dca",
+            "kind": "text",
+            "preview_kind": "html-sandbox"
+          }
+        ],
+        "child_shared_bytes": true
+      }
+    },
+    {
+      "name": "public-worker-background-completion",
+      "passed": true,
+      "elapsed_seconds": 141.035,
+      "facts": {
+        "thread_id": "9efe7c65-0cce-4b6d-b27d-3677cf5123f1",
+        "task_id": "45a1bcee-e082-48c0-98b7-0622d175e0f0",
+        "delivery_run_id": "db5134f0-dd51-4706-bf23-50ea54cd003d",
+        "status": "succeeded",
+        "cleanup_state": "confirmed",
+        "output": "public-chain-65c2c2d2f2"
+      }
+    },
+    {
+      "name": "public-worker-thread-stop",
+      "passed": true,
+      "elapsed_seconds": 23.566,
+      "facts": {
+        "task_id": "a6a99d74-ec30-4fdc-b980-5b3f1c746c3a",
+        "status": "cancelled",
+        "delivery": "suppressed",
+        "stop_id": "7b06cff7-6797-483f-ab31-f10a95f40c11",
+        "resource_cleanup": "confirmed"
+      }
+    },
+    {
+      "name": "showcase_demo-terminal-proxy",
+      "passed": true,
+      "elapsed_seconds": 0.15,
+      "facts": {
+        "thread_id": "1511b840-7b74-4fbf-a97c-8c02f313b574",
+        "input_once": true,
+        "sha256": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+        "verified_existing_terminal_file": true,
+        "path": "/workspace/terminal.md"
+      }
+    },
+    {
+      "name": "showcase_demo-real-model-office-image-skills-child-artifacts",
+      "passed": true,
+      "elapsed_seconds": 79.849,
+      "facts": {
+        "thread_id": "1511b840-7b74-4fbf-a97c-8c02f313b574",
+        "graph": "showcase_demo",
+        "tools": [
+          "read_file",
+          "parse_document",
+          "parse_document",
+          "analyze_image",
+          "ls",
+          "ls",
+          "execute",
+          "task",
+          "write_file",
+          "present_artifacts",
+          "present_artifacts",
+          "read_file",
+          "read_file"
+        ],
+        "attachments": [
+          {
+            "version": 1,
+            "path": "/workspace/uploads/177e963b85d29715f209967a18428b534ab25887bf1ec54e46e74883c1cd96c0.docx",
+            "file_name": "proof.docx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "size_bytes": 36595,
+            "sha256": "177e963b85d29715f209967a18428b534ab25887bf1ec54e46e74883c1cd96c0"
+          },
+          {
+            "version": 1,
+            "path": "/workspace/uploads/c818f34d8123813c67c21c250b7a425c1e95e0abdbeb7d32ebf6ad104edbf0dd.pptx",
+            "file_name": "proof.pptx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "size_bytes": 29156,
+            "sha256": "c818f34d8123813c67c21c250b7a425c1e95e0abdbeb7d32ebf6ad104edbf0dd"
+          }
+        ],
+        "image_path": "/workspace/uploads/68eb562430b8508f014985a342ffc9f43e30a0f13577658c86260df838785d6c.png",
+        "artifacts": [
+          {
+            "version": 1,
+            "artifact_id": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+            "path": "/workspace/outputs/231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62.md",
+            "file_name": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62.md",
+            "mime_type": "text/markdown",
+            "size_bytes": 23,
+            "sha256": "231f7da7f9a91619257a2845ec10e7a33d3bbfe79678107a7e2aa86ee513fd62",
+            "kind": "text",
+            "preview_kind": "markdown"
+          },
+          {
+            "version": 1,
+            "artifact_id": "b375d2656d12203ee4fa3d31acf0b2d8154161920539f31099e7b024a6479351",
+            "path": "/workspace/outputs/b375d2656d12203ee4fa3d31acf0b2d8154161920539f31099e7b024a6479351.html",
+            "file_name": "b375d2656d12203ee4fa3d31acf0b2d8154161920539f31099e7b024a6479351.html",
+            "mime_type": "text/html",
+            "size_bytes": 50,
+            "sha256": "b375d2656d12203ee4fa3d31acf0b2d8154161920539f31099e7b024a6479351",
+            "kind": "text",
+            "preview_kind": "html-sandbox"
+          }
+        ],
+        "child_shared_bytes": true
+      }
+    }
+  ],
+  "fixture_threads": [
+    {
+      "thread_id": "9efe7c65-0cce-4b6d-b27d-3677cf5123f1",
+      "project_id": "4e4c88a6-80f1-4bda-9801-cc1c9f176f7e",
+      "graph": "dearflow_agent",
+      "agent_id": "3814922f-a0ed-46c9-bc43-b48c168dde07",
+      "model_id": "84bdffc9-dd61-47ae-9971-f6e09ad94e44"
+    },
+    {
+      "thread_id": "1511b840-7b74-4fbf-a97c-8c02f313b574",
+      "project_id": "5e70d563-a6c7-4efe-aa1e-b3fd14e7d957",
+      "graph": "showcase_demo",
+      "agent_id": "492b015c-0e55-4d44-9a56-ff89f3c5cee0",
+      "model_id": "84bdffc9-dd61-47ae-9971-f6e09ad94e44"
+    }
+  ],
+  "observations": [],
+  "status": "passed"
+}

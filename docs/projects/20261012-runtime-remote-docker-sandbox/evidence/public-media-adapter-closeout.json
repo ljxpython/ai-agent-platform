@@ -1,0 +1,56 @@
+{
+  "mode": "public-remote-node-controlled-image-provider-real-chart",
+  "image_provider_controlled": true,
+  "checks": [
+    {
+      "name": "generated-public-bytes",
+      "passed": true,
+      "ref": {
+        "path": "/workspace/generated/4037edad43764c5c81b62667a4c8ad04.png",
+        "sha256": "36fe6ab71ec56fa1fc84326e4673fbf028c6ad2eb5051ce5a9e6cb0d07c85f4c",
+        "mime_type": "image/png",
+        "size_bytes": 77
+      }
+    },
+    {
+      "name": "edited-public-bytes",
+      "passed": true,
+      "ref": {
+        "path": "/workspace/generated/5b5677380be540f2b02684f837aaea8f.png",
+        "sha256": "9fa0f2ae2b655c877690c6ed5649dad9f248147f7e21d0f8011636c20d627162",
+        "mime_type": "image/png",
+        "size_bytes": 75
+      }
+    },
+    {
+      "name": "vision-existing-showcase-public-chain",
+      "passed": true,
+      "evidence": "public-platform.json"
+    }
+  ],
+  "operations": {
+    "generation": {
+      "id": "7c89949c16d444c3971c639b20632940",
+      "status": "completed",
+      "seconds": 0.054
+    },
+    "edit": {
+      "id": "e82beacfe4354a86b58459e8dee47a7a",
+      "status": "completed",
+      "seconds": 0.033
+    },
+    "chart": {
+      "id": "86ebea90f3db4e0bb5258199d1979470",
+      "status": "completed",
+      "seconds": 8.799
+    }
+  },
+  "status": "failed",
+  "thread_id": "76685a2a-45cc-4108-a8ae-4b0a19f0d85a",
+  "failure_type": "DocumentError",
+  "thread_delete_status": 200,
+  "cleanup": {
+    "status": "deleting",
+    "eligible": false
+  }
+}

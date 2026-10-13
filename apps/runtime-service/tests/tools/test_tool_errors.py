@@ -113,6 +113,41 @@ def test_approved_content_is_bounded_and_uses_only_trusted_fields(
     )
 
 
+@pytest.mark.parametrize("run_id", [None, "", 0])
+def test_media_missing_run_is_rejected_before_task_or_purchase(
+    monkeypatch, tmp_path, run_id
+):
+    facts = SimpleNamespace(
+        scope=SimpleNamespace(assistant_id="dearflow_agent", thread_id="thread"),
+        principal=SimpleNamespace(
+            tenant_id="tenant", project_id="project", user_id="user"
+        ),
+    )
+    monkeypatch.setattr(media, "verified_delegation_from_user", lambda _: facts)
+    monkeypatch.setattr(
+        media,
+        "ExternalTaskStorage",
+        lambda _: pytest.fail("No task or purchase without a Run"),
+    )
+    for key in ("DATABASE_URI", "IMAGE_25_KEY", "IMAGE_25_URL", "IMAGE_25_MODEL"):
+        monkeypatch.setenv(key, "synthetic")
+    runtime = SimpleNamespace(
+        server_info=SimpleNamespace(user={}),
+        execution_info=SimpleNamespace(thread_id="thread", run_id=None),
+        config={"metadata": {"run_id": run_id}},
+        tool_call_id="call",
+    )
+    tools = {
+        item.name: item for item in media.build_media_tools(ImageWorkspace(tmp_path))
+    }
+    with pytest.raises(ToolException, match="trusted Dear Agent Run"):
+        asyncio.run(
+            tools["generate_image"].coroutine(
+                prompt="test", idempotency_key="once", runtime=runtime
+            )
+        )
+
+
 @pytest.mark.parametrize(
     "error",
     [
@@ -292,13 +327,16 @@ def test_media_records_unknown_once_and_propagates_fatal_errors(
     monkeypatch.setattr(
         media,
         "build_image_tools",
-        lambda _: [SimpleNamespace(name="generate_image", coroutine=provider)],
+        lambda _, pii_config=None: [
+            SimpleNamespace(name="generate_image", coroutine=provider)
+        ],
     )
     for key in ("DATABASE_URI", "IMAGE_25_KEY", "IMAGE_25_URL", "IMAGE_25_MODEL"):
         monkeypatch.setenv(key, "synthetic")
     runtime = SimpleNamespace(
         server_info=SimpleNamespace(user={}),
         execution_info=SimpleNamespace(thread_id="thread", run_id="run"),
+        config={},
         tool_call_id="call",
     )
     tool = media.build_media_tools(ImageWorkspace(tmp_path))[0]

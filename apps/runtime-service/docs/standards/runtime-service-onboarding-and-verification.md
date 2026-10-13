@@ -5,8 +5,7 @@
 ```bash
 cd apps/runtime-service
 uv sync
-docker pull python:3.13-slim
-uv run graphharbor serve --config langgraph.demo.json --host 127.0.0.1 --port 8123
+RUNTIME_BACKEND=local uv run graphharbor serve --config langgraph.demo.json --host 127.0.0.1 --port 8123
 ```
 
 先运行不依赖外部服务的快速测试：
@@ -16,6 +15,10 @@ uv run pytest tests/services/showcase_demo -m "not integration and not e2e"
 ```
 
 需要 Docker 隔离时运行 integration；需要真实模型或外部 MCP 时显式设置对应环境变量和 marker，凭据缺失必须失败并说明原因，禁止静默降级。
+
+关联 Worktree 使用[本地栈规范](../../../../docs/standards/worktree-development.md)中的登记端口、独立原生 PG/Redis 和所属 env，不直接运行上面的固定端口示例。三种沙箱模式、远端客户端秘密文件与 Node 运维见[沙箱手册](../../../../docs/runbooks/runtime-sandbox-node.md)。普通 local 无 Node/Docker 依赖，Office 固定 Docker reader 例外保留。
+
+`tests/workspace/test_node_tls.py` 验证真实回环 HTTPS+mTLS 和本机 Docker；设置所属隔离 `BACKGROUND_TEST_DSN` 后包含真实 PG 后台对账，`OFFICE_TEST_IMAGE` 指定具备 reader 的预置镜像。回环通过不证明 sshmy2 公网或浏览器链路通过；分别记录[专项矩阵](../../../../docs/projects/20261012-runtime-remote-docker-sandbox/verification.md)。
 
 ## 提交前检查
 

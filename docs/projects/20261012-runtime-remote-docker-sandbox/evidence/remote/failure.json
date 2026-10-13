@@ -1,0 +1,16 @@
+{
+  "mode": "remote",
+  "threadId": "4d30729f-16c5-4d76-9fb4-4ec0b005a46a",
+  "errors": [],
+  "error": "\u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: '待审批操作' })\nExpected: visible\nTimeout: 180000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('region', { name: '待审批操作' }) with timeout 180000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: '待审批操作' })\u001b[22m\n",
+  "transientQueryFailures": [],
+  "approvalReloads": 1,
+  "failedRequests": [
+    {
+      "path": "/api/langgraph/threads/4d30729f-16c5-4d76-9fb4-4ec0b005a46a",
+      "status": 502
+    }
+  ],
+  "url": "http://127.0.0.1:25474/workspace/projects/9dd199da-52a2-4eda-99b6-72b016e4a3bd/chat/4d30729f-16c5-4d76-9fb4-4ec0b005a46a?agentId=66fa7efc-e0dc-429b-9e1a-2d841a966ae2",
+  "body": "Agent Platform\nV0.1.2\n工作区\n总览\n项目\nDEAR AGENT\n对话工作台\nSkills 技能\n任务成果\n长期记忆\n项目管理\nChat\n会话治理\nAgents\n模型与工具\nGraphs\n定时任务\nToken 看板\n平台管理\n会话治理\n模型连接\n用户\n控制面\n公告\n审计\n平台配置\n服务账号\n系统探测\nToken 看板\nDark mode\n收起\n全部\n待处理\n运行中\n空闲\n异常\n待处理\n请真实完成这些操作：用 parse_document 读取上传的 sandbox\n2026/10/13 08:43:10\n共 1 条\n«\n/ 1\n»\n无法打开对话\n\nHTTP 502: {\"error\":{\"code\":\"langgraph_upstream_request_failed\",\"message\":\"Runtime request failed\",\"details\":[],\"extra\":{\"upstream\":\"langgraph\",\"upstream_status_code\":503}},\"request_id\":\"c7db632c77304115b2256e5fa711983c\",\"message\":\"Runtime request failed（请求编号：c7db632c77304115b2256e5fa711983c）\",\"code\":\"langgraph_upstream_request_failed\"}"
+}

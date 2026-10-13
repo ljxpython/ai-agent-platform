@@ -1,0 +1,28 @@
+[Unit]
+Description=Runtime Sandbox Node (single manager, mTLS, local Docker socket)
+After=network-online.target docker.service
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=runtime-sandbox
+Group=runtime-sandbox
+SupplementaryGroups=docker
+WorkingDirectory=/opt/runtime-sandbox
+EnvironmentFile=/etc/runtime-sandbox/node.env
+ExecStart=/opt/runtime-sandbox/.venv/bin/python -m runtime_service.sandbox_node
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=180
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/runtime-sandbox
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

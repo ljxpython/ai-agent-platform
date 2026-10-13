@@ -21,6 +21,29 @@ from runtime_service.tools import background
 from .test_tools_and_assembly import invocation
 
 
+def test_docker_controls_are_bounded_across_successive_event_loops(monkeypatch):
+    from runtime_service.workspace import background as control
+
+    active = peak = 0
+
+    async def run_command(*args, **kwargs):
+        nonlocal active, peak
+        active += 1
+        peak = max(peak, active)
+        await asyncio.sleep(0.01)
+        active -= 1
+        return 0, b"done"
+
+    monkeypatch.setattr(control, "_docker_control", run_command)
+
+    async def batch():
+        await asyncio.gather(*(control.docker("inspect", str(i)) for i in range(16)))
+
+    asyncio.run(batch())
+    asyncio.run(batch())
+    assert peak == 8 and active == 0
+
+
 class User(dict):
     identity = "owner"
     is_authenticated = True
@@ -45,6 +68,9 @@ def build(request, monkeypatch, tmp_path):
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path / "showcase"))
     monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path / "dearflow"))
     monkeypatch.setenv("DATABASE_URI", "isolated-test-only")
+    monkeypatch.setattr(
+        "runtime_service.workspace.locations.bind", lambda scope, graph, root: root
+    )
     monkeypatch.setenv("RUNTIME_EXECUTION_HOST_ID", "test-host")
     monkeypatch.setenv("RUNTIME_BACKGROUND_TASKS_ENABLED", "1")
     monkeypatch.setattr(

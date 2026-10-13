@@ -1,0 +1,44 @@
+{
+  "status": "passed",
+  "facts": [
+    {
+      "host": "wt_f58309b22539",
+      "action": "write",
+      "same_scope_file_isolated": true,
+      "other_host_denied": true
+    },
+    {
+      "host": "wt_39abb85e02a2",
+      "action": "write",
+      "same_scope_file_isolated": true,
+      "other_host_denied": true
+    },
+    {
+      "host": "wt_f58309b22539",
+      "action": "read",
+      "same_scope_file_isolated": true,
+      "other_host_denied": true
+    },
+    {
+      "host": "wt_39abb85e02a2",
+      "action": "read",
+      "same_scope_file_isolated": true,
+      "other_host_denied": true
+    },
+    {
+      "host": "wt_f58309b22539",
+      "action": "mark",
+      "same_scope_file_isolated": true,
+      "other_host_denied": true
+    },
+    {
+      "host": "wt_39abb85e02a2",
+      "action": "mark",
+      "same_scope_file_isolated": true,
+      "other_host_denied": true
+    }
+  ],
+  "original_caller_policy_restored_exactly": true,
+  "temporary_peer_credentials_removed": true,
+  "no_os_reboot": true
+}

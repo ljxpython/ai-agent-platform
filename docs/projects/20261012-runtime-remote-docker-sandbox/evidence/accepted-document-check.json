@@ -1,0 +1,27 @@
+{
+  "checked_at": "2026-10-13T07:16:33.594153+00:00",
+  "scope": "本期验收收口与交付文档核验；原全矩阵独立 Final deferred",
+  "markdown_files": 26,
+  "local_links_checked": 457,
+  "markdown_anchors_checked": 10,
+  "tables_checked": 37,
+  "completed_tasks": 16,
+  "phase_task_records": 16,
+  "deferred_followups": [
+    "F01",
+    "F02",
+    "F03",
+    "F04"
+  ],
+  "new_errors": [],
+  "preexisting_missing_links": [
+    "apps/runtime-service/deploy/README.md:218: missing link ../../../docs/quickstart/deployment-guide.md",
+    "docs/FEATURES.md:36: missing link apps/platform-web/docs/changes/20260923-fix-zombie-clarification-on-thread-switch.md",
+    "docs/FEATURES.md:171: missing link quickstart/deployment-guide.md",
+    "docs/FEATURES.md:171: missing link quickstart/operator-handoff.md",
+    "docs/FEATURES.md:188: missing link apps/platform-web/docs/changes/20261007-prompt-queue-unconfirmed-deadlock-and-switch-healing.md"
+  ],
+  "original_document_check_retained": true,
+  "hook_whitespace_normalized_evidence_files": 42,
+  "evidence_values_unchanged": true
+}

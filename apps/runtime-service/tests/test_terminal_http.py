@@ -136,3 +136,33 @@ def test_terminal_tokens_cannot_use_native_graph_routes():
         with pytest.raises(Auth.exceptions.HTTPException) as error:
             asyncio.run(deny_image_scope_on_server_resources(context, {}))
         assert error.value.status_code == 403
+
+
+def test_remote_terminal_capacity_returns_existing_public_code(monkeypatch):
+    from runtime_service.workspace.node_client import node_error
+
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", SECRET)
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_ISSUER", "runtime-test")
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_AUDIENCE", "runtime-service")
+    monkeypatch.setenv("RUNTIME_TERMINAL_ENABLED", "1")
+
+    def full(*args):
+        node_error(
+            {"code": "sandbox_capacity_reached"}, 429, operation="terminal.create"
+        )
+
+    monkeypatch.setattr(terminals, "create", full)
+
+    async def run():
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/internal/threads/thread-1/terminals",
+                json={"request_id": str(uuid4()), "acknowledge_execution": True},
+                headers={"authorization": token()},
+            )
+            assert response.status_code == 429
+            assert response.json()["detail"]["code"] == "terminal_session_limit"
+
+    asyncio.run(run())

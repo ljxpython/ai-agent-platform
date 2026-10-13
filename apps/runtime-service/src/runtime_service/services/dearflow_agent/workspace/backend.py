@@ -59,6 +59,17 @@ def skills_hash(root=None) -> str:
 
 
 class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
+    def __new__(cls, tenant, project, thread):
+        from runtime_service.workspace.target import sandbox_target
+
+        if sandbox_target() == "remote":
+            from runtime_service.workspace.remote_backend import RemoteWorkspaceBackend
+
+            return RemoteWorkspaceBackend(
+                resolve_thread_workspace(tenant, project, thread, "dearflow_agent")
+            )
+        return super().__new__(cls)
+
     def __init__(self, tenant: str, project: str, thread: str):
         self.scope = (tenant, project, thread)
         self.root = resolve_thread_workspace(tenant, project, thread, "dearflow_agent")
@@ -205,6 +216,12 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
 
 
 def prepare_custom_skills(workspace, documents):
+    from runtime_service.workspace.remote_backend import RemoteWorkspaceBackend
+
+    if isinstance(workspace, RemoteWorkspaceBackend):
+        workspace.prepare()
+        workspace.publish_skills(documents)
+        return
     workspace.prepare()
     public_root = Path(str(files(PACKAGE).joinpath("skills")))
     expected = {}
@@ -268,10 +285,17 @@ class ReadOnlySkillsBackend(FilesystemBackend):
 
 
 def build_backend(workspace):
+    from runtime_service.workspace.remote_backend import (
+        RemoteSkillsBackend,
+        RemoteWorkspaceBackend,
+    )
+
     return CompositeBackend(
         default=workspace if workspace is not None else StateBackend(),
         routes={
-            "/skills/": ReadOnlySkillsBackend(
+            "/skills/": RemoteSkillsBackend(workspace)
+            if isinstance(workspace, RemoteWorkspaceBackend)
+            else ReadOnlySkillsBackend(
                 root_dir=str(
                     workspace.skills_root
                     if workspace

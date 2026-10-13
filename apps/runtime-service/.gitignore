@@ -391,3 +391,8 @@ src/deep_agent_demo/backends_demo/src
 
 # Next.js build cache
 .next/
+
+# Sandbox Node private deployment inputs
+.env.sandbox-node
+deploy/.env.sandbox-node
+.sandbox-secrets/

@@ -182,6 +182,17 @@ async def fork_workspace(
         raise HTTPException(409, {"code": "workspace_capability_unavailable"}) from exc
 
     def _do_copy() -> int:
+        from runtime_service.workspace.target import RemoteWorkspace
+
+        if isinstance(target_root, RemoteWorkspace):
+            if (
+                not isinstance(source_root, RemoteWorkspace)
+                or target_root.node_id != source_root.node_id
+            ):
+                raise DocumentError("workspace_fork_target_mismatch", 409)
+            return target_root.call("fork", source_scope=source_root.scope)[
+                "files_copied"
+            ]
         target_root.mkdir(parents=True, exist_ok=True)
         if source_root.exists() and source_root.is_dir():
             shutil.copytree(

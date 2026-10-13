@@ -11,14 +11,13 @@ from psycopg.conninfo import make_conninfo
 
 from runtime_service.messaging import MessageInbox
 
-DSN = os.getenv(
-    "RUNTIME_MESSAGE_TEST_DSN",
-    "postgresql://lijiaxin@127.0.0.1:5432/graphharbor_web_refactor_20260910",
-)
+DSN = os.getenv("RUNTIME_MESSAGE_TEST_DSN")
 
 
 @pytest.fixture()
 def inbox():
+    if not DSN:
+        pytest.skip("RUNTIME_MESSAGE_TEST_DSN must explicitly select the test database")
     schema = "inbox_test_" + uuid4().hex
     try:
         with psycopg.connect(DSN) as c:
@@ -777,8 +776,22 @@ def test_limits_sender_isolation_metrics_and_additive_recovery(inbox):
     with psycopg.connect(inbox.dsn) as c:
         c.execute("ALTER TABLE runtime_message_inbox DROP COLUMN authorization_ref")
         # Legacy deployments predate the application Alembic chain.
-        c.execute("DROP TABLE runtime_usage_calls, runtime_usage_runs")
-        c.execute("DROP TABLE runtime_app_alembic_version")
+        schema = c.execute("SELECT current_schema()").fetchone()[0]
+        assert schema.startswith("inbox_test_")
+        tables = c.execute(
+            "SELECT tablename FROM pg_tables WHERE schemaname=%s "
+            "AND tablename <> 'runtime_message_inbox'",
+            (schema,),
+        ).fetchall()
+        for (table,) in tables:
+            c.execute(
+                sql.SQL("DROP TABLE {} CASCADE").format(sql.Identifier(schema, table))
+            )
+        c.execute(
+            "DROP FUNCTION runtime_usage_assign_slot(), "
+            "runtime_usage_merge_versions(text[], text[]), runtime_usage_mark_dirty() CASCADE"
+        )
+        c.execute("DROP SEQUENCE runtime_usage_projection_generation")
     inbox.initialize()
     inbox.initialize()
     assert inbox.enqueue(**request) == original

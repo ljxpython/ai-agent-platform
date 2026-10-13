@@ -21,7 +21,6 @@ def test_skill_snapshot_survives_process_restart(dsn, tmp_path, change):
     a = store.create(scope, package("VALUE_A"), source="test")
     script = r"""
 import asyncio, os
-from uuid import uuid4
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.types import Command
@@ -32,7 +31,7 @@ from runtime_service.services.dearflow_agent.workspace.backend import DearWorksp
 
 async def run():
     cfg = config()
-    cfg["run_id"] = uuid4()
+    cfg["run_id"] = cfg["metadata"]["run_id"]
     stage = os.environ["SKILL_TEST_STAGE"]
     command = '(if test -f "$RUNTIME_SKILLS_ROOT/custom/test-skill/SKILL.md"; then cat "$RUNTIME_SKILLS_ROOT/custom/test-skill/SKILL.md"; else echo ABSENT; fi) > "$RUNTIME_WORKSPACE_ROOT/work/' + stage + '.txt"'
     responses = [AIMessage(content="done")] if stage == "resume" else [call("execute", {"command": command}), AIMessage(content="done")]

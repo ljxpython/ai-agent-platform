@@ -1,0 +1,30 @@
+{
+  "checked_at_utc": "2026-10-13T05:57:56.020061+00:00",
+  "mode": "installed-openai-sdk-mock-transport-only",
+  "checks": [
+    {
+      "name": "generate-request",
+      "path": "/v1/images/generations",
+      "json_fields_valid": true
+    },
+    {
+      "name": "edit-multipart-single",
+      "path": "/v1/images/edits",
+      "file_count": 1,
+      "image_mime_and_bytes_valid": true,
+      "form_fields_valid": true
+    },
+    {
+      "name": "edit-multipart-reference",
+      "path": "/v1/images/edits",
+      "file_count": 2,
+      "image_mime_and_bytes_valid": true,
+      "form_fields_valid": true
+    }
+  ],
+  "synthetic_response_persisted_and_readable": true,
+  "real_provider_calls": 0,
+  "new_purchase_submitted": false,
+  "provider_edit_support_proven": false,
+  "passed": true
+}

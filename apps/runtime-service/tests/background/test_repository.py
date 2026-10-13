@@ -532,6 +532,9 @@ def test_host_sixteen_real_tasks_and_no_model_cleanup(database, tmp_path, monkey
         try:
             assert len(rows) == 16
             rejected = [value for value in results if isinstance(value, Exception)]
+            for error in rejected:
+                if not isinstance(error, RuntimeWorkspaceError):
+                    raise error
             assert len(rejected) == 4 and all(
                 isinstance(value, RuntimeWorkspaceError)
                 and value.code == "background_task_limit_reached"
@@ -819,7 +822,7 @@ def test_latest_candidate_ignores_ineligible_later_receipts(database, state, sto
     assert repository.list_tasks(scope(values), 1, before)[2] == accepted
 
 
-def test_receipt_preserving_migration_round_trip(database):
+def test_application_rollback_preserves_receipts_and_migration_head(database):
     from pathlib import Path
 
     from alembic import command
@@ -841,9 +844,10 @@ def test_receipt_preserving_migration_round_trip(database):
         poolclass=NullPool,
     )
     try:
-        with engine.begin() as connection:
-            config.attributes["connection"] = connection
-            command.downgrade(config, "0002_run_control")
+        with pytest.raises(RuntimeError, match="Retain sandbox.*migration head"):
+            with engine.begin() as connection:
+                config.attributes["connection"] = connection
+                command.downgrade(config, "0002_run_control")
         assert (
             repository.read_task(scope(values), row["task_id"])["submission_key"]
             == row["submission_key"]
@@ -855,10 +859,31 @@ def test_receipt_preserving_migration_round_trip(database):
                 connection.execute(
                     "SELECT version_num FROM runtime_app_alembic_version"
                 ).fetchone()["version_num"]
-                == "0004_background_token_budget"
+                == "0008_sandbox_resource_binding"
             )
     finally:
         engine.dispose()
+
+
+def test_rejected_before_creation_releases_resource_without_completion(database):
+    values = identity()
+    row, _ = reserve(values)
+    saved = repository.save(
+        row,
+        status="failed",
+        cleanup="not_required",
+        reason="background_task_not_supported",
+    )
+    assert saved["delivery_state"] == "suppressed" and saved["container_id"] is None
+    with connect() as connection:
+        assert (
+            connection.execute(
+                "SELECT status FROM runtime_run_resources WHERE resource_id=%s",
+                (saved["resource_id"],),
+            ).fetchone()["status"]
+            == "cleanup_confirmed"
+        )
+    assert repository.claim_due("background-test") is None
 
 
 def test_ten_thousand_receipts_keep_due_and_scope_queries_indexed(database):

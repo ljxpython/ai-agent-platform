@@ -1,0 +1,10 @@
+{
+  "status": "blocked",
+  "gate": "I10 authorized sshmy2 OS reboot acceptance",
+  "user_answer": "保留整机重启验收，稍后提供维护窗口",
+  "reboot_authorized": false,
+  "new_reboot_performed": false,
+  "required_input": "maintenance window and explicit authorization to reboot sshmy2",
+  "affected_peer_service": "site_total.service",
+  "technical_recovery_record": "public-recovery.json"
+}

@@ -396,20 +396,22 @@ def test_governance_auxiliary_sdk_budget_is_separate_from_execution(
     monkeypatch, tmp_path
 ):
     from runtime_service.middlewares import RuntimeConfigMiddleware
-    from runtime_service.runtime import build_model
+    from runtime_service.runtime import ModelConnectionBundle, build_model
 
     monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("RUNTIME_DEAR_GOVERNANCE_ENABLED", "1")
     built, auxiliary, middleware = [], [], []
 
     async def connection(*args, **kwargs):
-        return {
-            "provider": "openai",
-            "protocol": "openai",
-            "model": "fixture",
-            "base_url": "http://127.0.0.1:1/v1",
-            "api_key": "synthetic",
-        }
+        return ModelConnectionBundle(
+            primary={
+                "provider": "openai",
+                "protocol": "openai",
+                "model": "fixture",
+                "base_url": "http://127.0.0.1:1/v1",
+                "api_key": "synthetic",
+            }
+        )
 
     def build(resolved, **kwargs):
         model = build_model(resolved, **kwargs)
@@ -422,7 +424,7 @@ def test_governance_auxiliary_sdk_budget_is_separate_from_execution(
         middleware.extend(kwargs["middleware"])
         return original_compile(**kwargs)
 
-    monkeypatch.setattr(agent, "fetch_model_connection", connection)
+    monkeypatch.setattr(agent, "fetch_model_bundle", connection)
     monkeypatch.setattr(agent, "build_model", build)
     monkeypatch.setattr(
         agent,
@@ -435,8 +437,8 @@ def test_governance_auxiliary_sdk_budget_is_separate_from_execution(
     assert execution.max_retries == execution.root_client.max_retries == 0
     assert execution.root_async_client.max_retries == 0
     assert background is built[1][1] and background is not execution
-    assert background.root_client.max_retries == 2
-    assert background.root_async_client.max_retries == 2
+    assert background.root_client.max_retries == 0
+    assert background.root_async_client.max_retries == 0
     boundary = next(
         item for item in middleware if isinstance(item, RuntimeConfigMiddleware)
     )

@@ -1,6 +1,6 @@
 # Agent 接入通用后台 Workspace 任务
 
-当前实现见 `tools/background.py`、`background_tasks/` 与 `workspace/background.py`；与 DearFlow 业务模式、媒体供应商和外部部署无关。当前支持单执行主机受管 Docker；LocalShell、只读子图与 Reference/Workflow 不支持启动。发布限制见 [专项](../../../../docs/projects/20261009-agent-generic-production-capabilities/README.md)。
+当前实现见 `tools/background.py`、`background_tasks/` 与 `workspace/background.py`；与 DearFlow 业务模式、媒体供应商和外部部署无关。支持本地受管 Docker 与单节点 remote Node，位置绑定保留原 execution host / node，Node 日志和签名回执经 Runtime 持久确认才删除；LocalShell、只读子图与 Reference/Workflow 不支持启动。新启动仍默认关闭，公网门禁与部署限制见[沙箱专项](../../../../docs/projects/20261012-runtime-remote-docker-sandbox/verification.md)和[运行手册](../../../../docs/runbooks/runtime-sandbox-node.md)。
 
 ## 四个明确接入点
 

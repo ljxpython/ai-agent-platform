@@ -38,7 +38,15 @@ def migration_database(monkeypatch):
 
 @pytest.mark.parametrize(
     "start",
-    ["base", "0002_run_control", "0003_background_tasks", "0003_token_budget", "head"],
+    [
+        "base",
+        "0002_run_control",
+        "0003_background_tasks",
+        "0003_token_budget",
+        "0004_background_token_budget",
+        "0005_usage_projection",
+        "head",
+    ],
 )
 def test_merge_upgrades_each_branch_and_preserves_facts(migration_database, start):
     config = Config()
@@ -108,7 +116,7 @@ def test_merge_upgrades_each_branch_and_preserves_facts(migration_database, star
                 connection.execute(
                     "SELECT version_num FROM runtime_app_alembic_version"
                 ).fetchone()["version_num"]
-                == "0004_background_token_budget"
+                == "0008_sandbox_resource_binding"
             )
             for table in (
                 "runtime_usage_calls",

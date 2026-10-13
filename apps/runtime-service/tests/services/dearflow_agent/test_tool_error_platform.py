@@ -134,7 +134,8 @@ def stack(tmp_path, request):
         if key.startswith(("LANGFUSE_", "OTEL_EXPORTER_")):
             env.pop(key)
     if env.get("RUNTIME_BACKGROUND_TASKS_ENABLED") == "1":
-        env["RUNTIME_EXECUTION_HOST_ID"] = "background-" + prefix
+        if env.get("RUNTIME_SANDBOX_TARGET") != "remote":
+            env["RUNTIME_EXECUTION_HOST_ID"] = "background-" + prefix
         env["BACKGROUND_FAULT_MODE_PATH"] = str(tmp_path / "background-fault")
     if options.get("provider"):
         env["RELIABILITY_OBSERVATIONS_URL"] = (
@@ -350,7 +351,7 @@ def stack(tmp_path, request):
             ],
             env=env,
             capture_output=True,
-            timeout=90,
+            timeout=options.get("startup_timeout", 90),
         )
         (tmp_path / "migration.log").write_bytes(migration.stdout + migration.stderr)
         assert migration.returncode == 0, migration.stderr.decode(errors="replace")

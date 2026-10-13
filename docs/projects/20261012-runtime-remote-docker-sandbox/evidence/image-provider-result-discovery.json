@@ -1,0 +1,31 @@
+{
+  "checked_at_utc": "2026-10-13T05:31:48.352588+00:00",
+  "mode": "read-only-provider-result-discovery",
+  "requests": [
+    {
+      "path": "/",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "redirected": false
+    },
+    {
+      "path": "/api/status",
+      "status_code": 404,
+      "content_type": "text/plain",
+      "redirected": false
+    },
+    {
+      "path": "/openapi.json",
+      "status_code": 200,
+      "content_type": "text/html; charset=utf-8",
+      "redirected": false
+    },
+    {
+      "path": "/v1/openapi.json",
+      "status_code": 404,
+      "content_type": "text/plain",
+      "redirected": false
+    }
+  ],
+  "new_purchase_submitted": false
+}

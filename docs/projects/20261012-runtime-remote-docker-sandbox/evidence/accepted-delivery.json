@@ -1,0 +1,83 @@
+{
+  "captured_at": "2026-10-13T07:13:59.031587+00:00",
+  "decision": {
+    "owner": "user",
+    "date": "2026-10-13",
+    "project_state": "done",
+    "basis": "本期用户验收通过；剩余问题后续完成",
+    "deferred": [
+      "F01",
+      "F02",
+      "F03",
+      "F04"
+    ],
+    "independent_full_matrix_final_executed": false,
+    "new_os_reboot_authorized": false,
+    "new_paid_image_request_authorized": false
+  },
+  "services": {
+    "environment_id": "wt_f58309b22539",
+    "runtime-api": "stopped",
+    "runtime-worker": "stopped",
+    "platform-api": "stopped",
+    "platform-web": "stopped",
+    "owned-redis": "stopped",
+    "shared_postgresql_stopped": false
+  },
+  "resources": {
+    "deleted_databases": [
+      "wt_f58309b22539_runtime",
+      "wt_f58309b22539_platform",
+      "wt_f58309b22539_sandbox_regression_9f139d6c"
+    ],
+    "deleted_roles": [
+      "wt_f58309b22539_runtime",
+      "wt_f58309b22539_platform"
+    ],
+    "exact_owner_and_marker_verified": true,
+    "active_connections_before_delete": 0,
+    "database_and_role_absence_rechecked": true,
+    "environment_allocation_released": true,
+    "local_stack_directory_removed": true,
+    "remote_workspace_and_node_ledger_deleted": false
+  },
+  "recovery": {
+    "archive_relative_to_main_worktree": ".local-stack/archives/runtime-remote-docker-sandbox-wt_f58309b22539",
+    "git_ignored": true,
+    "permissions": "directories 0700; files 0600",
+    "private_file_count": 37,
+    "external_task_receipts": 3,
+    "retained_remote_locations": 2,
+    "generation_and_fork_sha256": "d98a5f95ecc771273de0bd9dc8abcb8906aec9695bfcdf13bcaf343545f593fa",
+    "full_database_backup": false,
+    "runnable_worktree_environment_copied": false
+  },
+  "source": {
+    "deerflow_modules_copied_unchanged": true,
+    "source_module_and_mit_hashes_verified": true,
+    "private_scan": {
+      "text_files": 184,
+      "private_values": 27,
+      "matches": 0
+    },
+    "staged_validation": {
+      "staged_files": 203,
+      "text_files_scanned": 187,
+      "private_values_checked": 17,
+      "credential_file_pointers_classified_separately": 8,
+      "secret_matches": 0,
+      "source_and_mit_hashes_match": true,
+      "platform_product_code_unchanged": true,
+      "deleted_tracked_files": 0
+    },
+    "pre_commit_checks": "all eight passed"
+  },
+  "git": {
+    "topic_branch": "feat/runtime-remote-docker-sandbox",
+    "main_worktree_branch": "feat/langgraph-v3-delta-evaluation",
+    "before_head": "06d941300948c17144dc862500e1bb58e92dcf86",
+    "main_worktree_existing_unstaged_change": " D custom-chart-visualization.zip",
+    "handoff_status": "pending",
+    "worktree_removed": false
+  }
+}

@@ -53,6 +53,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     loop_detection_enabled()
     load_pii_redaction_config()
     resolve_wrapup_after_seconds()
+    from runtime_service.workspace.target import NodeConnection, sandbox_target
+
+    if sandbox_target() == "remote":
+        NodeConnection.load()
     initialize_langfuse()
     try:
         async with (
@@ -67,6 +71,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         from runtime_service.workspace.terminal import terminals
 
         await asyncio.to_thread(terminals.shutdown)
+        from runtime_service.workspace.node_client import close_clients
+
+        await asyncio.to_thread(close_clients)
         close_langfuse(timeout_seconds=5.0)
 
 

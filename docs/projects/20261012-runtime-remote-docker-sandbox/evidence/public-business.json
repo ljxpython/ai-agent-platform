@@ -1,0 +1,173 @@
+{
+  "checked_at_utc": "2026-10-13T00:26:01.143283+00:00",
+  "public_network_verified": true,
+  "node_id": "sshmy2",
+  "fixture": "public-1e9b1be90f05",
+  "results": [
+    {
+      "name": "public-trust-and-readiness",
+      "passed": true,
+      "elapsed_seconds": 0.199
+    },
+    {
+      "name": "execute-once-nonzero",
+      "passed": true,
+      "elapsed_seconds": 1.015
+    },
+    {
+      "name": "public-response-loss-original-id-recovery",
+      "passed": true,
+      "elapsed_seconds": 0.481
+    },
+    {
+      "name": "bounded-output-timeout-no-secret",
+      "passed": true,
+      "elapsed_seconds": 2.236
+    },
+    {
+      "name": "two-slots-terminal-input-replay-resize-close-readiness",
+      "passed": true,
+      "elapsed_seconds": 1.352
+    },
+    {
+      "name": "signed-background-receipt-log-ack",
+      "passed": true,
+      "elapsed_seconds": 5.297
+    },
+    {
+      "name": "office-docx-continuation",
+      "passed": true,
+      "elapsed_seconds": 2.789
+    },
+    {
+      "name": "office-pptx-continuation",
+      "passed": true,
+      "elapsed_seconds": 2.037
+    },
+    {
+      "name": "binary-image-html-zip-fork",
+      "passed": true,
+      "elapsed_seconds": 0.35
+    },
+    {
+      "name": "bulk-throughput",
+      "bytes": 10485750,
+      "upload_seconds": 0.5469304330001705,
+      "download_seconds": 22.889794865000113,
+      "sha256": "cdb41063dc2d8ca6171d7e361924212b1a9bb0a623246457afa72083257a8f38"
+    },
+    {
+      "name": "10MiB-public-hash",
+      "passed": true,
+      "elapsed_seconds": 23.496
+    },
+    {
+      "name": "public-pg-background-succeeded",
+      "passed": true,
+      "elapsed_seconds": 2.58
+    },
+    {
+      "name": "public-pg-background-failed",
+      "passed": true,
+      "elapsed_seconds": 1.634
+    },
+    {
+      "name": "public-pg-background-timed_out",
+      "passed": true,
+      "elapsed_seconds": 2.291
+    },
+    {
+      "name": "public-pg-background-cancelled",
+      "passed": true,
+      "elapsed_seconds": 1.686
+    }
+  ],
+  "failed": null,
+  "cleanup": [
+    {
+      "workspace_id": "434363c83b97aa14ba1ffb57a522695a129658b05e15b40f8f4e6e74d311b44a",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "0bb92dfd70ee86f535c0700e33ff0946839e7fdae2397186f53dc28cc6cfa076",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "e25251e1a5ffcb405fc32b9dba9c158792f7b311aefdfef5ee5d1f694c785f6d",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "04ba216af469e54d087a1f9495b700af49b67da1237807456e20e342ba57b40b",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "a336a8b31ce03a01d1afbc3fe46b7a70f84165e4bf18b182b106dbfce780671e",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "5e16c1d754d8676452eb05e49dd14f8b095c870ae99cb1a5e92b971226547d24",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "1ba3a329e39e3289551e8417cc11184a0b80ed031e323e6dfae2b192e3d5c018",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "52cc963b57738c0436e929b6b9152d6f287a27700f99f1b7130116df9ffc49a2",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "73f24009ea433d386e73653e46b167eef02c6a15a6dd001936f3cde946a75103",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "25049ee59050cc6c366ad8e7faf5b36c272f5b0a9403101b8269e00c91134aa2",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "5af0183964e9b7cc63224fa67828cd8f1cb91f6cc685b04a24447f626239a127",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "a85e0adc6163f5aadf5392f223707667cc343f12f34a1ea0088fc9f3cdd92aed",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "450d8739367ea9a61039c32dc875e27a664c0763169e52f6cffd0e3a1bb43a6b",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    },
+    {
+      "workspace_id": "1bf6805de52d7139f33c12a682bf613f565ebb5c6ed6ab4d4dcc79272129fa7c",
+      "status": "deleting",
+      "eligible": false,
+      "active_resources": 0
+    }
+  ],
+  "retention_grace_preserved": true
+}

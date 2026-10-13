@@ -1,0 +1,39 @@
+{
+  "mode": "docker-local",
+  "graph": "dearflow_agent",
+  "threadId": "dbc1c97e-79ae-4afb-adf8-bb0d32727e0d",
+  "marker": "sandbox-docker-local-9c48f4a3",
+  "tools": [
+    {
+      "name": "parse_document",
+      "status": "success"
+    },
+    {
+      "name": "execute",
+      "status": "success"
+    },
+    {
+      "name": "read_file",
+      "status": "success"
+    },
+    {
+      "name": "present_artifacts",
+      "status": "success"
+    }
+  ],
+  "artifact": {
+    "version": 1,
+    "artifact_id": "9561fea9b2d5e7a2af672c0f9663a9393844d3568f1c4c659f61a9888571e510",
+    "path": "/workspace/outputs/9561fea9b2d5e7a2af672c0f9663a9393844d3568f1c4c659f61a9888571e510.md",
+    "file_name": "9561fea9b2d5e7a2af672c0f9663a9393844d3568f1c4c659f61a9888571e510.md",
+    "mime_type": "text/markdown",
+    "size_bytes": 29,
+    "sha256": "9561fea9b2d5e7a2af672c0f9663a9393844d3568f1c4c659f61a9888571e510",
+    "kind": "text",
+    "preview_kind": "markdown"
+  },
+  "browserErrors": [],
+  "transientQueryFailures": [],
+  "approvalReloads": 1,
+  "failedRequests": []
+}

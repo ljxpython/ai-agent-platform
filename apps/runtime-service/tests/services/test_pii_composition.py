@@ -203,6 +203,7 @@ def test_roots_compile_exactly_one_protected_summary(
 ):
     models, _ = install_models(monkeypatch, module, tmp_path, [AIMessage("done")], [])
     models[A].profile = {"max_input_tokens": 128000, "max_output_tokens": 1024}
+    models[B].profile = dict(models[A].profile)
     monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", "1" if engineering else "0")
     if not resilience:
         module.fetch_model_bundle.return_value = ModelConnectionBundle(

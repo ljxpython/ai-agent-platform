@@ -53,6 +53,7 @@ where = ["src"]
 "runtime_service.services.demo.showcase_demo" = ["skills/*/SKILL.md", "examples/*", "README.md"]
 
 "runtime_service.services.dearflow_agent" = ["skills/**/*"]
+"runtime_service.workspace" = ["third_party/deerflow/LICENSE", "third_party/deerflow/PROVENANCE.md"]
 
 [tool.setuptools.exclude-package-data]
 "runtime_service.services.dearflow_agent" = ["skills/**/__pycache__/*", "skills/**/*.pyc"]

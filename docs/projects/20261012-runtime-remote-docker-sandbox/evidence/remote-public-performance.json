@@ -1,0 +1,34 @@
+{
+  "mode": "remote",
+  "metrics": {
+    "bulk": {
+      "bytes": 10485756,
+      "sha256": "ffc5771539b4d54afec7564247cbbf37fd0eb949ff27dea963b23fc28525ab20",
+      "upload_seconds": 1.026,
+      "download_seconds": 23.851,
+      "upload_mib_per_second": 9.749,
+      "download_mib_per_second": 0.419
+    },
+    "read": {
+      "n": 12,
+      "failures": 0,
+      "p50_ms": 199.37,
+      "p95_ms": 479.87
+    },
+    "preview": {
+      "n": 12,
+      "failures": 0,
+      "p50_ms": 181.68,
+      "p95_ms": 271.53
+    }
+  },
+  "errors": [
+    {
+      "type": "KeyError",
+      "message": "'entries'"
+    }
+  ],
+  "thread_id": "325b4be1-9727-4afd-aff4-f643f696cc19",
+  "status": "failed",
+  "thread_delete_status": 200
+}

@@ -1,6 +1,6 @@
 # Runtime 后台任务运行手册
 
-适用：单执行主机、API/Worker 连接同一 Docker daemon，Workspace 使用相同宿主绝对路径。新提交默认关闭；正式 post45 与冷 Linux 应用镜像、notify/Stop/撤权、资源/回退和[非前端 Final](../projects/20261011-background-acceptance-closeout/verification.md)已验，T01/T05/T08 完成，[B01](../projects/20261009-agent-generic-production-capabilities/engine-handoff.md)保持解除。正式启用还须 K09/K10、T10/F12 浏览器联合及部署授权。这里只操作当前服务明确拥有的资源，不使用全局 prune。
+适用：API/Worker 使用同一执行域与后台配置。本地 Docker 路径连接同一 daemon、使用相同宿主绝对路径；remote 路径由同一 Sandbox Node 提供文件、执行和回执，Runtime 无需与 daemon 同机，配置与公网门禁见[沙箱手册](runtime-sandbox-node.md)。新提交默认关闭；正式 post45 与冷 Linux 应用镜像、notify/Stop/撤权、资源/回退和[非前端 Final](../projects/20261011-background-acceptance-closeout/verification.md)已验，T01/T05/T08 完成，[B01](../projects/20261009-agent-generic-production-capabilities/engine-handoff.md)保持解除。正式启用还须 K09/K10、T10/F12 浏览器联合及部署授权。这里只操作当前服务明确拥有的资源，不使用全局 prune。
 
 ## 安装与启动
 
@@ -51,7 +51,7 @@ docker inspect --type=container "<任务私有记录中的 container_name>"
 
 ## 停用与回退
 
-1. 将新提交开关设为 0，API/Worker 保留相同 host、日志和 daemon 配置，重启应用后继续对账。该开关禁止新任务与新通知准入，不能单独证明资源回收。
+1. 将新提交开关设为 0，API/Worker 保留相同 host、日志与原 daemon/Node 配置，重启应用后继续对账。该开关禁止新任务与新通知准入，不能单独证明资源回收；remote 历史任务必须保留原节点通道，不能切到本机重新提交。
 2. 对已接受活跃任务调用公开 cancel，或对指定 Thread 发原 key 的会话 Stop；持续 GET 核验 `cleanup_state=confirmed` 和固定后台摘要。完成通知若已接受，Stop 还需确认该固定 Run 停止。
 3. 将unknown、inflight、迟到Run和daemon不可达项逐项列出；任何未确认资源都阻止“drain已完成”。先GET原接受回执、绑定原Run并精确停止；无回执/到期/旧记录且无当前ACL正向证据时，由负责人受控处置。
 4. 确认所有当前资源已收敛后，停止新代码的 API/Worker；使用新代码的 Alembic 配置在同一事务内先 `downgrade` 到两分支共同父节点 `0002_run_control`，再 `stamp` 到旧源码的单一 head `0003_token_budget`。核验 `runtime_app_alembic_version` 只有该 head 且任务/Stop/用量事实保留后，再回退匹配的应用源码/依赖。直接退到 Token 分支会遗留 `0003_background_tasks`，旧源码无法识别。本轮已核实后台引入前的集成提交 `bd476ae62a61acb7c55bc0f08eba3645ce50daf0`，包含 Plan Mode/Token；不能混用早于 Plan Mode 的 Runtime 与当前 API。两条 `0003` 的 downgrade 均保留加法表/列，stamp 只收敛应用版本标记；旧应用忽略后台表和回执。只换旧源码会因不认识新的应用 merge head 而启动失败，不能跳过版本回退；不能删回执、Workspace 或 checkpoint。

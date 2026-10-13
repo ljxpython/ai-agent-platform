@@ -1,0 +1,100 @@
+{
+  "checked_at_utc": "2026-10-13T05:41:46.148637+00:00",
+  "mode": "correct-origin-get-only-provider-query",
+  "new_purchase_submitted": false,
+  "requests": [
+    {
+      "path": "/v1/usage",
+      "actual_path": "/v1/usage",
+      "status_code": 200,
+      "content_type": "application/json; charset=utf-8",
+      "redirected": false,
+      "top_level_keys": [
+        "balance",
+        "daily_usage",
+        "isValid",
+        "mode",
+        "model_stats",
+        "planName",
+        "remaining",
+        "unit",
+        "usage"
+      ],
+      "daily_usage_count": 3,
+      "model_stats_count": 1,
+      "usage_keys": [
+        "average_duration_ms",
+        "rpm",
+        "today",
+        "total",
+        "tpm"
+      ]
+    },
+    {
+      "path": "/v1/images/batches",
+      "actual_path": "/v1/images/batches",
+      "status_code": 200,
+      "content_type": "application/json; charset=utf-8",
+      "redirected": false,
+      "top_level_keys": [
+        "data",
+        "has_more",
+        "object"
+      ],
+      "data_count": 0
+    },
+    {
+      "path": "/v1/images/batches/models",
+      "actual_path": "/v1/images/batches/models",
+      "status_code": 404,
+      "content_type": "application/json; charset=utf-8",
+      "redirected": false
+    },
+    {
+      "path": "/api/v1/usage",
+      "actual_path": "/api/v1/usage",
+      "status_code": 401,
+      "content_type": "application/json; charset=utf-8",
+      "redirected": false
+    },
+    {
+      "path": "/api/v1/usage/errors",
+      "actual_path": "/api/v1/usage/errors",
+      "status_code": 401,
+      "content_type": "application/json; charset=utf-8",
+      "redirected": false
+    },
+    {
+      "path": "/api/v1/keys",
+      "actual_path": "/api/v1/keys",
+      "status_code": 401,
+      "content_type": "application/json; charset=utf-8",
+      "redirected": false
+    },
+    {
+      "path": "/api/v1/auth/me",
+      "actual_path": "/api/v1/auth/me",
+      "status_code": 401,
+      "content_type": "application/json; charset=utf-8",
+      "redirected": false
+    },
+    {
+      "path": "/api/status",
+      "actual_path": "/api/status",
+      "status_code": 404,
+      "content_type": "text/plain",
+      "redirected": false
+    },
+    {
+      "path": "/api/log/token",
+      "actual_path": "/api/log/token",
+      "status_code": 404,
+      "content_type": "text/plain",
+      "redirected": false
+    }
+  ],
+  "key_valid": true,
+  "synchronous_edit_result_query_available": false,
+  "batch_history_empty": true,
+  "cost_for_specific_edit_confirmed": false
+}
