@@ -35,6 +35,19 @@ def get_showcase_workspace_root(
     return thread_root / "workspace"
 
 
+def get_thread_local_workspace_root(
+    tenant_id: str,
+    project_id: str,
+    thread_id: str,
+    graph_id: str,
+) -> Path:
+    """Derive local workspace directory Path for a thread."""
+    if graph_id == "showcase_demo":
+        return get_showcase_workspace_root(tenant_id, project_id, thread_id)
+    base = Path(os.getenv("RUNTIME_WORKSPACE_ROOT", ".runtime/workspaces")) / graph_id
+    return hashed_thread_root(base, tenant_id, project_id, thread_id) / "workspace"
+
+
 def resolve_thread_workspace(
     tenant_id: str, project_id: str, thread_id: str, graph_id: str
 ) -> Path:
@@ -44,15 +57,9 @@ def resolve_thread_workspace(
     capability = graph_capabilities(graph_id)
     if not capability["files"]:
         raise ValueError("workspace_capability_unavailable")
-    if graph_id == "showcase_demo":
-        local_root = get_showcase_workspace_root(tenant_id, project_id, thread_id)
-    else:
-        base = (
-            Path(os.getenv("RUNTIME_WORKSPACE_ROOT", ".runtime/workspaces")) / graph_id
-        )
-        local_root = (
-            hashed_thread_root(base, tenant_id, project_id, thread_id) / "workspace"
-        )
+    local_root = get_thread_local_workspace_root(
+        tenant_id, project_id, thread_id, graph_id
+    )
     from runtime_service.workspace.locations import bind
 
     return bind((tenant_id, project_id, thread_id), graph_id, local_root)

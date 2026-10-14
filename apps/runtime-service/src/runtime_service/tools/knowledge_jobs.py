@@ -115,11 +115,20 @@ def project_job_result(result, *, submit=False, job_id=None):
             or len(result.content[0].text.encode()) > 65536
         ):
             raise ValueError()
-        payload = json.loads(result.content[0].text)
+        raw_text = result.content[0].text.strip()
+        try:
+            payload = json.loads(raw_text)
+        except (ValueError, TypeError):
+            payload = None
         if result.isError:
-            return error_result(
-                payload.get("code") if isinstance(payload, dict) else None
-            )
+            code = None
+            if isinstance(payload, dict):
+                code = payload.get("code")
+            elif raw_text in ERROR_CODES:
+                code = raw_text
+            return error_result(code)
+        if payload is None:
+            raise ValueError()
         if result.structuredContent is not None and result.structuredContent != payload:
             raise ValueError()
         return receipt_result(payload, submit=submit, job_id=job_id)

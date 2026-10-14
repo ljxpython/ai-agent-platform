@@ -369,6 +369,7 @@ if __name__ == "__main__":
         settings.runtime_delegation_secret = "synthetic-http-delegation-secret-" * 2
         settings.knowledge_upload_enabled = True
         settings.knowledge_secret = SECRET
+        settings.knowledge_key_id = "knowledge-v1"
         settings.knowledge_mcp_bindings = {"__default:" + data["project"]: "fixture"}
         settings.knowledge_connections = {
             "fixture": KnowledgeConnection(

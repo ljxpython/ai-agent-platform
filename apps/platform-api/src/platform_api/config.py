@@ -79,6 +79,10 @@ class Settings(BaseSettings):
     knowledge_upload_enabled: bool = False
     knowledge_key_id: str = "knowledge-v1"
     knowledge_secret: str = Field(default="", repr=False)
+    knowledge_gateway_base_url: str = Field(
+        default="http://152.136.27.196:8000",
+        validation_alias="PLATFORM_API_KNOWLEDGE_GATEWAY_BASE_URL",
+    )
 
     platform_db_enabled: bool = False
     platform_db_auto_create: bool = False

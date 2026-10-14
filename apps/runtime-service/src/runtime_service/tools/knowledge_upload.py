@@ -112,6 +112,14 @@ async def _json(client, method, url, **kwargs):
             if len(raw) > 65536:
                 raise ValueError("knowledge_response_too_large")
         if not response.is_success:
+            import logging
+
+            logging.getLogger("runtime_service.tools.knowledge_upload").error(
+                "Knowledge HTTP request failed: status=%s, url=%s, body=%s",
+                response.status_code,
+                url,
+                raw.decode("utf-8", errors="replace"),
+            )
             try:
                 code = json.loads(raw)["error"]["code"]
             except (ValueError, KeyError, TypeError):
@@ -356,6 +364,11 @@ def knowledge_upload_interceptor(binding, connection):
             httpx.HTTPError,
             TimeoutError,
         ) as exc:
+            import logging
+
+            logging.getLogger("runtime_service.tools.knowledge_upload").exception(
+                "Knowledge upload interceptor error: %s", exc
+            )
             return error_result(
                 str(exc) if isinstance(exc, ToolException) else "knowledge_unavailable"
             )

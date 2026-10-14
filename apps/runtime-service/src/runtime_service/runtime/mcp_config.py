@@ -55,14 +55,26 @@ def mcp_connections() -> dict:
     return configured
 
 
-def configured_mcp_names() -> tuple[str, ...]:
+def dynamic_knowledge_tools() -> tuple[str, ...]:
+    gateway = os.getenv("RUNTIME_KNOWLEDGE_MCP_GATEWAY_URL")
+    secret = os.getenv("RUNTIME_KNOWLEDGE_SECRET")
+    if not gateway and not secret:
+        return ()
+    from runtime_service.tools.knowledge import KNOWLEDGE_MCP_TOOLS
+
     return tuple(
-        sorted(
-            {
-                n
-                for c in mcp_connections().values()
-                for n in c.get("allowed_tools", [])
-                if n != KNOWLEDGE_SUBMIT_TOOL or knowledge_upload_enabled()
-            }
-        )
+        n
+        for n in KNOWLEDGE_MCP_TOOLS
+        if n != KNOWLEDGE_SUBMIT_TOOL or knowledge_upload_enabled()
     )
+
+
+def configured_mcp_names() -> tuple[str, ...]:
+    dynamic = dynamic_knowledge_tools()
+    static = {
+        n
+        for c in mcp_connections().values()
+        for n in c.get("allowed_tools", [])
+        if n != KNOWLEDGE_SUBMIT_TOOL or knowledge_upload_enabled()
+    }
+    return tuple(sorted(set(dynamic) | static))

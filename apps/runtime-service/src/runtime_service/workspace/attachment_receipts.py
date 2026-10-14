@@ -1,10 +1,13 @@
 """HTTP upload facts outside the Agent's mounted workspace, including original names."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 import os
 import stat
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from langchain_core.tools import ToolException
 
@@ -13,11 +16,25 @@ from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.file_refs import validate_file_name, validate_file_ref
 from runtime_service.workspace.image_refs import validate_uploaded_image_ref
 
+if TYPE_CHECKING:
+    from runtime_service.workspace.target import RemoteWorkspace
+
+
+def _resolve_workspace_path(workspace: Path | RemoteWorkspace) -> Path:
+    from runtime_service.workspace.target import RemoteWorkspace
+
+    if isinstance(workspace, RemoteWorkspace):
+        from runtime_service.workspace.scoped import get_thread_local_workspace_root
+
+        return get_thread_local_workspace_root(*workspace.scope, workspace.graph)
+    return workspace
+
 
 class AttachmentReceipts:
-    def __init__(self, workspace: Path):
-        scope = hashlib.sha256(str(workspace.absolute()).encode()).hexdigest()
-        self.io = ImageWorkspace(workspace.parent / ".attachment-receipts" / scope)
+    def __init__(self, workspace: Path | RemoteWorkspace):
+        local_path = _resolve_workspace_path(workspace)
+        scope = hashlib.sha256(str(local_path.absolute()).encode()).hexdigest()
+        self.io = ImageWorkspace(local_path.parent / ".attachment-receipts" / scope)
 
     @staticmethod
     def _encoded(ref):
@@ -121,11 +138,11 @@ class AttachmentReceipts:
         except (ValueError, TypeError, KeyError) as exc:
             raise ToolException("knowledge_invalid_file_ref") from exc
 
-    def copy_to(self, target: Path):
+    def copy_to(self, target: Path | RemoteWorkspace):
         self._copy_folder(target, "refs")
         self._copy_folder(target, "images")
 
-    def _copy_folder(self, target: Path, folder):
+    def _copy_folder(self, target: Path | RemoteWorkspace, folder):
         try:
             directory = self.io._directory((folder,))
         except (RuntimeWorkspaceError, ToolException) as exc:

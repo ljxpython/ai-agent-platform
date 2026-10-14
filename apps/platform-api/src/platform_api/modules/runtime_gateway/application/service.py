@@ -595,6 +595,8 @@ class RuntimeGatewayService:
         on_correlation: Callable[[str, Mapping[str, Any]], None] | None = None,
         completion_enabled: bool = False,
         knowledge_mcp_bindings: Mapping[str, str] | None = None,
+        knowledge_secret: str | None = None,
+        knowledge_gateway_url: str | None = None,
         tenant_id: str = "__default",
     ) -> None:
         self._session_factory = session_factory
@@ -615,6 +617,8 @@ class RuntimeGatewayService:
         self._on_correlation = on_correlation
         self._completion_enabled = completion_enabled
         self._knowledge_mcp_bindings = dict(knowledge_mcp_bindings or {})
+        self._knowledge_secret = knowledge_secret
+        self._knowledge_gateway_url = knowledge_gateway_url
         self._tenant_id = tenant_id
 
     def _emit_correlation(self, event: str, **fields: Any) -> None:
@@ -2873,6 +2877,8 @@ class RuntimeGatewayService:
             self._tenant_id,
             project_id,
             next_payload["thread_id"],
+            knowledge_secret=self._knowledge_secret,
+            gateway_url=self._knowledge_gateway_url,
         )
         if binding:
             managed = ensure_dict(

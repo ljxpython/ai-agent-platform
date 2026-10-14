@@ -114,7 +114,7 @@ async def _read_only_transport(request, handler):
         raise ToolException("mcp_transport_unavailable") from exc
 
 
-async def load_mcp_tools(config, principal, requested, reserved):
+async def load_mcp_tools(config, principal, requested, reserved, target_servers=None):
     names = {name for name in requested if name.startswith("mcp_")}
     if not names:
         return []
@@ -130,24 +130,58 @@ async def load_mcp_tools(config, principal, requested, reserved):
     binding = resolve_resource_binding(config, principal, "mcp")
     try:
         connections = mcp_connections()
-        connection = dict(connections[binding.resource_id])
-        scope = connection.pop("scope")
-        if scope != {"tenant_id": binding.tenant_id, "project_id": binding.project_id}:
-            raise ValueError()
-        allowed = connection.pop("allowed_tools", [])
-        names.intersection_update(allowed)
-        if (
-            binding.provider != "mcp_http"
-            or connection.get("transport") != "streamable_http"
-        ):
-            raise ValueError()
+        if binding.resource_id in connections:
+            connection = dict(connections[binding.resource_id])
+            scope = connection.pop("scope")
+            if scope != {
+                "tenant_id": binding.tenant_id,
+                "project_id": binding.project_id,
+            }:
+                raise ValueError()
+            allowed = connection.pop("allowed_tools", [])
+            names.intersection_update(allowed)
+            if (
+                binding.provider != "mcp_http"
+                or connection.get("transport") != "streamable_http"
+            ):
+                raise ValueError()
+            server_key = binding.resource_id
+        elif binding.auth_token:
+            import os
+
+            from runtime_service.tools.knowledge import KNOWLEDGE_MCP_TOOLS
+
+            gateway_url = binding.gateway_url or os.getenv(
+                "RUNTIME_KNOWLEDGE_MCP_GATEWAY_URL",
+                "http://152.136.27.196:8000/mcp",
+            )
+            if not gateway_url.endswith("/mcp"):
+                gateway_url = gateway_url.rstrip("/") + "/mcp"
+            connection = {
+                "url": gateway_url,
+                "transport": "streamable_http",
+                "headers": {"Authorization": f"Bearer {binding.auth_token}"},
+            }
+            allowed = list(KNOWLEDGE_MCP_TOOLS)
+            names.intersection_update(allowed)
+            if binding.provider != "mcp_http":
+                raise ValueError()
+            server_key = "knowledge"
+        else:
+            raise KeyError(binding.resource_id)
     except (KeyError, TypeError, ValueError) as exc:
         raise RuntimeResolutionError("runtime.mcp.recovery_failed") from exc
     if not names:
         return []
+    if target_servers is not None:
+        target_set = set(target_servers)
+        if server_key not in target_set and not (
+            server_key.startswith("knowledge") and "knowledge" in target_set
+        ):
+            return []
     # Connections/headers are server configuration, never Context or tool arguments.
     client = MultiServerMCPClient(
-        {"bound": connection},
+        {server_key: connection},
         tool_name_prefix=False,
         tool_interceptors=[
             _read_only_transport,
@@ -155,7 +189,7 @@ async def load_mcp_tools(config, principal, requested, reserved):
             knowledge_upload_interceptor(binding, connection),
         ],
     )
-    tools = await client.get_tools()
+    tools = await client.get_tools(server_name=server_key)
     actual = [tool.name for tool in tools]
     if len(set(actual)) != len(actual) or set(actual) & set(reserved):
         raise RuntimeResolutionError("runtime.tool.name_conflict")

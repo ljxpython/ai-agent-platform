@@ -13,6 +13,8 @@ _SCHEMA = "runtime-resource-bindings/v1"
 _REQUIRED_FIELDS = frozenset(
     {"provider", "resource_id", "tenant_id", "project_id", "thread_id"}
 )
+_OPTIONAL_FIELDS = frozenset({"auth_token", "knowledge_base_id", "gateway_url"})
+_ALLOWED_FIELDS = _REQUIRED_FIELDS | _OPTIONAL_FIELDS
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +25,9 @@ class RuntimeResourceBinding:
     tenant_id: str
     project_id: str
     thread_id: str
+    auth_token: str | None = None
+    knowledge_base_id: str | None = None
+    gateway_url: str | None = None
 
 
 def _failed(kind: str) -> RuntimeResolutionError:
@@ -50,7 +55,12 @@ def resolve_resource_binding(
     if not isinstance(raw_bindings, Mapping) or raw_bindings.get("schema") != _SCHEMA:
         raise _failed(kind)
     raw = raw_bindings.get(kind)
-    if not isinstance(raw, Mapping) or set(raw) != _REQUIRED_FIELDS:
+    if not isinstance(raw, Mapping):
+        raise _failed(kind)
+    raw_keys = set(raw)
+    if not _REQUIRED_FIELDS.issubset(raw_keys) or not raw_keys.issubset(
+        _ALLOWED_FIELDS
+    ):
         raise _failed(kind)
     values = {field: raw.get(field) for field in _REQUIRED_FIELDS}
     if any(
@@ -58,6 +68,18 @@ def resolve_resource_binding(
         for value in values.values()
     ):
         raise _failed(kind)
+    for opt in _OPTIONAL_FIELDS:
+        if opt in raw:
+            opt_val = raw.get(opt)
+            if (
+                not isinstance(opt_val, str)
+                or not opt_val
+                or opt_val != opt_val.strip()
+            ):
+                raise _failed(kind)
+            values[opt] = opt_val
+        else:
+            values[opt] = None
     configurable = config.get("configurable")
     thread_id = (
         configurable.get("thread_id") if isinstance(configurable, Mapping) else None

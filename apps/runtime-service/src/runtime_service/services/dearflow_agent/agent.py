@@ -153,6 +153,8 @@ APPROVALS = {
     )
 }
 
+REQUIRED_MCP_SERVERS = ("knowledge",)
+
 _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
@@ -258,7 +260,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         with startup.phase("factory.mcp_tools"):
             if not context.offload_conversation and not context.plan_mode:
                 mcp_tools = await load_mcp_tools(
-                    config, facts.principal, requested_mcp, DEAR_TOOLS
+                    config,
+                    facts.principal,
+                    requested_mcp,
+                    DEAR_TOOLS,
+                    target_servers=REQUIRED_MCP_SERVERS,
                 )
         with startup.phase("factory.model_connection"):
             bundle = await fetch_model_bundle(

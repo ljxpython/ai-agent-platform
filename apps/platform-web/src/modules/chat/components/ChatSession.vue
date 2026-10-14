@@ -2002,7 +2002,7 @@ defineExpose({
                 !checking &&
                 !isSessionRunning
               "
-              class="mx-auto my-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center py-12 px-4 text-center"
+              class="mx-auto flex w-full max-w-2xl flex-col items-center px-4 pt-10 pb-12 sm:pt-16 sm:pb-16 text-center"
             >
               <span
                 class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md mb-4"

@@ -329,3 +329,21 @@ class KnowledgeAuthorizationTest(unittest.TestCase):
                 else:
                     with self.assertRaises(ForbiddenError):
                         parse_operation(self.settings, self.envelope(values))
+
+    def test_dynamic_knowledge_authorization_without_static_config(self):
+        self.settings.knowledge_mcp_bindings = {}
+        self.settings.knowledge_connections = {}
+        self.settings.knowledge_secret = "dynamic-secret-key-at-least-32-chars-long"
+
+        dynamic_res = f"knowledge_{self.project}"
+        values = self.values(
+            resource_id=dynamic_res,
+            knowledge_base_id=f"kb_{UUID(self.project).hex}",
+        )
+        response = self.authorize(values)
+        self.assertEqual(response.status_code, 200, response.text)
+        grant = response.json()
+        self.assertEqual(
+            grant["values"]["knowledge_base_id"], f"kb_{UUID(self.project).hex}"
+        )
+        self.assertEqual(grant["values"]["resource_id"], dynamic_res)

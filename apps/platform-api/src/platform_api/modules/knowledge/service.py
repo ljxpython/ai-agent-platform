@@ -109,6 +109,28 @@ class KnowledgeService:
             raise NotFoundError(
                 code="knowledge_not_found", message="Knowledge resource not found"
             )
+        if connection is None and self.settings.knowledge_secret:
+            from platform_api.config import KnowledgeConnection
+            from platform_api.modules.knowledge.authorization import mint_knowledge_jwt
+
+            kb_id = "kb_" + UUID(project_id).hex
+            token = mint_knowledge_jwt(
+                secret=self.settings.knowledge_secret,
+                tenant_id=self.tenant_id,
+                project_id=project_id,
+                knowledge_base_id=kb_id,
+            )
+            base_url = getattr(
+                self.settings,
+                "knowledge_gateway_base_url",
+                "http://152.136.27.196:8000",
+            )
+            connection = KnowledgeConnection(
+                base_url=base_url,
+                token=token,
+                scope={"tenant_id": self.tenant_id, "project_id": project_id},
+                knowledge_base_id=kb_id,
+            )
         if connection is None:
             if path == "capabilities":
                 return KnowledgeCapabilities(

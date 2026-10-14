@@ -36,6 +36,28 @@ def signature(values, secret, key_id, purpose):
     ).hexdigest()
 
 
+def mint_knowledge_jwt(
+    secret: str,
+    tenant_id: str,
+    project_id: str,
+    knowledge_base_id: str,
+    ttl_seconds: int = 86400,
+) -> str:
+    import jwt
+
+    now = int(time.time())
+    payload = {
+        "tenant_id": str(tenant_id),
+        "project_id": str(project_id),
+        "knowledge_base_id": str(knowledge_base_id),
+        "iat": now,
+        "exp": now + ttl_seconds,
+        "iss": "platform-api",
+        "aud": "rag-service",
+    }
+    return jwt.encode(payload, secret, algorithm="HS256")
+
+
 def request_id(values):
     scope = [
         values[k]
@@ -193,16 +215,45 @@ def authorize_operation(factory, settings, operation):
     resource = settings.knowledge_mcp_bindings.get(
         f"{operation.tenant_id}:{operation.project_id}"
     )
-    if (
-        resource != operation.resource_id
-        or resource not in settings.knowledge_connections
-    ):
+    connection = settings.knowledge_connections.get(resource) if resource else None
+    if connection is not None and connection.scope != {
+        "tenant_id": operation.tenant_id,
+        "project_id": values["project_id"],
+    }:
         raise ForbiddenError(
             code="knowledge_upload_denied", message="Knowledge scope denied"
         )
-    connection = settings.knowledge_connections[resource]
+    if connection is None and settings.knowledge_secret:
+        from platform_api.config import KnowledgeConnection
+
+        kb_id = "kb_" + UUID(str(operation.project_id)).hex
+        dynamic_resource = resource or f"knowledge_{operation.project_id}"
+        if operation.resource_id == dynamic_resource:
+            resource = dynamic_resource
+            token = mint_knowledge_jwt(
+                secret=settings.knowledge_secret,
+                tenant_id=operation.tenant_id,
+                project_id=str(operation.project_id),
+                knowledge_base_id=kb_id,
+            )
+            connection = KnowledgeConnection(
+                base_url=getattr(
+                    settings,
+                    "knowledge_gateway_base_url",
+                    "http://152.136.27.196:8000",
+                ),
+                token=token,
+                scope={
+                    "tenant_id": operation.tenant_id,
+                    "project_id": values["project_id"],
+                },
+                knowledge_base_id=kb_id,
+            )
+
     if (
-        connection.scope
+        connection is None
+        or resource != operation.resource_id
+        or connection.scope
         != {"tenant_id": operation.tenant_id, "project_id": values["project_id"]}
         or connection.knowledge_base_id is None
         or operation.knowledge_base_id not in {None, connection.knowledge_base_id}

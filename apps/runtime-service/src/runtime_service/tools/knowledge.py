@@ -10,6 +10,13 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from runtime_service.runtime.mcp_config import knowledge_sources_version
 
 KNOWLEDGE_TOOL = "mcp_query_project_knowledge"
+KNOWLEDGE_MCP_TOOLS = (
+    KNOWLEDGE_TOOL,
+    "mcp_list_project_knowledge_documents",
+    "mcp_get_project_knowledge_document_status",
+    "mcp_submit_project_knowledge_document",
+    "mcp_get_project_knowledge_ingest_job",
+)
 
 
 class _Source(BaseModel):

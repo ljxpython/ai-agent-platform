@@ -69,6 +69,36 @@ class KnowledgeBindingTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertNotIn("runtime_resource_bindings", plain["metadata"])
 
+    async def test_dynamic_jwt_binding_when_unconfigured_in_static_mapping(self):
+        import jwt
+
+        secret = "test-secret-at-least-32-bytes-long-123456"
+        self.service._knowledge_mcp_bindings = {}
+        self.service._knowledge_secret = secret
+        self.service._knowledge_gateway_url = "http://152.136.27.196:8000/mcp"
+
+        thread = await self.service.create_thread(
+            actor=self.actor, project_id=PROJECT, payload={"graph_id": "showcase_demo"}
+        )
+        binding = thread["metadata"]["runtime_resource_bindings"]
+        self.assertEqual(binding["schema"], "runtime-resource-bindings/v1")
+        mcp = binding["mcp"]
+        self.assertEqual(mcp["tenant_id"], TENANT)
+        self.assertEqual(mcp["project_id"], PROJECT)
+        self.assertTrue(mcp["auth_token"])
+        self.assertEqual(mcp["gateway_url"], "http://152.136.27.196:8000/mcp")
+
+        # 验证签发的 Token 可以被正确解密
+        payload = jwt.decode(
+            mcp["auth_token"],
+            secret,
+            algorithms=["HS256"],
+            audience="rag-service",
+        )
+        self.assertEqual(payload["tenant_id"], TENANT)
+        self.assertEqual(payload["project_id"], PROJECT)
+        self.assertTrue(payload["knowledge_base_id"].startswith("kb_"))
+
     async def test_forged_binding_is_rejected_before_acl_or_upstream(self):
         for payload in (
             {"metadata": {"runtime_resource_bindings": {}}},

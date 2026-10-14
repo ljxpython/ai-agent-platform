@@ -67,6 +67,21 @@ def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
             assert await load_mcp_tools({}, principal, [], []) == []
             tools = await load_mcp_tools(cfg, principal, ["mcp_echo"], [])
             assert "verified" in str(await tools[0].ainvoke({"text": "verified"}))
+
+            # Server-level explicit mounting & isolation assertion
+            matched = await load_mcp_tools(
+                cfg, principal, ["mcp_echo"], [], target_servers=["test"]
+            )
+            assert len(matched) == 1 and matched[0].name == "mcp_echo"
+            isolated = await load_mcp_tools(
+                cfg,
+                principal,
+                ["mcp_echo"],
+                [],
+                target_servers=["knowledge", "database"],
+            )
+            assert isolated == []
+
             blocks = await load_mcp_tools(cfg, principal, ["mcp_error_blocks"], [])
             result = await blocks[0].ainvoke(
                 {

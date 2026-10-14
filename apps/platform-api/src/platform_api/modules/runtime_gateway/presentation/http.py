@@ -666,6 +666,10 @@ def get_runtime_gateway_service(
         title_timeout_seconds=getattr(settings, "title_timeout_seconds", 8.0),
         title_auto_enabled=lambda: settings.title_auto_enabled,
         knowledge_mcp_bindings=settings.knowledge_mcp_bindings,
+        knowledge_secret=settings.knowledge_secret,
+        knowledge_gateway_url=getattr(
+            settings, "knowledge_gateway_base_url", "http://152.136.27.196:8000"
+        ),
         tenant_id=context.tenant.tenant_id or "__default",
     )
 
