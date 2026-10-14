@@ -23,6 +23,9 @@ const emit = defineEmits<{
 }>();
 
 function formatError(raw: string): string {
+  if (raw.includes("runtime.workspace.unavailable")) {
+    return "工作区环境不可用，请检查沙箱配置或新建会话重试。";
+  }
   if (raw.includes("runtime.loop.detected")) {
     return "检测到工具重复调用，本次运行已停止，请调整任务后继续。";
   }
@@ -113,6 +116,9 @@ const statusText = computed(() => {
   // 5. 原生错误
   if (props.error) {
     return `执行出错: ${formatError(props.error)}`;
+  }
+  if (resolvedState.value === "error") {
+    return "执行出错，请刷新或重试";
   }
   // 6. 默认就绪或活跃时间
   return props.lastEventAt

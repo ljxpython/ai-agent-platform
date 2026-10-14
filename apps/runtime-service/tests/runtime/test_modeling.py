@@ -47,6 +47,38 @@ def test_openai_compatible_preserves_reasoning(field: str, value: object) -> Non
     assert chunk.message.additional_kwargs["reasoning_content"] == expected
 
 
+def test_openai_compatible_sanitizes_payload_and_preserves_outgoing_reasoning() -> None:
+    from langchain_core.messages import AIMessage, HumanMessage
+
+    model = modeling.ChatOpenAIWithReasoning(model="test", api_key="test")
+    # Message with reasoning_content in additional_kwargs and non-standard block in content
+    ai_msg = AIMessage(
+        content=[
+            {"type": "reasoning", "reasoning": "thought process"},
+            {"type": "tool_call", "id": "call_1", "name": "ls", "args": {}},
+        ],
+        additional_kwargs={"reasoning_content": "thought process"},
+        tool_calls=[{"id": "call_1", "name": "ls", "args": {}}],
+    )
+    messages = [HumanMessage(content="hello"), ai_msg]
+    payload = model._get_request_payload(messages)
+
+    assert len(payload["messages"]) == 2
+    assistant_payload = payload["messages"][1]
+    assert assistant_payload["role"] == "assistant"
+    # reasoning_content passed back for Thinking models
+    assert assistant_payload["reasoning_content"] == "thought process"
+    # non-standard content blocks stripped, content safely set to None for tool call
+    assert assistant_payload["content"] is None
+    assert assistant_payload["tool_calls"] == [
+        {
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "ls", "arguments": "{}"},
+        }
+    ]
+
+
 def _resolved(model_id: str):
     return resolve_runtime_config(
         principal=RuntimePrincipal("u", "t", "p", "developer", ()),

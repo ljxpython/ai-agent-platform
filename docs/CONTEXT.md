@@ -20,6 +20,7 @@
 
 ## 活跃项目
 
+- [知识库动态多项目绑定与免重启鉴权](projects/20261014-dynamic-knowledge-binding/README.md)：`planning`；彻底淘汰静态 .env 手工配置与服务重启，建立基于 Platform-API 数据库持久化、Scoped HMAC/JWT 动态凭据签发、以及 RAG 远端知识库无状态即时验签与物理隔离的多租户免重启生产架构。
 - [知识文档/图片平台接线](projects/20261013-knowledge-documents-platform/README.md)：`done`（2026-10-13 用户验收通过）；T01–T08全部完成；前端F01–F06与无mock浏览器闭环、8步Playwright自动化测试全绿、MCP防死循环优化落地；所属服务已停止。
 - [项目成员知识上传平台接线](projects/20261012-project-member-knowledge-upload/README.md)：`done`；由20261013专项统一验收；RAG真实联合链、审批/排队/去重/回退均通过。
 - [项目知识检索 MCP 接入](projects/20261011-project-knowledge-mcp/README.md)：`done`；通用MCP与别名工具目录接入完成，多模态/文本库隔离。

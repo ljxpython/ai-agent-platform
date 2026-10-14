@@ -328,4 +328,45 @@ describe("ChatAgentStatusBar", () => {
       "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
     );
   });
+
+  it("renders fallback error text when turnState is error even if error prop is empty and lastEventAt is provided", () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        turnState: "error",
+        error: undefined,
+        lastEventAt: "2026-10-14T02:35:32.000Z",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    // 严禁将“最后活跃于”作为错误状态条的文案展示
+    expect(wrapper.text()).not.toContain("最后活跃于");
+    expect(wrapper.text()).toContain("执行出错，请刷新或重试");
+  });
+
+  it("formats runtime.workspace.unavailable accurately into Chinese explanation text", () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        turnState: "error",
+        error: "RuntimeWorkspaceError: runtime.workspace.unavailable",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain(
+      "工作区环境不可用，请检查沙箱配置或新建会话重试。",
+    );
+  });
 });

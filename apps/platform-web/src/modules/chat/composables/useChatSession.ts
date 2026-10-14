@@ -709,7 +709,27 @@ export function useChatSession(options: {
         } while (!disposed && epoch === checkEpoch);
         if (!disposed && epoch === checkEpoch) {
           verified.value = true;
-          error.value = "";
+          if (run.value?.status === "error") {
+            const runObj = run.value as unknown as Record<
+              string,
+              unknown
+            > | null;
+            const runError = runObj?.error;
+            const errorMsg: string =
+              (typeof runError === "string"
+                ? runError
+                : typeof (runError as Record<string, unknown> | undefined)
+                      ?.message === "string"
+                  ? String((runError as Record<string, unknown>).message)
+                  : "") ||
+              (typeof runObj?.reason === "string" ? runObj.reason : "") ||
+              "";
+            if (!error.value && errorMsg) {
+              error.value = errorMsg;
+            }
+          } else {
+            error.value = "";
+          }
           // 自愈状态机：若当前 run 已经处于非 active 终态，强制收敛流式与动作状态
           if (!active(run.value)) {
             if (stream.isLoading.value) {

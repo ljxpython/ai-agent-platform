@@ -12,7 +12,7 @@ from typing import Any
 import httpx
 import openai
 from langchain.chat_models import init_chat_model
-from langchain_core.language_models import BaseChatModel
+from langchain_core.language_models import BaseChatModel, LanguageModelInput
 from langchain_core.messages import AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_deepseek import ChatDeepSeek
@@ -87,6 +87,73 @@ class ChatOpenAIWithReasoning(ChatOpenAI):
             if reasoning:
                 result.message.additional_kwargs["reasoning_content"] = reasoning
         return result
+
+    def _get_request_payload(
+        self,
+        input_: LanguageModelInput,
+        *,
+        stop: list[str] | None = None,
+        **kwargs: Any,
+    ) -> dict:
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        messages_input = self._convert_input(input_).to_messages()
+
+        if "messages" in payload and isinstance(payload["messages"], list):
+            cleaned_messages: list[dict[str, Any]] = []
+            for idx, msg_dict in enumerate(payload["messages"]):
+                msg_obj = messages_input[idx] if idx < len(messages_input) else None
+
+                if msg_dict.get("role") == "assistant":
+                    # 1. 恢复 reasoning_content 传递给支持思考链的 OpenAI 兼容端点（如 DeepSeek/Thinking 模型）
+                    if "reasoning_content" not in msg_dict and msg_obj is not None:
+                        reasoning = (
+                            msg_obj.additional_kwargs.get("reasoning_content")
+                            or msg_obj.additional_kwargs.get("reasoning")
+                            or getattr(msg_obj, "reasoning_content", None)
+                        )
+                        if reasoning and isinstance(reasoning, str):
+                            msg_dict["reasoning_content"] = reasoning
+
+                    # 2. 净化 content 结构（移除非标准 content blocks，如 reasoning、tool_call，防止 400 校验失败）
+                    content = msg_dict.get("content")
+                    if isinstance(content, list):
+                        valid_blocks = []
+                        for b in content:
+                            if isinstance(b, dict):
+                                b_type = b.get("type")
+                                if b_type in (
+                                    "reasoning",
+                                    "thinking",
+                                    "reasoning_content",
+                                    "tool_call",
+                                    "invalid_tool_call",
+                                ):
+                                    continue
+                                valid_blocks.append(b)
+                            else:
+                                valid_blocks.append(b)
+                        if not valid_blocks:
+                            msg_dict["content"] = (
+                                None
+                                if (
+                                    "tool_calls" in msg_dict
+                                    or "function_call" in msg_dict
+                                )
+                                else ""
+                            )
+                        elif (
+                            len(valid_blocks) == 1
+                            and isinstance(valid_blocks[0], dict)
+                            and valid_blocks[0].get("type") == "text"
+                        ):
+                            msg_dict["content"] = valid_blocks[0].get("text", "")
+                        else:
+                            msg_dict["content"] = valid_blocks
+
+                cleaned_messages.append(msg_dict)
+            payload["messages"] = cleaned_messages
+
+        return payload
 
 
 def _generation_kwargs(
