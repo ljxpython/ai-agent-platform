@@ -105,8 +105,26 @@ def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
                     ["mcp_echo"],
                     [],
                 )
+
+            # Resilient fault tolerance: partial tool missing does NOT raise error, returns available subset
+            partial_tools = await load_mcp_tools(
+                cfg, principal, ["mcp_echo", "mcp_missing_one"], []
+            )
+            assert len(partial_tools) == 1 and partial_tools[0].name == "mcp_echo"
+
+            # All requested tools missing returns empty list gracefully without blowing up
+            missing_tools = await load_mcp_tools(
+                cfg, principal, ["mcp_missing_one"], []
+            )
+            assert missing_tools == []
+
             process.terminate()
             process.wait(timeout=10)
+
+            # When MCP server is dead/offline, discovery must NOT raise error, but gracefully fallback to []
+            offline_tools = await load_mcp_tools(cfg, principal, ["mcp_echo"], [])
+            assert offline_tools == []
+
             result = await tools[0].ainvoke(
                 {
                     "type": "tool_call",
@@ -124,6 +142,44 @@ def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
         if process.poll() is None:
             process.terminate()
             process.wait(timeout=10)
+
+
+def test_mcp_discovery_server_unreachable_and_timeout(monkeypatch):
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost")
+    monkeypatch.setenv(
+        "RUNTIME_MCP_CONNECTIONS_JSON",
+        json.dumps(
+            {
+                "unreachable": {
+                    "scope": {"tenant_id": "tenant", "project_id": "project"},
+                    "transport": "streamable_http",
+                    "url": "http://127.0.0.1:59998/mcp",
+                    "allowed_tools": ["mcp_echo"],
+                }
+            }
+        ),
+    )
+    principal = RuntimePrincipal(
+        "user", "tenant", "project", "developer", ("runtime.tool.read",)
+    )
+    cfg = {
+        "configurable": {"thread_id": "thread"},
+        "metadata": {
+            "__graphharbor_thread_metadata": thread_resource_metadata(
+                kind="mcp",
+                provider="mcp_http",
+                resource_id="unreachable",
+                principal=principal,
+                thread_id="thread",
+            )
+        },
+    }
+
+    async def run():
+        # Unreachable server must return [] without raising any exception
+        assert await load_mcp_tools(cfg, principal, ["mcp_echo"], []) == []
+
+    asyncio.run(run())
 
 
 if __name__ == "__main__":

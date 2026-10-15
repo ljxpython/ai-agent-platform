@@ -1,5 +1,8 @@
 """Optional MCP tools from a server-owned, scoped resource binding."""
 
+import asyncio
+import logging
+
 from langchain_core.tools import ToolException
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
@@ -15,6 +18,9 @@ from runtime_service.tools.errors import is_transport_error, tool_error_content
 from runtime_service.tools.knowledge import KNOWLEDGE_TOOL, knowledge_result_interceptor
 from runtime_service.tools.knowledge_upload import knowledge_upload_interceptor
 from runtime_service.workspace.file_refs import MIME_EXT
+
+logger = logging.getLogger(__name__)
+_DISCOVERY_TIMEOUT_SECONDS = 10
 
 FILE_REF_SCHEMA = {
     "type": "object",
@@ -189,20 +195,41 @@ async def load_mcp_tools(config, principal, requested, reserved, target_servers=
             knowledge_upload_interceptor(binding, connection),
         ],
     )
-    tools = await client.get_tools(server_name=server_key)
+    try:
+        tools = await asyncio.wait_for(
+            client.get_tools(server_name=server_key),
+            timeout=_DISCOVERY_TIMEOUT_SECONDS,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Failed to load MCP tools from server %s: %s",
+            server_key,
+            exc,
+            exc_info=True,
+        )
+        return []
+
     actual = [tool.name for tool in tools]
     if len(set(actual)) != len(actual) or set(actual) & set(reserved):
         raise RuntimeResolutionError("runtime.tool.name_conflict")
-    if names - set(actual):
-        raise RuntimeResolutionError("runtime.mcp.required_unavailable")
+    missing = names - set(actual)
+    if missing:
+        logger.warning(
+            "Requested MCP tools missing from %s: %s",
+            server_key,
+            sorted(missing),
+        )
+    selected = [tool for tool in tools if tool.name in names]
+    if not selected:
+        return []
+
     # Only the exact project upload is a mutation; its root HITL and fresh grant remain mandatory.
     if any(
         (tool.metadata or {}).get("readOnlyHint") is not True
-        for tool in tools
-        if tool.name in names and tool.name != KNOWLEDGE_SUBMIT_TOOL
+        for tool in selected
+        if tool.name != KNOWLEDGE_SUBMIT_TOOL
     ):
         raise RuntimeResolutionError("runtime.mcp.read_only_required")
-    selected = [tool for tool in tools if tool.name in names]
     for item in selected:
         if item.name == KNOWLEDGE_SUBMIT_TOOL and any(
             (item.metadata or {}).get(k) is not v
@@ -222,8 +249,21 @@ async def load_mcp_tools(config, principal, requested, reserved, target_servers=
             if content is not None:
                 return content
             if callable(native):
-                return native(exc)
-            raise exc
+                try:
+                    return native(exc)
+                except Exception:
+                    pass
+            if is_transport_error(exc):
+                return tool_error_content(
+                    ToolException("mcp_transport_unavailable"), name
+                )
+            logger.warning(
+                "Unhandled MCP tool execution error on %s: %s",
+                name,
+                exc,
+                exc_info=True,
+            )
+            return tool_error_content(ToolException("mcp_transport_unavailable"), name)
 
         item.handle_tool_error = handle_error
     return selected

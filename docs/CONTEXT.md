@@ -15,6 +15,7 @@
 
 ## 活跃项目
 
+- [弹性 MCP 工具装配与运行时解耦保护](projects/20261015-resilient-mcp-loading/README.md)：`done`；对标 OpenSWE 生产级容错机制进行去业务化移植，实现 MCP 服务与工具的装配期故障隔离（10s 超时控制与全局异常捕获降级）与运行期优雅降级，彻底废除“缺工具即自杀”的反模式强校验；单测套件 170 项全绿；Playwright + Chromium 真实大模型端到端自动化验收 100% 绿灯，彻底消灭 `runtime.execution_failed`。
 - [Docker 对话级沙箱生命周期管理与原生流式传输改造](projects/20261015-docker-sandbox-lifecycle-and-streaming/README.md)：`done`；纯 Docker 低开销对话沙箱架构落地；彻底拔除 Base64 JSON 传输大文件与全内存缓冲反模式；实装前端路径锁、下载Toast、Smart Zip智能归档（ZIP_STORED）与独立流式连接池；远端云主机 sshmy2 完成生产部署与验证；打包 9.4MB 大文件耗时从 21.5s 压降至 0.36s（下降 98.3%）；Playwright + Chromium 自动化端到端测试 100% 绿灯。
 - [知识库免隧道自治与单向架构治理](projects/20261014-knowledge-zero-tunnel-auth/README.md)：`done`；彻底移除 SSH 反向隧道，实装本地自治自验；远端收敛为纯单向入站服务（仅需 22/8000 端口）；Playwright + Chromium 自动化端到端测试 100% 绿灯。
 - [Agent 显式挂载多 MCP 与极简治理](projects/20261014-agent-explicit-mcp-mounting/README.md)：`done`；基于 LangChain 官方 `MultiServerMCPClient` 原生多 Server 纳管能力，贯彻 KISS 极简原则；实现 Agent 维度的显式按需挂载与多 Server 隔离，杜绝全量工具混调导致的大模型幻觉与 Token 浪费。全量单测 100% 通过。
