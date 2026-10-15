@@ -26,7 +26,7 @@ def memory_scope(runtime):
 def build_memory_tools():
     @tool
     async def search_memory(runtime: ToolRuntime, query: str = "") -> dict:
-        """Read this user's current-project facts, candidates and current revision. Never grants permissions."""
+        """Read this user's current-project facts, candidates and current revision. Leave query empty to retrieve all active facts, or provide topic keywords to search. Never grants permissions."""
         if not await memory_allowed(runtime):
             raise DocumentError("memory_thread_shared", 403)
         return await asyncio.to_thread(

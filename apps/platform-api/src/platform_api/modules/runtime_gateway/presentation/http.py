@@ -1369,6 +1369,13 @@ class MemoryFactView(MemoryFactBody):
     quote: str | None
 
 
+class MemoryStatsView(BaseModel):
+    facts_count: int = 0
+    candidates_count: int = 0
+    capacity_status: str = "healthy"
+    prescreen_skipped_total: int = 0
+
+
 class MemoryDocumentView(BaseModel):
     schema_version: int
     revision: int
@@ -1376,6 +1383,7 @@ class MemoryDocumentView(BaseModel):
     automatic_candidates: bool
     facts: list[MemoryFactView]
     candidates: list[MemoryFactView]
+    stats: MemoryStatsView | None = None
 
 
 class MemoryExtractionView(BaseModel):
@@ -1413,6 +1421,7 @@ class MemoryView(BaseModel):
     counts: dict[str, int] | None
     extraction: MemoryExtractionView | None
     mutation: MemoryMutationView | None
+    stats: MemoryStatsView | None = None
 
 
 @router.get("/dear/memory", response_model=MemoryView)

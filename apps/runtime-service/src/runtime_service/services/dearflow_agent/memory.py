@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from datetime import UTC, datetime
 from threading import Event
 from typing import Literal
@@ -21,11 +20,121 @@ from pydantic import (
 
 from runtime_service.db.repositories.memory import load_document, save_document
 from runtime_service.db.schema import Scope
+from runtime_service.services.dearflow_agent.eviction import (
+    evict_lowest_priority_items,
+    find_near_duplicate,
+    trim_bounded_list,
+)
 from runtime_service.services.dearflow_agent.governance_storage import (
     connect,
     lock_scope,
 )
+from runtime_service.services.dearflow_agent.relevance import mmr_rerank
 from runtime_service.workspace.documents import DocumentError
+
+GENERIC_QUERY_PHRASES = (
+    "记忆",
+    "偏好",
+    "当前",
+    "项目",
+    "用户",
+    "关于",
+    "我的",
+    "设定",
+    "设置",
+    "信息",
+    "事实",
+    "所有",
+    "全部",
+    "记录",
+    "习惯",
+    "历史",
+    "你好",
+    "在吗",
+    "检索",
+    "查询",
+    "获取",
+    "查看",
+    "看下",
+    "看一下",
+    "memory",
+    "memories",
+    "preference",
+    "preferences",
+    "preferred",
+    "current",
+    "project",
+    "projects",
+    "user",
+    "users",
+    "about",
+    "my",
+    "me",
+    "setting",
+    "settings",
+    "info",
+    "information",
+    "fact",
+    "facts",
+    "all",
+    "record",
+    "records",
+    "search",
+    "query",
+    "get",
+    "view",
+)
+
+
+def is_generic_query(query: str) -> bool:
+    cleaned = query.casefold()
+    for phrase in GENERIC_QUERY_PHRASES:
+        cleaned = cleaned.replace(phrase, "")
+    for noise in (
+        "的",
+        "了",
+        "和",
+        "及",
+        "与",
+        "有",
+        "什么",
+        "么",
+        "？",
+        "?",
+        " ",
+        "\t",
+        "_",
+        "-",
+        ":",
+    ):
+        cleaned = cleaned.replace(noise, "")
+    return len(cleaned) == 0
+
+
+def extract_core_terms(query: str) -> list[str]:
+    cleaned = query.casefold()
+    for phrase in GENERIC_QUERY_PHRASES:
+        cleaned = cleaned.replace(phrase, " ")
+    for noise in (
+        "的",
+        "了",
+        "和",
+        "及",
+        "与",
+        "有",
+        "什么",
+        "么",
+        "？",
+        "?",
+        ",",
+        "，",
+        "。",
+        "！",
+        "!",
+        "\t",
+    ):
+        cleaned = cleaned.replace(noise, " ")
+    return [t for t in cleaned.split() if t]
 
 
 class FactInput(BaseModel):
@@ -43,13 +152,27 @@ class MemoryCommand(BaseModel):
     expected_revision: int = Field(ge=0, strict=True)
     fact_id: str | None = Field(default=None, max_length=64)
     replace_fact_id: str | None = Field(default=None, max_length=64)
-    fact: FactInput | None = None
+    fact: FactInput | None = Field(
+        default=None,
+        description="Single fact to save or edit (required when action is 'save')",
+    )
     automatic_candidates: StrictBool | None = None
-    facts: list[FactInput] = Field(default_factory=list, max_length=100)
+    facts: list[FactInput] = Field(
+        default_factory=list,
+        max_length=100,
+        description="List of facts for batch restore (used when action is 'restore')",
+    )
 
     @model_validator(mode="after")
     def valid_action_fields(self):
         provided = self.model_fields_set - {"action", "expected_revision"}
+        # Tolerant handling: if action is 'save' and LLM passed 'facts' list instead of singular 'fact'
+        if self.action == "save":
+            if self.fact is None and self.facts:
+                self.fact = self.facts[0]
+                provided.add("fact")
+            provided.discard("facts")
+
         allowed = {
             "save": {"fact", "fact_id"},
             "delete": {"fact_id"},
@@ -108,18 +231,47 @@ def visible(fact):
 
 def project_document(doc, query="", include_candidates=True):
     facts = [f for f in doc["facts"] if visible(f)]
-    if query:
-        terms = query.casefold().split()
-        facts = [f for f in facts if all(t in f["text"].casefold() for t in terms)]
+    if query and query.strip():
+        q = query.strip()
+        if not is_generic_query(q):
+            core_terms = extract_core_terms(q)
+            if core_terms:
+                scored_facts = []
+                for f in facts:
+                    text_lower = f["text"].casefold()
+                    matches = sum(1 for t in core_terms if t in text_lower)
+                    exact_bonus = 10.0 if q.casefold() in text_lower else 0.0
+                    total_score = exact_bonus + matches
+                    if total_score > 0:
+                        scored_facts.append((total_score, f))
+                if scored_facts:
+                    scored_facts.sort(key=lambda item: item[0], reverse=True)
+                    facts = [item[1] for item in scored_facts]
+                else:
+                    facts = []
+    candidates = (
+        [f for f in doc["candidates"] if visible(f)] if include_candidates else []
+    )
+    facts_count = len(facts)
+    candidates_count = len(candidates)
+    capacity_status = (
+        "evicting"
+        if facts_count >= 100
+        else ("near_capacity" if facts_count >= 85 else "healthy")
+    )
     return {
         "schema_version": 1,
         "revision": doc["revision"],
         "epoch": doc["epoch"],
         "automatic_candidates": doc["automatic_candidates"],
         "facts": facts,
-        "candidates": [f for f in doc["candidates"] if visible(f)]
-        if include_candidates
-        else [],
+        "candidates": candidates,
+        "stats": {
+            "facts_count": facts_count,
+            "candidates_count": candidates_count,
+            "capacity_status": capacity_status,
+            "prescreen_skipped_total": doc.get("prescreen_skipped_total", 0),
+        },
     }
 
 
@@ -149,8 +301,21 @@ class MemoryStorage:
         return document if document is not None else fresh_document()
 
     def _save(self, db, scope, doc):
-        if len(doc["facts"]) > 100 or len(doc["candidates"]) > 100:
-            raise DocumentError("memory_capacity_exceeded", 409)
+        # Graceful eviction policy: automatically prune lowest priority items
+        if len(doc["facts"]) > 100:
+            doc["facts"] = evict_lowest_priority_items(doc["facts"], target_count=100)
+        if len(doc["candidates"]) > 100:
+            doc["candidates"] = evict_lowest_priority_items(
+                doc["candidates"], target_count=100
+            )
+        if len(doc.get("sources", [])) > 2000:
+            doc["sources"] = trim_bounded_list(
+                doc["sources"], max_capacity=2000, trim_to=1800
+            )
+        if len(doc.get("deleted_digests", [])) > 1000:
+            doc["deleted_digests"] = trim_bounded_list(
+                doc["deleted_digests"], max_capacity=1000, trim_to=900
+            )
         doc["revision"] += 1
         self._write(db, scope, doc)
 
@@ -407,7 +572,6 @@ class MemoryStorage:
                         }
                     }
                 )
-                # Exact quotation prevents invented provenance, but does not claim semantic safety.
                 if (
                     not quote.strip()
                     or quote not in actual_text
@@ -417,8 +581,25 @@ class MemoryStorage:
                     or fingerprint(value.text) in known
                 ):
                     continue
+
+                # Fact near-duplicate deduplication gate
+                near_dup = find_near_duplicate(
+                    value.text,
+                    doc["facts"] + doc["candidates"],
+                    threshold=0.65,
+                )
+                if near_dup is not None:
+                    near_dup["updated_at"] = now().isoformat()
+                    if near_dup in doc["candidates"]:
+                        near_dup["revision"] = near_dup.get("revision", 1) + 1
+                    known.add(fingerprint(value.text))
+                    continue
+
                 if len(doc["candidates"]) >= 100:
-                    break
+                    doc["candidates"] = evict_lowest_priority_items(
+                        doc["candidates"], target_count=99
+                    )
+
                 fact = value.model_dump(mode="json")
                 fact.update(
                     id=str(uuid4()),
@@ -437,7 +618,9 @@ class MemoryStorage:
                 added += 1
             if source_key not in doc["sources"]:
                 if len(doc["sources"]) >= 2000:
-                    return {"status": "source_limit"}
+                    doc["sources"] = trim_bounded_list(
+                        doc["sources"], max_capacity=2000, trim_to=1800
+                    )
                 doc["sources"].append(source_key)
             if source_messages is not None:
                 for source_id in source_messages:
@@ -636,36 +819,11 @@ class MemoryStorage:
             return source_key in self._load(db, scope)["sources"]
 
     def context(self, scope, query: str = ""):
-        # ponytail: bounded lexical retrieval; add semantic ranking only after measured recall gaps.
         facts = self.read(scope, include_candidates=False)["facts"]
-
-        def tokens(value):
-            parts = re.findall(r"[a-z0-9]+|[\u4e00-\u9fff]+", value.casefold())
-            return {part for part in parts if part.isascii()} | {
-                part[index : index + 2]
-                for part in parts
-                if not part.isascii()
-                for index in range(len(part) - 1)
-            }
-
-        query_tokens = tokens(query[:6000])
-        scored = sorted(
-            facts,
-            key=lambda fact: (
-                len(tokens(fact["text"]) & query_tokens),
-                fact.get("updated_at", ""),
-                fact["id"],
-            ),
-            reverse=True,
+        # Relevance-aware MMR reranking with diversity penalty (F03/F05 pattern)
+        selected = mmr_rerank(
+            query[:6000], facts, top_k=10, lambda_param=0.7, char_budget=4000
         )
-        matching = [
-            f for f in scored if query_tokens and tokens(f["text"]) & query_tokens
-        ][:7]
-        remaining = [f for f in scored if f not in matching]
-        preferences = [f for f in remaining if f["category"] == "preference"][:3]
-        selected = (
-            matching + preferences + [f for f in remaining if f not in preferences]
-        )[:10]
         result = []
         budget = 4000
         for fact in selected:

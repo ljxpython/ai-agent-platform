@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 长期记忆系统容量感知与平滑淘汰前端展示 | 已完成：实装容量健康进度条、状态徽标（healthy/near_capacity/evicting）、超限平滑淘汰解释说明、MemoryStats 接口契约透传与 Vitest 单元测试覆盖 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
 | 通用后台 Workspace 任务界面 | 已完成：accepted 徽章文案（“续接已接受”）、unknown 徽章（“续接待确认”与防伪重试只读守卫）、候选严苛白名单过滤、clearDiscoveredRuns 协同清理与 useChatSession Iron Gate（interrupted 审批等待与 busy/Stop 避让）；Vitest 144 套件全绿、Playwright + Chromium 真实大模型端到端自动化测试 3 passed，三视口截图留痕通过，用户人工实测验收合格 | [接续专项](projects/20261011-background-acceptance-closeout/README.md) · [前端交接](projects/20261011-background-acceptance-closeout/frontend-handoff.md) |
 | F13 浏览器语音听写 | 已完成：基于原生 SpeechRecognition / webkitSpeechRecognition 实现单实例 useVoiceInput，只在 final 写入草稿末尾、interim 不落草稿、用户按键抢占取消防自杀误关；共享 ChatComposer 采用方案 A 纯图标按钮 + 录音专注模式 + 全宽声波微胶囊设计；28 项单测、Playwright 自动化 E2E 及真实环境验收全部通过 | [评审与任务](projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md) · [前端交接](projects/20260913-dearflow-agent/18-f13-voice-input-frontend-handoff.md) |
 | F11 发送前输入润色 | 规划中（暂缓）：用户确认 deferred，P2 候选、功能未实施；同事交接保留为后续参考，未排期 | [前端交接](projects/20261010-agent-input-polish/frontend-handoff.md) |
@@ -79,6 +80,8 @@
 ## platform-api
 
 | 功能 | 状态 | 关联文档 |
+|---|---|---|
+| 长期记忆契约透传与健康状态（stats）模型下发 | 已完成：定义 MemoryStatsView，扩展 MemoryDocumentView 与 MemoryView 支持 stats 可选透传，7 项契约单测全绿 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
 | 平台/项目用量分析 API | 已完成：三GET、数字权限、名称/Thread ACL、cursor、审计和整链路并发预算已验；公开百万容量两轮通过、B01解除；前端全栈联合复验通过 | [接口/任务](projects/20261011-token-usage-dashboard/03-platform-api-and-security.md) · [验证](projects/20261011-token-usage-dashboard/05-delivery-and-verification.md) |
 | 后台任务网关与受管完成续接 | 已完成：最终 bytes / 固定只读 GET / guard 保留，新 Context/签名与 callback 共存修复；head 0009、SQLite/PG 与独立 Final 通过，镜像 notify/Stop/撤权模型 1/0/0；前端闭环与真实模型 Playwright E2E 验收通过，用户人工实测通过 | [接续专项](projects/20261011-background-acceptance-closeout/README.md) · [原专项](projects/20261009-agent-generic-production-capabilities/README.md) |
 | F11 受管草稿润色网关 | 规划中（暂缓）：用户确认 deferred；无 Thread 用途授权与治理方案未批准，未新增接口或配置 | [整体方案](projects/20261010-agent-input-polish/plan.md) |
@@ -105,6 +108,8 @@
 ## runtime-service
 
 | 功能 | 状态 | 关联文档 |
+|---|---|---|
+| 企业级长期记忆系统升级（异步非阻塞+Prescreen+MMR检索+平滑软淘汰） | 已完成：后台异步非阻塞提取（主响应耗时 < 5ms）、Prescreen 成本门禁、中文 unigram+bigram 混合分词+IDF 加权与双池 MMR 多样性重排、Dice 相似度近重复合并、置信度/新鲜度优先级平滑软淘汰，33 项单测全绿 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
 | 已采集用量受控聚合与Run候选查询 | 已完成：HMAC两POST、RR同快照、0004索引/0005可重建桶、脏补齐/Run精确去重、有界查询和重建/重启/保留迁移回退通过；公开百万容量及写影响通过、B01解除；前端全栈闭环 | [Runtime方案/任务](projects/20261011-token-usage-dashboard/02-runtime-aggregation.md) · [容量证据](projects/20261011-token-usage-dashboard/05-delivery-and-verification.md) |
 | 通用后台非阻塞 Workspace 任务 | 已完成：credential/callback 与 Stop 候选修复，post45 冷 Linux / 两真实模型 / 资源权限 / 匹配回退与独立 Final 通过；head 0004，本地默认关闭、登记 host / 日志隔离；前端 accepted/unknown 徽章与 Iron Gate 避让闭环，Playwright + Chromium 真实大模型 E2E 3 passed，用户人工实测验收合格 | [接续验证](projects/20261011-background-acceptance-closeout/verification.md) · [原专项](projects/20261009-agent-generic-production-capabilities/README.md) |
 | 非 Docker 后台任务兼容 A/B | 前后端 done：隐藏模型启动工具、保留旧checkpoint回执、仅确认未登记的环境限制给短任务建议；unknown不重跑，execute最大60秒/原审批。两图真实local API/Worker及ABF能力门禁/恢复提示/浏览器独立验收通过；B01另由接受回执专项解除 | [兼容方案](projects/20261009-agent-generic-production-capabilities/plan.md#43-非-docker-兼容与精确降级后端已实施前端接续) · [实施记录](projects/20261009-agent-generic-production-capabilities/implementation/05-local-background-compatibility.md) |

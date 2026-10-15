@@ -96,6 +96,18 @@ def envelope(scope, document=None, extraction=None, mutation=None):
         }
         if document
         else None,
+        "stats": {
+            "facts_count": len(document["facts"]),
+            "candidates_count": len(document["candidates"]),
+            "capacity_status": "evicting"
+            if len(document["facts"]) >= 100
+            else ("near_capacity" if len(document["facts"]) >= 85 else "healthy"),
+            "prescreen_skipped_total": document.get("stats", {}).get(
+                "prescreen_skipped_total", 0
+            ),
+        }
+        if document
+        else None,
         "extraction": extraction,
         "mutation": mutation,
     }

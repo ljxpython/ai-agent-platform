@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onDeactivated, onScopeDispose } from "vue";
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onDeactivated,
+  onScopeDispose,
+} from "vue";
 import { useRouter } from "vue-router";
 import { useAuthorization } from "@/composables/useAuthorization";
 import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
@@ -80,38 +87,110 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 
 // 权限与状态派生属性
 const hasLocalWritePerm = computed(() =>
-  Boolean(activeProjectId.value && can("project.runtime.execute", activeProjectId.value)),
+  Boolean(
+    activeProjectId.value &&
+    can("project.runtime.execute", activeProjectId.value),
+  ),
 );
 
-const isDisabledStatus = computed(() => memoryView.value?.status === "disabled");
+const isDisabledStatus = computed(
+  () => memoryView.value?.status === "disabled",
+);
 const isReadyStatus = computed(() => memoryView.value?.status === "ready");
 
 const canRead = computed(() => {
-  if (!activeProjectId.value || accessDenied.value || isDisabledStatus.value) return false;
+  if (!activeProjectId.value || accessDenied.value || isDisabledStatus.value)
+    return false;
   return memoryView.value?.capabilities?.can_read ?? true;
 });
 
 const canWrite = computed(() => {
-  if (!activeProjectId.value || accessDenied.value || snapshotStale.value) return false;
+  if (!activeProjectId.value || accessDenied.value || snapshotStale.value)
+    return false;
   if (!isReadyStatus.value || !memoryView.value?.document) return false;
-  return hasLocalWritePerm.value && Boolean(memoryView.value.capabilities?.can_write);
+  return (
+    hasLocalWritePerm.value && Boolean(memoryView.value.capabilities?.can_write)
+  );
 });
 
-const factCharLimit = computed(() => memoryView.value?.limits?.fact_text_chars ?? 1000);
+const factCharLimit = computed(
+  () => memoryView.value?.limits?.fact_text_chars ?? 1000,
+);
 const factCountLimit = computed(() => memoryView.value?.limits?.facts ?? 100);
-const restoreItemLimit = computed(() => memoryView.value?.limits?.restore_items ?? 100);
-const requestBytesLimit = computed(() => memoryView.value?.limits?.request_bytes ?? 1500000);
+const restoreItemLimit = computed(
+  () => memoryView.value?.limits?.restore_items ?? 100,
+);
+const requestBytesLimit = computed(
+  () => memoryView.value?.limits?.request_bytes ?? 1500000,
+);
 
 // Unicode 码点长度计数（避免 Emoji UTF-16 length 算作 2）
 const formCharCount = computed(() => Array.from(formText.value.trim()).length);
 
 // 服务端全量计数（不随本地搜索改变）
 const totalFactsCount = computed(
-  () => memoryView.value?.counts?.facts ?? memoryView.value?.document?.facts.length ?? 0,
+  () =>
+    memoryView.value?.counts?.facts ??
+    memoryView.value?.document?.facts.length ??
+    0,
 );
 const totalCandidatesCount = computed(
-  () => memoryView.value?.counts?.candidates ?? memoryView.value?.document?.candidates.length ?? 0,
+  () =>
+    memoryView.value?.counts?.candidates ??
+    memoryView.value?.document?.candidates.length ??
+    0,
 );
+
+// 容量健康度计算属性
+const capacityRatio = computed(() => {
+  if (!factCountLimit.value) return 0;
+  return Math.min(
+    100,
+    Math.round((totalFactsCount.value / factCountLimit.value) * 100),
+  );
+});
+
+const capacityStatus = computed(() => {
+  const serverStatus =
+    memoryView.value?.stats?.capacity_status ??
+    memoryView.value?.document?.stats?.capacity_status;
+  if (serverStatus) return serverStatus;
+  if (totalFactsCount.value >= factCountLimit.value) return "evicting";
+  if (totalFactsCount.value >= 85) return "near_capacity";
+  return "healthy";
+});
+
+const capacityStatusText = computed(() => {
+  switch (capacityStatus.value) {
+    case "evicting":
+      return "自平衡整理中";
+    case "near_capacity":
+      return "接近容量上限";
+    default:
+      return "容量健康";
+  }
+});
+
+const capacityBadgeClass = computed(() => {
+  switch (capacityStatus.value) {
+    case "evicting":
+      return "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300";
+    case "near_capacity":
+      return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
+    default:
+      return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300";
+  }
+});
+
+const capacityBarClass = computed(() => {
+  switch (capacityStatus.value) {
+    case "evicting":
+    case "near_capacity":
+      return "bg-amber-500";
+    default:
+      return "bg-primary-600";
+  }
+});
 
 // 本地统一搜索过滤（同时过滤 facts 与 candidates）
 const normalizedSearch = computed(() => searchQuery.value.trim().toLowerCase());
@@ -143,7 +222,11 @@ const filteredCandidates = computed(() => {
 const canClearMemory = computed(() => {
   if (!canWrite.value || !memoryView.value?.document) return false;
   const doc = memoryView.value.document;
-  return doc.facts.length > 0 || doc.candidates.length > 0 || doc.automatic_candidates;
+  return (
+    doc.facts.length > 0 ||
+    doc.candidates.length > 0 ||
+    doc.automatic_candidates
+  );
 });
 
 // 本地时区日期工具函数
@@ -189,7 +272,12 @@ interface ImportPreviewResult {
 const importPreview = computed<ImportPreviewResult>(() => {
   const raw = restoreJsonText.value.trim();
   if (!raw) {
-    return { validItems: [], duplicateCount: 0, errors: [], capacityExceeded: false };
+    return {
+      validItems: [],
+      duplicateCount: 0,
+      errors: [],
+      capacityExceeded: false,
+    };
   }
   if (restoreFileBytesError.value) {
     return {
@@ -244,13 +332,17 @@ const importPreview = computed<ImportPreviewResult>(() => {
     return {
       validItems: [],
       duplicateCount: 0,
-      errors: [`单次最多追加导入 ${restoreItemLimit.value} 条记忆事实（当前 ${parsed.length} 条）`],
+      errors: [
+        `单次最多追加导入 ${restoreItemLimit.value} 条记忆事实（当前 ${parsed.length} 条）`,
+      ],
       capacityExceeded: false,
     };
   }
 
   const existingFingerprints = new Set(
-    (memoryView.value?.document?.facts ?? []).map((f) => normalizeFingerprint(f.text)),
+    (memoryView.value?.document?.facts ?? []).map((f) =>
+      normalizeFingerprint(f.text),
+    ),
   );
   const seenInBatch = new Set<string>();
   const validItems: FactInput[] = [];
@@ -276,29 +368,41 @@ const importPreview = computed<ImportPreviewResult>(() => {
       return;
     }
     if (charLen > factCharLimit.value) {
-      errors.push(`第 ${rowNum} 条：text 长度（${charLen}）超过 ${factCharLimit.value} 字符上限`);
+      errors.push(
+        `第 ${rowNum} 条：text 长度（${charLen}）超过 ${factCharLimit.value} 字符上限`,
+      );
       return;
     }
 
     let category: FactCategory = "preference";
     if (rec.category !== undefined && rec.category !== null) {
       if (rec.category !== "preference" && rec.category !== "fact") {
-        errors.push(`第 ${rowNum} 条：非法分类 "${String(rec.category)}"（仅支持 preference 或 fact）`);
+        errors.push(
+          `第 ${rowNum} 条：非法分类 "${String(rec.category)}"（仅支持 preference 或 fact）`,
+        );
         return;
       }
       category = rec.category;
     }
 
     let expiresAt: string | null = null;
-    if (rec.expires_at !== undefined && rec.expires_at !== null && rec.expires_at !== "") {
+    if (
+      rec.expires_at !== undefined &&
+      rec.expires_at !== null &&
+      rec.expires_at !== ""
+    ) {
       if (typeof rec.expires_at !== "string") {
-        errors.push(`第 ${rowNum} 条：expires_at 必须是带时区的 ISO 字符串或 null`);
+        errors.push(
+          `第 ${rowNum} 条：expires_at 必须是带时区的 ISO 字符串或 null`,
+        );
         return;
       }
       const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(rec.expires_at.trim());
       const parsedTime = Date.parse(rec.expires_at);
       if (!hasTimezone || Number.isNaN(parsedTime)) {
-        errors.push(`第 ${rowNum} 条：expires_at 必须是带时区的合法 ISO-8601 时间`);
+        errors.push(
+          `第 ${rowNum} 条：expires_at 必须是带时区的合法 ISO-8601 时间`,
+        );
         return;
       }
       if (parsedTime <= Date.now()) {
@@ -324,7 +428,8 @@ const importPreview = computed<ImportPreviewResult>(() => {
   });
 
   const currentFactCount = memoryView.value?.document?.facts.length ?? 0;
-  const capacityExceeded = currentFactCount + newUniqueCount > factCountLimit.value;
+  const capacityExceeded =
+    currentFactCount + newUniqueCount > factCountLimit.value;
   if (capacityExceeded) {
     errors.push(
       `导入后预计有效事实数（${currentFactCount + newUniqueCount}）超出容量上限 ${factCountLimit.value}，请先清理现有事实`,
@@ -369,7 +474,11 @@ async function silentFetchMemory() {
 
   try {
     const view = await readMemory(projId);
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value || actionLoading.value) {
+    if (
+      gen !== scopeGeneration.value ||
+      projId !== activeProjectId.value ||
+      actionLoading.value
+    ) {
       return;
     }
     memoryView.value = view;
@@ -416,7 +525,11 @@ async function fetchMemory(options: { preserveConflict?: boolean } = {}) {
     }
     syncPollingState(view);
   } catch (err: any) {
-    if (err?.name === "CanceledError" || err?.name === "AbortError" || controller.signal.aborted) {
+    if (
+      err?.name === "CanceledError" ||
+      err?.name === "AbortError" ||
+      controller.signal.aborted
+    ) {
       return;
     }
     if (gen !== scopeGeneration.value || projId !== activeProjectId.value) {
@@ -425,7 +538,11 @@ async function fetchMemory(options: { preserveConflict?: boolean } = {}) {
     const parsed = extractPlatformHttpError(err, "读取个人记忆数据失败");
     errorRequestId.value = parsed.requestId || "";
 
-    if (parsed.status === 403 || parsed.code === "dear_memory_scope_denied" || parsed.code === "forbidden") {
+    if (
+      parsed.status === 403 ||
+      parsed.code === "dear_memory_scope_denied" ||
+      parsed.code === "forbidden"
+    ) {
       accessDenied.value = true;
       memoryView.value = null;
       closeAllModals();
@@ -444,7 +561,10 @@ async function fetchMemory(options: { preserveConflict?: boolean } = {}) {
       }
     }
   } finally {
-    if (gen === scopeGeneration.value && activeGetAbortController === controller) {
+    if (
+      gen === scopeGeneration.value &&
+      activeGetAbortController === controller
+    ) {
       loading.value = false;
       activeGetAbortController = null;
     }
@@ -466,7 +586,11 @@ function handleActionError(err: unknown) {
   const parsed = extractPlatformHttpError(err, "操作结果尚未确认，请刷新核对");
   errorRequestId.value = parsed.requestId || "";
 
-  if (parsed.status === 403 || parsed.code === "dear_memory_scope_denied" || parsed.code === "forbidden") {
+  if (
+    parsed.status === 403 ||
+    parsed.code === "dear_memory_scope_denied" ||
+    parsed.code === "forbidden"
+  ) {
     accessDenied.value = true;
     memoryView.value = null;
     closeAllModals();
@@ -504,7 +628,8 @@ function handleActionError(err: unknown) {
   }
 
   if (parsed.code === "memory_not_found" || parsed.status === 404) {
-    errorMsg.value = "目标事实或候选已不存在，正在刷新列表（您的未提交草稿已保留）";
+    errorMsg.value =
+      "目标事实或候选已不存在，正在刷新列表（您的未提交草稿已保留）";
     void fetchMemory();
     return;
   }
@@ -568,10 +693,15 @@ async function toggleAutomaticCandidates() {
   try {
     const nextVal = !doc.automatic_candidates;
     const view = await updateMemorySettings(projId, doc.revision, nextVal);
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
-    applyMutationResponse(view, nextVal ? "自动候选推断已开启" : "自动候选推断已关闭");
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
+    applyMutationResponse(
+      view,
+      nextVal ? "自动候选推断已开启" : "自动候选推断已关闭",
+    );
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     handleActionError(err);
   } finally {
     if (gen === scopeGeneration.value) {
@@ -616,7 +746,14 @@ function closeEditModal() {
 async function handleSaveFact() {
   const projId = activeProjectId.value;
   const doc = memoryView.value?.document;
-  if (!projId || !doc || !canWrite.value || actionLoading.value || conflictRefreshFailed.value) return;
+  if (
+    !projId ||
+    !doc ||
+    !canWrite.value ||
+    actionLoading.value ||
+    conflictRefreshFailed.value
+  )
+    return;
 
   const text = formText.value.trim();
   if (!text) {
@@ -654,13 +791,15 @@ async function handleSaveFact() {
       },
       editingFact.value?.id,
     );
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     isEditModalOpen.value = false;
     const wasEditing = Boolean(editingFact.value);
     editingFact.value = null;
     applyMutationResponse(view, wasEditing ? "事实更新成功" : "新增事实成功");
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     handleActionError(err);
   } finally {
     if (gen === scopeGeneration.value) {
@@ -678,18 +817,21 @@ async function confirmDeleteFact() {
   const projId = activeProjectId.value;
   const doc = memoryView.value?.document;
   const target = factToDelete.value;
-  if (!projId || !doc || !target || !canWrite.value || actionLoading.value) return;
+  if (!projId || !doc || !target || !canWrite.value || actionLoading.value)
+    return;
 
   const gen = scopeGeneration.value;
   actionLoading.value = true;
   errorMsg.value = "";
   try {
     const view = await deleteMemoryFact(projId, doc.revision, target.id);
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     factToDelete.value = null;
     applyMutationResponse(view, "事实删除成功");
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     factToDelete.value = null;
     handleActionError(err);
   } finally {
@@ -710,7 +852,8 @@ async function handleClearMemory() {
   errorMsg.value = "";
   try {
     const view = await clearMemory(projId, doc.revision);
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     isClearConfirmOpen.value = false;
     const removedCount = view.mutation?.removed ?? 0;
     applyMutationResponse(
@@ -718,7 +861,8 @@ async function handleClearMemory() {
       `已清空当前项目的个人记忆（移除 ${removedCount} 条生效事实）并关闭自动候选`,
     );
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     isClearConfirmOpen.value = false;
     handleActionError(err);
   } finally {
@@ -739,10 +883,12 @@ async function handleAcceptCandidate(factId: string) {
   errorMsg.value = "";
   try {
     const view = await acceptMemoryCandidate(projId, doc.revision, factId);
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     applyMutationResponse(view, "候选记忆已采纳为正式事实");
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     handleActionError(err);
   } finally {
     if (gen === scopeGeneration.value) {
@@ -789,12 +935,14 @@ async function handleConfirmReplaceFact() {
       cand.id,
       selectedReplaceFactId.value,
     );
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     isReplaceModalOpen.value = false;
     replacingCandidate.value = null;
     applyMutationResponse(view, "已采纳候选并替换原事实");
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     handleActionError(err);
   } finally {
     if (gen === scopeGeneration.value) {
@@ -814,10 +962,12 @@ async function handleRejectCandidate(factId: string) {
   errorMsg.value = "";
   try {
     const view = await rejectMemoryCandidate(projId, doc.revision, factId);
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     applyMutationResponse(view, "已拒绝并移除该候选推断");
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     handleActionError(err);
   } finally {
     if (gen === scopeGeneration.value) {
@@ -836,7 +986,8 @@ async function handleExportMemory() {
   errorMsg.value = "";
   try {
     const freshView = await readMemory(projId);
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     memoryView.value = freshView;
     snapshotStale.value = false;
 
@@ -861,7 +1012,8 @@ async function handleExportMemory() {
     URL.revokeObjectURL(url);
     showSuccess(`已导出 ${factsToExport.length} 条有效事实`);
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     handleActionError(err);
   } finally {
     if (gen === scopeGeneration.value) {
@@ -924,16 +1076,25 @@ async function handleRestoreFacts() {
   actionLoading.value = true;
   errorMsg.value = "";
   try {
-    const view = await restoreMemoryFacts(projId, doc.revision, preview.validItems);
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    const view = await restoreMemoryFacts(
+      projId,
+      doc.revision,
+      preview.validItems,
+    );
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     isRestoreModalOpen.value = false;
     restoreJsonText.value = "";
     restoreFileName.value = "";
     const added = view.mutation?.added ?? 0;
     const skipped = view.mutation?.skipped ?? 0;
-    applyMutationResponse(view, `追加导入完成：新增 ${added} 条事实，跳过 ${skipped} 条重复项`);
+    applyMutationResponse(
+      view,
+      `追加导入完成：新增 ${added} 条事实，跳过 ${skipped} 条重复项`,
+    );
   } catch (err) {
-    if (gen !== scopeGeneration.value || projId !== activeProjectId.value) return;
+    if (gen !== scopeGeneration.value || projId !== activeProjectId.value)
+      return;
     handleActionError(err);
   } finally {
     if (gen === scopeGeneration.value) {
@@ -1036,21 +1197,24 @@ onScopeDispose(() => {
   <div class="h-full overflow-y-auto p-6 md:p-8">
     <div class="mx-auto max-w-6xl space-y-6">
       <!-- 页面头部 -->
-      <div class="flex flex-col gap-4 border-b border-zinc-200/80 pb-5 md:flex-row md:items-center md:justify-between dark:border-zinc-800">
+      <div
+        class="flex flex-col gap-4 border-b border-zinc-200/80 pb-5 md:flex-row md:items-center md:justify-between dark:border-zinc-800"
+      >
         <div class="space-y-1">
           <div class="flex items-center gap-2">
-            <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-50 text-primary-600 shadow-sm dark:bg-primary-950/50 dark:text-primary-400">
-              <BaseIcon
-                name="shield"
-                size="sm"
-              />
+            <span
+              class="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-50 text-primary-600 shadow-sm dark:bg-primary-950/50 dark:text-primary-400"
+            >
+              <BaseIcon name="shield" size="sm" />
             </span>
             <h1 class="text-xl font-bold text-zinc-900 dark:text-zinc-100">
               我的记忆（长期记忆与偏好治理）
             </h1>
           </div>
           <p class="text-xs text-zinc-500 dark:text-zinc-400">
-            仅用于你在项目「{{ activeProject?.name || activeProjectId || "未选择项目" }}」中的 Dear Agent 会话（同项目跨会话共享，不跨用户、不跨项目）
+            仅用于你在项目「{{
+              activeProject?.name || activeProjectId || "未选择项目"
+            }}」中的 Dear Agent 会话（同项目跨会话共享，不跨用户、不跨项目）
           </p>
         </div>
 
@@ -1065,10 +1229,7 @@ onScopeDispose(() => {
             @click="fetchMemory()"
           >
             <template #icon>
-              <BaseIcon
-                name="refresh"
-                size="xs"
-              />
+              <BaseIcon name="refresh" size="xs" />
             </template>
             刷新
           </BaseButton>
@@ -1082,10 +1243,7 @@ onScopeDispose(() => {
             @click="handleExportMemory"
           >
             <template #icon>
-              <BaseIcon
-                name="download"
-                size="xs"
-              />
+              <BaseIcon name="download" size="xs" />
             </template>
             导出 JSON
           </BaseButton>
@@ -1098,10 +1256,7 @@ onScopeDispose(() => {
             @click="openRestoreModal"
           >
             <template #icon>
-              <BaseIcon
-                name="folder"
-                size="xs"
-              />
+              <BaseIcon name="folder" size="xs" />
             </template>
             追加导入
           </BaseButton>
@@ -1114,10 +1269,7 @@ onScopeDispose(() => {
             @click="openAddFactModal"
           >
             <template #icon>
-              <BaseIcon
-                name="plus"
-                size="xs"
-              />
+              <BaseIcon name="plus" size="xs" />
             </template>
             新增事实
           </BaseButton>
@@ -1180,12 +1332,10 @@ onScopeDispose(() => {
           v-if="snapshotStale"
           class="flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50/90 px-4 py-3 text-xs font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
         >
-          <span>⚠️ 最近一次刷新失败，当前展示为历史快照，写入操作已暂时锁定。</span>
-          <BaseButton
-            variant="secondary"
-            size="xs"
-            @click="fetchMemory()"
+          <span
+            >⚠️ 最近一次刷新失败，当前展示为历史快照，写入操作已暂时锁定。</span
           >
+          <BaseButton variant="secondary" size="xs" @click="fetchMemory()">
             重试刷新
           </BaseButton>
         </div>
@@ -1201,7 +1351,8 @@ onScopeDispose(() => {
             class="text-amber-600 dark:text-amber-400"
           />
           <span>
-            当前项目处于只读模式（缺少 project.runtime.execute 权限或服务端只读限制），记忆新增、编辑、删除与清空操作已锁定，您仍可浏览和导出。
+            当前项目处于只读模式（缺少 project.runtime.execute
+            权限或服务端只读限制），记忆新增、编辑、删除与清空操作已锁定，您仍可浏览和导出。
           </span>
         </div>
 
@@ -1240,11 +1391,7 @@ onScopeDispose(() => {
             </span>
           </div>
           <div class="flex items-center gap-2">
-            <BaseButton
-              variant="secondary"
-              size="xs"
-              @click="fetchMemory()"
-            >
+            <BaseButton variant="secondary" size="xs" @click="fetchMemory()">
               重试
             </BaseButton>
             <button
@@ -1272,16 +1419,19 @@ onScopeDispose(() => {
           v-else-if="isDisabledStatus"
           class="rounded-2xl border border-dashed border-zinc-300 bg-white/70 p-12 text-center dark:border-zinc-700 dark:bg-zinc-900/50"
         >
-          <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-            <BaseIcon
-              name="shield"
-              size="md"
-            />
+          <div
+            class="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+          >
+            <BaseIcon name="shield" size="md" />
           </div>
-          <h3 class="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100">
+          <h3
+            class="mt-4 text-base font-semibold text-zinc-900 dark:text-zinc-100"
+          >
             当前环境未启用长期记忆治理
           </h3>
-          <p class="mx-auto mt-2 max-w-md text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+          <p
+            class="mx-auto mt-2 max-w-md text-xs leading-relaxed text-zinc-500 dark:text-zinc-400"
+          >
             服务端当前未开启个人长期记忆存储能力（RUNTIME_DEAR_GOVERNANCE_ENABLED）。请联系平台管理员在运行环境中启用后使用。
           </p>
         </div>
@@ -1303,13 +1453,17 @@ onScopeDispose(() => {
             />
             <div>
               <span class="font-semibold">自动候选提取已因配额维护暂停：</span>
-              <span>{{ formatPauseReason(memoryView.extraction.pause_reason) }}</span>
+              <span>{{
+                formatPauseReason(memoryView.extraction.pause_reason)
+              }}</span>
             </div>
           </div>
 
           <!-- 提取状态提示条（running / no_candidates / failed / interrupted） -->
           <div
-            v-if="memoryView.extraction && memoryView.extraction.status !== 'never'"
+            v-if="
+              memoryView.extraction && memoryView.extraction.status !== 'never'
+            "
             class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-200/80 bg-zinc-50/80 px-4 py-2.5 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300"
           >
             <div class="flex items-center gap-2">
@@ -1323,14 +1477,20 @@ onScopeDispose(() => {
               >
                 正在整理候选记忆（已有事实仍可正常管理，后台每 3 秒静默同步）…
               </span>
-              <span v-else-if="memoryView.extraction.status === 'no_candidates'">
+              <span
+                v-else-if="memoryView.extraction.status === 'no_candidates'"
+              >
                 最近一次对话整理完成：本次没有值得长期保存的候选内容。
               </span>
               <span v-else-if="memoryView.extraction.status === 'succeeded'">
-                最近一次对话整理完成：生成了 {{ memoryView.extraction.candidate_count }} 条候选记忆。
+                最近一次对话整理完成：生成了
+                {{ memoryView.extraction.candidate_count }} 条候选记忆。
               </span>
               <span
-                v-else-if="memoryView.extraction.status === 'failed' || memoryView.extraction.status === 'interrupted'"
+                v-else-if="
+                  memoryView.extraction.status === 'failed' ||
+                  memoryView.extraction.status === 'interrupted'
+                "
                 class="text-amber-700 dark:text-amber-400"
               >
                 最近一次候选整理未完成（状态：{{ memoryView.extraction.status }}
@@ -1349,7 +1509,9 @@ onScopeDispose(() => {
                 v-if="memoryView.extraction.source_thread_id"
                 type="button"
                 class="font-medium text-primary-600 hover:underline dark:text-primary-400"
-                @click="openSourceThread(memoryView.extraction.source_thread_id)"
+                @click="
+                  openSourceThread(memoryView.extraction.source_thread_id)
+                "
               >
                 查看最近来源会话
               </button>
@@ -1365,33 +1527,70 @@ onScopeDispose(() => {
 
           <!-- 统计与自动候选控制栏 -->
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div class="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-              <div class="text-xs font-medium text-zinc-500">
-                生效事实总数
+            <div
+              class="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <div class="flex items-center justify-between">
+                <div class="text-xs font-medium text-zinc-500">
+                  生效事实总数
+                </div>
+                <span
+                  class="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                  :class="capacityBadgeClass"
+                >
+                  {{ capacityStatusText }}
+                </span>
               </div>
               <div class="mt-1.5 flex items-baseline gap-2">
-                <span class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                <span
+                  class="text-2xl font-bold text-zinc-900 dark:text-zinc-100"
+                >
                   {{ totalFactsCount }}
                 </span>
-                <span class="text-xs text-zinc-400">/ {{ factCountLimit }} 上限</span>
+                <span class="text-xs text-zinc-400"
+                  >/ {{ factCountLimit }} 上限</span
+                >
+              </div>
+              <div class="mt-2.5">
+                <div
+                  class="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+                >
+                  <div
+                    class="h-full transition-all duration-300"
+                    :class="capacityBarClass"
+                    :style="{ width: `${capacityRatio}%` }"
+                  />
+                </div>
+                <div
+                  v-if="totalFactsCount >= 85"
+                  class="mt-1 text-[11px] text-amber-600 dark:text-amber-400"
+                >
+                  超额时系统将基于置信度与新鲜度自动平滑整理低频事实
+                </div>
               </div>
             </div>
 
-            <div class="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-              <div class="text-xs font-medium text-zinc-500">
-                待审核候选
-              </div>
+            <div
+              class="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <div class="text-xs font-medium text-zinc-500">待审核候选</div>
               <div class="mt-1.5 flex items-baseline gap-2">
-                <span class="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                <span
+                  class="text-2xl font-bold text-amber-600 dark:text-amber-400"
+                >
                   {{ totalCandidatesCount }}
                 </span>
                 <span class="text-xs text-zinc-400">条待人工确认</span>
               </div>
             </div>
 
-            <div class="flex items-center justify-between rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div
+              class="flex items-center justify-between rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            >
               <div>
-                <div class="flex items-center gap-1 text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                <div
+                  class="flex items-center gap-1 text-xs font-medium text-zinc-900 dark:text-zinc-100"
+                >
                   <span>自动推断候选</span>
                   <span
                     class="cursor-help text-zinc-400"
@@ -1401,7 +1600,11 @@ onScopeDispose(() => {
                   </span>
                 </div>
                 <div class="mt-0.5 text-[11px] text-zinc-500">
-                  {{ memoryView.document.automatic_candidates ? "已开启模型候选推断" : "仅接受人工录入" }}
+                  {{
+                    memoryView.document.automatic_candidates
+                      ? "已开启模型候选推断"
+                      : "仅接受人工录入"
+                  }}
                 </div>
               </div>
               <button
@@ -1412,14 +1615,18 @@ onScopeDispose(() => {
                 :disabled="actionLoading || !canWrite"
                 :class="[
                   'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:cursor-not-allowed disabled:opacity-50',
-                  memoryView.document.automatic_candidates ? 'bg-primary-600' : 'bg-zinc-200 dark:bg-zinc-700',
+                  memoryView.document.automatic_candidates
+                    ? 'bg-primary-600'
+                    : 'bg-zinc-200 dark:bg-zinc-700',
                 ]"
                 @click="toggleAutomaticCandidates"
               >
                 <span
                   :class="[
                     'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
-                    memoryView.document.automatic_candidates ? 'translate-x-5' : 'translate-x-0',
+                    memoryView.document.automatic_candidates
+                      ? 'translate-x-5'
+                      : 'translate-x-0',
                   ]"
                 />
               </button>
@@ -1427,8 +1634,12 @@ onScopeDispose(() => {
           </div>
 
           <!-- 标签页与工具栏 -->
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex items-center gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/80">
+          <div
+            class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div
+              class="flex items-center gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800/80"
+            >
               <button
                 type="button"
                 :class="[
@@ -1439,12 +1650,11 @@ onScopeDispose(() => {
                 ]"
                 @click="activeTab = 'facts'"
               >
-                <BaseIcon
-                  name="folder"
-                  size="xs"
-                />
+                <BaseIcon name="folder" size="xs" />
                 <span>已生效事实</span>
-                <span class="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] dark:bg-zinc-700">
+                <span
+                  class="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] dark:bg-zinc-700"
+                >
                   {{ totalFactsCount }}
                 </span>
               </button>
@@ -1459,10 +1669,7 @@ onScopeDispose(() => {
                 ]"
                 @click="activeTab = 'candidates'"
               >
-                <BaseIcon
-                  name="sparkle"
-                  size="xs"
-                />
+                <BaseIcon name="sparkle" size="xs" />
                 <span>待确认候选</span>
                 <span
                   class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/60 dark:text-amber-400"
@@ -1475,18 +1682,17 @@ onScopeDispose(() => {
             <!-- 右侧统一检索与清空操作 -->
             <div class="flex items-center gap-2">
               <div class="relative w-48 sm:w-64">
-                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-zinc-400">
-                  <BaseIcon
-                    name="search"
-                    size="xs"
-                  />
+                <span
+                  class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-zinc-400"
+                >
+                  <BaseIcon name="search" size="xs" />
                 </span>
                 <input
                   v-model="searchQuery"
                   type="text"
                   placeholder="搜索事实、候选或原文..."
                   class="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-8 pr-7 text-xs text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-primary-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-                >
+                />
                 <button
                   v-if="searchQuery"
                   type="button"
@@ -1506,10 +1712,7 @@ onScopeDispose(() => {
                 @click="isClearConfirmOpen = true"
               >
                 <template #icon>
-                  <BaseIcon
-                    name="trash"
-                    size="xs"
-                  />
+                  <BaseIcon name="trash" size="xs" />
                 </template>
                 清空记忆
               </BaseButton>
@@ -1517,10 +1720,7 @@ onScopeDispose(() => {
           </div>
 
           <!-- Tab 1: 已生效事实列表 -->
-          <div
-            v-if="activeTab === 'facts'"
-            class="space-y-3"
-          >
+          <div v-if="activeTab === 'facts'" class="space-y-3">
             <div
               v-if="filteredFacts.length === 0"
               class="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800"
@@ -1550,10 +1750,14 @@ onScopeDispose(() => {
                         : 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400',
                     ]"
                   >
-                    {{ fact.category === "preference" ? "偏好规则" : "知识事实" }}
+                    {{
+                      fact.category === "preference" ? "偏好规则" : "知识事实"
+                    }}
                   </span>
 
-                  <span class="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800">
+                  <span
+                    class="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800"
+                  >
                     来源: {{ formatSourceKind(fact.source_kind) }}
                   </span>
 
@@ -1574,7 +1778,9 @@ onScopeDispose(() => {
                   </span>
                 </div>
 
-                <p class="text-sm font-medium leading-relaxed text-zinc-900 dark:text-zinc-100">
+                <p
+                  class="text-sm font-medium leading-relaxed text-zinc-900 dark:text-zinc-100"
+                >
                   {{ fact.text }}
                 </p>
 
@@ -1586,7 +1792,8 @@ onScopeDispose(() => {
                 </div>
 
                 <div class="text-[11px] text-zinc-400">
-                  创建于 {{ new Date(fact.created_at).toLocaleString() }} · 更新于 {{ new Date(fact.updated_at).toLocaleString() }}
+                  创建于 {{ new Date(fact.created_at).toLocaleString() }} ·
+                  更新于 {{ new Date(fact.updated_at).toLocaleString() }}
                 </div>
               </div>
 
@@ -1601,10 +1808,7 @@ onScopeDispose(() => {
                   title="编辑事实"
                   @click="openEditFactModal(fact)"
                 >
-                  <BaseIcon
-                    name="pencil"
-                    size="xs"
-                  />
+                  <BaseIcon name="pencil" size="xs" />
                 </button>
                 <button
                   type="button"
@@ -1612,29 +1816,24 @@ onScopeDispose(() => {
                   title="删除事实"
                   @click="requestDeleteFact(fact)"
                 >
-                  <BaseIcon
-                    name="trash"
-                    size="xs"
-                  />
+                  <BaseIcon name="trash" size="xs" />
                 </button>
               </div>
             </div>
           </div>
 
           <!-- Tab 2: 待确认候选列表 -->
-          <div
-            v-else
-            class="space-y-3"
-          >
-            <div class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300">
+          <div v-else class="space-y-3">
+            <div
+              class="rounded-xl border border-amber-200/80 bg-amber-50/60 p-3.5 text-xs text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300"
+            >
               <div class="flex items-center gap-1.5 font-medium">
-                <BaseIcon
-                  name="shield"
-                  size="xs"
-                />
+                <BaseIcon name="shield" size="xs" />
                 <span>候选人工审核机制</span>
               </div>
-              <p class="mt-1 text-[11px] leading-relaxed text-amber-800 dark:text-amber-400">
+              <p
+                class="mt-1 text-[11px] leading-relaxed text-amber-800 dark:text-amber-400"
+              >
                 候选记忆由模型根据您本人的对话消息提取生成，<strong>尚未进入对话注入</strong>。您可核对下方原文证据后选择「直接采纳」、「替换已有事实」或「拒绝丢弃」。
               </p>
             </div>
@@ -1644,7 +1843,11 @@ onScopeDispose(() => {
               class="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800"
             >
               <div class="text-xs text-zinc-500">
-                {{ normalizedSearch ? "没有匹配的待确认候选" : "暂无待确认的候选记忆" }}
+                {{
+                  normalizedSearch
+                    ? "没有匹配的待确认候选"
+                    : "暂无待确认的候选记忆"
+                }}
               </div>
             </div>
 
@@ -1656,7 +1859,9 @@ onScopeDispose(() => {
             >
               <div class="space-y-2">
                 <div class="flex flex-wrap items-center gap-2">
-                  <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+                  <span
+                    class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+                  >
                     待确认候选
                   </span>
                   <span
@@ -1667,9 +1872,13 @@ onScopeDispose(() => {
                         : 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400',
                     ]"
                   >
-                    {{ cand.category === "preference" ? "偏好规则" : "知识事实" }}
+                    {{
+                      cand.category === "preference" ? "偏好规则" : "知识事实"
+                    }}
                   </span>
-                  <span class="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800">
+                  <span
+                    class="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:bg-zinc-800"
+                  >
                     来源: {{ formatSourceKind(cand.source_kind) }}
                   </span>
                   <button
@@ -1693,13 +1902,16 @@ onScopeDispose(() => {
                 </p>
 
                 <!-- 原文引用证据（缺失时明确说明，不生成假证据） -->
-                <div class="rounded-lg border border-zinc-200/60 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-300">
-                  <span class="font-medium text-zinc-500 dark:text-zinc-400">原文依据：</span>
+                <div
+                  class="rounded-lg border border-zinc-200/60 bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-300"
+                >
+                  <span class="font-medium text-zinc-500 dark:text-zinc-400"
+                    >原文依据：</span
+                  >
                   <span v-if="cand.quote">“{{ cand.quote }}”</span>
-                  <span
-                    v-else
-                    class="italic text-zinc-400"
-                  >历史记录缺少原文</span>
+                  <span v-else class="italic text-zinc-400"
+                    >历史记录缺少原文</span
+                  >
                 </div>
 
                 <div class="text-[11px] text-zinc-400">
@@ -1708,7 +1920,9 @@ onScopeDispose(() => {
               </div>
 
               <!-- 候选三动作：拒绝 / 替换已有事实 / 直接采纳 -->
-              <div class="flex flex-wrap items-center gap-2 self-end sm: shrink-0 sm:self-center">
+              <div
+                class="flex flex-wrap items-center gap-2 self-end sm: shrink-0 sm:self-center"
+              >
                 <BaseButton
                   variant="secondary"
                   size="xs"
@@ -1757,29 +1971,30 @@ onScopeDispose(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">分类</label>
+          <label
+            class="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
+            >分类</label
+          >
           <div class="mt-1.5 flex gap-4">
-            <label class="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
-              <input
-                v-model="formCategory"
-                type="radio"
-                value="preference"
-              >
+            <label
+              class="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300"
+            >
+              <input v-model="formCategory" type="radio" value="preference" />
               <span>偏好规则 (Preference)</span>
             </label>
-            <label class="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300">
-              <input
-                v-model="formCategory"
-                type="radio"
-                value="fact"
-              >
+            <label
+              class="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-300"
+            >
+              <input v-model="formCategory" type="radio" value="fact" />
               <span>知识事实 (Fact)</span>
             </label>
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+          <label
+            class="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
+          >
             记忆内容 (≤ {{ factCharLimit }} Unicode 字符)
           </label>
           <textarea
@@ -1791,7 +2006,9 @@ onScopeDispose(() => {
           <div
             :class="[
               'mt-1 text-right text-[10px]',
-              formCharCount > factCharLimit ? 'font-semibold text-rose-600' : 'text-zinc-400',
+              formCharCount > factCharLimit
+                ? 'font-semibold text-rose-600'
+                : 'text-zinc-400',
             ]"
           >
             {{ formCharCount }} / {{ factCharLimit }}
@@ -1799,7 +2016,9 @@ onScopeDispose(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+          <label
+            class="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
+          >
             到期日期 (可选，按本地时区当日 23:59:59 到期)
           </label>
           <input
@@ -1807,24 +2026,24 @@ onScopeDispose(() => {
             type="date"
             :min="getTodayLocalDateString()"
             class="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs text-zinc-900 focus:border-primary-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-          >
+          />
         </div>
       </div>
 
       <template #footer>
         <div class="flex justify-end gap-2">
-          <BaseButton
-            variant="secondary"
-            size="sm"
-            @click="closeEditModal"
-          >
+          <BaseButton variant="secondary" size="sm" @click="closeEditModal">
             取消
           </BaseButton>
           <BaseButton
             variant="primary"
             size="sm"
             :loading="actionLoading"
-            :disabled="actionLoading || conflictRefreshFailed || formCharCount > factCharLimit"
+            :disabled="
+              actionLoading ||
+              conflictRefreshFailed ||
+              formCharCount > factCharLimit
+            "
             @click="handleSaveFact"
           >
             保存提交
@@ -1840,11 +2059,10 @@ onScopeDispose(() => {
       width="normal"
       @close="isReplaceModalOpen = false"
     >
-      <div
-        v-if="replacingCandidate"
-        class="space-y-4"
-      >
-        <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs text-zinc-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-zinc-200">
+      <div v-if="replacingCandidate" class="space-y-4">
+        <div
+          class="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs text-zinc-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-zinc-200"
+        >
           <div class="font-semibold text-amber-800 dark:text-amber-300">
             待采纳的新候选：
           </div>
@@ -1854,7 +2072,9 @@ onScopeDispose(() => {
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+          <label
+            class="block text-xs font-medium text-zinc-700 dark:text-zinc-300"
+          >
             选择要被替换移除的现有事实：
           </label>
           <select
@@ -1866,7 +2086,8 @@ onScopeDispose(() => {
               :key="fact.id"
               :value="fact.id"
             >
-              [{{ fact.category === "preference" ? "偏好" : "事实" }}] {{ fact.text.slice(0, 80) }}
+              [{{ fact.category === "preference" ? "偏好" : "事实" }}]
+              {{ fact.text.slice(0, 80) }}
             </option>
           </select>
         </div>
@@ -1904,7 +2125,10 @@ onScopeDispose(() => {
       <div class="space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="text-xs text-zinc-500 dark:text-zinc-400">
-            支持选择便携导出的 <code>.json</code> 文件或直接粘贴 JSON 数组（单次 1..{{ restoreItemLimit }} 条）。<strong>追加导入，不会覆盖现有事实。</strong>
+            支持选择便携导出的 <code>.json</code> 文件或直接粘贴 JSON 数组（单次
+            1..{{ restoreItemLimit }} 条）。<strong
+              >追加导入，不会覆盖现有事实。</strong
+            >
           </p>
           <div>
             <input
@@ -1913,7 +2137,7 @@ onScopeDispose(() => {
               accept=".json,application/json"
               class="hidden"
               @change="handleImportFileSelection"
-            >
+            />
             <BaseButton
               variant="secondary"
               size="xs"
@@ -1935,7 +2159,7 @@ onScopeDispose(() => {
           v-model="restoreJsonText"
           rows="6"
           class="w-full rounded-xl border border-zinc-300 bg-white p-3 font-mono text-[11px] text-zinc-900 focus:border-primary-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-          placeholder="[&#10;  {&quot;text&quot;: &quot;偏好简洁的代码实现&quot;, &quot;category&quot;: &quot;preference&quot;, &quot;expires_at&quot;: null}&#10;]"
+          placeholder='[&#10;  {"text": "偏好简洁的代码实现", "category": "preference", "expires_at": null}&#10;]'
         />
 
         <!-- 导入实时校验预览面板 -->
@@ -1950,7 +2174,13 @@ onScopeDispose(() => {
             <span class="text-amber-700 dark:text-amber-400">
               预计重复跳过：{{ importPreview.duplicateCount }} 条
             </span>
-            <span :class="importPreview.errors.length ? 'text-rose-600 dark:text-rose-400' : 'text-zinc-500'">
+            <span
+              :class="
+                importPreview.errors.length
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-zinc-500'
+              "
+            >
               校验错误：{{ importPreview.errors.length }} 项
             </span>
           </div>
@@ -1959,10 +2189,7 @@ onScopeDispose(() => {
             v-if="importPreview.errors.length"
             class="max-h-32 overflow-y-auto list-disc pl-5 space-y-1 text-rose-600 dark:text-rose-400"
           >
-            <li
-              v-for="(errText, idx) in importPreview.errors"
-              :key="idx"
-            >
+            <li v-for="(errText, idx) in importPreview.errors" :key="idx">
               {{ errText }}
             </li>
           </ul>
@@ -1984,9 +2211,9 @@ onScopeDispose(() => {
             :loading="actionLoading"
             :disabled="
               actionLoading ||
-                conflictRefreshFailed ||
-                importPreview.validItems.length === 0 ||
-                importPreview.errors.length > 0
+              conflictRefreshFailed ||
+              importPreview.validItems.length === 0 ||
+              importPreview.errors.length > 0
             "
             @click="handleRestoreFacts"
           >
@@ -2000,7 +2227,11 @@ onScopeDispose(() => {
     <ConfirmDialog
       :show="Boolean(factToDelete)"
       title="删除记忆事实确认"
-      :message="factToDelete ? `确定要删除这条记忆事实吗？\n「${factToDelete.text.slice(0, 120)}」` : ''"
+      :message="
+        factToDelete
+          ? `确定要删除这条记忆事实吗？\n「${factToDelete.text.slice(0, 120)}」`
+          : ''
+      "
       confirm-text="确认删除"
       cancel-text="取消"
       danger

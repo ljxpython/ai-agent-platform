@@ -11,10 +11,11 @@
 
 ## 最近改动
 
-2026-10-15 | **Docker 对话级沙箱生命周期管理与原生流式传输改造立项**：针对纯 Docker 部署与小内存规格约束，立项规划“按需对话沙箱（Thread Sandbox）+ 宿主机持久化卷挂载 + 10分钟空闲自动销毁归零内存”的超低开销架构，同时对标 DeerFlow 彻底拔除 Base64-in-JSON RPC 传输大文件与全内存缓冲反模式，开辟原生二进制流式下载与智能无损打包（ZIP_STORED），解决文件下载慢、超时与并发排队 502 踩踏。
+2026-10-15 | **记忆系统架构升级 (Agent Memory System Upgrade) 全栈落地**：借鉴参考 DeerFlow 记忆系统核心优势并去业务化，实现非阻塞后台提取解耦（主会话毫秒级释放）、Prescreen 成本门禁、中文 unigram+bigram 混合分词+IDF 加权与双池 MMR 多样性重排、Dice 相似度近重复合并与平滑软淘汰（彻底解除 100 条 409 拒服死板限制）。保留平台 PostgreSQL 权威存储、CAS 乐观锁与人工候选审核机制。跨三层契约与前端容量健康进度条全栈闭环，测试与类型检查 100% 绿灯。
 
 ## 活跃项目
 
+- [记忆系统架构升级 (Agent Memory System Upgrade)](projects/20261015-agent-memory-system-upgrade/README.md)：`done`；吸收 DeerFlow 记忆系统核心工程与算法优势，实现异步后台提取解耦（主请求耗时降至 < 5ms）、Prescreen 成本门禁、中文混合分词+IDF+双池 MMR 多样性检索、近重复合并与平滑淘汰；保留权威 PostgreSQL 存储、CAS 乐观锁与人工审核制；跨服务契约（Runtime stats 透传、API 校验、Web 健康进度条）全栈交付；Runtime 33 项单测、API 契约测试、Web 5 项单测及 vue-tsc 类型检查全部 100% 通过。
 - [弹性 MCP 工具装配与运行时解耦保护](projects/20261015-resilient-mcp-loading/README.md)：`done`；对标 OpenSWE 生产级容错机制进行去业务化移植，实现 MCP 服务与工具的装配期故障隔离（10s 超时控制与全局异常捕获降级）与运行期优雅降级，彻底废除“缺工具即自杀”的反模式强校验；单测套件 170 项全绿；Playwright + Chromium 真实大模型端到端自动化验收 100% 绿灯，彻底消灭 `runtime.execution_failed`。
 - [Docker 对话级沙箱生命周期管理与原生流式传输改造](projects/20261015-docker-sandbox-lifecycle-and-streaming/README.md)：`done`；纯 Docker 低开销对话沙箱架构落地；彻底拔除 Base64 JSON 传输大文件与全内存缓冲反模式；实装前端路径锁、下载Toast、Smart Zip智能归档（ZIP_STORED）与独立流式连接池；远端云主机 sshmy2 完成生产部署与验证；打包 9.4MB 大文件耗时从 21.5s 压降至 0.36s（下降 98.3%）；Playwright + Chromium 自动化端到端测试 100% 绿灯。
 - [知识库免隧道自治与单向架构治理](projects/20261014-knowledge-zero-tunnel-auth/README.md)：`done`；彻底移除 SSH 反向隧道，实装本地自治自验；远端收敛为纯单向入站服务（仅需 22/8000 端口）；Playwright + Chromium 自动化端到端测试 100% 绿灯。
@@ -57,9 +58,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-14 | Agent显式按需挂载多MCP（MultiServerMCPClient）与多Server物理隔离实现，彻底消除硬编码静态工具列表；知识库提示词认知优化；全量106单测全绿；知识上传/图片私有收据与可信转换、root审批、来源v1/v2定位/F04预算已实现，FastMCP知识目录与防盲搜死循环调用优化落地；所属服务已停。单节点三模式沙箱本期用户验收 done：完整公网两图/浏览器/Worker/Stop/文件恢复/隔离、安全/性能/回退与源/MIT已验；所属五服务停止。Token看板HMAC两入口、0004索引/0005可重建桶、精确Run位集合/脏补齐/重建及单查询线程/连接已验；公开百万容量两轮和写影响通过、B01解除。锁定/安装正式 post45；F07精确标题委托、受管一次非流式调用就绪；受管后台执行/对账/Stop及A/B前后端已验；新增 completion projector、安全白名单和受签 callback context；四图主子共享 attempt 预算/软收尾与 Run Token 额度；F05 PII脱敏默认关闭；F04 官方参数压缩与正文 SHA256 引用保护全链路闭环；F02 共享循环检测中间件；Plan 公共状态/三工具/双门禁；解除默认 4096 max_tokens 兜底限制；F10 固定 Docker reader/DOCX/PPTX 有界续读/附件索引收紧全链路验收已闭环；未部署现役。 |
-| platform-api | 2026-10-13 | 成员知识三角色权限/四GET/四用途HMAC、图片原名query贯通已实现，Final223+182subtests含真实PG并发及SQLite/PG迁移；知识MCP可信项目绑定/公开边界已实现；所属服务已停。沙箱专项网关/ACL/分享撤权/fork/PTY/后台/错误契约回归，42 passed/1 skipped通过。Token看板三GET、usage两权限、当前范围/ACL/cursor/审计及merge0008已验；整链路2admission槽/5秒含排队，新增503 fixture；公开百万容量两轮通过、B01解除。F07首轮opt-in/私有seed与公开pending、comment+edit与CAS就绪；后台四入口/精确operation/DTO/ACL/审计/HMAC与guard已验；post45正式acceptance adapter与平台迁移0007/0008/0009完成；F05 精确隐私失败投影；F04 契约与回归通过；执行预算、F01 Token 及 F02 loop 精确安全码；Plan 原生审批/ACL/幂等完成；Run Usage 可选 token_budget DTO；F10 Office MIME网关与六字段/撤权/审计专项验收完成；未部署现役。 |
-| platform-web | 2026-10-13 | 知识文档F01–F06多格式/图片/完整JSON/审批回执/v2来源定位/轮询及知识库大面板已全部落地，Playwright + Chromium真实模型（deepseek-v4.1-flash）端到端自动化测试8步全绿闭环通过，8张全流程实景截图留痕；MCP目录工具防盲搜死循环优化落地；用户现场实测验收通过；所属服务已停止。沙箱专项增加三模式/恢复 Playwright，相关51单测与静态检查通过。Token看板W01–W04全栈交付完成：双入口、4组指标卡、原生SVG图表、排行榜钻取、明细分页、无头RunUsage抽屉、顶栏切项目布局防抖与503容量保护友好适配；Playwright真实大模型E2E全绿；F07 自动对话标题全栈全链路闭环；K09后台任务接受文案/候选过滤/useChatSession Iron Gate真实interrupt异步保护与K10 Playwright真实大模型端到端自动化验收全部闭环；F01-F11能力门禁通过；F05 PII脱敏闭环；F04 大工具输出预算防爆加固；F02 循环检测 ViewModel/状态机/RunDiagnostics 卡片；F13 语音听写；Run completion P4.1-P4.3 全部交付；F10 DOCX/PPTX 专属徽标与无预览仅下载；F01 Token 额度保护；规划开关与审阅卡片闭环；Vitest/vue-tsc/ESLint/build 全绿。 |
+| runtime-service | 2026-10-15 | 记忆系统架构升级（Agent Memory System Upgrade）落地：异步后台提取解耦、Prescreen 成本门禁、中文 IDF+MMR 多样性召回、近重复合并与平滑软淘汰已实装，跨层 stats 输出闭环，33 项单测全绿；Agent显式按需挂载多MCP与多Server隔离；所属服务已停。 |
+| platform-api | 2026-10-15 | 记忆系统 stats 状态透传模型与响应契约已落地，7 项契约测试全绿；成员知识三角色权限/四GET/四用途HMAC贯通；所属服务已停。 |
+| platform-web | 2026-10-15 | 记忆系统容量健康进度条、状态徽章与超额平滑整理提示文案落地，MemoryStats 类型定义实装，单测与 vue-tsc 0 错误；所属服务已停。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

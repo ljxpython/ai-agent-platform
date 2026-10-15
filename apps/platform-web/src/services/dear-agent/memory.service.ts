@@ -29,6 +29,13 @@ export interface MemoryFact {
 /** @deprecated 兼容旧别名，等同于 MemoryFact */
 export type FactItem = MemoryFact;
 
+export interface MemoryStats {
+  facts_count: number;
+  candidates_count: number;
+  capacity_status: "healthy" | "near_capacity" | "evicting" | string;
+  prescreen_skipped_total: number;
+}
+
 export interface MemoryDocument {
   schema_version: number;
   revision: number;
@@ -36,6 +43,7 @@ export interface MemoryDocument {
   automatic_candidates: boolean;
   facts: MemoryFact[];
   candidates: MemoryFact[];
+  stats?: MemoryStats | null;
 }
 
 export type ExtractionStatusKind =
@@ -104,10 +112,18 @@ export interface MemoryView {
   counts: MemoryCounts | null;
   extraction: ExtractionStatus | null;
   mutation: MemoryMutation | null;
+  stats?: MemoryStats | null;
 }
 
 export interface MemoryCommandPayload {
-  action: "save" | "delete" | "clear" | "accept" | "reject" | "settings" | "restore";
+  action:
+    | "save"
+    | "delete"
+    | "clear"
+    | "accept"
+    | "reject"
+    | "settings"
+    | "restore";
   expected_revision: number;
   fact_id?: string;
   replace_fact_id?: string;

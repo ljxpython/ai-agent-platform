@@ -79,6 +79,17 @@ def test_command_rejects_wrong_action_fields_and_boolean_revision():
         MemoryCommand(action="restore", expected_revision=0, facts=[])
 
 
+def test_command_tolerantly_accepts_facts_list_for_save_action():
+    cmd = MemoryCommand(
+        action="save",
+        expected_revision=6,
+        facts=[{"text": "特别喜欢《海贼王》(One Piece)", "category": "preference"}],
+    )
+    assert cmd.fact is not None
+    assert cmd.fact.text == "特别喜欢《海贼王》(One Piece)"
+    assert cmd.fact.category == "preference"
+
+
 def test_disabled_management_does_not_read_storage(monkeypatch):
     monkeypatch.delenv("RUNTIME_DEAR_GOVERNANCE_ENABLED", raising=False)
 
