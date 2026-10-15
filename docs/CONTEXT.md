@@ -7,19 +7,15 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-14
+**最后更新：** 2026-10-15
 
 ## 最近改动
 
-2026-10-14 | **知识库免隧道自治与单向架构治理（彻底拔除反向 SSH 隧道，远端单向纯入站，Playwright E2E 绿色通过）**：彻底解耦了 RAG 异步 Worker 处理任务时对本地 Platform-API 反向 HTTP 回调（KNOWLEDGE_AUTHORIZE_URL）的强依赖，实装基于持久化凭证的本地自验与自治启动机制（KNOWLEDGE_AUTHORIZE_URL='local'）。彻底终止并永久移除了本地后台反向 SSH 隧道（21420 端口彻底关闭不可达），将远端服务器入站端口严格收敛至 22 (SSH) 与 8000 (FastMCP/Uploads)。加固了 LightRAG 在大模型偶发返回空内容时的防御处理，并清除了测试环境旧 generation 残留。使用 Playwright + Chromium 针对真实会话全自动化跑通附件上传、知识库勾选、消息发送与小萝卜手机号/院校的端到端检索召回（Exit Code 0，全套截图已留痕）。
-
-## 本月归并
-
-2026-10（截至 10-14）| 知识库免隧道自治与单向架构治理；知识库文档/附件上传与检索全链路闭环；Agent 显式挂载多 MCP 与原生治理；知识库全栈交付与F01-F06闭环；三模式沙箱与Token看板全栈闭环；原生资源与Worktree隔离；F07/F05/后台接受回执闭环。
-2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
+2026-10-15 | **Docker 对话级沙箱生命周期管理与原生流式传输改造立项**：针对纯 Docker 部署与小内存规格约束，立项规划“按需对话沙箱（Thread Sandbox）+ 宿主机持久化卷挂载 + 10分钟空闲自动销毁归零内存”的超低开销架构，同时对标 DeerFlow 彻底拔除 Base64-in-JSON RPC 传输大文件与全内存缓冲反模式，开辟原生二进制流式下载与智能无损打包（ZIP_STORED），解决文件下载慢、超时与并发排队 502 踩踏。
 
 ## 活跃项目
 
+- [Docker 对话级沙箱生命周期管理与原生流式传输改造](projects/20261015-docker-sandbox-lifecycle-and-streaming/README.md)：`done`；纯 Docker 低开销对话沙箱架构落地；彻底拔除 Base64 JSON 传输大文件与全内存缓冲反模式；实装前端路径锁、下载Toast、Smart Zip智能归档（ZIP_STORED）与独立流式连接池；远端云主机 sshmy2 完成生产部署与验证；打包 9.4MB 大文件耗时从 21.5s 压降至 0.36s（下降 98.3%）；Playwright + Chromium 自动化端到端测试 100% 绿灯。
 - [知识库免隧道自治与单向架构治理](projects/20261014-knowledge-zero-tunnel-auth/README.md)：`done`；彻底移除 SSH 反向隧道，实装本地自治自验；远端收敛为纯单向入站服务（仅需 22/8000 端口）；Playwright + Chromium 自动化端到端测试 100% 绿灯。
 - [Agent 显式挂载多 MCP 与极简治理](projects/20261014-agent-explicit-mcp-mounting/README.md)：`done`；基于 LangChain 官方 `MultiServerMCPClient` 原生多 Server 纳管能力，贯彻 KISS 极简原则；实现 Agent 维度的显式按需挂载与多 Server 隔离，杜绝全量工具混调导致的大模型幻觉与 Token 浪费。全量单测 100% 通过。
 - [知识库动态多项目绑定与免重启鉴权](projects/20261014-dynamic-knowledge-binding/README.md)：`in_progress`（Phase 1、Phase 2 及远端 Phase 3.1 实施验证完毕，本地全栈已就绪）；彻底淘汰静态 .env 手工配置与服务重启，建立基于 Platform-API 数据库持久化、Scoped HMAC/JWT 动态凭据签发、以及 RAG 远端知识库无状态即时验签与物理隔离的多租户免重启生产架构。待 Web 端开启新对话进行端到端体验验收。

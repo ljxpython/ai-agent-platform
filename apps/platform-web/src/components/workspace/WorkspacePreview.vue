@@ -16,6 +16,7 @@ const props = defineProps<{
   previewResult: WorkspacePreviewResult | null;
   loading: boolean;
   error: string | null;
+  downloading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -291,11 +292,20 @@ const codeLines = computed(() => {
       </p>
       <button
         type="button"
-        class="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200 dark:hover:bg-dark-700"
+        class="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200 dark:hover:bg-dark-700 transition-colors"
+        :disabled="downloading"
         @click="emit('download', path)"
       >
-        <BaseIcon name="download" class="h-3.5 w-3.5" />
-        直接下载原文件
+        <BaseIcon
+          :name="downloading ? 'refresh' : 'download'"
+          class="h-3.5 w-3.5"
+          :class="
+            downloading
+              ? 'animate-spin text-primary-600 dark:text-primary-400'
+              : ''
+          "
+        />
+        {{ downloading ? "正在下载..." : "直接下载原文件" }}
       </button>
     </div>
 
@@ -364,11 +374,20 @@ const codeLines = computed(() => {
           <!-- 下载按钮 -->
           <button
             type="button"
-            class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-dark-100"
+            class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-dark-100 transition-colors"
+            :disabled="downloading"
             @click="emit('download', path)"
           >
-            <BaseIcon name="download" class="h-3.5 w-3.5" />
-            下载
+            <BaseIcon
+              :name="downloading ? 'refresh' : 'download'"
+              class="h-3.5 w-3.5"
+              :class="
+                downloading
+                  ? 'animate-spin text-primary-600 dark:text-primary-400'
+                  : ''
+              "
+            />
+            {{ downloading ? "下载中..." : "下载" }}
           </button>
         </div>
       </div>
@@ -447,11 +466,16 @@ const codeLines = computed(() => {
           </p>
           <button
             type="button"
-            class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-primary-700"
+            class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            :disabled="downloading"
             @click="emit('download', path)"
           >
-            <BaseIcon name="download" class="h-4 w-4" />
-            下载原文件
+            <BaseIcon
+              :name="downloading ? 'refresh' : 'download'"
+              class="h-4 w-4"
+              :class="downloading ? 'animate-spin' : ''"
+            />
+            {{ downloading ? "正在下载..." : "下载原文件" }}
           </button>
         </div>
       </div>

@@ -243,7 +243,29 @@ class WorkspaceBrowser:
             return buf.getvalue(), file_name
 
         root_resolved = self.root.resolve()
-        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        STORED_EXTS = {
+            ".pptx",
+            ".docx",
+            ".xlsx",
+            ".zip",
+            ".tar",
+            ".gz",
+            ".tgz",
+            ".bz2",
+            ".xz",
+            ".7z",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".gif",
+            ".mp4",
+            ".mp3",
+            ".mov",
+            ".avi",
+            ".pdf",
+        }
+        with zipfile.ZipFile(buf, "w") as zf:
             for parent, dirs, files in os.walk(self.root, followlinks=False):
                 # 过滤常见无关隐藏目录
                 dirs[:] = [
@@ -261,7 +283,12 @@ class WorkspaceBrowser:
                         if not file_path.is_file():
                             continue
                         rel_path = file_path.relative_to(self.root).as_posix()
-                        zf.write(file_path, arcname=rel_path)
+                        ctype = (
+                            zipfile.ZIP_STORED
+                            if file_path.suffix.lower() in STORED_EXTS
+                            else zipfile.ZIP_DEFLATED
+                        )
+                        zf.write(file_path, arcname=rel_path, compress_type=ctype)
                     except (OSError, ValueError):
                         continue
 

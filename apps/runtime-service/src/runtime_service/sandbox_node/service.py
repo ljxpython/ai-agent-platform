@@ -10,8 +10,8 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import FileResponse, JSONResponse, Response
 from langchain_core.tools import ToolException
 from pydantic import ValidationError
 
@@ -27,10 +27,17 @@ from runtime_service.sandbox_node.protocol import (
 from runtime_service.sandbox_node.storage import Storage
 from runtime_service.workspace.acquire_serialization import AcquireSerializer
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
-from runtime_service.workspace.browser import WorkspaceBrowser
+from runtime_service.workspace.browser import WorkspaceBrowser, path_parts
 from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
 from runtime_service.workspace.image_io import ImageWorkspace
 from runtime_service.workspace.node_client import MAX_MESSAGE, decode, encode
+
+
+class WorkspaceTarget:
+    def __init__(self, execution_host: str, graph: str, workspace_id: str):
+        self.execution_host = execution_host
+        self.graph = graph
+        self.workspace_id = workspace_id
 
 
 class Node:
@@ -395,5 +402,64 @@ def create_app(config=None):
             if isinstance(error, ImageWorkspaceError):
                 raise DocumentError(error.code, error.status_code) from None
             raise DocumentError("workspace_file_unavailable", 404) from None
+
+    @app.get("/v1/files/stream")
+    async def stream_file(
+        request: Request,
+        execution_host: str = Query(...),
+        graph: str = Query(...),
+        workspace_id: str = Query(...),
+        path: str = Query(...),
+    ):
+        host = node.authenticate(request)
+        if execution_host != host:
+            raise DocumentError("sandbox_caller_denied", 403)
+        target = WorkspaceTarget(execution_host, graph, workspace_id)
+        root = node.storage.check(target)
+        parts = path_parts(path)
+        if not parts:
+            raise DocumentError("invalid_workspace_path", 400)
+        file_path = root.joinpath(*parts)
+        try:
+            resolved = file_path.resolve()
+            if not resolved.is_relative_to(root.resolve()) or not resolved.is_file():
+                raise DocumentError("file_not_found", 404)
+        except OSError:
+            raise DocumentError("file_not_found", 404) from None
+
+        return FileResponse(
+            path=str(resolved),
+            filename=parts[-1],
+            headers={
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
+    @app.get("/v1/workspace/archive")
+    async def stream_archive(
+        request: Request,
+        execution_host: str = Query(...),
+        graph: str = Query(...),
+        workspace_id: str = Query(...),
+    ):
+        host = node.authenticate(request)
+        if execution_host != host:
+            raise DocumentError("sandbox_caller_denied", 403)
+        target = WorkspaceTarget(execution_host, graph, workspace_id)
+        root = node.storage.check(target)
+        data, filename = await asyncio.get_running_loop().run_in_executor(
+            executor, node.storage.archive, root
+        )
+        return Response(
+            content=data,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(len(data)),
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     return app

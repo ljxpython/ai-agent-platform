@@ -23,6 +23,8 @@ class Engine:
         self.processes = {}
         self.docker = shutil.which("docker") or "/usr/bin/docker"
         self.image_ids = {}
+        self.last_activity = {}
+        self.idle_timeout = float(os.getenv("SANDBOX_IDLE_TIMEOUT_SECONDS", "600"))
 
     def environment(self):
         return {
@@ -87,6 +89,7 @@ class Engine:
             raise DocumentError("sandbox_disk_capacity_reached", 429)
         with self.locks.hold(self.storage.key(request)):
             root = self.storage.check(request)
+            self.last_activity[self.storage.key(request)] = time.time()
             return self._reserve(request, kind, image, seconds, skills, root)
 
     def _reserve(self, request, kind, image, seconds, skills, root):
@@ -359,3 +362,32 @@ class Engine:
                         self.remove(row, stop=True)
                 elif not state["Running"] and state["Status"] != "created":
                     self.ledger.update(row["host"], row["id"], "exited")
+        self.reap_idle_sandboxes()
+
+    def reap_idle_sandboxes(self):
+        now = time.time()
+        rows = self.ledger.resources()
+        for row in rows:
+            if row["status"] in {"removed", "exited"}:
+                continue
+            workspace = row["workspace"]
+            last_active = self.last_activity.get(workspace, 0)
+            if last_active > 0 and (now - last_active) > self.idle_timeout:
+                has_active_process = any(
+                    proc_key[0] == row["host"] and proc_key[1] == row["id"]
+                    for proc_key in self.processes
+                )
+                if not has_active_process:
+                    with self.locks.hold((row["host"], row["id"])):
+                        state = self.inspect(row)
+                        if state and state.get("Running"):
+                            import logging
+
+                            logging.getLogger(__name__).info(
+                                "Reaper: Stopping and removing idle container %s for workspace %s (idle %.1fs)",
+                                row["name"],
+                                workspace,
+                                now - last_active,
+                            )
+                            self.remove(row, stop=True)
+                            self.ledger.update(row["host"], row["id"], "removed")

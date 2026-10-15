@@ -115,6 +115,16 @@ class RemoteWorkspace:
 
         return call(self, operation, arguments)
 
+    async def stream_file(self, path: str):
+        from runtime_service.workspace.node_client import stream_file
+
+        return await stream_file(self, path)
+
+    async def stream_archive(self):
+        from runtime_service.workspace.node_client import stream_archive
+
+        return await stream_archive(self)
+
 
 @dataclass(frozen=True)
 class RemoteSkills:

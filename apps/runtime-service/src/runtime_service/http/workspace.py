@@ -4,8 +4,10 @@ import asyncio
 from urllib.parse import quote
 
 from fastapi import APIRouter, Header, HTTPException, Query, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.http.documents import _auth
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 from runtime_service.workspace.browser import WorkspaceBrowser
@@ -24,6 +26,8 @@ async def _call(thread_id, authorization, method, **kwargs):
         raise HTTPException(
             exc.status_code, {"code": exc.code, "message": str(exc)}
         ) from exc
+    except RuntimeWorkspaceError as exc:
+        raise HTTPException(502, {"code": exc.code, "message": str(exc)}) from exc
 
 
 @router.get("/workspace/tree", response_model=WorkspacePage)
@@ -70,12 +74,44 @@ async def content(
     path: str = Query(..., max_length=4096),
     authorization: str | None = Header(default=None),
 ):
-    data, ref = await _call(
-        thread_id,
-        authorization,
-        lambda root, **kw: WorkspaceBrowser(root).read_file(**kw),
-        path=path,
-    )
+    root = await _auth(thread_id, authorization, "workspace-file-read")
+    from runtime_service.workspace.target import RemoteWorkspace
+
+    if isinstance(root, RemoteWorkspace):
+        try:
+            stream_gen, upstream_headers = await root.stream_file(path)
+            content_type = upstream_headers.get(
+                "content-type", "application/octet-stream"
+            )
+            file_name = path.rsplit("/", 1)[-1]
+            headers = {
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_name, safe='')}",
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "sandbox; default-src 'none'",
+            }
+            if "content-length" in upstream_headers:
+                headers["Content-Length"] = upstream_headers["content-length"]
+            if "etag" in upstream_headers:
+                headers["ETag"] = upstream_headers["etag"]
+            return StreamingResponse(
+                stream_gen, media_type=content_type, headers=headers
+            )
+        except NotImplementedError:
+            pass
+        except DocumentError as exc:
+            raise HTTPException(
+                exc.status_code, {"code": exc.code, "message": str(exc)}
+            ) from exc
+
+    try:
+        data, ref = await asyncio.to_thread(WorkspaceBrowser(root).read_file, path=path)
+    except DocumentError as exc:
+        raise HTTPException(
+            exc.status_code, {"code": exc.code, "message": str(exc)}
+        ) from exc
+    except RuntimeWorkspaceError as exc:
+        raise HTTPException(502, {"code": exc.code, "message": str(exc)}) from exc
     return Response(
         data,
         media_type=ref["mime_type"],
@@ -95,11 +131,40 @@ async def zip_archive(
     thread_id: str,
     authorization: str | None = Header(default=None),
 ):
-    data, file_name = await _call(
-        thread_id,
-        authorization,
-        lambda root, **kw: WorkspaceBrowser(root).create_archive(**kw),
-    )
+    root = await _auth(thread_id, authorization, "workspace-file-read")
+    from runtime_service.workspace.target import RemoteWorkspace
+
+    if isinstance(root, RemoteWorkspace):
+        try:
+            stream_gen, upstream_headers = await root.stream_archive()
+            headers = {
+                "Content-Disposition": upstream_headers.get(
+                    "content-disposition",
+                    f"attachment; filename*=UTF-8''{quote('workspace.zip', safe='')}",
+                ),
+                "Cache-Control": "private, no-store",
+                "X-Content-Type-Options": "nosniff",
+            }
+            if "content-length" in upstream_headers:
+                headers["Content-Length"] = upstream_headers["content-length"]
+            return StreamingResponse(
+                stream_gen, media_type="application/zip", headers=headers
+            )
+        except NotImplementedError:
+            pass
+        except DocumentError as exc:
+            raise HTTPException(
+                exc.status_code, {"code": exc.code, "message": str(exc)}
+            ) from exc
+
+    try:
+        data, file_name = await asyncio.to_thread(WorkspaceBrowser(root).create_archive)
+    except DocumentError as exc:
+        raise HTTPException(
+            exc.status_code, {"code": exc.code, "message": str(exc)}
+        ) from exc
+    except RuntimeWorkspaceError as exc:
+        raise HTTPException(502, {"code": exc.code, "message": str(exc)}) from exc
     return Response(
         data,
         media_type="application/zip",

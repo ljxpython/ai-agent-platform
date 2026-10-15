@@ -24,6 +24,7 @@ MAX_MESSAGE = 32 * 1024 * 1024
 _thread_client = threading.local()
 _clients = WeakSet()
 _clients_lock = threading.Lock()
+_stream_clients: dict[tuple, httpx.AsyncClient] = {}
 
 
 def close_clients():
@@ -31,9 +32,27 @@ def close_clients():
         for client in tuple(_clients):
             client.close()
         _clients.clear()
+        _stream_clients.clear()
 
 
 atexit.register(close_clients)
+
+
+def _get_stream_client(connection) -> httpx.AsyncClient:
+    key = (connection.url, connection.tls)
+    with _clients_lock:
+        client = _stream_clients.get(key)
+        if client is not None and not client.is_closed:
+            return client
+        client = httpx.AsyncClient(
+            verify=connection.tls,
+            trust_env=False,
+            follow_redirects=False,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            timeout=httpx.Timeout(120.0, connect=10.0, read=30.0),
+        )
+        _stream_clients[key] = client
+        return client
 
 
 def _transport_client(connection):
@@ -251,3 +270,116 @@ async def execute(workspace, command, *, image, timeout, skills=None, protected=
     except BaseException:
         await finish_resource(resource, False)
         raise
+
+
+async def stream_file(workspace: RemoteWorkspace, path: str):
+    connection = NodeConnection.load()
+    if (connection.execution_host, connection.node_id) != (
+        workspace.execution_host,
+        workspace.node_id,
+    ):
+        raise RuntimeWorkspaceError("runtime.workspace.unavailable")
+    client = _get_stream_client(connection)
+    req = client.build_request(
+        "GET",
+        f"{connection.url}/v1/files/stream",
+        params={
+            "execution_host": workspace.execution_host,
+            "graph": workspace.graph,
+            "workspace_id": workspace.workspace_id,
+            "path": path,
+        },
+        headers={
+            "Authorization": "Bearer " + connection.token,
+            "X-Execution-Host": connection.execution_host,
+            "X-Sandbox-Node": connection.node_id,
+        },
+    )
+    try:
+        response = await client.send(req, stream=True)
+    except Exception as exc:
+        raise NotImplementedError("streaming transport error, fallback") from exc
+    if response.status_code >= 400:
+        await response.aread()
+        try:
+            import json
+
+            raw_err = json.loads(response.text)
+            if response.status_code == 404 and raw_err.get("detail") == "Not Found":
+                await response.aclose()
+                raise NotImplementedError(
+                    "remote sandbox node does not support /v1/files/stream"
+                )
+            err = raw_err.get("error", {})
+        except NotImplementedError:
+            raise
+        except Exception:
+            err = {}
+        await response.aclose()
+        node_error(err, response.status_code)
+
+    async def iterator():
+        try:
+            async for chunk in response.aiter_bytes(chunk_size=65536):
+                if chunk:
+                    yield chunk
+        finally:
+            await response.aclose()
+
+    return iterator(), dict(response.headers)
+
+
+async def stream_archive(workspace: RemoteWorkspace):
+    connection = NodeConnection.load()
+    if (connection.execution_host, connection.node_id) != (
+        workspace.execution_host,
+        workspace.node_id,
+    ):
+        raise RuntimeWorkspaceError("runtime.workspace.unavailable")
+    client = _get_stream_client(connection)
+    req = client.build_request(
+        "GET",
+        f"{connection.url}/v1/workspace/archive",
+        params={
+            "execution_host": workspace.execution_host,
+            "graph": workspace.graph,
+            "workspace_id": workspace.workspace_id,
+        },
+        headers={
+            "Authorization": "Bearer " + connection.token,
+            "X-Execution-Host": connection.execution_host,
+            "X-Sandbox-Node": connection.node_id,
+        },
+    )
+    try:
+        response = await client.send(req, stream=True)
+    except Exception as exc:
+        raise NotImplementedError("archive transport error, fallback") from exc
+    if response.status_code >= 400:
+        await response.aread()
+        try:
+            import json
+
+            raw_err = json.loads(response.text)
+            if response.status_code == 404 and raw_err.get("detail") == "Not Found":
+                await response.aclose()
+                raise NotImplementedError(
+                    "remote sandbox node does not support /v1/workspace/archive"
+                )
+            err = raw_err.get("error", {})
+        except NotImplementedError:
+            raise
+        except Exception:
+            err = {}
+        await response.aclose()
+        node_error(err, response.status_code)
+
+    async def iterator():
+        try:
+            async for chunk in response.aiter_bytes(chunk_size=65536):
+                if chunk:
+                    yield chunk
+        finally:
+            await response.aclose()
+
+    return iterator(), dict(response.headers)

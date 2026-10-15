@@ -53,6 +53,7 @@ const {
   previewError,
   refreshing,
   downloadingArchive,
+  isDownloadingPath,
   toggleDirectory,
   selectFile,
   downloadCurrentFile,
@@ -470,6 +471,9 @@ defineExpose({
               :preview-result="previewResult"
               :loading="loadingPreview"
               :error="previewError"
+              :downloading="
+                selectedPath ? isDownloadingPath(selectedPath) : false
+              "
               @download="downloadCurrentFile"
             />
           </div>
@@ -555,6 +559,9 @@ defineExpose({
               :preview-result="previewResult"
               :loading="loadingPreview"
               :error="previewError"
+              :downloading="
+                selectedPath ? isDownloadingPath(selectedPath) : false
+              "
               @download="downloadCurrentFile"
             />
           </div>

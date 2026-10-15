@@ -526,12 +526,37 @@ class Storage:
                 )
         return {"files_copied": count}
 
+    STORED_EXTENSIONS = frozenset(
+        {
+            ".pptx",
+            ".docx",
+            ".xlsx",
+            ".zip",
+            ".tar",
+            ".gz",
+            ".tgz",
+            ".bz2",
+            ".xz",
+            ".7z",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".webp",
+            ".gif",
+            ".mp4",
+            ".mp3",
+            ".mov",
+            ".avi",
+            ".pdf",
+        }
+    )
+
     def archive(self, root):
         import io
         import zipfile
 
         output, count, total = io.BytesIO(), 0, 0
-        with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        with zipfile.ZipFile(output, "w") as archive:
             for parent, dirs, names in os.walk(root, followlinks=False):
                 dirs[:] = [
                     name
@@ -542,13 +567,30 @@ class Storage:
                 for name in sorted(names):
                     if name.startswith("."):
                         continue
-                    relative = (Path(parent) / name).relative_to(root).as_posix()
-                    data = ImageWorkspace(root).read("/workspace/" + relative)
+                    file_full_path = Path(parent) / name
+                    if file_full_path.is_symlink() or not file_full_path.is_file():
+                        continue
+                    try:
+                        resolved = file_full_path.resolve()
+                        if not resolved.is_relative_to(root.resolve()):
+                            continue
+                        size = resolved.stat().st_size
+                    except OSError:
+                        continue
+                    relative = file_full_path.relative_to(root).as_posix()
                     count += 1
-                    total += len(data)
-                    if count > 1000 or total > 20 * 1024**2:
+                    total += size
+                    if count > 5000 or total > 200 * 1024**2:
                         raise DocumentError("workspace_archive_too_large", 413)
-                    archive.writestr(relative, data)
+                    suffix = Path(name).suffix.lower()
+                    compress_type = (
+                        zipfile.ZIP_STORED
+                        if suffix in self.STORED_EXTENSIONS
+                        else zipfile.ZIP_DEFLATED
+                    )
+                    archive.write(
+                        str(resolved), arcname=relative, compress_type=compress_type
+                    )
         return output.getvalue(), "workspace.zip"
 
 

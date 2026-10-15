@@ -523,20 +523,20 @@ class LangGraphRuntimeClient:
             if content_length_str and content_length_str.isdigit()
             else None
         )
-        if content_length is not None and content_length > 20 * 1024 * 1024:
+        if content_length is not None and content_length > 200 * 1024 * 1024:
             with CancelScope(shield=True):
                 await response.aclose()
                 await client.aclose()
             raise PlatformApiError(
                 code="runtime_invalid_file_response",
                 status_code=502,
-                message="File content length exceeds 20 MiB limit",
+                message="File content length exceeds 200 MiB limit",
             )
 
         etag = response.headers.get("etag")
         cache_control = response.headers.get("cache-control")
         content_disposition = response.headers.get("content-disposition")
-        max_bytes = 20 * 1024 * 1024
+        max_bytes = 200 * 1024 * 1024
 
         async def body_stream() -> AsyncIterator[bytes]:
             total = 0
@@ -548,7 +548,7 @@ class LangGraphRuntimeClient:
                             raise PlatformApiError(
                                 code="runtime_invalid_file_response",
                                 status_code=502,
-                                message="File stream exceeded 20 MiB limit",
+                                message="File stream exceeded 200 MiB limit",
                             )
                         yield chunk
             finally:

@@ -15,6 +15,7 @@ import {
   triggerBlobDownload,
   type WorkspacePreviewResult,
 } from "@/services/threads/workspace.service";
+import { useUiStore } from "@/stores/ui";
 
 export function useThreadWorkspace(
   projectId: Ref<string>,
@@ -184,10 +185,30 @@ export function useThreadWorkspace(
     }
   }
 
+  const uiStore = useUiStore();
+  const downloadingFilePaths = ref<Set<string>>(new Set());
+
+  function isDownloadingPath(path?: string): boolean {
+    return !!path && downloadingFilePaths.value.has(path);
+  }
+
   // 下载当前选中或指定文件
   async function downloadCurrentFile(path?: string) {
     const targetPath = path || selectedPath.value;
     if (!projectId.value || !threadId.value || !targetPath) return;
+    if (downloadingFilePaths.value.has(targetPath)) return;
+
+    const nextSet = new Set(downloadingFilePaths.value);
+    nextSet.add(targetPath);
+    downloadingFilePaths.value = nextSet;
+
+    const baseName = targetPath.split("/").filter(Boolean).pop() || "文件";
+    uiStore.pushToast({
+      type: "info",
+      title: "开始下载",
+      message: `正在准备 ${baseName}，请稍候...`,
+    });
+
     try {
       const { blob, fileName } = await getWorkspaceContentBlob(
         projectId.value,
@@ -197,6 +218,15 @@ export function useThreadWorkspace(
       triggerBlobDownload(blob, fileName);
     } catch (err: unknown) {
       console.error("下载文件失败:", err);
+      uiStore.pushToast({
+        type: "error",
+        title: "下载失败",
+        message: err instanceof Error ? err.message : "网络超时或服务不可用",
+      });
+    } finally {
+      const doneSet = new Set(downloadingFilePaths.value);
+      doneSet.delete(targetPath);
+      downloadingFilePaths.value = doneSet;
     }
   }
 
@@ -292,6 +322,8 @@ export function useThreadWorkspace(
     previewError,
     refreshing,
     downloadingArchive,
+    downloadingFilePaths,
+    isDownloadingPath,
     // 方法
     loadCapabilities,
     loadDirectory,
