@@ -86,6 +86,17 @@ const workspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: "projects/:projectId/knowledge",
+    name: "workspace-project-knowledge",
+    component: () =>
+      import("@/modules/knowledge/pages/ProjectKnowledgePage.vue"),
+    meta: {
+      title: "知识库",
+      requiredPermissions: ["project.knowledge.read"],
+      permissionProjectSource: "route",
+    },
+  },
+  {
     path: "projects/:projectId/scheduled-tasks",
     name: "workspace-scheduled-tasks",
     component: () =>
@@ -382,6 +393,11 @@ const navigation: Record<
     icon: "runtime",
   },
   "workspace-graphs": { group: "项目管理", label: "Graphs", icon: "graph" },
+  "workspace-project-knowledge": {
+    group: "项目管理",
+    label: "知识库",
+    icon: "archive",
+  },
   "workspace-scheduled-tasks": {
     group: "项目管理",
     label: "定时任务",
