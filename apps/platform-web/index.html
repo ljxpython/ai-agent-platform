@@ -16,24 +16,87 @@
       }
     </style>
     <script>
-      ;(() => {
-        const storageKey = 'pw:theme:mode'
-        const saved = window.localStorage.getItem(storageKey)
+      (() => {
+        if (typeof window !== "undefined") {
+          const cryptoObj = window.crypto || window.msCrypto;
+          if (!cryptoObj) {
+            try {
+              window.crypto = {};
+            } catch (e) {}
+          }
+          const target = window.crypto;
+          if (target && typeof target.randomUUID !== "function") {
+            try {
+              Object.defineProperty(target, "randomUUID", {
+                value: function randomUUID() {
+                  if (typeof target.getRandomValues === "function") {
+                    const bytes = new Uint8Array(16);
+                    target.getRandomValues(bytes);
+                    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+                    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+                    const hex = [];
+                    for (let i = 0; i < 16; i++) {
+                      hex.push(bytes[i].toString(16).padStart(2, "0"));
+                    }
+                    return (
+                      hex.slice(0, 4).join("") +
+                      "-" +
+                      hex.slice(4, 6).join("") +
+                      "-" +
+                      hex.slice(6, 8).join("") +
+                      "-" +
+                      hex.slice(8, 10).join("") +
+                      "-" +
+                      hex.slice(10, 16).join("")
+                    );
+                  }
+                  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+                    /[xy]/g,
+                    (c) => {
+                      const r = (Math.random() * 16) | 0;
+                      const v = c === "x" ? r : (r & 0x3) | 0x8;
+                      return v.toString(16);
+                    },
+                  );
+                },
+                configurable: true,
+                writable: true,
+              });
+            } catch (e) {
+              target.randomUUID = function randomUUID() {
+                return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+                  /[xy]/g,
+                  (c) => {
+                    const r = (Math.random() * 16) | 0;
+                    const v = c === "x" ? r : (r & 0x3) | 0x8;
+                    return v.toString(16);
+                  },
+                );
+              };
+            }
+          }
+        }
+      })();
+    </script>
+    <script>
+      (() => {
+        const storageKey = "pw:theme:mode";
+        const saved = window.localStorage.getItem(storageKey);
         const mode =
-          saved === 'light' || saved === 'dark'
+          saved === "light" || saved === "dark"
             ? saved
-            : window.matchMedia('(prefers-color-scheme: dark)').matches
-              ? 'dark'
-              : 'light'
+            : window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light";
 
-        document.documentElement.classList.toggle('dark', mode === 'dark')
-        document.documentElement.dataset.themeMode = mode
-        document.documentElement.style.colorScheme = mode
-      })()
+        document.documentElement.classList.toggle("dark", mode === "dark");
+        document.documentElement.dataset.themeMode = mode;
+        document.documentElement.style.colorScheme = mode;
+      })();
     </script>
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
-  </html>
+</html>
