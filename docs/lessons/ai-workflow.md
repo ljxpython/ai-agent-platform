@@ -91,3 +91,21 @@
 - **错误：** 使用 `page.waitForLoadState("networkidle")` 等待页面就绪；由于持续在途的低频探针或流连接，页面永远无法进入持续 500ms 零网络请求的 idle 状态，导致测试挂起直至 3 分钟超时报废。
 - **正确：** 禁用 `networkidle`，改用显式 DOM 状态等待（如 `await expect(composer).toBeVisible()` 或等待模型选择器完成水合渲染）。
 - **日期：** 2026-10-10（用户批准）；A/B 兼容真实浏览器端到端验收。
+
+---
+
+## [坑] 宿主机跨目录搬迁 Python 项目导致字节码损坏（bad marshal data）
+
+- **场景：** 生产环境或服务器从临时目录（如 `/root/...`）搬迁到标准生产目录（如 `/opt/...`）时。
+- **错误：** 直接使用 `cp -a` 复制整套源码与 `.venv` 后直接启动服务；跨路径的陈旧 `__pycache__` 与时间戳不一致，会导致 Python 3.13 导入模块时抛出 `ValueError: bad marshal data (unknown type code)` 导致启动即崩溃。
+- **正确：** 搬迁后必须立刻彻底清理已有字节码：`find <target-dir> -name "__pycache__" -type d -exec rm -rf {} +` 以及 `find <target-dir> -name "*.pyc" -delete`，让 Python 运行时纯净重新编译。
+- **日期：** 2026-10-16（用户批准）；生产目录规范化搬迁实战。
+
+---
+
+## [坑] Systemd 严格安全沙箱与软链接路径穿越拦截
+
+- **场景：** 在 Systemd Unit 中启用了 `ProtectSystem=strict` 与 `ProtectHome=true` 等内核级沙箱加固，或代码中包含安全路径防穿越校验（如沙箱 mTLS 凭据、私钥加载）时。
+- **错误：** 使用类似 `/root/ai-agent-platform` 指向 `/opt/...` 的软链接路径，或者在 `.env` / 启动配置中引用了父级包含软链接的路径；导致安全守卫抛出 `ValueError: invalid secret file` 或 Systemd 挂载空间冲突直接拒服。
+- **正确：** 生产配置文件（`.env`、mTLS 证书文件）必须全部使用真实、物理绝对路径（如 `/opt/...`），杜绝任何软链接穿越；私钥文件必须严格限制权限为 `600`。
+- **日期：** 2026-10-16（用户批准）；Native Systemd 生产加固实战。

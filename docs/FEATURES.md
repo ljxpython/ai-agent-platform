@@ -161,6 +161,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Native Systemd 生产部署与运维 Runbook | 已完成：实装 Nginx 边缘网关、Systemd 三进程常驻守护（Runtime API / Worker / Platform API）及 7 步标准发布流水线与应急回滚手册 | [Native Runbook](runbooks/native-systemd-deployment-runbook.md) · [变更记录](changes/20261016-native-systemd-deployment-runbook.md) |
 | Worktree 本地联调资源隔离 | 已完成：首次随机登记端口并稳定复用，独立配置/数据/进程，共享依赖缓存及 E2E 地址接线；继承 app 配置、默认 admin/admin123456、首次只读复制基础数据并重加密模型凭据（自动对齐 miaomiaoai `deepseek-v4.1-flash` 为默认模型），排除历史/令牌/定时任务；三栈、真实 Worker/Workspace、浏览器登录和重启验收通过；新增外部知识MCP/独立Ollama登记、所属启停及冲突自检已验 | [规范](standards/worktree-development.md) · [专项](projects/20261010-worktree-local-stack/README.md) |
 | Agent通用运行取消与中断闭环 | 已完成：全链路闭环。后端会话停止、回执详情/分页、幂等重试、恢复与审计已闭环；前端完成会话级停止控制、RunStopReportBanner/Details 状态反馈与报告抽屉、队列刷新、多端隔离与防竞态；Playwright E2E/响应式与单元测试全绿 | [方案与任务](projects/20261007-agent-run-cancellation/README.md) · [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 | 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应与追踪本期Final已完成，SSE/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |

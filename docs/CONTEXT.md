@@ -7,7 +7,7 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-15
+**最后更新：** 2026-10-16
 
 ## 最近改动
 
@@ -15,6 +15,7 @@
 
 ## 活跃项目
 
+- [Native Systemd 生产级架构加固与运维治理](projects/20261016-native-systemd-production-hardening/README.md)：`done`；非 root 专用受限账号 aiplatform 与内核级沙箱落地、Platform API 2 Worker 并发与 2G 内存熔断、Nginx 生产安全头与 600s 流式反代超时调优、PostgreSQL 每日凌晨自动 gzip 压缩轮转备份（留存 7 天）与 Journald 2G 封顶全部闭环并通过生产实测（HTTPS 证书依用户确认 deferred 暂缓）。
 - [记忆系统架构升级 (Agent Memory System Upgrade)](projects/20261015-agent-memory-system-upgrade/README.md)：`done`；吸收 DeerFlow 记忆系统核心工程与算法优势，实现异步后台提取解耦（主请求耗时降至 < 5ms）、Prescreen 成本门禁、中文混合分词+IDF+双池 MMR 多样性检索、近重复合并与平滑淘汰；保留权威 PostgreSQL 存储、CAS 乐观锁与人工审核制；跨服务契约（Runtime stats 透传、API 校验、Web 健康进度条）全栈交付；Runtime 33 项单测、API 契约测试、Web 5 项单测及 vue-tsc 类型检查全部 100% 通过。
 - [弹性 MCP 工具装配与运行时解耦保护](projects/20261015-resilient-mcp-loading/README.md)：`done`；对标 OpenSWE 生产级容错机制进行去业务化移植，实现 MCP 服务与工具的装配期故障隔离（10s 超时控制与全局异常捕获降级）与运行期优雅降级，彻底废除“缺工具即自杀”的反模式强校验；单测套件 170 项全绿；Playwright + Chromium 真实大模型端到端自动化验收 100% 绿灯，彻底消灭 `runtime.execution_failed`。
 - [Docker 对话级沙箱生命周期管理与原生流式传输改造](projects/20261015-docker-sandbox-lifecycle-and-streaming/README.md)：`done`；纯 Docker 低开销对话沙箱架构落地；彻底拔除 Base64 JSON 传输大文件与全内存缓冲反模式；实装前端路径锁、下载Toast、Smart Zip智能归档（ZIP_STORED）与独立流式连接池；远端云主机 sshmy2 完成生产部署与验证；打包 9.4MB 大文件耗时从 21.5s 压降至 0.36s（下降 98.3%）；Playwright + Chromium 自动化端到端测试 100% 绿灯。
