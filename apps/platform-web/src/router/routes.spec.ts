@@ -36,9 +36,14 @@ describe("workspace primary navigation routes", () => {
   it("does not register retired testcase workspaces", () => {
     const paths = getWorkspaceChildren().map((route) => route.path);
 
-    expect(paths).toContain("projects/:projectId/knowledge");
     expect(paths).not.toContain("testcase");
     expect(paths).not.toContain("testcase-v2");
+  });
+
+  it("registers project knowledge page as active workspace route", () => {
+    const paths = getWorkspaceChildren().map((route) => route.path);
+
+    expect(paths).toContain("projects/:projectId/knowledge");
   });
 
   it("keeps Agent, Models, and Chat as distinct pages", () => {

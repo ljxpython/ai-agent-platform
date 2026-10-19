@@ -38,8 +38,40 @@ const { activeProjectId, activeProject } = useWorkspaceProjectContext();
 const authorization = useAuthorization();
 const uiStore = useUiStore();
 
+// 知识中台二级功能板块：'assets' (知识资产) | 'graph' (图谱工坊) | 'qa' (智能问答)
+const activeSection = ref<"assets" | "graph" | "qa">("assets");
 const activeTab = ref<"documents" | "jobs">("documents");
+const assetsViewMode = ref<"native" | "platform">("native");
 const loading = ref(false);
+
+const lightragHost = "http://152.136.27.196:9621/webui/";
+const currentProjectParam = computed(() => {
+  return activeProjectId.value || "11111111-1111-4111-8111-111111111111";
+});
+
+const embedBaseUrl = computed(() => {
+  return `${lightragHost}?embed=true&tenant_id=__default&project_id=${encodeURIComponent(currentProjectParam.value)}`;
+});
+
+const graphUrl = computed(() => `${embedBaseUrl.value}&tab=knowledge-graph`);
+const qaUrl = computed(() => `${embedBaseUrl.value}&tab=retrieval`);
+const hubUrl = computed(() => `${embedBaseUrl.value}&tab=documents`);
+
+const iframeLoading = ref(true);
+const iframeKey = ref(0);
+
+function reloadStudio() {
+  iframeLoading.value = true;
+  iframeKey.value++;
+}
+
+function handleIframeLoad() {
+  iframeLoading.value = false;
+}
+
+watch([() => activeSection.value, () => assetsViewMode.value], () => {
+  iframeLoading.value = true;
+});
 const error = ref("");
 const notice = ref("");
 const queryInput = ref("");
@@ -296,13 +328,14 @@ async function handleConfirmUpload() {
 }
 
 function openGraphConsole() {
-  const host = "http://152.136.27.196:9621/webui/";
-  const token = localStorage.getItem("platform:token") || "guest";
-  const tenantId = "__default";
-  const projectId =
-    activeProjectId.value || "11111111-1111-4111-8111-111111111111";
-  const url = `${host}?token=${encodeURIComponent(token)}&tenant_id=${encodeURIComponent(tenantId)}&project_id=${encodeURIComponent(projectId)}`;
-  window.open(url, "_blank");
+  const targetTab =
+    activeSection.value === "graph"
+      ? "knowledge-graph"
+      : activeSection.value === "qa"
+        ? "retrieval"
+        : "documents";
+  const url = `${lightragHost}?tenant_id=__default&project_id=${encodeURIComponent(currentProjectParam.value)}&tab=${encodeURIComponent(targetTab)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 watch(
@@ -376,200 +409,430 @@ watch(
       variant="success"
     />
 
-    <!-- Metrics Cards -->
-    <div class="grid gap-4 xl:grid-cols-4">
-      <MetricCard
-        v-for="item in stats"
-        :key="item.label"
-        :label="item.label"
-        :value="item.value"
-        :hint="item.hint"
-        :icon="item.icon"
-        :tone="item.tone"
-      />
+    <!-- 知识中台二级功能板块切换 -->
+    <div
+      class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/80 pb-3 mb-6"
+    >
+      <div
+        class="inline-flex rounded-xl border border-border bg-slate-100/80 p-1 dark:bg-dark-800"
+      >
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all"
+          :class="
+            activeSection === 'assets'
+              ? 'bg-white text-primary-700 shadow-xs dark:bg-dark-900 dark:text-primary-300'
+              : 'text-text-sub hover:text-text-main'
+          "
+          data-testid="tab-section-assets"
+          @click="activeSection = 'assets'"
+        >
+          <BaseIcon name="folder" size="xs" />
+          <span>知识资产中枢</span>
+          <span
+            v-if="totalDocs > 0"
+            class="rounded-full bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-700 dark:bg-primary-950/40 dark:text-primary-300"
+          >
+            {{ totalDocs }}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all"
+          :class="
+            activeSection === 'graph'
+              ? 'bg-white text-primary-700 shadow-xs dark:bg-dark-900 dark:text-primary-300'
+              : 'text-text-sub hover:text-text-main'
+          "
+          data-testid="tab-section-graph"
+          @click="activeSection = 'graph'"
+        >
+          <BaseIcon name="graph" size="xs" />
+          <span>知识图谱工坊</span>
+          <span
+            class="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+          >
+            9621
+          </span>
+        </button>
+
+        <button
+          type="button"
+          class="flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all"
+          :class="
+            activeSection === 'qa'
+              ? 'bg-white text-primary-700 shadow-xs dark:bg-dark-900 dark:text-primary-300'
+              : 'text-text-sub hover:text-text-main'
+          "
+          data-testid="tab-section-qa"
+          @click="activeSection = 'qa'"
+        >
+          <BaseIcon name="chat" size="xs" />
+          <span>智能问答工作台</span>
+        </button>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <!-- 低调精致的底座状态微胶囊 -->
+        <div
+          class="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-slate-50 px-2.5 py-1 text-xs text-text-sub dark:bg-dark-800"
+          :title="`LightRAG 远端底座已连接 (152.136.27.196:9621)\n当前项目隔离 ID: ${currentProjectParam}`"
+        >
+          <span
+            class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"
+          ></span>
+          <span
+            class="text-[11px] font-medium text-emerald-700 dark:text-emerald-400"
+            >底座已就绪</span
+          >
+        </div>
+
+        <BaseButton
+          variant="secondary"
+          size="sm"
+          title="刷新当前工坊视窗"
+          @click="reloadStudio"
+        >
+          <BaseIcon name="refresh" size="xs" />
+          <span>刷新视窗</span>
+        </BaseButton>
+
+        <BaseButton
+          variant="secondary"
+          size="sm"
+          title="在新标签页独立全屏打开完整控制台"
+          @click="openGraphConsole"
+        >
+          <BaseIcon name="chevron-right" size="xs" />
+          <span>新窗口全屏</span>
+        </BaseButton>
+      </div>
     </div>
 
-    <EmptyState
-      v-if="!activeProject"
-      icon="project"
-      title="请先选择项目"
-      description="选择项目作为权限上下文后方可访问项目知识库。"
-    />
-
-    <TablePageLayout v-else>
-      <template #filters>
-        <FilterToolbar>
-          <div class="flex flex-wrap items-center justify-between gap-4">
-            <!-- Tabs Switcher -->
-            <div
-              class="flex items-center rounded-xl bg-gray-100 p-1 dark:bg-dark-800"
-            >
-              <button
-                type="button"
-                class="rounded-lg px-4 py-1.5 text-xs font-semibold transition"
-                :class="
-                  activeTab === 'documents'
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                "
-                @click="activeTab = 'documents'"
-              >
-                已入库文档 ({{ totalDocs }})
-              </button>
-              <button
-                type="button"
-                class="rounded-lg px-4 py-1.5 text-xs font-semibold transition"
-                :class="
-                  activeTab === 'jobs'
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
-                "
-                @click="activeTab = 'jobs'"
-              >
-                入库任务队列 ({{ totalJobs }})
-              </button>
-            </div>
-
-            <!-- Search input -->
-            <div class="flex items-center gap-2">
-              <SearchInput
-                v-model="queryInput"
-                placeholder="搜索文档名称或 ID..."
-              />
-              <BaseButton variant="secondary" size="sm" @click="resetFilters">
-                清空
-              </BaseButton>
-              <BaseButton size="sm" @click="applyFilters"> 筛选 </BaseButton>
-            </div>
-          </div>
-        </FilterToolbar>
-      </template>
-
-      <template #table>
-        <!-- Documents Table -->
-        <div v-if="activeTab === 'documents'">
-          <DataTable
-            :error="error"
-            :columns="documentColumns"
-            :rows="filteredDocuments"
-            :loading="loading"
-            row-key="document_id"
-            empty-title="知识库暂无文档"
-            empty-description="当前项目尚未录入知识库资产，可点击右上角「上传文档」开始构建。"
-            empty-icon="archive"
+    <!-- 视图 1：知识资产中枢 (Assets) -->
+    <template v-if="activeSection === 'assets'">
+      <div class="flex items-center justify-between mb-4">
+        <div
+          class="inline-flex rounded-xl border border-border bg-slate-100/90 p-1 dark:bg-dark-800 text-xs"
+        >
+          <button
+            type="button"
+            class="rounded-lg px-3 py-1.5 font-semibold transition"
+            :class="
+              assetsViewMode === 'native'
+                ? 'bg-white text-primary-700 shadow-xs dark:bg-dark-900 dark:text-primary-300'
+                : 'text-text-sub hover:text-text-main'
+            "
+            data-testid="assets-mode-native"
+            @click="assetsViewMode = 'native'"
           >
-            <template #cell-file_name="{ row }">
-              <div class="flex items-center gap-3">
+            LightRAG 原生中枢 (Knowledge Hub)
+          </button>
+          <button
+            type="button"
+            class="rounded-lg px-3 py-1.5 font-semibold transition"
+            :class="
+              assetsViewMode === 'platform'
+                ? 'bg-white text-primary-700 shadow-xs dark:bg-dark-900 dark:text-primary-300'
+                : 'text-text-sub hover:text-text-main'
+            "
+            data-testid="assets-mode-platform"
+            @click="assetsViewMode = 'platform'"
+          >
+            平台任务与指标视图
+          </button>
+        </div>
+      </div>
+
+      <!-- 原生 Knowledge Hub 沉浸视窗 (100% 对标图 4 原生全量能力，无任何多余横条) -->
+      <div
+        v-if="assetsViewMode === 'native'"
+        class="relative w-full rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs"
+      >
+        <div
+          v-if="iframeLoading"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-card/75 backdrop-blur-xs"
+        >
+          <div
+            class="h-8 w-8 animate-spin rounded-full border-3 border-primary-500 border-t-transparent"
+          ></div>
+          <p class="mt-3 text-xs text-text-sub font-medium">
+            正在挂载 LightRAG 原生资产中枢...
+          </p>
+        </div>
+
+        <iframe
+          :key="`assets-${iframeKey}`"
+          :src="hubUrl"
+          class="w-full h-[calc(100vh-200px)] min-h-[720px] border-0 bg-background"
+          allow="clipboard-read; clipboard-write; fullscreen"
+          @load="handleIframeLoad"
+        />
+      </div>
+
+      <!-- 平台指标与表格视图 -->
+      <template v-else>
+        <!-- Metrics Cards -->
+        <div class="grid gap-4 xl:grid-cols-4">
+          <MetricCard
+            v-for="item in stats"
+            :key="item.label"
+            :label="item.label"
+            :value="item.value"
+            :hint="item.hint"
+            :icon="item.icon"
+            :tone="item.tone"
+          />
+        </div>
+
+        <EmptyState
+          v-if="!activeProject"
+          icon="project"
+          title="请先选择项目"
+          description="选择项目作为权限上下文后方可访问项目知识库。"
+        />
+
+        <TablePageLayout v-else>
+          <template #filters>
+            <FilterToolbar>
+              <div class="flex flex-wrap items-center justify-between gap-4">
+                <!-- Tabs Switcher -->
                 <div
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                  class="flex items-center rounded-xl bg-gray-100 p-1 dark:bg-dark-800"
                 >
-                  <BaseIcon name="file" size="sm" />
+                  <button
+                    type="button"
+                    class="rounded-lg px-4 py-1.5 text-xs font-semibold transition"
+                    :class="
+                      activeTab === 'documents'
+                        ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+                        : 'text-gray-500 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+                    "
+                    @click="activeTab = 'documents'"
+                  >
+                    已入库文档 ({{ totalDocs }})
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded-lg px-4 py-1.5 text-xs font-semibold transition"
+                    :class="
+                      activeTab === 'jobs'
+                        ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-700 dark:text-white'
+                        : 'text-gray-500 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+                    "
+                    @click="activeTab = 'jobs'"
+                  >
+                    入库任务队列 ({{ totalJobs }})
+                  </button>
                 </div>
-                <div>
+
+                <!-- Search input -->
+                <div class="flex items-center gap-2">
+                  <SearchInput
+                    v-model="queryInput"
+                    placeholder="搜索文档名称或 ID..."
+                  />
+                  <BaseButton
+                    variant="secondary"
+                    size="sm"
+                    @click="resetFilters"
+                  >
+                    清空
+                  </BaseButton>
+                  <BaseButton size="sm" @click="applyFilters">
+                    筛选
+                  </BaseButton>
+                </div>
+              </div>
+            </FilterToolbar>
+          </template>
+
+          <template #table>
+            <!-- Documents Table -->
+            <div v-if="activeTab === 'documents'">
+              <DataTable
+                :error="error"
+                :columns="documentColumns"
+                :rows="filteredDocuments"
+                :loading="loading"
+                row-key="document_id"
+                empty-title="知识库暂无文档"
+                empty-description="当前项目尚未录入知识库资产，可点击右上角「上传文档」开始构建。"
+                empty-icon="archive"
+              >
+                <template #cell-file_name="{ row }">
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                    >
+                      <BaseIcon name="file" size="sm" />
+                    </div>
+                    <div>
+                      <div class="font-semibold text-gray-900 dark:text-white">
+                        {{ docFromRow(row).file_name }}
+                      </div>
+                      <div
+                        class="mt-0.5 text-xs text-gray-400 dark:text-dark-400"
+                      >
+                        ID: {{ shortId(docFromRow(row).document_id) }}
+                      </div>
+                    </div>
+                  </div>
+                </template>
+
+                <template #cell-mime_type="{ row }">
+                  <span
+                    class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-dark-800 dark:text-dark-300"
+                  >
+                    {{ docFromRow(row).mime_type }}
+                  </span>
+                </template>
+
+                <template #cell-size_bytes="{ row }">
+                  <span class="text-xs text-gray-500 dark:text-dark-300">
+                    {{ formatBytes(docFromRow(row).size_bytes) }}
+                  </span>
+                </template>
+
+                <template #cell-status>
+                  <StatusPill tone="success"> 已就绪 (ready) </StatusPill>
+                </template>
+
+                <template #cell-published_at="{ row }">
+                  <span class="text-xs text-gray-400 dark:text-dark-400">
+                    {{ formatDateTime(docFromRow(row).published_at) }}
+                  </span>
+                </template>
+
+                <template #cell-actions="{ row }">
+                  <ActionMenu :items="docActions(docFromRow(row))" />
+                </template>
+              </DataTable>
+
+              <PaginationBar
+                v-if="totalDocs > 0"
+                :page="docPagination.page.value"
+                :page-size="docPagination.pageSize.value"
+                :total="totalDocs"
+                @update:page="docPagination.setPage"
+                @update:page-size="docPagination.setPageSize"
+              />
+            </div>
+
+            <!-- Jobs Table -->
+            <div v-else>
+              <DataTable
+                :error="error"
+                :columns="jobColumns"
+                :rows="jobs"
+                :loading="loading"
+                row-key="job_id"
+                empty-title="暂无入库任务"
+                empty-description="当前没有进行中或已记录的后台构建任务。"
+                empty-icon="activity"
+              >
+                <template #cell-job_id="{ row }">
+                  <span
+                    class="font-mono text-xs text-gray-600 dark:text-dark-300"
+                  >
+                    {{ shortId(jobFromRow(row).job_id) }}
+                  </span>
+                </template>
+
+                <template #cell-file_name="{ row }">
                   <div class="font-semibold text-gray-900 dark:text-white">
-                    {{ docFromRow(row).file_name }}
+                    {{ jobFromRow(row).file_name }}
                   </div>
                   <div class="mt-0.5 text-xs text-gray-400 dark:text-dark-400">
-                    ID: {{ shortId(docFromRow(row).document_id) }}
+                    Doc: {{ shortId(jobFromRow(row).document_id) }}
                   </div>
-                </div>
-              </div>
-            </template>
+                </template>
 
-            <template #cell-mime_type="{ row }">
-              <span
-                class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-dark-800 dark:text-dark-300"
-              >
-                {{ docFromRow(row).mime_type }}
-              </span>
-            </template>
+                <template #cell-status="{ row }">
+                  <StatusPill :tone="getJobStatusTone(jobFromRow(row).status)">
+                    {{ jobFromRow(row).status }}
+                  </StatusPill>
+                </template>
 
-            <template #cell-size_bytes="{ row }">
-              <span class="text-xs text-gray-500 dark:text-dark-300">
-                {{ formatBytes(docFromRow(row).size_bytes) }}
-              </span>
-            </template>
+                <template #cell-created_at="{ row }">
+                  <span class="text-xs text-gray-400 dark:text-dark-400">
+                    {{ formatDateTime(jobFromRow(row).created_at) }}
+                  </span>
+                </template>
 
-            <template #cell-status>
-              <StatusPill tone="success"> 已就绪 (ready) </StatusPill>
-            </template>
+                <template #cell-actions="{ row }">
+                  <ActionMenu :items="jobActions(jobFromRow(row))" />
+                </template>
+              </DataTable>
 
-            <template #cell-published_at="{ row }">
-              <span class="text-xs text-gray-400 dark:text-dark-400">
-                {{ formatDateTime(docFromRow(row).published_at) }}
-              </span>
-            </template>
-
-            <template #cell-actions="{ row }">
-              <ActionMenu :items="docActions(docFromRow(row))" />
-            </template>
-          </DataTable>
-
-          <PaginationBar
-            v-if="totalDocs > 0"
-            :page="docPagination.page.value"
-            :page-size="docPagination.pageSize.value"
-            :total="totalDocs"
-            @update:page="docPagination.setPage"
-            @update:page-size="docPagination.setPageSize"
-          />
-        </div>
-
-        <!-- Jobs Table -->
-        <div v-else>
-          <DataTable
-            :error="error"
-            :columns="jobColumns"
-            :rows="jobs"
-            :loading="loading"
-            row-key="job_id"
-            empty-title="暂无入库任务"
-            empty-description="当前没有进行中或已记录的后台构建任务。"
-            empty-icon="activity"
-          >
-            <template #cell-job_id="{ row }">
-              <span class="font-mono text-xs text-gray-600 dark:text-dark-300">
-                {{ shortId(jobFromRow(row).job_id) }}
-              </span>
-            </template>
-
-            <template #cell-file_name="{ row }">
-              <div class="font-semibold text-gray-900 dark:text-white">
-                {{ jobFromRow(row).file_name }}
-              </div>
-              <div class="mt-0.5 text-xs text-gray-400 dark:text-dark-400">
-                Doc: {{ shortId(jobFromRow(row).document_id) }}
-              </div>
-            </template>
-
-            <template #cell-status="{ row }">
-              <StatusPill :tone="getJobStatusTone(jobFromRow(row).status)">
-                {{ jobFromRow(row).status }}
-              </StatusPill>
-            </template>
-
-            <template #cell-created_at="{ row }">
-              <span class="text-xs text-gray-400 dark:text-dark-400">
-                {{ formatDateTime(jobFromRow(row).created_at) }}
-              </span>
-            </template>
-
-            <template #cell-actions="{ row }">
-              <ActionMenu :items="jobActions(jobFromRow(row))" />
-            </template>
-          </DataTable>
-
-          <PaginationBar
-            v-if="totalJobs > 0"
-            :page="jobPagination.page.value"
-            :page-size="jobPagination.pageSize.value"
-            :total="totalJobs"
-            @update:page="jobPagination.setPage"
-            @update:page-size="jobPagination.setPageSize"
-          />
-        </div>
+              <PaginationBar
+                v-if="totalJobs > 0"
+                :page="jobPagination.page.value"
+                :page-size="jobPagination.pageSize.value"
+                :total="totalJobs"
+                @update:page="jobPagination.setPage"
+                @update:page-size="jobPagination.setPageSize"
+              />
+            </div>
+          </template>
+        </TablePageLayout>
       </template>
-    </TablePageLayout>
+    </template>
+
+    <!-- 视图 2：知识图谱工坊 (Graph Studio 2.0 原生全量能力，去横条纯净视窗) -->
+    <template v-else-if="activeSection === 'graph'">
+      <div
+        class="relative w-full rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs"
+      >
+        <div
+          v-if="iframeLoading"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-card/75 backdrop-blur-xs"
+        >
+          <div
+            class="h-8 w-8 animate-spin rounded-full border-3 border-primary-500 border-t-transparent"
+          ></div>
+          <p class="mt-3 text-xs text-text-sub font-medium">
+            正在渲染 Graph Studio 2.0 拓扑工坊...
+          </p>
+        </div>
+
+        <iframe
+          :key="`graph-${iframeKey}`"
+          :src="graphUrl"
+          class="w-full h-[calc(100vh-200px)] min-h-[720px] border-0 bg-background"
+          allow="clipboard-read; clipboard-write; fullscreen"
+          @load="handleIframeLoad"
+        />
+      </div>
+    </template>
+
+    <!-- 视图 3：智能问答工作台 (Chat Studio 原生全量能力，去横条纯净视窗) -->
+    <template v-else-if="activeSection === 'qa'">
+      <div
+        class="relative w-full rounded-2xl border border-border/80 bg-card overflow-hidden shadow-xs"
+      >
+        <div
+          v-if="iframeLoading"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-card/75 backdrop-blur-xs"
+        >
+          <div
+            class="h-8 w-8 animate-spin rounded-full border-3 border-primary-500 border-t-transparent"
+          ></div>
+          <p class="mt-3 text-xs text-text-sub font-medium">
+            正在挂载全参数问答控制台...
+          </p>
+        </div>
+
+        <iframe
+          :key="`qa-${iframeKey}`"
+          :src="qaUrl"
+          class="w-full h-[calc(100vh-200px)] min-h-[720px] border-0 bg-background"
+          allow="clipboard-read; clipboard-write; fullscreen"
+          @load="handleIframeLoad"
+        />
+      </div>
+    </template>
 
     <!-- Upload Dialog -->
     <BaseDialog

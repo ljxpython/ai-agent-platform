@@ -31,7 +31,6 @@ import { useUiStore } from "@/stores/ui";
 import type { ManagementProjectMember, ProjectRole } from "@/types/management";
 import { copyText } from "@/utils/clipboard";
 import { shortId } from "@/utils/format";
-import ProjectKnowledgePanel from "../components/ProjectKnowledgePanel.vue";
 
 function getRoleTone(role: string): "info" | "success" | "warning" {
   if (isProjectAdminRole(role as ProjectRole)) {
@@ -61,7 +60,6 @@ const project = computed(
     activeProjects.value.find((item) => item.id === projectId.value) ?? null,
 );
 
-const activeProjectTab = ref<"overview" | "knowledge">("overview");
 const members = ref<ManagementProjectMember[]>([]);
 const loadingMembers = ref(false);
 const membersError = ref("");
@@ -436,196 +434,152 @@ watch(
         />
       </div>
 
-      <!-- 页面主要分区 Tab 导航 -->
-      <div class="flex items-center gap-2 border-b border-border/80 pb-2">
-        <button
-          type="button"
-          class="rounded-lg px-4 py-2 text-sm font-medium transition-colors cursor-pointer"
-          :class="
-            activeProjectTab === 'overview'
-              ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300 shadow-2xs font-semibold'
-              : 'text-text-sub hover:text-text-main hover:bg-slate-50 dark:hover:bg-dark-800'
-          "
-          @click="activeProjectTab = 'overview'"
-        >
-          项目概览与成员
-        </button>
-        <button
-          type="button"
-          class="rounded-lg px-4 py-2 text-sm font-medium transition-colors cursor-pointer"
-          :class="
-            activeProjectTab === 'knowledge'
-              ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300 shadow-2xs font-semibold'
-              : 'text-text-sub hover:text-text-main hover:bg-slate-50 dark:hover:bg-dark-800'
-          "
-          @click="activeProjectTab = 'knowledge'"
-        >
-          项目知识库
-        </button>
-      </div>
-
-      <template v-if="activeProjectTab === 'overview'">
-        <div
-          class="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
-        >
-          <SurfaceCard class="space-y-5">
-            <div class="flex items-start justify-between gap-3">
-              <div>
-                <div
-                  class="text-lg font-semibold text-gray-900 dark:text-white"
-                >
-                  基础信息
-                </div>
-                <div class="mt-1 text-sm text-gray-500 dark:text-dark-300">
-                  旧版这里本来就是项目级入口，不承担复杂编辑。Vue
-                  版保持这个口径，但把信息密度和入口动作做完整。
-                </div>
+      <div
+        class="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]"
+      >
+        <SurfaceCard class="space-y-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">
+                基础信息
               </div>
-              <StatusPill tone="success">
-                {{ project.status }}
-              </StatusPill>
-            </div>
-
-            <div class="grid gap-4 md:grid-cols-2">
-              <div class="pw-card-glass p-4">
-                <div class="text-xs text-gray-400 dark:text-dark-400">
-                  项目 ID
-                </div>
-                <div
-                  class="mt-2 break-all text-sm font-semibold text-gray-900 dark:text-white"
-                >
-                  {{ project.id }}
-                </div>
-              </div>
-              <div class="pw-card-glass p-4">
-                <div class="text-xs text-gray-400 dark:text-dark-400">
-                  短标识
-                </div>
-                <div
-                  class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
-                >
-                  {{ shortId(project.id) }}
-                </div>
+              <div class="mt-1 text-sm text-gray-500 dark:text-dark-300">
+                旧版这里本来就是项目级入口，不承担复杂编辑。Vue
+                版保持这个口径，但把信息密度和入口动作做完整。
               </div>
             </div>
+            <StatusPill tone="success">
+              {{ project.status }}
+            </StatusPill>
+          </div>
 
+          <div class="grid gap-4 md:grid-cols-2">
             <div class="pw-card-glass p-4">
               <div class="text-xs text-gray-400 dark:text-dark-400">
-                项目名称
+                项目 ID
               </div>
               <div
-                class="mt-2 text-base font-semibold text-gray-900 dark:text-white"
+                class="mt-2 break-all text-sm font-semibold text-gray-900 dark:text-white"
               >
-                {{ project.name }}
+                {{ project.id }}
               </div>
             </div>
-
             <div class="pw-card-glass p-4">
-              <div class="text-xs text-gray-400 dark:text-dark-400">
-                项目描述
-              </div>
+              <div class="text-xs text-gray-400 dark:text-dark-400">短标识</div>
               <div
-                class="mt-2 whitespace-pre-wrap text-sm leading-7 text-gray-700 dark:text-dark-100"
+                class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
               >
-                {{ project.description || "暂无描述" }}
+                {{ shortId(project.id) }}
               </div>
             </div>
+          </div>
 
-            <div class="flex flex-wrap gap-3">
-              <BaseButton
-                variant="secondary"
-                :disabled="!canReadMembers"
-                @click="
-                  void router.push(`/workspace/projects/${projectId}/members`)
-                "
-              >
-                <BaseIcon name="users" size="sm" />
-                成员管理
-              </BaseButton>
-              <BaseButton
-                variant="secondary"
-                :disabled="!canReadAudit"
-                @click="openAudit"
-              >
-                <BaseIcon name="audit" size="sm" />
-                查看审计
-              </BaseButton>
+          <div class="pw-card-glass p-4">
+            <div class="text-xs text-gray-400 dark:text-dark-400">项目名称</div>
+            <div
+              class="mt-2 text-base font-semibold text-gray-900 dark:text-white"
+            >
+              {{ project.name }}
             </div>
-          </SurfaceCard>
+          </div>
 
-          <SurfaceCard class="space-y-4">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <div
-                  class="text-lg font-semibold text-gray-900 dark:text-white"
-                >
-                  成员预览
-                </div>
-                <div class="mt-1 text-sm text-gray-500 dark:text-dark-300">
-                  后续正式成员管理页会在这里继续展开。
-                </div>
-              </div>
-              <BaseButton
-                variant="ghost"
-                :disabled="loadingMembers || !canReadMembers"
-                @click="loadMembers"
-              >
-                <BaseIcon name="refresh" size="sm" />
-                刷新成员
-              </BaseButton>
+          <div class="pw-card-glass p-4">
+            <div class="text-xs text-gray-400 dark:text-dark-400">项目描述</div>
+            <div
+              class="mt-2 whitespace-pre-wrap text-sm leading-7 text-gray-700 dark:text-dark-100"
+            >
+              {{ project.description || "暂无描述" }}
             </div>
+          </div>
 
-            <div v-if="loadingMembers" class="space-y-3">
-              <div
-                v-for="index in 3"
-                :key="index"
-                class="pw-card-glass h-20 animate-pulse"
-              />
-            </div>
-
-            <EmptyState
-              v-else-if="members.length === 0"
-              icon="users"
-              title="当前没有可展示的成员"
-              :description="
-                canReadMembers
-                  ? '如果这是新项目，成员列表可能还没建立；可进入成员管理页继续治理。'
-                  : '平台治理权限不等于项目成员权限；接管项目后才可查看项目成员和内容。'
+          <div class="flex flex-wrap gap-3">
+            <BaseButton
+              variant="secondary"
+              :disabled="!canReadMembers"
+              @click="
+                void router.push(`/workspace/projects/${projectId}/members`)
               "
-            />
+            >
+              <BaseIcon name="users" size="sm" />
+              成员管理
+            </BaseButton>
+            <BaseButton
+              variant="secondary"
+              :disabled="!canReadAudit"
+              @click="openAudit"
+            >
+              <BaseIcon name="audit" size="sm" />
+              查看审计
+            </BaseButton>
+          </div>
+        </SurfaceCard>
 
-            <div v-else class="space-y-3">
-              <div
-                v-for="member in members"
-                :key="member.user_id"
-                class="rounded-2xl border border-white/70 bg-white/80 px-4 py-4 dark:border-dark-700 dark:bg-dark-900/70"
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <div
-                      class="truncate text-sm font-semibold text-gray-900 dark:text-white"
-                    >
-                      {{ member.username }}
-                    </div>
-                    <div
-                      class="mt-1 break-all text-xs text-gray-500 dark:text-dark-300"
-                    >
-                      {{ member.user_id }}
-                    </div>
-                  </div>
-                  <StatusPill :tone="getRoleTone(member.role)">
-                    {{ formatProjectRoleLabel(member.role) }}
-                  </StatusPill>
-                </div>
+        <SurfaceCard class="space-y-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">
+                成员预览
+              </div>
+              <div class="mt-1 text-sm text-gray-500 dark:text-dark-300">
+                后续正式成员管理页会在这里继续展开。
               </div>
             </div>
-          </SurfaceCard>
-        </div>
-      </template>
+            <BaseButton
+              variant="ghost"
+              :disabled="loadingMembers || !canReadMembers"
+              @click="loadMembers"
+            >
+              <BaseIcon name="refresh" size="sm" />
+              刷新成员
+            </BaseButton>
+          </div>
 
-      <template v-else-if="activeProjectTab === 'knowledge'">
-        <ProjectKnowledgePanel :project-id="projectId" />
-      </template>
+          <div v-if="loadingMembers" class="space-y-3">
+            <div
+              v-for="index in 3"
+              :key="index"
+              class="pw-card-glass h-20 animate-pulse"
+            />
+          </div>
+
+          <EmptyState
+            v-else-if="members.length === 0"
+            icon="users"
+            title="当前没有可展示的成员"
+            :description="
+              canReadMembers
+                ? '如果这是新项目，成员列表可能还没建立；可进入成员管理页继续治理。'
+                : '平台治理权限不等于项目成员权限；接管项目后才可查看项目成员和内容。'
+            "
+          />
+
+          <div v-else class="space-y-3">
+            <div
+              v-for="member in members"
+              :key="member.user_id"
+              class="rounded-2xl border border-white/70 bg-white/80 px-4 py-4 dark:border-dark-700 dark:bg-dark-900/70"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div
+                    class="truncate text-sm font-semibold text-gray-900 dark:text-white"
+                  >
+                    {{ member.username }}
+                  </div>
+                  <div
+                    class="mt-1 break-all text-xs text-gray-500 dark:text-dark-300"
+                  >
+                    {{ member.user_id }}
+                  </div>
+                </div>
+                <StatusPill :tone="getRoleTone(member.role)">
+                  {{ formatProjectRoleLabel(member.role) }}
+                </StatusPill>
+              </div>
+            </div>
+          </div>
+        </SurfaceCard>
+      </div>
 
       <ConfirmDialog
         :show="showDeleteDialog"

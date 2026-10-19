@@ -11,10 +11,14 @@
 
 ## 最近改动
 
-2026-10-19 | **会话上下文整理与卸载能力 (Conversation Offloading) 闭环修复与默认开启**：在 `apps/runtime-service/.env.example` 与 `.env` 中默认启用 `AGENT_CONTEXT_MANAGEMENT_ENABLED=1`；修复 Runtime 建模层 `_with_context_capacity` 缺少 `max_output_tokens` 导致计算输入预算崩溃抛 `runtime.context.output_budget_unknown` 的缺陷（默认注入 4096 作为模型最大输出保障）；前端 `ChatSession.vue` 实装 Capability 门禁守卫（强校验 `capabilities.value?.conversation_offloading === true`），并在 `ChatPage` / `DearAgentPage` 提供明确不可用原因；修复 `useChatSession.ts` 错误透传，保留结构化 `code` 与 `requestId`，并在 `diagnostic-packet.ts` 补齐上下文整理相关机器码与恢复指引。单测全绿，真实会话触发整理成功生成 Run 并顺利达成 `success`（Step 298 -> 308）。
+2026-10-19 | **LightRAG 工业级知识中台全量能力复刻与无缝集成全栈交付**：基于路线 C 方案，彻底根治第三方登录弹窗拦截与套娃布局。远端 `run_lightrag_webui_server.py` 服务端实装基于 `auth_handler` 的自动静默长效 JWT 签发与 `<head>` 首行同步注入，彻底消灭登录阻断；支持 `?embed=true` 隐藏多余外层 Header 与侧边栏；前端 `ProjectKnowledgePage.vue` 接入三大原生沉浸式视窗（Graph Studio 2.0 拓扑工坊、全参数智能问答工作台、Knowledge Hub 原生资产中枢）并支持双轨制切换；全量 150 测试套件单测 100% 绿灯，vue-tsc 0 错误，打包构建成功。
+2026-10-19 | **会话上下文整理与卸载能力 (Conversation Offloading) 闭环修复与默认开启**：在 `apps/runtime-service/.env.example` 与 `.env` 中默认启用 `AGENT_CONTEXT_MANAGEMENT_ENABLED=1`；修复 Runtime 建模层 `_with_context_capacity` 缺少 `max_output_tokens` 导致计算输入预算崩溃抛 `runtime.context.output_budget_unknown` 的缺陷（默认注入 4096 作为模型最大输出保障）；前端 `ChatSession.vue` 实装 Capability 门禁守卫，并在 `ChatPage` / `DearAgentPage` 提供明确不可用原因；修复 `useChatSession.ts` 错误透传，保留结构化 `code` 与 `requestId`，并在 `diagnostic-packet.ts` 补齐上下文整理相关机器码与恢复指引。
 
 ## 活跃项目
 
+- [LightRAG 工业级知识中台全量能力复刻与无缝集成](projects/20261019-full-lightrag-studio-integration/README.md)：`done`；彻底根治登录框弹窗，完整复刻 Graph Studio 2.0、Chat Studio 与 Knowledge Hub 三大工业级能力，测试与构建 100% 绿灯。
+- [知识中台原生化重构 - 路线 C](projects/20261019-native-knowledge-studio/README.md)：`done`；彻底移除详情页冗余面板，废除 iframe 外挂，实装原生智能问答与 Canvas 力导向图谱工坊，测试与构建 100% 绿灯。
+- [项目详情与知识中台交互收敛](projects/20261019-project-detail-knowledge-streamline/README.md)：`done`；项目详情页彻底纯净化，专注于基础信息与成员管理，测试构建全绿。
 - [前端可观测性与端到端排障链路增强](projects/20261019-frontend-observability-and-diagnostic-tracing/README.md)：`done`；有界内存错误缓冲区 (Cap=10)、全局 ErrorBoundary 拒绝白屏、Axios/SSE 全链路 Request ID 对齐、DiagnosticDetailModal 就地排障模态窗、open-swe 风格 Actionable 建议字典与后端分类器、Langfuse 分布式链路追踪（Open Trace 直达外链）、轨迹错误节点兜底注入全栈落地并通过 Playwright 自动化 E2E 验收（4 张实景截图固化）。
 - [Native Systemd 生产级架构加固与运维治理](projects/20261016-native-systemd-production-hardening/README.md)：`done`；非 root 专用受限账号 aiplatform 与内核级沙箱落地、Platform API 2 Worker 并发与 2G 内存熔断、Nginx 生产安全头与 600s 流式反代超时调优、PostgreSQL 每日凌晨自动 gzip 压缩轮转备份（留存 7 天）与 Journald 2G 封顶全部闭环并通过生产实测（HTTPS 证书依用户确认 deferred 暂缓）。
 - [记忆系统架构升级 (Agent Memory System Upgrade)](projects/20261015-agent-memory-system-upgrade/README.md)：`done`；吸收 DeerFlow 记忆系统核心工程与算法优势，实现异步后台提取解耦（主请求耗时降至 < 5ms）、Prescreen 成本门禁、中文混合分词+IDF+双池 MMR 多样性检索、近重复合并与平滑淘汰；保留权威 PostgreSQL 存储、CAS 乐观锁与人工审核制；跨服务契约（Runtime stats 透传、API 校验、Web 健康进度条）全栈交付；Runtime 33 项单测、API 契约测试、Web 5 项单测及 vue-tsc 类型检查全部 100% 通过。
@@ -62,7 +66,7 @@
 |---|---|---|
 | runtime-service | 2026-10-15 | 记忆系统架构升级（Agent Memory System Upgrade）落地：异步后台提取解耦、Prescreen 成本门禁、中文 IDF+MMR 多样性召回、近重复合并与平滑软淘汰已实装，跨层 stats 输出闭环，33 项单测全绿；Agent显式按需挂载多MCP与多Server隔离；所属服务已停。 |
 | platform-api | 2026-10-19 | 引入多维 Run 错误分类器（run_error_classifier.py），对齐 open-swe 建立机器码与 Actionable 恢复建议体系；单元测试全绿。 |
-| platform-web | 2026-10-19 | 前端可观测性与端到端排障链路增强落地：就地排障模态窗（DiagnosticDetailModal）、状态栏交互升级、open-swe 恢复建议、联动 Trajectory 轨迹视角闭环；全局 ErrorBoundary 防白屏、有界错误缓冲区与一键脱敏排障包闭环；单元测试与 Playwright E2E 100% 绿灯。 |
+| platform-web | 2026-10-19 | 前端可观测性与端到端排障链路增强落地；LightRAG 工业级知识中台全量能力复刻（Graph Studio 2.0、Chat Studio、Knowledge Hub 纯净顶格渲染与无缝免登）及项目详情纯净化交付，全量单测 150 文件 880+ 项全绿，vue-tsc 0 错误，打包构建成功；所属服务已停。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。
