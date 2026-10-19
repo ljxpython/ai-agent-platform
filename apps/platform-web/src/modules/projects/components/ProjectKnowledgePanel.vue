@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onUnmounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import SurfaceCard from "@/components/base/SurfaceCard.vue";
@@ -20,7 +21,15 @@ const props = defineProps<{
   projectId: string;
 }>();
 
+const router = useRouter();
 const tracker = useKnowledgeJobTracker();
+
+function navigateToKnowledgeCenter(): void {
+  void router?.push({
+    name: "workspace-project-knowledge",
+    params: { projectId: props.projectId },
+  });
+}
 
 // 当前子视图：'documents' | 'jobs'
 const activeSubTab = ref<"documents" | "jobs">("documents");
@@ -307,6 +316,55 @@ onUnmounted(() => {
       description="知识库读写服务尚未开启或不可用，请联系管理员在平台控制台配置。"
     />
 
+    <!-- 知识中台专属导航引导区（方案 A 交互收敛） -->
+    <div
+      class="flex flex-col gap-4 rounded-xl border border-primary-200/80 bg-gradient-to-r from-primary-50/70 via-slate-50 to-primary-50/30 p-4.5 dark:border-primary-900/40 dark:from-primary-950/20 dark:via-dark-900 dark:to-primary-950/10 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div class="flex items-start gap-3">
+        <div
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-600 dark:bg-primary-900/50 dark:text-primary-300"
+        >
+          <BaseIcon name="graph" size="md" />
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-semibold text-text-main">
+              项目专属 LightRAG 知识中台
+            </h3>
+            <span
+              v-if="capabilities?.read_enabled"
+              class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+            >
+              底座在线 (Healthy)
+            </span>
+            <span
+              v-else
+              class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-text-sub border border-border dark:bg-dark-800"
+            >
+              未配置/离线
+            </span>
+          </div>
+          <p class="mt-1 text-xs text-text-sub">
+            当前项目详情仅保留轻量资料一览。完整的文档批量上传、切片溯源、检索沙盒
+            (Playground) 与 9621 图谱控制台已集中收敛至左侧知识库中台。
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <BaseButton
+          variant="primary"
+          size="sm"
+          class="shadow-xs whitespace-nowrap"
+          data-testid="go-to-knowledge-center-btn"
+          @click="navigateToKnowledgeCenter"
+        >
+          <BaseIcon name="chevron-right" size="xs" />
+          <span>打开项目知识库中台</span>
+        </BaseButton>
+      </div>
+    </div>
+
     <SurfaceCard>
       <!-- 头部：标题、统计与子Tab切换 -->
       <div
@@ -390,6 +448,8 @@ onUnmounted(() => {
           icon="folder"
           title="暂无已发布知识资料"
           description="普通项目成员可在聊天界面上传 TXT 或 Markdown 附件，并勾选“共享至项目知识库”提交入库。"
+          action-label="打开知识中台上传文档"
+          @action="navigateToKnowledgeCenter"
         />
 
         <div v-else class="overflow-x-auto">
@@ -502,6 +562,8 @@ onUnmounted(() => {
           icon="clock"
           title="暂无入库任务记录"
           description="用户在会话中发起共享提交后，异步任务受理与各阶段进度记录将展示在此处。"
+          action-label="进入知识中台查看全局任务"
+          @action="navigateToKnowledgeCenter"
         />
 
         <div v-else class="overflow-x-auto">

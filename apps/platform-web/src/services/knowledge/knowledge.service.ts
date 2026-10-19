@@ -1,3 +1,4 @@
+import axios from "axios";
 import { platformHttpClient } from "@/services/http/client";
 
 export type KnowledgeStatus =
@@ -159,5 +160,115 @@ export async function getKnowledgeJob(
       signal,
     },
   );
+  return response.data;
+}
+
+export type KnowledgeQueryMode =
+  | "hybrid"
+  | "local"
+  | "global"
+  | "naive"
+  | "mix";
+
+export interface KnowledgeLocator {
+  unit: "page" | "slide" | "unknown";
+  label: string;
+  page_number?: number;
+  slide_number?: number;
+  score?: number;
+}
+
+export interface KnowledgeSourceItem {
+  source_id: string;
+  document_id: string;
+  chunk_id: string;
+  title: string;
+  kind: string;
+  preview: string;
+  truncated: boolean;
+  locator?: KnowledgeLocator;
+}
+
+export interface KnowledgeQueryResult {
+  status: "ok" | "no_hit" | "error";
+  response?: string;
+  sources: KnowledgeSourceItem[];
+}
+
+export interface KnowledgeGraphNode {
+  name: string;
+  type: string;
+  description: string;
+}
+
+export interface KnowledgeGraphEdge {
+  source: string;
+  target: string;
+  weight: number;
+  description: string;
+  keywords?: string;
+}
+
+export interface KnowledgeGraphData {
+  status: "ok" | "no_hit" | "error";
+  entity?: string;
+  matched_query?: string;
+  total_nodes: number;
+  total_edges: number;
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+  message?: string;
+}
+
+function getKnowledgeGatewayUrl(): string {
+  return (
+    (import.meta.env.VITE_KNOWLEDGE_GATEWAY_URL as string) ||
+    "http://152.136.27.196:8001"
+  );
+}
+
+/**
+ * 原生发起知识库混合检索与大模型问答 (POST /internal/knowledge/query)
+ */
+export async function queryProjectKnowledge(
+  projectId: string,
+  params: {
+    query: string;
+    mode?: KnowledgeQueryMode;
+    topK?: number;
+  },
+  signal?: AbortSignal,
+): Promise<KnowledgeQueryResult> {
+  const url = `${getKnowledgeGatewayUrl()}/internal/knowledge/query?project_id=${encodeURIComponent(projectId)}`;
+  const response = await axios.post<KnowledgeQueryResult>(
+    url,
+    {
+      query: params.query,
+      mode: params.mode ?? "hybrid",
+      top_k: params.topK ?? 5,
+      sources_version: 2,
+    },
+    { signal },
+  );
+  return response.data;
+}
+
+/**
+ * 原生获取知识图谱子图及关联拓扑 (GET /internal/knowledge/graph)
+ */
+export async function getKnowledgeGraph(
+  projectId: string,
+  options?: {
+    entityName?: string;
+    depth?: number;
+    maxNodes?: number;
+  },
+  signal?: AbortSignal,
+): Promise<KnowledgeGraphData> {
+  const entityName = options?.entityName?.trim() ?? "";
+  const depth = options?.depth ?? 1;
+  const maxNodes = options?.maxNodes ?? 35;
+  const url = `${getKnowledgeGatewayUrl()}/internal/knowledge/graph?project_id=${encodeURIComponent(projectId)}&entity_name=${encodeURIComponent(entityName)}&depth=${depth}&max_nodes=${maxNodes}`;
+  const response = await axios.get<KnowledgeGraphData>(url, { signal });
   return response.data;
 }

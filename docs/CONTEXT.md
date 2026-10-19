@@ -7,14 +7,17 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-16
+**最后更新：** 2026-10-19
 
 ## 最近改动
 
-2026-10-15 | **记忆系统架构升级 (Agent Memory System Upgrade) 全栈落地**：借鉴参考 DeerFlow 记忆系统核心优势并去业务化，实现非阻塞后台提取解耦（主会话毫秒级释放）、Prescreen 成本门禁、中文 unigram+bigram 混合分词+IDF 加权与双池 MMR 多样性重排、Dice 相似度近重复合并与平滑软淘汰（彻底解除 100 条 409 拒服死板限制）。保留平台 PostgreSQL 权威存储、CAS 乐观锁与人工候选审核机制。跨三层契约与前端容量健康进度条全栈闭环，测试与类型检查 100% 绿灯。
+2026-10-19 | **LightRAG 工业级知识中台全量能力复刻与无缝集成全栈交付**：基于路线 C 方案，彻底根治第三方登录弹窗拦截与套娃布局。远端 `run_lightrag_webui_server.py` 服务端实装基于 `auth_handler` 的自动静默长效 JWT 签发与 `<head>` 首行同步注入，彻底消灭登录阻断；支持 `?embed=true` 隐藏多余外层 Header 与侧边栏；前端 `ProjectKnowledgePage.vue` 接入三大原生沉浸式视窗（Graph Studio 2.0 拓扑工坊、全参数智能问答工作台、Knowledge Hub 原生资产中枢）并支持双轨制切换；全量 150 测试套件、878 项单测 100% 绿灯，vue-tsc 0 错误，打包构建成功。
 
 ## 活跃项目
 
+- [LightRAG 工业级知识中台全量能力复刻与无缝集成](projects/20261019-full-lightrag-studio-integration/README.md)：`done`；彻底根治登录框弹窗，完整复刻 Graph Studio 2.0、Chat Studio 与 Knowledge Hub 三大工业级能力，测试与构建 100% 绿灯。
+- [知识中台原生化重构 - 路线 C](projects/20261019-native-knowledge-studio/README.md)：`done`；彻底移除详情页冗余面板，废除 iframe 外挂，实装原生智能问答与 Canvas 力导向图谱工坊，测试与构建 100% 绿灯。
+- [项目详情与知识中台交互收敛](projects/20261019-project-detail-knowledge-streamline/README.md)：`done`；项目详情页彻底纯净化，专注于基础信息与成员管理，测试构建全绿。
 - [Native Systemd 生产级架构加固与运维治理](projects/20261016-native-systemd-production-hardening/README.md)：`done`；非 root 专用受限账号 aiplatform 与内核级沙箱落地、Platform API 2 Worker 并发与 2G 内存熔断、Nginx 生产安全头与 600s 流式反代超时调优、PostgreSQL 每日凌晨自动 gzip 压缩轮转备份（留存 7 天）与 Journald 2G 封顶全部闭环并通过生产实测（HTTPS 证书依用户确认 deferred 暂缓）。
 - [记忆系统架构升级 (Agent Memory System Upgrade)](projects/20261015-agent-memory-system-upgrade/README.md)：`done`；吸收 DeerFlow 记忆系统核心工程与算法优势，实现异步后台提取解耦（主请求耗时降至 < 5ms）、Prescreen 成本门禁、中文混合分词+IDF+双池 MMR 多样性检索、近重复合并与平滑淘汰；保留权威 PostgreSQL 存储、CAS 乐观锁与人工审核制；跨服务契约（Runtime stats 透传、API 校验、Web 健康进度条）全栈交付；Runtime 33 项单测、API 契约测试、Web 5 项单测及 vue-tsc 类型检查全部 100% 通过。
 - [弹性 MCP 工具装配与运行时解耦保护](projects/20261015-resilient-mcp-loading/README.md)：`done`；对标 OpenSWE 生产级容错机制进行去业务化移植，实现 MCP 服务与工具的装配期故障隔离（10s 超时控制与全局异常捕获降级）与运行期优雅降级，彻底废除“缺工具即自杀”的反模式强校验；单测套件 170 项全绿；Playwright + Chromium 真实大模型端到端自动化验收 100% 绿灯，彻底消灭 `runtime.execution_failed`。
@@ -61,7 +64,7 @@
 |---|---|---|
 | runtime-service | 2026-10-15 | 记忆系统架构升级（Agent Memory System Upgrade）落地：异步后台提取解耦、Prescreen 成本门禁、中文 IDF+MMR 多样性召回、近重复合并与平滑软淘汰已实装，跨层 stats 输出闭环，33 项单测全绿；Agent显式按需挂载多MCP与多Server隔离；所属服务已停。 |
 | platform-api | 2026-10-15 | 记忆系统 stats 状态透传模型与响应契约已落地，7 项契约测试全绿；成员知识三角色权限/四GET/四用途HMAC贯通；所属服务已停。 |
-| platform-web | 2026-10-15 | 记忆系统容量健康进度条、状态徽章与超额平滑整理提示文案落地，MemoryStats 类型定义实装，单测与 vue-tsc 0 错误；所属服务已停。 |
+| platform-web | 2026-10-19 | 项目知识库收敛与二级板块（知识资产、图谱工坊、智能问答）闭环交付，全量单测 149 文件 877 项全绿，vue-tsc 0 错误，打包构建成功；所属服务已停。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。
