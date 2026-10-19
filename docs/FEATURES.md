@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 前端可观测性与端到端排障链路增强 | 已完成：实装全局 ErrorBoundary 拒绝白屏、CrashScreen 崩溃卡片、有界错误环形缓冲区 (Cap=10)、全链路 Request ID 契约对齐与一键脱敏排障包闭环；Vitest 34 项单测与 Playwright + Chromium 自动化 E2E 闭环全部 100% 绿灯 | [项目概览](projects/20261019-frontend-observability-and-diagnostic-tracing/README.md) · [验证记录](projects/20261019-frontend-observability-and-diagnostic-tracing/verification.md) |
 | 长期记忆系统容量感知与平滑淘汰前端展示 | 已完成：实装容量健康进度条、状态徽标（healthy/near_capacity/evicting）、超限平滑淘汰解释说明、MemoryStats 接口契约透传与 Vitest 单元测试覆盖 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
 | 通用后台 Workspace 任务界面 | 已完成：accepted 徽章文案（“续接已接受”）、unknown 徽章（“续接待确认”与防伪重试只读守卫）、候选严苛白名单过滤、clearDiscoveredRuns 协同清理与 useChatSession Iron Gate（interrupted 审批等待与 busy/Stop 避让）；Vitest 144 套件全绿、Playwright + Chromium 真实大模型端到端自动化测试 3 passed，三视口截图留痕通过，用户人工实测验收合格 | [接续专项](projects/20261011-background-acceptance-closeout/README.md) · [前端交接](projects/20261011-background-acceptance-closeout/frontend-handoff.md) |
 | F13 浏览器语音听写 | 已完成：基于原生 SpeechRecognition / webkitSpeechRecognition 实现单实例 useVoiceInput，只在 final 写入草稿末尾、interim 不落草稿、用户按键抢占取消防自杀误关；共享 ChatComposer 采用方案 A 纯图标按钮 + 录音专注模式 + 全宽声波微胶囊设计；28 项单测、Playwright 自动化 E2E 及真实环境验收全部通过 | [评审与任务](projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md) · [前端交接](projects/20260913-dearflow-agent/18-f13-voice-input-frontend-handoff.md) |

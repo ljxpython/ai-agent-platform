@@ -427,3 +427,62 @@ def test_chat_openai_with_reasoning_exposes_streaming_reasoning_content_blocks()
             "reasoning": "The user is asking a simple identity question.",
         }
     ]
+
+
+def test_resolve_model_max_output_tokens_by_family_and_capacity() -> None:
+    from runtime_service.runtime.modeling import resolve_model_max_output_tokens
+
+    # 1. 显式配置优先
+    assert resolve_model_max_output_tokens(explicit_max_output=2048) == 2048
+
+    # 2. 超长思维链模型 (R1, o1, o3)
+    assert (
+        resolve_model_max_output_tokens(model_name="deepseek-r1", capacity=128000)
+        == 32000
+    )  # 128k // 4
+    assert (
+        resolve_model_max_output_tokens(model_name="o3-mini", capacity=200000) == 32768
+    )
+
+    # 3. GPT-4o 系列 (16k)
+    assert (
+        resolve_model_max_output_tokens(model_name="gpt-4o", capacity=128000) == 16384
+    )
+    assert (
+        resolve_model_max_output_tokens(model_name="gpt-4-turbo", capacity=128000)
+        == 16384
+    )
+
+    # 4. 主流通用大模型 (8k)
+    assert (
+        resolve_model_max_output_tokens(
+            model_name="deepseek-v4.1-flash", capacity=1000000
+        )
+        == 8192
+    )
+    assert (
+        resolve_model_max_output_tokens(model_name="qwen-plus", capacity=1000000)
+        == 8192
+    )
+    assert (
+        resolve_model_max_output_tokens(model_name="claude-3-5-sonnet", capacity=200000)
+        == 8192
+    )
+
+    # 5. 小型/短上下文模型动态保护 (按 capacity // 4 裁剪，防止负输入预算)
+    assert (
+        resolve_model_max_output_tokens(model_name="deepseek-chat", capacity=8192)
+        == 2048
+    )
+    assert (
+        resolve_model_max_output_tokens(model_name="custom-tiny", capacity=4096) == 1024
+    )
+    assert (
+        resolve_model_max_output_tokens(model_name="ultra-tiny", capacity=1024) == 512
+    )
+
+    # 6. 未知模型兜底
+    assert (
+        resolve_model_max_output_tokens(model_name="unknown-model", capacity=128000)
+        == 4096
+    )

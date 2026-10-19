@@ -934,15 +934,17 @@ onScopeDispose(() => {
                 :offload-disabled-reason="
                   !selectedThread
                     ? '请先发起会话'
-                    : !sessionRef?.hasMessages
-                      ? '当前会话尚无历史消息，无需整理'
-                      : sessionRef?.busy
-                        ? '会话正在执行中'
-                        : sessionRef?.hasPendingInterrupts
-                          ? '会话正在等待审批'
-                          : !sessionRef?.canEdit
-                            ? '无权限执行整理'
-                            : ''
+                    : sessionRef?.isOffloadSupported === false
+                      ? '当前智能体未开启或不支持上下文整理'
+                      : !sessionRef?.hasMessages
+                        ? '当前会话尚无历史消息，无需整理'
+                        : sessionRef?.busy
+                          ? '会话正在执行中'
+                          : sessionRef?.hasPendingInterrupts
+                            ? '会话正在等待审批'
+                            : !sessionRef?.canEdit
+                              ? '无权限执行整理'
+                              : ''
                 "
                 @toggle-focus="focusMode = !focusMode"
                 @open-drawer="sessionRef?.openDrawer()"

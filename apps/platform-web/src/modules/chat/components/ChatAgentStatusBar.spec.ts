@@ -369,4 +369,63 @@ describe("ChatAgentStatusBar", () => {
       "工作区环境不可用，请检查沙箱配置或新建会话重试。",
     );
   });
+
+  it("renders humanized copy diagnostic button on runtime.execution_failed and triggers copy", async () => {
+    const diagnosticModule =
+      await import("@/services/observability/diagnostic-packet");
+    const spy = vi
+      .spyOn(diagnosticModule, "copyDiagnosticPacket")
+      .mockResolvedValue({
+        success: true,
+        markdown: "report",
+      });
+
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        error: "runtime.execution_failed",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain(
+      "Agent 执行未完成，可复制排障信息交由运维排查。",
+    );
+
+    const copyBtn = wrapper.find('[data-testid="status-copy-diagnostic-btn"]');
+    expect(copyBtn.exists()).toBe(true);
+    expect(copyBtn.text()).toContain("复制排障信息");
+
+    await copyBtn.trigger("click");
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it("renders inspect diagnostic button on error state and emits inspectDiagnostic", async () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        error: "runtime.execution_failed",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    const inspectBtn = wrapper.find(
+      '[data-testid="status-view-diagnostic-btn"]',
+    );
+    expect(inspectBtn.exists()).toBe(true);
+    expect(inspectBtn.text()).toContain("查看排障详情");
+
+    await inspectBtn.trigger("click");
+    expect(wrapper.emitted("inspectDiagnostic")).toHaveLength(1);
+  });
 });

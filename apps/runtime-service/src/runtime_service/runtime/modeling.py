@@ -180,6 +180,57 @@ def _required(settings: Mapping[str, str], name: str) -> str:
     return value
 
 
+def resolve_model_max_output_tokens(
+    *,
+    model_name: str | None = None,
+    provider: str | None = None,
+    capacity: int | None = None,
+    explicit_max_output: int | None = None,
+) -> int:
+    """Resolve a safe, sensible maximum output tokens bound for model profiling.
+
+    1. If explicitly configured (> 0), respect it.
+    2. Otherwise infer physical limit from well-known model/family signatures:
+       - Reasoning / Thinking models (o1, o3, r1): 32768
+       - GPT-4o / GPT-4-turbo / Claude 3.7: 16384
+       - DeepSeek / Qwen / Claude / GLM / Kimi / MiniMax: 8192
+       - Default unknown: 4096
+    3. Dynamic safety clamp: Never exceed 25% of total capacity if capacity is small,
+       with a safe lower floor of 512, to prevent tiny-context models from having negative input budget.
+    """
+    if (
+        explicit_max_output is not None
+        and isinstance(explicit_max_output, int)
+        and explicit_max_output > 0
+    ):
+        return explicit_max_output
+
+    name = (model_name or "").lower()
+    prov = (provider or "").lower()
+
+    if any(k in name for k in ("-r1", "deepseek-r1", "o1", "o3", "reasoner")):
+        physical_limit = 32768
+    elif any(k in name for k in ("gpt-4o", "gpt-4-turbo", "claude-3-7")):
+        physical_limit = 16384
+    elif any(
+        k in name for k in ("deepseek", "qwen", "claude", "glm", "kimi", "minimax")
+    ):
+        physical_limit = 8192
+    elif any(
+        k in prov for k in ("deepseek", "qwen", "anthropic", "maomaoai", "doubao")
+    ):
+        physical_limit = 8192
+    else:
+        physical_limit = 4096
+
+    if capacity is not None and capacity > 0:
+        # Dynamic clamp to 25% of capacity for small models, with a safe lower floor of 512.
+        safe_ratio_cap = max(512, capacity // 4)
+        return max(512, min(physical_limit, safe_ratio_cap))
+
+    return physical_limit
+
+
 def _with_context_capacity(
     model: BaseChatModel, connection: Mapping[str, object] | None
 ) -> BaseChatModel:
@@ -189,7 +240,24 @@ def _with_context_capacity(
             raise RuntimeResolutionError(
                 "runtime.model.initialization_failed", "context_window_tokens"
             )
-        model.profile = {**(model.profile or {}), "max_input_tokens": capacity}
+        model_name = str(
+            connection.get("model")
+            or getattr(model, "model_name", None)
+            or getattr(model, "model", "")
+        )
+        provider = str(connection.get("provider") or "")
+        explicit_max = connection.get("max_output_tokens")
+        max_output = resolve_model_max_output_tokens(
+            model_name=model_name,
+            provider=provider,
+            capacity=capacity,
+            explicit_max_output=explicit_max if isinstance(explicit_max, int) else None,
+        )
+        model.profile = {
+            **(model.profile or {}),
+            "max_input_tokens": capacity,
+            "max_output_tokens": max_output,
+        }
     return model
 
 
@@ -453,4 +521,5 @@ __all__ = [
     "build_fallback_model",
     "fetch_model_bundle",
     "fetch_model_connection",
+    "resolve_model_max_output_tokens",
 ]

@@ -354,21 +354,6 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             available_tool_names=frozenset(available),
         )
 
-    if context_management_enabled() and executing:
-        tool_output_limit = resolve_tool_output_limit(
-            (model, fallback_model), resolved.max_tokens
-        )
-    filesystem_kwargs = (
-        {"tool_token_limit_before_evict": tool_output_limit}
-        if tool_output_limit is not None
-        else {}
-    )
-    filesystem_cls = (
-        ResultFilesystemMiddleware
-        if tool_output_limit is not None
-        else FilesystemMiddleware
-    )
-
     def model_builder(next_config):
         if resolved is None:
             raise RuntimeAuthError("runtime.graph.probe_only")

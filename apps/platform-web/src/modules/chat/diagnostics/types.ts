@@ -103,7 +103,7 @@ export type CorrelationInfo = z.infer<typeof correlationSchema>;
 export const traceInfoSchema = z.object({
   provider: z.literal("langfuse"),
   trace_id: z.string().max(128),
-  url: z.null(),
+  url: z.string().nullable().optional().default(null),
 });
 
 export type TraceInfo = z.infer<typeof traceInfoSchema>;
@@ -203,7 +203,11 @@ export const runDiagnosticsV1Schema = z
     run_status: z.string().max(128),
     request_id: z.string().max(256),
     availability: z.enum(AVAILABILITY_STATUSES),
-    unavailable_reason: z.enum(UNAVAILABLE_REASONS).nullable(),
+    unavailable_reason: z
+      .enum(UNAVAILABLE_REASONS)
+      .nullable()
+      .optional()
+      .default(null),
     correlation: correlationSchema,
     trace: traceInfoSchema.nullable(),
     graph_executions: z.array(graphExecutionSchema).max(10),

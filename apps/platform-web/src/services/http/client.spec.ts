@@ -90,3 +90,42 @@ it.each([
   });
   expect(getAccessToken()).toBe("expired");
 });
+
+it("records failed HTTP requests to errorRingBuffer with requestId and details", async () => {
+  const { errorRingBuffer } =
+    await import("@/services/observability/error-buffer");
+  errorRingBuffer.clear();
+
+  const failRequest = platformHttpClient.get("/api/test-failure", {
+    adapter: (config) =>
+      Promise.reject(
+        new axios.AxiosError(
+          "Request failed with status code 502",
+          "ERR_BAD_RESPONSE",
+          config,
+          undefined,
+          {
+            status: 502,
+            statusText: "Bad Gateway",
+            headers: { "x-request-id": "req-trace-502-xyz" },
+            data: {
+              error: {
+                code: "runtime_execution_failed",
+                message: "Remote sandbox unavailable",
+              },
+              request_id: "req-trace-502-xyz",
+            },
+          } as never,
+        ),
+      ),
+  });
+
+  await expect(failRequest).rejects.toThrow();
+
+  const recorded = errorRingBuffer.getLatest();
+  expect(recorded).not.toBeNull();
+  expect(recorded?.status).toBe(502);
+  expect(recorded?.requestId).toBe("req-trace-502-xyz");
+  expect(recorded?.code).toBe("runtime_execution_failed");
+  expect(recorded?.message).toBe("Remote sandbox unavailable");
+});

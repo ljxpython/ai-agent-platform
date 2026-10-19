@@ -532,6 +532,27 @@ export function buildTrajectoryRecords(
     }
   }
 
+  // 4. 异常兜底标记：若本回合明确报错但没有单个记录标为 error，必须追加错误节点以供排查
+  if (hasError || runStatus === "error") {
+    const hasAnyError = records.some((r) => r.status === "error");
+    if (!hasAnyError) {
+      currentStep++;
+      const lastRec = records[records.length - 1];
+      const errorTurn = lastRec?.turnIndex || currentTurn || 1;
+      records.push({
+        id: `turn-${errorTurn}-step-${currentStep}-execution-error`,
+        turnIndex: errorTurn,
+        stepIndex: currentStep,
+        kind: "system",
+        name: "执行异常中断 (Execution Error)",
+        summary: "智能体运行异常中断或连接中断，点击查看诊断",
+        status: "error",
+        error: "智能体执行异常中断",
+        raw: { runStatus, hasError },
+      });
+    }
+  }
+
   return records;
 }
 

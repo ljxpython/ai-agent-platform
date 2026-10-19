@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import { formatThreadTime } from "@/utils/threads";
+import { copyDiagnosticPacket } from "@/services/observability/diagnostic-packet";
 import type { SessionTurnState } from "../composables/useChatSession";
 import type { BudgetViewModel } from "../budget/view-model";
 
@@ -20,7 +21,23 @@ const emit = defineEmits<{
   cancel: [];
   verifyStop: [];
   action: [type: "adjust_draft" | "new_thread"];
+  inspectDiagnostic: [];
 }>();
+
+const isCopied = ref(false);
+
+async function handleCopyDiagnostic() {
+  const res = await copyDiagnosticPacket({
+    customMessage: statusText.value,
+    error: props.error,
+  });
+  if (res.success) {
+    isCopied.value = true;
+    setTimeout(() => {
+      isCopied.value = false;
+    }, 2000);
+  }
+}
 
 function formatError(raw: string): string {
   if (raw.includes("runtime.workspace.unavailable")) {
@@ -37,6 +54,19 @@ function formatError(raw: string): string {
     return toolName
       ? `工具「${toolName}」已被项目策略禁用，无法执行`
       : "工具调用受限，已被项目策略禁用";
+  }
+  if (
+    raw === "runtime.execution_failed" ||
+    raw === "runtime_execution_failed"
+  ) {
+    return "Agent 执行未完成，可复制排障信息交由运维排查。";
+  }
+  if (
+    raw.startsWith("runtime.execution_failed:") ||
+    raw.startsWith("runtime_execution_failed:")
+  ) {
+    const detail = raw.slice(raw.indexOf(":") + 1).trim();
+    return detail ? `执行失败: ${detail}` : "Agent 执行失败";
   }
   return raw;
 }
@@ -295,6 +325,35 @@ const isBlue = computed(() => {
         @click="emit('cancel')"
       >
         {{ isInFlightHardStop ? "等待停止中..." : "取消" }}
+      </button>
+    </div>
+
+    <!-- 错误状态：查看详情与复制排障信息按钮 -->
+    <div
+      v-else-if="isErrorState && !isRunning"
+      class="flex items-center gap-2 shrink-0 self-end sm:self-center"
+    >
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-rose-600 rounded hover:bg-rose-700 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+        data-testid="status-view-diagnostic-btn"
+        @click="emit('inspectDiagnostic')"
+      >
+        <BaseIcon name="info" class="h-3.5 w-3.5" />
+        查看排障详情
+      </button>
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-700 bg-white border border-rose-300 rounded hover:bg-rose-50 dark:bg-dark-800 dark:border-rose-900/60 dark:text-rose-300 transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+        data-testid="status-copy-diagnostic-btn"
+        @click="handleCopyDiagnostic"
+      >
+        <BaseIcon
+          :name="isCopied ? 'check' : 'copy'"
+          class="h-3.5 w-3.5"
+          :class="isCopied ? 'text-emerald-500' : ''"
+        />
+        {{ isCopied ? "已复制" : "复制排障信息" }}
       </button>
     </div>
   </div>

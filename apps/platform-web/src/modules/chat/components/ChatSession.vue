@@ -21,6 +21,7 @@ import ChatContextDrawer from "./ChatContextDrawer.vue";
 import ChatStickyTaskPill from "./ChatStickyTaskPill.vue";
 import WorkspacePanel from "@/components/workspace/WorkspacePanel.vue";
 import ChatAgentStatusBar from "./ChatAgentStatusBar.vue";
+import DiagnosticDetailModal from "./DiagnosticDetailModal.vue";
 import { useRunBudget } from "../composables/useRunBudget";
 import { safeExtractBudgetSafetyError } from "../budget/view-model";
 import { getRunUsage } from "@/services/threads/usage.service";
@@ -1545,6 +1546,13 @@ function handleOpenUsagePanel() {
   activeView.value = "trajectory";
 }
 
+const showDiagnosticModal = ref(false);
+
+function handleOpenTrajectoryDiagnostics() {
+  trajectoryInspectorMode.value = "diagnostics";
+  activeView.value = "trajectory";
+}
+
 const chatMetrics = computed(() => {
   const allMsgs = displayedMessages.value;
   let turns = 0;
@@ -1645,8 +1653,12 @@ defineExpose({
   offloadConversation,
   clearOffloadState,
   offloadState,
+  isOffloadSupported: computed(
+    () => capabilities.value?.conversation_offloading === true,
+  ),
   canOffload: computed(() =>
     Boolean(
+      capabilities.value?.conversation_offloading === true &&
       session.threadId.value &&
       displayedMessages.value.length > 0 &&
       !session.busy.value &&
@@ -1961,7 +1973,14 @@ defineExpose({
           :is-running="isSessionRunning"
           :run-status="session.run.value?.status"
           :has-error="
-            Boolean(error || streamError || localError || session.error.value)
+            Boolean(
+              error ||
+              streamError ||
+              localError ||
+              session.error.value ||
+              turnState === 'error' ||
+              session.run.value?.status === 'error',
+            )
           "
           :models="models"
           :project-id="projectId"
@@ -1994,6 +2013,7 @@ defineExpose({
               @resume="handleResume"
               @verify-stop="handleVerifyStop"
               @action="handleBudgetAction"
+              @inspect-diagnostic="showDiagnosticModal = true"
             />
             <div
               v-if="
@@ -2460,6 +2480,21 @@ defineExpose({
       :project-id="projectId"
       :thread-id="threadId || ''"
       @close="showStopReportDrawer = false"
+    />
+    <DiagnosticDetailModal
+      v-model:show="showDiagnosticModal"
+      :project-id="projectId"
+      :thread-id="session.threadId.value || ''"
+      :run-id="selectedRunId || session.run.value?.run_id || null"
+      :error="
+        error ||
+        streamError ||
+        localError ||
+        session.error.value ||
+        (turnState === 'error' ? '执行异常或流式连接中断' : undefined)
+      "
+      :can-view-trajectory="true"
+      @open-trajectory="handleOpenTrajectoryDiagnostics"
     />
   </div>
 </template>

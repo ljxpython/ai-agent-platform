@@ -273,4 +273,25 @@ describe("trajectory-adapter", () => {
     expect(recordsWithoutMap[1].summary).toContain("备用模型");
     expect(recordsWithoutMap[1].summary).not.toContain("model-fallback-uuid");
   });
+
+  it("当判定出错但没有单步被标记为 error 时，应当自动追加错误兜底记录确保轨迹可追溯", () => {
+    const messages = [
+      {
+        type: "human",
+        content: "发起一个会报错的任务",
+      } as unknown as BaseMessage,
+      // 假设系统生成了普通的 system message，没有产生 assistant message 就挂了
+      {
+        type: "system",
+        content: "Runtime context initialized",
+      } as unknown as BaseMessage,
+    ];
+
+    const records = buildTrajectoryRecords(messages, [], false, "error", true);
+    // 应该包含 user, system(context), 以及追加的 execution-error 节点
+    const errorRec = records.find((r) => r.status === "error");
+    expect(errorRec).toBeDefined();
+    expect(errorRec?.name).toContain("执行异常中断");
+    expect(errorRec?.summary).toContain("智能体运行异常中断");
+  });
 });

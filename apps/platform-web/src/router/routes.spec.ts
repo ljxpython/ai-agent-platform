@@ -33,10 +33,10 @@ describe("workspace account routes", () => {
 });
 
 describe("workspace primary navigation routes", () => {
-  it("does not register retired knowledge or testcase workspaces", () => {
+  it("does not register retired testcase workspaces", () => {
     const paths = getWorkspaceChildren().map((route) => route.path);
 
-    expect(paths).not.toContain("projects/:projectId/knowledge");
+    expect(paths).toContain("projects/:projectId/knowledge");
     expect(paths).not.toContain("testcase");
     expect(paths).not.toContain("testcase-v2");
   });

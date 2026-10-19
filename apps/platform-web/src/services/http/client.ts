@@ -3,6 +3,7 @@ import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { env } from "@/config/env";
 import { notifyAccessDenied } from "@/services/auth/access-events";
 import { extractPlatformHttpError } from "@/utils/http-error";
+import { errorRingBuffer } from "@/services/observability/error-buffer";
 import {
   getAccessToken,
   getRefreshToken,
@@ -154,12 +155,29 @@ function createPlatformHttpClient() {
       if (originalRequest?._sessionGeneration !== getSessionGeneration())
         return Promise.reject(error);
 
+      const extracted = extractPlatformHttpError(error);
+      const headerReqId =
+        (error.response?.headers?.["x-request-id"] as string | undefined) ||
+        (error.response?.headers?.["x-correlation-id"] as string | undefined);
+      const effectiveRequestId = extracted.requestId || headerReqId;
+
+      errorRingBuffer.push({
+        type: "http",
+        status: extracted.status ?? error.response?.status,
+        requestId: effectiveRequestId,
+        url: originalRequest?.url,
+        method: originalRequest?.method?.toUpperCase(),
+        code: extracted.code,
+        message: extracted.message,
+        detail: extracted.details || extracted.extra,
+      });
+
       if (error.response?.status === 403 && typeof window !== "undefined") {
         notifyAccessDenied(
           originalRequest?.url || "/",
           originalRequest?.method || "GET",
           originalRequest?.headers?.get("x-project-id") as string | undefined,
-          extractPlatformHttpError(error).code,
+          extracted.code,
         );
       }
 

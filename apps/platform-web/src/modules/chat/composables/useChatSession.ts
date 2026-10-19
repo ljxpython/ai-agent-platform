@@ -37,6 +37,7 @@ import {
 } from "../offload-status";
 import { safeExtractBudgetSafetyError } from "../budget/view-model";
 import { useThreadStopControl } from "./useThreadStopControl";
+import { errorRingBuffer } from "@/services/observability/error-buffer";
 
 export type SessionTurnState =
   | "idle"
@@ -579,6 +580,26 @@ export function useChatSession(options: {
       } else {
         error.value = typeof cause === "string" ? cause : "请求失败，请重试";
       }
+
+      const inferredRequestId =
+        (cause as any)?.requestId ||
+        (cause as any)?.request_id ||
+        (run.value as any)?.metadata?.platform_trace_id ||
+        (run.value as any)?.metadata?.request_id;
+      const inferredCode =
+        (cause as any)?.code ||
+        (cause as any)?.error?.code ||
+        (run.value as any)?.error?.code;
+
+      errorRingBuffer.push({
+        type: "sse",
+        requestId:
+          typeof inferredRequestId === "string" ? inferredRequestId : undefined,
+        code: typeof inferredCode === "string" ? inferredCode : undefined,
+        message: error.value || "会话流执行异常",
+        detail: cause,
+        stack: cause instanceof Error ? cause.stack : undefined,
+      });
     }
   }
   let activeVerifyPromise: Promise<boolean> | undefined;
@@ -727,7 +748,7 @@ export function useChatSession(options: {
             if (!error.value && errorMsg) {
               error.value = errorMsg;
             }
-          } else {
+          } else if (!stream.error.value && !error.value) {
             error.value = "";
           }
           // 自愈状态机：若当前 run 已经处于非 active 终态，强制收敛流式与动作状态
@@ -1574,7 +1595,13 @@ export function useChatSession(options: {
       } else if (unwrapped.code === "runtime.context.capacity_unknown") {
         errMsg = "当前模型未配置上下文容量，请联系管理员配置";
       }
-      fail(new Error(errMsg));
+      const err = new Error(errMsg);
+      Object.assign(err, {
+        code: unwrapped.code,
+        requestId: unwrapped.requestId,
+        status: unwrapped.status,
+      });
+      fail(err);
       return false;
     } finally {
       streamInFlight.value = false;
