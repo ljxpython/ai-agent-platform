@@ -841,7 +841,7 @@ defineExpose({
             <!-- 权限策略选择器（录音进行中隐藏避让） -->
             <ThreadAccessPolicySelect
               v-if="projectId && !isVoiceActive"
-              :model-value="accessPolicy || 'review'"
+              :model-value="accessPolicy || 'full_access'"
               :disabled="
                 isRunning ||
                 hasBlockingInterrupt ||

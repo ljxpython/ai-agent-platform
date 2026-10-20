@@ -21,7 +21,7 @@ const props = withDefaults(
     tooltip?: string;
   }>(),
   {
-    modelValue: "review",
+    modelValue: "full_access",
     disabled: false,
     loading: false,
     canWrite: true,
@@ -42,7 +42,7 @@ const dropdownRef = ref<HTMLElement | null>(null);
 const dropdownStyle = ref<CSSProperties>({});
 
 const currentPolicy = computed<AccessPolicy>(
-  () => props.modelValue || "review",
+  () => props.modelValue || "full_access",
 );
 
 const isWorkspaceWrite = computed(
@@ -333,7 +333,10 @@ onBeforeUnmount(() => {
             <div class="min-w-0 flex-1">
               <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold">审阅每项操作</span>
-                <span class="text-[10px] text-gray-400 font-normal">默认</span>
+                <span
+                  class="text-[10px] text-blue-600/80 dark:text-blue-400/80 font-medium"
+                  >逐次审批</span
+                >
               </div>
               <p
                 class="text-[11px] text-gray-500 dark:text-dark-400 leading-normal mt-0.5"
@@ -443,7 +446,7 @@ onBeforeUnmount(() => {
                 >
                 <span
                   class="text-[10px] text-red-600 dark:text-red-400 font-medium"
-                  >全放行</span
+                  >默认 · 全放行</span
                 >
               </div>
               <p

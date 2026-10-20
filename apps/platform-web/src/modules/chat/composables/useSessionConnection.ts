@@ -63,7 +63,7 @@ export interface UseSessionConnectionOptions {
 
 export function useSessionConnection(options: UseSessionConnectionOptions) {
   const chatSessionStore = useChatSessionStore();
-  const accessPolicy = ref<AccessPolicy>("review");
+  const accessPolicy = ref<AccessPolicy>("full_access");
   const accessPolicyUpdating = ref(false);
   const accessThread = shallowRef<ChatThread>();
   const accessDenied = ref(false);
@@ -157,13 +157,20 @@ export function useSessionConnection(options: UseSessionConnectionOptions) {
     }
     if (thread?.metadata && typeof thread.metadata === "object") {
       const policy = (thread.metadata as Record<string, unknown>).access_policy;
-      if (policy === "workspace_write" || policy === "full_access") {
+      if (
+        policy === "workspace_write" ||
+        policy === "full_access" ||
+        policy === "review"
+      ) {
         accessPolicy.value = policy;
-      } else {
-        accessPolicy.value = "review";
+        return;
       }
-    } else {
+    }
+    // 未明确指定策略的存量或新会话：若无 full_access 权限则降级为 review，否则默认选中 full_access
+    if (thread && !hasThreadAction(thread, "full_access")) {
       accessPolicy.value = "review";
+    } else {
+      accessPolicy.value = "full_access";
     }
   }
 

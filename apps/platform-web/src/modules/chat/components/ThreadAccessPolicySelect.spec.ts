@@ -127,3 +127,29 @@ it("disables trigger button when disabled prop is set", async () => {
   );
   expect(trigger.element.disabled).toBe(true);
 });
+
+it("defaults to full_access when no modelValue is passed", async () => {
+  const wrapper = mount(ThreadAccessPolicySelect, {
+    attachTo: document.body,
+  });
+
+  try {
+    const trigger = wrapper.get('[data-testid="access-policy-trigger"]');
+    expect(trigger.text()).toContain("全权负责 (Full access)");
+
+    await trigger.trigger("click");
+    const fullOption = document.querySelector<HTMLButtonElement>(
+      '[data-testid="policy-option-full-access"]',
+    )!;
+    expect(fullOption).toBeTruthy();
+    expect(fullOption.textContent).toContain("默认 · 全放行");
+
+    const reviewOption = document.querySelector<HTMLButtonElement>(
+      '[data-testid="policy-option-review"]',
+    )!;
+    expect(reviewOption).toBeTruthy();
+    expect(reviewOption.textContent).toContain("逐次审批");
+  } finally {
+    wrapper.unmount();
+  }
+});

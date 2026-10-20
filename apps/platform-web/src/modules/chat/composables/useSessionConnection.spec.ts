@@ -29,7 +29,7 @@ describe("useSessionConnection", () => {
     scope.stop();
   });
 
-  it("initializes with default review access policy", () => {
+  it("initializes with default full_access access policy", () => {
     const threadId = ref<string | null>("thread-1");
     const canWrite = ref(true);
     const run = shallowRef(null);
@@ -68,7 +68,7 @@ describe("useSessionConnection", () => {
       }),
     );
 
-    expect(conn!.accessPolicy.value).toBe("review");
+    expect(conn!.accessPolicy.value).toBe("full_access");
     expect(conn!.accessDenied.value).toBe(false);
   });
 

@@ -7,10 +7,11 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-19
+**最后更新：** 2026-10-20
 
 ## 最近改动
 
+2026-10-20 | **前端会话访问策略默认调整为“全权负责 (Full access)”**：Chat 对话输入框与会话连接逻辑默认选中策略由 `"review"` 调整为 `"full_access"`；`ThreadAccessPolicySelect` 下拉菜单优化文案（“审阅每项操作”标记为逐次审批，“Full access”标记为默认·全放行）；新会话及未显式指定策略的草稿自动赋权全权负责，无权限时安全降级 review，存量指定策略严格保持；全量单测、vue-tsc 与构建 100% 绿灯。
 2026-10-19 | **LightRAG 工业级知识中台全量能力复刻与无缝集成全栈交付**：基于路线 C 方案，彻底根治第三方登录弹窗拦截与套娃布局。远端 `run_lightrag_webui_server.py` 服务端实装基于 `auth_handler` 的自动静默长效 JWT 签发与 `<head>` 首行同步注入，彻底消灭登录阻断；支持 `?embed=true` 隐藏多余外层 Header 与侧边栏；前端 `ProjectKnowledgePage.vue` 接入三大原生沉浸式视窗（Graph Studio 2.0 拓扑工坊、全参数智能问答工作台、Knowledge Hub 原生资产中枢）并支持双轨制切换；全量 150 测试套件单测 100% 绿灯，vue-tsc 0 错误，打包构建成功。
 2026-10-19 | **会话上下文整理与卸载能力 (Conversation Offloading) 闭环修复与默认开启**：在 `apps/runtime-service/.env.example` 与 `.env` 中默认启用 `AGENT_CONTEXT_MANAGEMENT_ENABLED=1`；修复 Runtime 建模层 `_with_context_capacity` 缺少 `max_output_tokens` 导致计算输入预算崩溃抛 `runtime.context.output_budget_unknown` 的缺陷（默认注入 4096 作为模型最大输出保障）；前端 `ChatSession.vue` 实装 Capability 门禁守卫，并在 `ChatPage` / `DearAgentPage` 提供明确不可用原因；修复 `useChatSession.ts` 错误透传，保留结构化 `code` 与 `requestId`，并在 `diagnostic-packet.ts` 补齐上下文整理相关机器码与恢复指引。
 
@@ -66,7 +67,7 @@
 |---|---|---|
 | runtime-service | 2026-10-15 | 记忆系统架构升级（Agent Memory System Upgrade）落地：异步后台提取解耦、Prescreen 成本门禁、中文 IDF+MMR 多样性召回、近重复合并与平滑软淘汰已实装，跨层 stats 输出闭环，33 项单测全绿；Agent显式按需挂载多MCP与多Server隔离；所属服务已停。 |
 | platform-api | 2026-10-19 | 引入多维 Run 错误分类器（run_error_classifier.py），对齐 open-swe 建立机器码与 Actionable 恢复建议体系；单元测试全绿。 |
-| platform-web | 2026-10-19 | 前端可观测性与端到端排障链路增强落地；LightRAG 工业级知识中台全量能力复刻（Graph Studio 2.0、Chat Studio、Knowledge Hub 纯净顶格渲染与无缝免登）及项目详情纯净化交付，全量单测 150 文件 880+ 项全绿，vue-tsc 0 错误，打包构建成功；所属服务已停。 |
+| platform-web | 2026-10-20 | 会话访问策略默认调整为“全权负责 (full_access)”闭环；LightRAG 工业级知识中台复刻、可观测性排障链路与排队自愈已实装，全量单测 150 文件 880+ 项全绿，vue-tsc 0 错误，打包构建成功；所属服务已停。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

@@ -976,7 +976,7 @@ it("supports draft state policy staging and sends PATCH before starting run on n
 
   try {
     await flushPromises();
-    expect(session.accessPolicy.value).toBe("review");
+    expect(session.accessPolicy.value).toBe("full_access");
 
     // 1. 草稿态预选 workspace_write
     const switched = await session.setAccessPolicy("workspace_write");
@@ -1068,7 +1068,7 @@ it("updates access policy for existing thread via API and handles failure gracef
   }
 });
 
-it("supports draft state full_access staging and keeps full_access after refresh", async () => {
+it("defaults to full_access in draft state and keeps full_access after refresh", async () => {
   const submitFn = vi.fn();
   mocks.stream.mockReturnValue({
     isLoading: ref(false),
@@ -1127,15 +1127,9 @@ it("supports draft state full_access staging and keeps full_access after refresh
 
   try {
     await flushPromises();
-    expect(session.accessPolicy.value).toBe("review");
-
-    // 1. 草稿态预选 full_access
-    const switched = await session.setAccessPolicy("full_access");
-    expect(switched).toBe(true);
     expect(session.accessPolicy.value).toBe("full_access");
-    expect(mocks.updateAccessPolicy).not.toHaveBeenCalled();
 
-    // 2. 发送首条消息，触发创建线程并补发 PATCH "full_access"
+    // 1. 发送首条消息，触发创建线程并补发 PATCH "full_access"
     await session.send("Build architecture design");
     await flushPromises();
 
