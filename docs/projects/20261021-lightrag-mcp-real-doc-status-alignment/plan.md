@@ -4,7 +4,7 @@
 用户在平台聊天界面询问“知识库中有哪些文档”时，Agent 调用 `mcp_list_project_knowledge_documents` 仅查出 3 份 PDF 文档（带有 `kd_` 前缀的临时伪造哈希 ID），而在远端 LightRAG 原生 WebUI（Knowledge Hub）中，该项目（`__default/11111111-1111-4111-8111-111111111111`）实打实索引了 13 份多模态文档（包含 Markdown、SVG、PNG、JSON、PDF，共 2,450 个实体和 3,890 条关系）。
 
 经老王暴躁且精准的源码审计与远端宿主机实测，确认根因如下：
-1. **MCP 假实现**：`/Users/lijiaxin/PyCharmMiscProject/LightRAG/gateway_mcp_server.py` 中的 `mcp_list_project_knowledge_documents` 未接入 LightRAG 底层真实的 `rag.doc_status` 存储，而是粗暴扫描本地 `project_dir / "managed_assets"` 文件夹；
+1. **MCP 假实现**：`<lightrag-repo>/gateway_mcp_server.py` 中的 `mcp_list_project_knowledge_documents` 未接入 LightRAG 底层真实的 `rag.doc_status` 存储，而是粗暴扫描本地 `project_dir / "managed_assets"` 文件夹；
 2. **两张皮数据源**：`managed_assets` 文件夹中仅存留了历史测试的 3 个旧 PDF，而真正被切片、构建图谱并持久化在 `kv_store_doc_status.json` 中的 13 份多模态资产完全被 MCP 视而不见；
 3. **假 ID 与假状态欺骗**：MCP 用 `uuid.uuid5` 当场伪造 `kd_xxx` 假 ID，并将状态硬编码为 `ready`，导致 Agent 认知严重失真，多模态能力全面丧失；
 4. **Scope 静态偷懒反模式**：`gateway_mcp_server.py` 中 `_get_current_scope()` 居然写死为 `resolve_default_or_first_scope()`，未从当前 FastMCP 请求 Header 中按请求解析 Bearer JWT，导致无法实现真正的动态多项目隔离！

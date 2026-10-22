@@ -57,7 +57,7 @@
 │   [ 懒加载命名空间初始化 ] ──▶ 自动校验/创建专属物理路径与向量 Collection     │
 │                                │                                       │
 │                                ▼                                       │
-│       /home/ubuntu/rag-data/{tenant_id}/{project_id}/{kb_id}/          │
+│       /home/<user>/rag-data/{tenant_id}/{project_id}/{kb_id}/          │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -86,8 +86,8 @@
 
 #### 3. RAG-Anything-Use：升级 Token 校验器支持无状态动态验签与懒加载
 - **文件：**
-  - `/Users/lijiaxin/PyCharmMiscProject/research/rag-anything-use/src/knowledge/auth.py`
-  - `/Users/lijiaxin/PyCharmMiscProject/research/rag-anything-use/src/knowledge/jobs.py`
+  - `<rag-anything-repo>/src/knowledge/auth.py`
+  - `<rag-anything-repo>/src/knowledge/jobs.py`
 - **改动：**
   - 在 `KnowledgeTokenVerifier.verify_token(token)` 中引入 JWT/HMAC 验签逻辑：
     - 若传入静态 Token（在 `KNOWLEDGE_MCP_TOKEN_SCOPES_JSON` 中），按原逻辑放行；

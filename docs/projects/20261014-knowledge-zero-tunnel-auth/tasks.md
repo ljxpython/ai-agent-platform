@@ -11,7 +11,7 @@
 
 ### Task 1.2: 同步代码并更新远端服务器配置
 - **改动内容：** 将加固后的 `operation_auth.py` 同步到远端服务器 `sshmy2`；在远端 `.env` 中设置 `KNOWLEDGE_AUTHORIZE_URL='local'`；重启 `rag-service` 服务。
-- **代码位置：** 远端 `/home/ubuntu/PyCharmMiscProject/rag-anything-use/src/knowledge/operation_auth.py` & `.env`
+- **代码位置：** 远端 `/home/<user>/PyCharmMiscProject/rag-anything-use/src/knowledge/operation_auth.py` & `.env`
 - **预期结果：** 远端服务以本地自治模式正常运行，状态为 active。
 - **验证项：** 检查 `systemctl status rag-service`，验证日志中无初始化异常。
 - **状态：** `[x]` 已完成

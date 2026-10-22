@@ -432,7 +432,7 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
             async def __aiter__(self):
                 yield b"start"
                 if self.mode == "overflow":
-                    yield b"x" * (20 * 1024 * 1024)
+                    yield b"x" * (200 * 1024 * 1024)
                 if self.mode == "disconnect":
                     raise httpx.ReadError("connection lost")
 
@@ -453,7 +453,7 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
                 if mode == "bad_mime":
                     headers["content-type"] = "application/x-unsupported"
                 if mode == "bad_length":
-                    headers["content-length"] = str(20 * 1024 * 1024 + 1)
+                    headers["content-length"] = str(200 * 1024 * 1024 + 1)
                 transport = httpx.MockTransport(
                     lambda request, _headers=headers, _stream=stream: httpx.Response(
                         200, headers=_headers, stream=_stream

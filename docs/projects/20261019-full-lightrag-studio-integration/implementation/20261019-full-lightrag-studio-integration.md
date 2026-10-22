@@ -7,8 +7,8 @@
 
 ### 2.1 远端服务加固 (`run_lightrag_webui_server.py`)
 - **文件路径：**
-  - 本地：`/Users/lijiaxin/PyCharmMiscProject/LightRAG/run_lightrag_webui_server.py`
-  - 远端：`sshmy2:/home/ubuntu/lightrag-v2-exploration/LightRAG/run_lightrag_webui_server.py`
+  - 本地：`<lightrag-repo>/run_lightrag_webui_server.py`
+  - 远端：`sshmy2:/home/<user>/lightrag-v2-exploration/LightRAG/run_lightrag_webui_server.py`
 - **改动逻辑：**
   1. **SSO 自动签发长效合规 JWT：** 针对 WebUI 页面请求，在 `TenantResolutionMiddleware` 中通过官方 `auth_handler.create_token(username="admin", role="admin", custom_expire_hours=24*365)` 生成合法三段式 JWT。
   2. **`<head>` 首行同步注入：** 在 HTML `<head>` 开头注入内联 JS，同步写入 `localStorage.setItem('LIGHTRAG-API-TOKEN', ...)` 与 `localStorage.setItem('LIGHTRAG-PREVIOUS-USER', 'admin')`，并在 React 框架启动前根据 URL 参数 `tab` 同步设置 `lightrag-settings-storage` 的 `currentTab`。

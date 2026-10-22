@@ -24,7 +24,7 @@
   3. 进入该项目，进入知识库面板，确认文档列表空态加载成功；
   4. 上传一份测试文档（如 PDF 或 Markdown），确认上传排队与入库成功；
   5. 在该项目下开启新对话，询问“知识库里有哪些文档？”，确认 Agent 自动调用 `mcp_list_project_knowledge_documents` 并清晰回答；
-  6. 登录远端 `sshmy2`，检查 `/home/ubuntu/rag-data/__default/{新项目ID}/`，确认文件物理落盘且权限正确。
+  6. 登录远端 `sshmy2`，检查 `/home/<user>/rag-data/__default/{新项目ID}/`，确认文件物理落盘且权限正确。
 
 ## 验证记录
 

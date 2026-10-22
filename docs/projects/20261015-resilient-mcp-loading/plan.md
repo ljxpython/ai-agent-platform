@@ -7,7 +7,7 @@
 2. **硬编码的强一致性检查**：当前存在极其生硬的逻辑 `if names - set(actual): raise RuntimeResolutionError("runtime.mcp.required_unavailable")`。当远程 MCP 服务的工具名称有轻微调整、工具缺失或未能全部就绪时，Runtime 会主动抛出异常自杀，直接拒绝为用户提供服务。
 3. **运行时异常未捕获导致链路崩溃**：工具调用期间如果遇到外部网络抖动或远端 5xx，部分非 transport 异常容易逃逸，导致 LangGraph 节点抛错并触发顶层的 `runtime.execution_failed`。
 
-而在工业级项目（如 `/Users/lijiaxin/PyCharmMiscProject/research/open-swe`）中，成熟的做法是**“外部集成工具作为可选增强，其可用性绝不应阻断核心 Agent 的正常运转”**。
+而在工业级项目（如 `open-swe`）中，成熟的做法是**“外部集成工具作为可选增强，其可用性绝不应阻断核心 Agent 的正常运转”**。
 
 ## 目标
 

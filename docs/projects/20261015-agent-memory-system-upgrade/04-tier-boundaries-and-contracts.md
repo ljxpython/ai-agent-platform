@@ -48,7 +48,7 @@
 #### ✅ 需要做的事
 1. **容量状态由"硬报错"转变为"健康进度条"**：
    - 当前页面：若容量打满，操作直接弹红报错；
-   - 改造后：在 [DearAgentMemoryPage.vue](file:///Users/lijiaxin/.gemini/antigravity/worktrees/ai-agent-platform/analyze_deer_flow_memory/apps/platform-web/src/modules/dear-agent/pages/DearAgentMemoryPage.vue) 顶部增加轻量级容量进度条（如 `78/100 条`），当接近 100 条时展示提示文字："系统将自动平滑整理低频事实"，消除用户的打满焦虑。
+   - 改造后：在 [DearAgentMemoryPage.vue](apps/platform-web/src/modules/dear-agent/pages/DearAgentMemoryPage.vue) 顶部增加轻量级容量进度条（如 `78/100 条`），当接近 100 条时展示提示文字："系统将自动平滑整理低频事实"，消除用户的打满焦虑。
 2. **近重复合并与高置信度候选标签增强**：
    - 候选卡片支持显示增强标签（如"近重复已合并"、"置信度: 极高"），让用户在点击"采纳 (Accept)"时心里更有底。
 3. **搜索交互防抖 (Debounce)**：

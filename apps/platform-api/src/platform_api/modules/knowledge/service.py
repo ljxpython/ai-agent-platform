@@ -101,7 +101,9 @@ class KnowledgeService:
         resource = self.settings.knowledge_mcp_bindings.get(
             f"{self.tenant_id}:{project_id}"
         )
-        connection = self.settings.knowledge_connections.get(resource)
+        connection = (
+            self.settings.knowledge_connections.get(resource) if resource else None
+        )
         if connection is not None and connection.scope != {
             "tenant_id": self.tenant_id,
             "project_id": project_id,
@@ -109,7 +111,7 @@ class KnowledgeService:
             raise NotFoundError(
                 code="knowledge_not_found", message="Knowledge resource not found"
             )
-        if connection is None and self.settings.knowledge_secret:
+        if connection is None and resource is None and self.settings.knowledge_secret:
             from platform_api.config import KnowledgeConnection
             from platform_api.modules.knowledge.authorization import mint_knowledge_jwt
 

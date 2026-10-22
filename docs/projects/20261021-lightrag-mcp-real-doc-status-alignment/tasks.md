@@ -10,11 +10,11 @@
 
 ### 阶段 2：LightRAG 改造与本地验证
 - [x] **Task 2.1: 重构 `gateway_mcp_server.py` 的动态请求 Scope 提取**
-  - 代码位置：`/Users/lijiaxin/PyCharmMiscProject/LightRAG/gateway_mcp_server.py`
+  - 代码位置：`<lightrag-repo>/gateway_mcp_server.py`
   - 改动内容：使用 FastMCP 官方 `get_http_headers` / `get_http_request` 提取 Bearer Token，动态解出 `tenant_id`、`project_id` 与 `project_name`。彻底根除 Starlette 中间件在 SSE 流式响应下 ContextVar 被提前 reset 的隐蔽缺陷。
   - 同步调用 `mgr.save_project_meta` 确保 `meta.json` 里的项目名称与平台实时对齐。
 - [x] **Task 2.2: 重构 `mcp_list_project_knowledge_documents` 与状态工具**
-  - 代码位置：`/Users/lijiaxin/PyCharmMiscProject/LightRAG/gateway_mcp_server.py`、`lightrag/kg/json_doc_status_impl.py`、`lightrag/kg/json_kv_impl.py`
+  - 代码位置：`<lightrag-repo>/gateway_mcp_server.py`、`lightrag/kg/json_doc_status_impl.py`、`lightrag/kg/json_kv_impl.py`
   - 改动内容：彻底移除扫描 `managed_assets` 目录的老逻辑；通过 `acquire_read_lease(tenant_id, project_id)` 获取专属 `rag` 实例；直连 `rag.doc_status.get_docs_paginated` 读取真实的文档记录；
   - 核心修复：在 `JsonDocStatusStorage` 与 `JsonKVStorage` 中注入基于 `working_dir` 的 md5 隔离命名空间（`f"{wdir_tag}_{self.namespace}"`），彻底铲除跨项目共享内存导致的数据串台重大 Bug。
 - [x] **Task 2.3: 本地单测验证多项目隔离与文档清单**
@@ -22,7 +22,7 @@
 
 ### 阶段 3：远端 `sshmy2` 生产部署与服务验证
 - [x] **Task 3.1: 代码同步至远端服务器 `sshmy2`**
-  - 操作：将修改后的 `gateway_mcp_server.py`、`json_doc_status_impl.py`、`json_kv_impl.py` 同步到 `sshmy2:/home/ubuntu/lightrag-v2-exploration/LightRAG/`。
+  - 操作：将修改后的 `gateway_mcp_server.py`、`json_doc_status_impl.py`、`json_kv_impl.py` 同步到 `sshmy2:/home/<user>/lightrag-v2-exploration/LightRAG/`。
 - [x] **Task 3.2: 重启远端 `rag-service.service` 并校验服务健康**
   - 操作：执行 `systemctl restart rag-service.service`，检查日志确认服务 active 且 8 个 MCP 工具全部注册。
 

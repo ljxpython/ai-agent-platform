@@ -14,7 +14,7 @@
 
 ## 改动范围
 - **影响服务：**
-  - 远端 LightRAG 核心服务（`/Users/lijiaxin/PyCharmMiscProject/LightRAG`）：
+  - 远端 LightRAG 核心服务（`<lightrag-repo>`）：
     - `run_lightrag_webui_server.py`：加固 SSO 静默握手机制，签发合法 JWT，消除登录拦截；增加 `embed` 沉浸模式支持；
     - `lightrag_webui`：支持 Tab 直达路由穿透（`#/graph`、`#/retrieval`、`#/documents`）与自适应布局；
   - `platform-web`：

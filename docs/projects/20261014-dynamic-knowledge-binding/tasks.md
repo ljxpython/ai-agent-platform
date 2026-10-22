@@ -6,7 +6,7 @@
 - **改动内容：**
   - 扩展 `KnowledgeTokenVerifier.verify_token`，增加 JWT (HS256) 解密验签分支；
   - 提取 `tenant_id`, `project_id`, `knowledge_base_id`，并校验时间戳有效期。
-- **代码位置：** `/Users/lijiaxin/PyCharmMiscProject/research/rag-anything-use/src/knowledge/auth.py`
+- **代码位置：** `<rag-anything-repo>/src/knowledge/auth.py`
 - **预期结果：** 传入合法签名的 JWT 时，能正确解析出 `KnowledgeScope` 并放行；篡改或过期 Token 被 401 拦截。
 - **验证项：** 编写单元测试覆盖静态 Token、动态合法 JWT、篡改 Token、过期 Token 四种场景。
 - **状态：** `[x]` 已完成 (2026-10-14) 见 test_knowledge_security.py::test_dynamic_jwt_token_verification_and_ensure_project
@@ -15,7 +15,7 @@
 - **改动内容：**
   - 在 `KnowledgeJobStore` 增加 `ensure_project(knowledge_base_id, tenant_id, project_id)`；
   - 若收到未见过的合法 `knowledge_base_id`，自动在本地 SQLite/磁盘创建对应绑定与目录结构。
-- **代码位置：** `/Users/lijiaxin/PyCharmMiscProject/research/rag-anything-use/src/knowledge/jobs.py`
+- **代码位置：** `<rag-anything-repo>/src/knowledge/jobs.py`
 - **预期结果：** 首次带新 project_id 访问时，不报错，自动生成对应目录并就绪。
 - **验证项：** 单元测试模拟全新项目首次访问并提交/查询文档。
 - **状态：** `[x]` 已完成 (2026-10-14)
@@ -69,7 +69,7 @@
 ### Task 3.1: 将 RAG 代码同步并部署至远端 Ubuntu (sshmy2)
 - **改动内容：**
   - 将本地 `rag-anything-use` 升级代码同步至 `sshmy2`；
-  - 更新远端 `/home/ubuntu/PyCharmMiscProject/rag-anything-use/.env` 确保配置了统一的 `KNOWLEDGE_AUTHORIZATION_SECRET`；
+  - 更新远端 `/home/<user>/PyCharmMiscProject/rag-anything-use/.env` 确保配置了统一的 `KNOWLEDGE_AUTHORIZATION_SECRET`；
   - 平滑重启 `rag-service.service`；
   - 补齐 `mcp_list_project_knowledge_documents` 与 `mcp_get_project_knowledge_document_status` 前缀别名；
   - 在 `mcp_config.py` 中将动态知识库工具纳入 `configured_mcp_names()`，解决动态网关工具未暴露的问题；

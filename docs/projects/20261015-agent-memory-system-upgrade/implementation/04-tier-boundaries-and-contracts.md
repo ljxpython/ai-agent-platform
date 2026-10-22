@@ -13,21 +13,21 @@
 ## 2. 详细改动清单
 
 ### 2.1 运行时服务 (`apps/runtime-service`)
-- **[memory.py](file:///Users/lijiaxin/.gemini/antigravity/worktrees/ai-agent-platform/analyze_deer_flow_memory/apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py)**：
+- **[memory.py](apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py)**：
   - 在 `project_document()` 中动态计算并注入 `stats` 结构；
   - 导出 `capacity_status`（<85 条为 `healthy`，85~99 条为 `near_capacity`，>=100 条为 `evicting` 平滑整理）；
-- **[dear_memory.py](file:///Users/lijiaxin/.gemini/antigravity/worktrees/ai-agent-platform/analyze_deer_flow_memory/apps/runtime-service/src/runtime_service/http/dear_memory.py)**：
+- **[dear_memory.py](apps/runtime-service/src/runtime_service/http/dear_memory.py)**：
   - 在 HTTP 响应外层 `envelope()` 中挂载 `stats` 字典，确保跨层兼容。
 
 ### 2.2 控制面后端 (`apps/platform-api`)
-- **[http.py](file:///Users/lijiaxin/.gemini/antigravity/worktrees/ai-agent-platform/analyze_deer_flow_memory/apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py)**：
+- **[http.py](apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py)**：
   - 新增 Pydantic 模型 `MemoryStatsView`；
   - 在 `MemoryDocumentView` 与 `MemoryView` 中新增可选属性 `stats: MemoryStatsView | None = None`，保证序列化时字段完整向下透传。
 
 ### 2.3 平台前端 (`apps/platform-web`)
-- **[memory.service.ts](file:///Users/lijiaxin/.gemini/antigravity/worktrees/ai-agent-platform/analyze_deer_flow_memory/apps/platform-web/src/services/dear-agent/memory.service.ts)**：
+- **[memory.service.ts](apps/platform-web/src/services/dear-agent/memory.service.ts)**：
   - 新增 `MemoryStats` 接口定义，在 `MemoryDocument` 与 `MemoryView` 中加入 `stats?: MemoryStats | null`；
-- **[DearAgentMemoryPage.vue](file:///Users/lijiaxin/.gemini/antigravity/worktrees/ai-agent-platform/analyze_deer_flow_memory/apps/platform-web/src/modules/dear-agent/pages/DearAgentMemoryPage.vue)**：
+- **[DearAgentMemoryPage.vue](apps/platform-web/src/modules/dear-agent/pages/DearAgentMemoryPage.vue)**：
   - 增加 `capacityRatio`、`capacityStatus`、`capacityStatusText`、`capacityBadgeClass`、`capacityBarClass` 计算属性；
   - 在事实卡片上方集成健康进度条与彩色状态徽标；
   - 增加超额平滑整理提示文案，提升用户交互体验。

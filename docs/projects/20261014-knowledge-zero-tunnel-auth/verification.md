@@ -66,11 +66,11 @@
     ```
   - 状态：Exit code 0 绿灯通过。
   - 截图证据链存档：
-    - 登录界面：[`e2e_01_login_page.png`](file:///Users/lijiaxin/.gemini/antigravity/brain/ac2f2ace-73d4-4dc0-93b4-f07463308ea7/e2e_01_login_page.png)
-    - 附件上传：[`e2e_04_attachment_uploaded.png`](file:///Users/lijiaxin/.gemini/antigravity/brain/ac2f2ace-73d4-4dc0-93b4-f07463308ea7/e2e_04_attachment_uploaded.png)
-    - 知识库勾选：[`e2e_05_kb_checked.png`](file:///Users/lijiaxin/.gemini/antigravity/brain/ac2f2ace-73d4-4dc0-93b4-f07463308ea7/e2e_05_kb_checked.png)
-    - 消息发送：[`e2e_07_message_sent.png`](file:///Users/lijiaxin/.gemini/antigravity/brain/ac2f2ace-73d4-4dc0-93b4-f07463308ea7/e2e_07_message_sent.png)
-    - 最终结果：[`e2e_10_final_result.png`](file:///Users/lijiaxin/.gemini/antigravity/brain/ac2f2ace-73d4-4dc0-93b4-f07463308ea7/e2e_10_final_result.png)（清晰展示召回小萝卜手机号 `13688888888` 与 `吉林大学`）
+    - 登录界面：`e2e_01_login_page.png`
+    - 附件上传：`e2e_04_attachment_uploaded.png`
+    - 知识库勾选：`e2e_05_kb_checked.png`
+    - 消息发送：`e2e_07_message_sent.png`
+    - 最终结果：`e2e_10_final_result.png`（清晰展示召回小萝卜手机号 `13688888888` 与 `吉林大学`）
 
 #### 完成度判定
 - **当前状态：** `done`

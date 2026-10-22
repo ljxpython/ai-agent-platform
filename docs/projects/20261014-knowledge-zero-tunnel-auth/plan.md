@@ -41,7 +41,7 @@
 - **理由：** 既贯彻了无网络依赖的本地自治原则，又完整复用了所有防篡改校验规则。
 
 #### 2. 远端服务配置与环境变量收尾
-- **文件：** 远端 `/home/ubuntu/PyCharmMiscProject/rag-anything-use/.env`
+- **文件：** 远端 `/home/<user>/PyCharmMiscProject/rag-anything-use/.env`
 - **改动：** 将 `KNOWLEDGE_AUTHORIZE_URL` 配置为 `'local'`。
 - **理由：** 明确声明本节点使用本地自治授权，断绝向外发起的反向网络回调。
 
