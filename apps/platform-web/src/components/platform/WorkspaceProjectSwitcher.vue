@@ -77,7 +77,7 @@ async function selectProject(projectId: string) {
   try {
     if (typeof route.params.projectId === "string") {
       const section = route.path.match(
-        /\/projects\/[^/]+\/(agents|chat|models|graphs|members|usage)/,
+        /\/projects\/[^/]+\/(agents|chat|models|graphs|knowledge|scheduled-tasks|dear-agent|dear-agent-skills|dear-agent-artifacts|dear-agent-memory|members|usage|thread-governance)/,
       )?.[1];
       await router.replace(
         `/workspace/projects/${encodeURIComponent(projectId)}${section ? `/${section}` : ""}`,

@@ -6,6 +6,7 @@ import type {
 } from "../../trajectory/types";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import MarkdownContent from "@/components/platform/MarkdownContent.vue";
+import { copyDiagnosticPacket } from "@/services/observability/diagnostic-packet";
 
 const props = defineProps<{
   record: TrajectoryRecord | null;
@@ -13,7 +14,24 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: [];
+  "inspect-diagnostic": [];
 }>();
+
+const copiedDiagnostic = ref(false);
+
+async function handleCopyDiagnostic() {
+  const msg = props.record?.error || props.record?.summary || "";
+  const res = await copyDiagnosticPacket({
+    customMessage: msg,
+    error: props.record?.error,
+  });
+  if (res.success) {
+    copiedDiagnostic.value = true;
+    setTimeout(() => {
+      copiedDiagnostic.value = false;
+    }, 2000);
+  }
+}
 
 type DetailTab = "summary" | "preview" | "raw";
 
@@ -231,14 +249,52 @@ async function handleCopy(text: string) {
           </div>
         </dl>
 
-        <!-- 错误提示块 -->
+        <!-- 错误提示与就地排障卡片 -->
         <div
-          v-if="record.error"
-          class="rounded-lg border border-red-200 bg-red-50/80 p-3 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+          v-if="record.error || record.status === 'error'"
+          class="rounded-lg border border-red-200 bg-red-50/80 p-3.5 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 space-y-2.5 shadow-xs"
         >
-          <div class="font-semibold text-xs mb-1">执行异常</div>
-          <div class="font-mono text-[11px] whitespace-pre-wrap break-all">
-            {{ record.error }}
+          <div class="flex items-center justify-between">
+            <span class="font-semibold text-xs flex items-center gap-1.5">
+              <BaseIcon name="alert" class="h-4 w-4 text-red-500" />
+              <span>执行异常诊断 (Execution Error)</span>
+            </span>
+            <span
+              class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200 font-semibold"
+            >
+              Error
+            </span>
+          </div>
+
+          <div
+            class="font-mono text-xs text-red-800 dark:text-red-200 whitespace-pre-wrap break-words leading-relaxed bg-white/70 dark:bg-dark-900/60 p-2.5 rounded border border-red-100 dark:border-red-900/40"
+          >
+            {{ record.error || record.summary }}
+          </div>
+
+          <div class="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-rose-600 rounded-md hover:bg-rose-700 transition-colors shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+              data-testid="inspector-view-diagnostic-btn"
+              @click="emit('inspect-diagnostic')"
+            >
+              <BaseIcon name="info" class="h-3.5 w-3.5" />
+              查看排障详情
+            </button>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-rose-700 bg-white border border-rose-300 rounded-md hover:bg-rose-50 dark:bg-dark-800 dark:border-rose-900/60 dark:text-rose-300 transition-colors shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+              data-testid="inspector-copy-diagnostic-btn"
+              @click="handleCopyDiagnostic"
+            >
+              <BaseIcon
+                :name="copiedDiagnostic ? 'check' : 'copy'"
+                class="h-3.5 w-3.5"
+                :class="copiedDiagnostic ? 'text-emerald-500' : ''"
+              />
+              {{ copiedDiagnostic ? "已复制" : "复制排障信息" }}
+            </button>
           </div>
         </div>
 
@@ -325,6 +381,28 @@ async function handleCopy(text: string) {
 
       <!-- 2. Preview Tab (全幅富文本) -->
       <div v-else-if="activeTab === 'preview'" class="space-y-3">
+        <!-- 错误态顶置诊断卡片 -->
+        <div
+          v-if="record.error || record.status === 'error'"
+          class="rounded-lg border border-red-200 bg-red-50/80 p-3 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 space-y-2 mb-3"
+        >
+          <div class="flex items-center justify-between text-xs font-semibold">
+            <span class="flex items-center gap-1.5">
+              <BaseIcon name="alert" class="h-4 w-4 text-red-500" />
+              <span>检测到执行异常</span>
+            </span>
+            <button
+              type="button"
+              class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-white bg-rose-600 rounded hover:bg-rose-700 transition-colors cursor-pointer"
+              data-testid="preview-view-diagnostic-btn"
+              @click="emit('inspect-diagnostic')"
+            >
+              <BaseIcon name="info" class="h-3.5 w-3.5" />
+              查看排障详情
+            </button>
+          </div>
+        </div>
+
         <div
           class="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-dark-800"
         >

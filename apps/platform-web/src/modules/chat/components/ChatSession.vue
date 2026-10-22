@@ -620,6 +620,45 @@ const runBudget = useRunBudget(stream, {
   historicalStopCode: historicalBudgetStopCode,
 });
 
+const isStatusBarDismissed = ref(false);
+
+watch([() => props.threadId, () => isSessionRunning.value], ([, running]) => {
+  if (running) {
+    isStatusBarDismissed.value = false;
+  }
+});
+
+watch(
+  () => props.threadId,
+  () => {
+    isStatusBarDismissed.value = false;
+  },
+);
+
+const resolvedErrorMessage = computed(() => {
+  if (runBudget.budget.value?.title && runBudget.budget.value?.description) {
+    return `${runBudget.budget.value.title}：${runBudget.budget.value.description}`;
+  }
+  if (error.value) return String(error.value);
+  if (streamError.value) return String(streamError.value);
+  if (localError.value) return String(localError.value);
+  if (session.error.value) return String(session.error.value);
+  return "";
+});
+
+const hasActiveErrorState = computed(() => {
+  if (isSessionRunning.value) return false;
+  return Boolean(
+    error.value ||
+    streamError.value ||
+    localError.value ||
+    session.error.value ||
+    runBudget.budget.value?.isTerminal ||
+    turnState.value === "error" ||
+    session.run.value?.status === "error",
+  );
+});
+
 // 首屏/刷新历史终态静默对账：当 Run 处于终态 error 且本地缺少原因时发起一次性查询
 watch(
   [
@@ -1972,16 +2011,8 @@ defineExpose({
           :calls="snapshotMessages ? [] : calls"
           :is-running="isSessionRunning"
           :run-status="session.run.value?.status"
-          :has-error="
-            Boolean(
-              error ||
-              streamError ||
-              localError ||
-              session.error.value ||
-              turnState === 'error' ||
-              session.run.value?.status === 'error',
-            )
-          "
+          :has-error="hasActiveErrorState"
+          :error-message="resolvedErrorMessage"
           :models="models"
           :project-id="projectId"
           :thread-id="session.threadId.value || ''"
@@ -1991,6 +2022,7 @@ defineExpose({
           :can-read="session.canRead.value"
           :initial-inspector-mode="trajectoryInspectorMode"
           @select-run="selectedRunId = $event"
+          @inspect-diagnostic="showDiagnosticModal = true"
         />
         <div
           v-else
@@ -2001,6 +2033,7 @@ defineExpose({
         >
           <div class="pw-chat-stream-content space-y-6">
             <ChatAgentStatusBar
+              v-if="!isStatusBarDismissed"
               class="sticky top-0 z-10 mb-4"
               :is-running="isSessionRunning"
               :is-interrupted="isSessionInterrupted"
@@ -2014,6 +2047,7 @@ defineExpose({
               @verify-stop="handleVerifyStop"
               @action="handleBudgetAction"
               @inspect-diagnostic="showDiagnosticModal = true"
+              @dismiss="isStatusBarDismissed = true"
             />
             <div
               v-if="
@@ -2298,6 +2332,41 @@ defineExpose({
         @close="showWorkspace = false"
         @add-to-chat="handleAddToChat"
       />
+    </div>
+    <!-- 当顶部状态栏被关闭收起后，在输入框上方常驻轻量排障入口 -->
+    <div
+      v-if="
+        isStatusBarDismissed && hasActiveErrorState && activeView === 'chat'
+      "
+      class="mx-4 mb-2 flex items-center justify-between rounded-lg border border-red-200/90 bg-red-50/80 px-3.5 py-1.5 text-xs text-red-700 shadow-2xs dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+      data-testid="bottom-mini-diagnostic-capsule"
+    >
+      <div class="flex items-center gap-2 truncate min-w-0">
+        <BaseIcon name="alert" class="h-3.5 w-3.5 text-red-500 shrink-0" />
+        <span class="truncate font-medium">
+          {{ resolvedErrorMessage || "上一回合执行异常已受限停机" }}
+        </span>
+      </div>
+      <div class="flex items-center gap-2.5 shrink-0 ml-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1 font-semibold text-rose-700 hover:text-rose-900 dark:text-rose-300 dark:hover:text-rose-100 underline underline-offset-2 cursor-pointer"
+          data-testid="bottom-mini-view-diagnostic-btn"
+          @click="showDiagnosticModal = true"
+        >
+          <BaseIcon name="info" class="h-3.5 w-3.5" />
+          查看排障详情
+        </button>
+        <span class="text-gray-300 dark:text-dark-700">|</span>
+        <button
+          type="button"
+          class="text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-dark-200 cursor-pointer"
+          title="恢复展开完整状态栏"
+          @click="isStatusBarDismissed = false"
+        >
+          恢复状态栏
+        </button>
+      </div>
     </div>
     <ChatComposer
       ref="composerRef"

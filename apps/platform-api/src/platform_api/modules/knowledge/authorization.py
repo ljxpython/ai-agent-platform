@@ -42,6 +42,7 @@ def mint_knowledge_jwt(
     project_id: str,
     knowledge_base_id: str,
     ttl_seconds: int = 86400,
+    project_name: str | None = None,
 ) -> str:
     import jwt
 
@@ -55,6 +56,8 @@ def mint_knowledge_jwt(
         "iss": "platform-api",
         "aud": "rag-service",
     }
+    if project_name:
+        payload["project_name"] = str(project_name)
     return jwt.encode(payload, secret, algorithm="HS256")
 
 

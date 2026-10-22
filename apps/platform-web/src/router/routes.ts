@@ -30,12 +30,6 @@ const workspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
-    path: ":pathMatch(.*)*",
-    name: "workspace-not-found",
-    component: () => import("@/views/workspace/AccessUnavailableView.vue"),
-    meta: { title: "页面不存在" },
-  },
-  {
     path: "projects/:projectId/agents",
     name: "workspace-agents",
     component: () => import("@/modules/agents/pages/AgentsPage.vue"),
@@ -357,6 +351,12 @@ const workspaceChildren: RouteRecordRaw[] = [
       permissionProjectSource: "route",
     },
   },
+  {
+    path: ":pathMatch(.*)*",
+    name: "workspace-not-found",
+    component: () => import("@/views/workspace/AccessUnavailableView.vue"),
+    meta: { title: "页面不存在" },
+  },
 ];
 
 const navigation: Record<
@@ -459,11 +459,19 @@ for (const route of workspaceChildren) {
 
 export const routes: RouteRecordRaw[] = [
   {
-    path: "/:pathMatch(.*)*",
-    redirect: "/workspace/not-found",
+    path: "/",
+    redirect: "/workspace",
   },
   {
-    path: "/",
+    path: "/projects",
+    redirect: "/workspace/projects",
+  },
+  {
+    path: "/overview",
+    redirect: "/workspace/overview",
+  },
+  {
+    path: "/chat",
     redirect: "/workspace",
   },
   {
@@ -486,5 +494,9 @@ export const routes: RouteRecordRaw[] = [
     path: "/workspace",
     component: () => import("@/layouts/WorkspaceLayout.vue"),
     children: workspaceChildren,
+  },
+  {
+    path: "/:pathMatch(.*)*",
+    redirect: "/workspace/not-found",
   },
 ];

@@ -10,6 +10,7 @@ def build_knowledge_binding(
     thread_id: str,
     knowledge_secret: str | None = None,
     gateway_url: str | None = None,
+    project_name: str | None = None,
 ) -> dict:
     resource = mapping.get(f"{tenant_id}:{project_id}")
     if resource is None and not knowledge_secret:
@@ -34,6 +35,7 @@ def build_knowledge_binding(
             tenant_id=tenant_id,
             project_id=project_id,
             knowledge_base_id=kb_id,
+            project_name=project_name,
         )
         binding["auth_token"] = token
         if gateway_url:

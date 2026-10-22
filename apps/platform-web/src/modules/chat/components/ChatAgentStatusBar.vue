@@ -22,6 +22,7 @@ const emit = defineEmits<{
   verifyStop: [];
   action: [type: "adjust_draft" | "new_thread"];
   inspectDiagnostic: [];
+  dismiss: [];
 }>();
 
 const isCopied = ref(false);
@@ -231,13 +232,17 @@ const isBlue = computed(() => {
     <div class="flex items-start sm:items-center gap-3 flex-1 min-w-0">
       <BaseIcon
         :name="statusIcon"
+        data-testid="status-icon"
         class="shrink-0 mt-0.5 sm:mt-0"
         :class="{
           'animate-spin text-blue-500': isSpinning,
           'text-amber-500': isWarningState,
           'text-red-500': isErrorState,
           'text-gray-500': resolvedState === 'stopped',
+          'cursor-pointer hover:opacity-80': isErrorState && !isRunning,
         }"
+        :title="isErrorState && !isRunning ? '点击关闭当前提示' : undefined"
+        @click="isErrorState && !isRunning ? emit('dismiss') : undefined"
       />
       <span
         class="text-sm font-medium leading-relaxed break-words flex-1"
@@ -354,6 +359,16 @@ const isBlue = computed(() => {
           :class="isCopied ? 'text-emerald-500' : ''"
         />
         {{ isCopied ? "已复制" : "复制排障信息" }}
+      </button>
+      <button
+        type="button"
+        class="p-1.5 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+        data-testid="status-dismiss-btn"
+        title="关闭当前提示"
+        aria-label="关闭当前提示"
+        @click="emit('dismiss')"
+      >
+        <BaseIcon name="x" class="h-4 w-4" />
       </button>
     </div>
   </div>

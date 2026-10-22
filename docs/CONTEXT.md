@@ -7,16 +7,16 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-20
+**最后更新：** 2026-10-21
 
 ## 最近改动
 
+2026-10-21 | **LightRAG MCP 知识库真实文档状态与图谱资产对齐全栈交付**：彻底铲除扫描静态 `managed_assets` 目录与伪造 fake ID 的假数据实现；重构 FastMCP 请求动态作用域提取，解决 SSE 中间件 ContextVar 重置陷阱；修复 LightRAG `json_doc_status_impl.py` 与 `json_kv_impl.py` 跨项目共享内存串台 BUG，直连 `rag.doc_status` 真实底层存储；远端 `sshmy2`（152.136.27.196:8001）热部署生效；支持多租户项目文档物理级强隔离与项目名称（“平台默认项目”与“test”）实时对齐；Playwright + Chromium 真实大模型（deepseek-v4.1-flash）全链路自动化 E2E 验证 100% 通过（13 份多模态文档召回、隔离项目 0 篇泄露，4 张实景截图固化），服务保持运行供人工验收。
 2026-10-20 | **前端会话访问策略默认调整为“全权负责 (Full access)”**：Chat 对话输入框与会话连接逻辑默认选中策略由 `"review"` 调整为 `"full_access"`；`ThreadAccessPolicySelect` 下拉菜单优化文案（“审阅每项操作”标记为逐次审批，“Full access”标记为默认·全放行）；新会话及未显式指定策略的草稿自动赋权全权负责，无权限时安全降级 review，存量指定策略严格保持；全量单测、vue-tsc 与构建 100% 绿灯。
-2026-10-19 | **LightRAG 工业级知识中台全量能力复刻与无缝集成全栈交付**：基于路线 C 方案，彻底根治第三方登录弹窗拦截与套娃布局。远端 `run_lightrag_webui_server.py` 服务端实装基于 `auth_handler` 的自动静默长效 JWT 签发与 `<head>` 首行同步注入，彻底消灭登录阻断；支持 `?embed=true` 隐藏多余外层 Header 与侧边栏；前端 `ProjectKnowledgePage.vue` 接入三大原生沉浸式视窗（Graph Studio 2.0 拓扑工坊、全参数智能问答工作台、Knowledge Hub 原生资产中枢）并支持双轨制切换；全量 150 测试套件单测 100% 绿灯，vue-tsc 0 错误，打包构建成功。
-2026-10-19 | **会话上下文整理与卸载能力 (Conversation Offloading) 闭环修复与默认开启**：在 `apps/runtime-service/.env.example` 与 `.env` 中默认启用 `AGENT_CONTEXT_MANAGEMENT_ENABLED=1`；修复 Runtime 建模层 `_with_context_capacity` 缺少 `max_output_tokens` 导致计算输入预算崩溃抛 `runtime.context.output_budget_unknown` 的缺陷（默认注入 4096 作为模型最大输出保障）；前端 `ChatSession.vue` 实装 Capability 门禁守卫，并在 `ChatPage` / `DearAgentPage` 提供明确不可用原因；修复 `useChatSession.ts` 错误透传，保留结构化 `code` 与 `requestId`，并在 `diagnostic-packet.ts` 补齐上下文整理相关机器码与恢复指引。
 
 ## 活跃项目
 
+- [LightRAG MCP 知识库真实文档状态与图谱资产对齐](projects/20261021-lightrag-mcp-real-doc-status-alignment/README.md)：`done`；彻底消除假数据与跨租户内存串台，13 份多模态文档与真实状态完全透出，项目名称一一对齐，远端已部署，Playwright 真实模型测试通过。
 - [LightRAG 工业级知识中台全量能力复刻与无缝集成](projects/20261019-full-lightrag-studio-integration/README.md)：`done`；彻底根治登录框弹窗，完整复刻 Graph Studio 2.0、Chat Studio 与 Knowledge Hub 三大工业级能力，测试与构建 100% 绿灯。
 - [知识中台原生化重构 - 路线 C](projects/20261019-native-knowledge-studio/README.md)：`done`；彻底移除详情页冗余面板，废除 iframe 外挂，实装原生智能问答与 Canvas 力导向图谱工坊，测试与构建 100% 绿灯。
 - [项目详情与知识中台交互收敛](projects/20261019-project-detail-knowledge-streamline/README.md)：`done`；项目详情页彻底纯净化，专注于基础信息与成员管理，测试构建全绿。

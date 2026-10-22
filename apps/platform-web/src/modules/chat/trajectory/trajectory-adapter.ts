@@ -188,6 +188,7 @@ export function buildTrajectoryRecords(
   runStatus?: string | null,
   hasError = false,
   modelMap?: Record<string, string>,
+  errorMessage?: string | null,
 ): TrajectoryRecord[] {
   const baseTime = Date.now();
   const records: TrajectoryRecord[] = [];
@@ -539,16 +540,18 @@ export function buildTrajectoryRecords(
       currentStep++;
       const lastRec = records[records.length - 1];
       const errorTurn = lastRec?.turnIndex || currentTurn || 1;
+      const displaySummary =
+        errorMessage?.trim() || "智能体运行异常中断或连接中断";
       records.push({
         id: `turn-${errorTurn}-step-${currentStep}-execution-error`,
         turnIndex: errorTurn,
         stepIndex: currentStep,
         kind: "system",
         name: "执行异常中断 (Execution Error)",
-        summary: "智能体运行异常中断或连接中断，点击查看诊断",
+        summary: displaySummary,
         status: "error",
-        error: "智能体执行异常中断",
-        raw: { runStatus, hasError },
+        error: displaySummary,
+        raw: { runStatus, hasError, errorMessage: displaySummary },
       });
     }
   }

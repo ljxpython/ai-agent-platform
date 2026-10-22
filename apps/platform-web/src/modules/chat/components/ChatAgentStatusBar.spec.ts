@@ -428,4 +428,39 @@ describe("ChatAgentStatusBar", () => {
     await inspectBtn.trigger("click");
     expect(wrapper.emitted("inspectDiagnostic")).toHaveLength(1);
   });
+
+  it("emits dismiss when right close button is clicked in error state", async () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        error: "runtime.execution_failed",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    const dismissBtn = wrapper.find('[data-testid="status-dismiss-btn"]');
+    expect(dismissBtn.exists()).toBe(true);
+    await dismissBtn.trigger("click");
+    expect(wrapper.emitted("dismiss")).toHaveLength(1);
+  });
+
+  it("emits dismiss when left error icon is clicked in error state", async () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        error: "runtime.execution_failed",
+      },
+    });
+
+    const leftIcon = wrapper.find('[data-testid="status-icon"]');
+    expect(leftIcon.exists()).toBe(true);
+    await leftIcon.trigger("click");
+    expect(wrapper.emitted("dismiss")).toHaveLength(1);
+  });
 });

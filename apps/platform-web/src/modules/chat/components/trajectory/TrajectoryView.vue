@@ -29,6 +29,7 @@ const props = withDefaults(
     runsLoading?: boolean;
     canRead?: boolean;
     initialInspectorMode?: "record" | "diagnostics" | "usage";
+    errorMessage?: string;
   }>(),
   {
     projectId: undefined,
@@ -36,6 +37,7 @@ const props = withDefaults(
     runId: null,
     runStatus: null,
     hasError: false,
+    errorMessage: undefined,
     models: () => [],
     runs: () => [],
     runsLoading: false,
@@ -46,6 +48,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   "select-run": [runId: string];
+  "inspect-diagnostic": [];
 }>();
 
 const modelMap = computed(() => {
@@ -66,6 +69,7 @@ const records = computed(() =>
     props.runStatus,
     props.hasError,
     modelMap.value,
+    props.errorMessage,
   ),
 );
 
@@ -84,11 +88,13 @@ const actualDuration = ref(true);
 const allTurnsCollapsed = ref(false);
 const allCallsCollapsed = ref(false);
 
-const selectedRunId = ref<string | null>(props.runId ?? null);
+const selectedRunId = ref<string | null>(
+  props.runId || props.runs[0]?.run_id || null,
+);
 watch(
-  () => props.runId,
-  (val) => {
-    selectedRunId.value = val ?? null;
+  () => [props.runId, props.runs],
+  ([val, runs]) => {
+    selectedRunId.value = (val as string) || (runs as any)?.[0]?.run_id || null;
   },
 );
 
@@ -467,6 +473,7 @@ function handleCloseInspector() {
           v-else-if="selectedRecord"
           :record="selectedRecord"
           @close="handleCloseInspector"
+          @inspect-diagnostic="emit('inspect-diagnostic')"
         />
       </div>
     </div>
