@@ -2333,41 +2333,6 @@ defineExpose({
         @add-to-chat="handleAddToChat"
       />
     </div>
-    <!-- 当顶部状态栏被关闭收起后，在输入框上方常驻轻量排障入口 -->
-    <div
-      v-if="
-        isStatusBarDismissed && hasActiveErrorState && activeView === 'chat'
-      "
-      class="mx-4 mb-2 flex items-center justify-between rounded-lg border border-red-200/90 bg-red-50/80 px-3.5 py-1.5 text-xs text-red-700 shadow-2xs dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
-      data-testid="bottom-mini-diagnostic-capsule"
-    >
-      <div class="flex items-center gap-2 truncate min-w-0">
-        <BaseIcon name="alert" class="h-3.5 w-3.5 text-red-500 shrink-0" />
-        <span class="truncate font-medium">
-          {{ resolvedErrorMessage || "上一回合执行异常已受限停机" }}
-        </span>
-      </div>
-      <div class="flex items-center gap-2.5 shrink-0 ml-2">
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 font-semibold text-rose-700 hover:text-rose-900 dark:text-rose-300 dark:hover:text-rose-100 underline underline-offset-2 cursor-pointer"
-          data-testid="bottom-mini-view-diagnostic-btn"
-          @click="showDiagnosticModal = true"
-        >
-          <BaseIcon name="info" class="h-3.5 w-3.5" />
-          查看排障详情
-        </button>
-        <span class="text-gray-300 dark:text-dark-700">|</span>
-        <button
-          type="button"
-          class="text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-dark-200 cursor-pointer"
-          title="恢复展开完整状态栏"
-          @click="isStatusBarDismissed = false"
-        >
-          恢复状态栏
-        </button>
-      </div>
-    </div>
     <ChatComposer
       ref="composerRef"
       :model-value="draft"
