@@ -54,6 +54,8 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
         "/_system/health",
         "/_system/probes/live",
         "/_system/probes/ready",
+        "/_system/prometheus",
+        "/metrics",
         "/api/identity/session",
         "/api/identity/session/refresh",
         "/api/runtime/internal/model-config",

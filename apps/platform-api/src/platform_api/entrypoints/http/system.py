@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
+from prometheus_client import CONTENT_TYPE_LATEST
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
@@ -8,6 +9,7 @@ from starlette.concurrency import run_in_threadpool
 
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext, RequestContext
+from platform_api.core.observability import metrics_registry
 from platform_api.entrypoints.http.dependencies import (
     get_actor_context,
     get_request_context,
@@ -91,6 +93,14 @@ def metrics(
     service: PlatformConfigService = Depends(get_platform_config_service),
 ) -> dict[str, object]:
     return service.get_observability_snapshot_for_actor(actor=actor)
+
+
+@router.get("/prometheus", include_in_schema=False)
+def prometheus_metrics() -> Response:
+    return Response(
+        content=metrics_registry.render_prometheus_metrics(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
 
 
 @router.get("/platform-config")

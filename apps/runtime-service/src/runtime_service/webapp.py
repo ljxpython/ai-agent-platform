@@ -10,9 +10,10 @@ from contextlib import asynccontextmanager
 from uuid import UUID
 
 import httpx
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from langgraph_sdk.auth import exceptions as auth_exceptions
+from prometheus_client import CONTENT_TYPE_LATEST
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from runtime_service.auth.acl_client import acl_client_lifespan
@@ -36,7 +37,11 @@ from runtime_service.http.workspace import router as workspace_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
 from runtime_service.middlewares.timeout_wrapup import resolve_wrapup_after_seconds
-from runtime_service.observability import close_langfuse, initialize_langfuse
+from runtime_service.observability import (
+    close_langfuse,
+    initialize_langfuse,
+    runtime_metrics,
+)
 from runtime_service.observability.query import diagnostics_client_lifespan
 from runtime_service.observability.usage_projection import usage_projection_lifespan
 from runtime_service.run_control.service import run_control_lifespan
@@ -93,6 +98,14 @@ app.include_router(usage_router)
 app.include_router(usage_analytics_router)
 app.include_router(run_control_router)
 app.include_router(background_tasks_router)
+
+
+@app.get("/metrics", include_in_schema=False)
+async def prometheus_metrics() -> Response:
+    return Response(
+        content=runtime_metrics.render_prometheus_metrics(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
 
 
 @app.exception_handler(auth_exceptions.HTTPException)

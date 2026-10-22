@@ -225,7 +225,26 @@ def _mask_spans(*, params: Any) -> Any:
     return MaskOtelSpansResult(span_patches=patches)
 
 
+def _record_metrics_event(event: str, fields: Mapping[str, Any]) -> None:
+    try:
+        from runtime_service.observability.metrics import runtime_metrics
+
+        if event == "runtime.model_call.failed":
+            runtime_metrics.record_model_call(
+                provider=str(fields.get("provider", "unknown")),
+                model=str(fields.get("model", "unknown")),
+                outcome="failed",
+            )
+        elif event == "runtime.loop.transition":
+            runtime_metrics.record_loop_detection(
+                code=str(fields.get("code", "unknown"))
+            )
+    except Exception:
+        pass
+
+
 def record_diagnostic_event(event: str, fields: Mapping[str, Any]) -> None:
+    _record_metrics_event(event, fields)
     trace_id = trace_id_for(fields)
     if _client is None or trace_id is None:
         return
@@ -389,6 +408,16 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
         total = normalize_usage(response)["tokens"]["total_tokens"]
         if total is not None:
             _metrics["token_total"] += total
+        try:
+            from runtime_service.observability.metrics import runtime_metrics
+
+            runtime_metrics.record_model_call(
+                provider="primary",
+                model="llm",
+                outcome="success",
+            )
+        except Exception:
+            pass
 
     def _finish(self, run_id: Any, status: str, error_code: str | None = None) -> None:
         started = self._starts.pop(run_id, None)
@@ -398,6 +427,17 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
             else None
         )
         _metrics[f"run_{status}"] += 1
+        try:
+            from runtime_service.observability.metrics import runtime_metrics
+
+            duration_s = (duration_ms / 1000.0) if duration_ms is not None else None
+            runtime_metrics.record_agent_run(
+                graph_id=self._graph_id,
+                outcome=status,
+                duration_seconds=duration_s,
+            )
+        except Exception:
+            pass
         fields = {
             **self._metadata,
             "graph_id": self._graph_id,

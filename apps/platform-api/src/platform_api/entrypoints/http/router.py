@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
+from prometheus_client import CONTENT_TYPE_LATEST
 
+from platform_api.core.observability import metrics_registry
 from platform_api.entrypoints.http.system import router as system_router
 from platform_api.modules.agents.presentation import router as assistants_router
 from platform_api.modules.announcements.router import router as announcements_router
@@ -29,6 +31,16 @@ from platform_api.modules.usage_analytics.router import router as usage_analytic
 from platform_api.modules.users.router import router as users_router
 
 api_router = APIRouter()
+
+
+@api_router.get("/metrics", include_in_schema=False)
+def root_metrics() -> Response:
+    return Response(
+        content=metrics_registry.render_prometheus_metrics(),
+        media_type=CONTENT_TYPE_LATEST,
+    )
+
+
 api_router.include_router(system_router)
 api_router.include_router(identity_router)
 api_router.include_router(projects_router)

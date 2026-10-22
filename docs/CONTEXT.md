@@ -7,15 +7,18 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-21
+**最后更新：** 2026-10-22
 
 ## 最近改动
 
+2026-10-22 | **工业级可观测性与指标大盘全栈落地与前端方案 B 内嵌**：建立 Langfuse + Prometheus 双轨制架构；彻底重构 Platform API 内存锁计数器，引入标准 prometheus-client 并提供防内存泄漏的路径归一化；在 API (2142) 与 Runtime (8123) 暴露标准 /metrics 接口；生产主机 sshmy1 成功部署 Prometheus (19.59MB) 与 Grafana (50.5MB)，常驻内存总增量仅 70.09MB，双抓取 Targets 100% UP；实装前端方案 B 内嵌大盘（`ObservabilityDashboardPage.vue`，Kiosk 沉浸式无边框、深浅色主题双向联动、全屏与独立窗口跳转、系统探测快速直达），远端 Grafana 容器安全配置 `GF_SECURITY_ALLOW_EMBEDDING=true` 与免密只读已平滑热生效，前端全量 906 项单测及构建 100% 绿灯。
+2026-10-22 | **CI 全链路自动化工作流修复与文档脱敏**：彻底修复 GitHub Actions CI 全量门禁；修正 `docs/check_docs.py` 报错，脱敏并清理 15 个项目文档中的 30 处本地绝对个人路径；修复 `platform-api` 两个单测缺陷（沙箱 200MB 溢出常量同步对齐、动态知识库装配在显式未配置静态资源时的降级隔离逻辑）；本地 430 项单测与前端类型校验 100% 通过；远端 CI（Run `#39755046686`）四个 Job（`code-quality`, `docs`, `platform-api`, `platform-web`）全部顺利转绿（success）。
 2026-10-21 | **LightRAG MCP 知识库真实文档状态与图谱资产对齐全栈交付**：彻底铲除扫描静态 `managed_assets` 目录与伪造 fake ID 的假数据实现；重构 FastMCP 请求动态作用域提取，解决 SSE 中间件 ContextVar 重置陷阱；修复 LightRAG `json_doc_status_impl.py` 与 `json_kv_impl.py` 跨项目共享内存串台 BUG，直连 `rag.doc_status` 真实底层存储；远端 `sshmy2`（152.136.27.196:8001）热部署生效；支持多租户项目文档物理级强隔离与项目名称（“平台默认项目”与“test”）实时对齐；Playwright + Chromium 真实大模型（deepseek-v4.1-flash）全链路自动化 E2E 验证 100% 通过（13 份多模态文档召回、隔离项目 0 篇泄露，4 张实景截图固化），服务保持运行供人工验收。
 2026-10-20 | **前端会话访问策略默认调整为“全权负责 (Full access)”**：Chat 对话输入框与会话连接逻辑默认选中策略由 `"review"` 调整为 `"full_access"`；`ThreadAccessPolicySelect` 下拉菜单优化文案（“审阅每项操作”标记为逐次审批，“Full access”标记为默认·全放行）；新会话及未显式指定策略的草稿自动赋权全权负责，无权限时安全降级 review，存量指定策略严格保持；全量单测、vue-tsc 与构建 100% 绿灯。
 
 ## 活跃项目
 
+- [工业级可观测性与指标大盘架构工程](projects/20261022-industrial-observability-architecture/README.md)：`done`；建立 Langfuse + Prometheus 双轨制工业级可观测体系，彻底淘汰内存锁计数器，向外暴露标准 `/metrics` 接口，生产主机 `sshmy1` 实装 Prometheus + Grafana 双容器（总内存常驻仅 70.09MB，双 Targets 100% UP），实装方案 B 前端无缝内嵌工业指标大盘（Kiosk 沉浸、深浅主题联动、全屏与全量 906 单测全绿）。
 - [LightRAG MCP 知识库真实文档状态与图谱资产对齐](projects/20261021-lightrag-mcp-real-doc-status-alignment/README.md)：`done`；彻底消除假数据与跨租户内存串台，13 份多模态文档与真实状态完全透出，项目名称一一对齐，远端已部署，Playwright 真实模型测试通过。
 - [LightRAG 工业级知识中台全量能力复刻与无缝集成](projects/20261019-full-lightrag-studio-integration/README.md)：`done`；彻底根治登录框弹窗，完整复刻 Graph Studio 2.0、Chat Studio 与 Knowledge Hub 三大工业级能力，测试与构建 100% 绿灯。
 - [知识中台原生化重构 - 路线 C](projects/20261019-native-knowledge-studio/README.md)：`done`；彻底移除详情页冗余面板，废除 iframe 外挂，实装原生智能问答与 Canvas 力导向图谱工坊，测试与构建 100% 绿灯。

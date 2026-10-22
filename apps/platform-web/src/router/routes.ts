@@ -331,6 +331,17 @@ const workspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: "observability",
+    name: "workspace-observability",
+    component: () =>
+      import("@/modules/observability/pages/ObservabilityDashboardPage.vue"),
+    meta: {
+      title: "指标大盘",
+      eyebrow: "Governance",
+      requiredPermissions: ["platform.config.read"],
+    },
+  },
+  {
     path: "usage",
     name: "workspace-usage",
     component: () => import("@/modules/usage/pages/UsageDashboardPage.vue"),
@@ -439,6 +450,11 @@ const navigation: Record<
     group: "平台管理",
     label: "系统探测",
     icon: "shield",
+  },
+  "workspace-observability": {
+    group: "平台管理",
+    label: "指标大盘",
+    icon: "activity",
   },
   "workspace-usage": {
     group: "平台管理",
