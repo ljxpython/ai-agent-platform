@@ -16,6 +16,8 @@ class RequestContext:
     method: str
     path: str
     started_at: float
+    span_id: str = ""
+    traceparent: str = ""
     query: str | None = None
     client_ip: str | None = None
     user_agent: str | None = None

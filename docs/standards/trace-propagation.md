@@ -1,21 +1,23 @@
 ---
 status: active
-last_verified: 2026-09-27
+last_verified: 2026-10-22
 confidence: high
-source_project: docs/projects/20260926-trace-context-propagation/verification.md
+source_project: docs/projects/20261022-trace-to-logs-distributed-observability/verification.md
 ---
 
 # 链路追踪传播规范
 
 > **适用服务：** platform-api（生成方）、runtime-service（透传方）、platform-web（透传方）
-> **验证证据：** API pytest 307 passed / 16 skipped；真实 R1-R6 链路通过；PG 查询性能中位 0.577ms
+> **验证证据：** API pytest 307 passed / 16 skipped；真实 R1-R6 链路通过；PG 查询性能中位 0.577ms；W3C traceparent 跨服务透传与日志打标单测 9 项 100% 通过（2026-10-22）
 
 ## 编号生成规则
 
 | 字段 | 生成方式 | 说明 |
 |---|---|---|
 | `request_id` | `uuid.uuid4().hex`，32 位小写十六进制 | 每个进入 platform-api 的 HTTP 请求生成一次 |
-| `trace_id` | 等于 `request_id`（本期） | 不解释为 OTel trace ID |
+| `trace_id` | 等于 `request_id`（本期） | 32 位 Hex，与 W3C traceparent 的 trace_id 强对齐 |
+| `span_id` | 16 位小写十六进制随机 Hex | W3C Span 标识，API 与下游 Runtime 各自派生子 Span |
+| `traceparent` | `00-{trace_id}-{span_id}-01` | 工业级 W3C TraceContext 标准透传头 |
 | `platform_trace_id` | JWT / 下游 metadata 字段名 | 取当前 `context.request.trace_id` |
 | `submission_id` | 已有 `run_requests.id` | 同一幂等提交复用；同 `submission_id` 不同 `request_id` = 同一提交的不同 HTTP 尝试 |
 

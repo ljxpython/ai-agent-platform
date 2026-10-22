@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import logging
+import sys
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +19,12 @@ from platform_api.entrypoints.http.router import api_router
 
 
 def create_app() -> FastAPI:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+        stream=sys.stdout,
+        force=True,
+    )
     load_dotenv()
     settings = load_settings()
 

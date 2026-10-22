@@ -100,6 +100,28 @@ app.include_router(run_control_router)
 app.include_router(background_tasks_router)
 
 
+@app.middleware("http")
+async def traceparent_middleware(request: Request, call_next):
+    from runtime_service.observability.context import (
+        parse_or_create_traceparent,
+        reset_current_trace_context,
+        set_current_trace_context,
+    )
+
+    raw_traceparent = request.headers.get("traceparent")
+    raw_trace_id = request.headers.get("x-trace-id")
+    raw_request_id = request.headers.get("x-request-id")
+    ctx = parse_or_create_traceparent(raw_traceparent, raw_trace_id, raw_request_id)
+    token = set_current_trace_context(ctx)
+    try:
+        response = await call_next(request)
+        response.headers["traceparent"] = ctx.traceparent
+        response.headers["x-trace-id"] = ctx.trace_id
+        return response
+    finally:
+        reset_current_trace_context(token)
+
+
 @app.get("/metrics", include_in_schema=False)
 async def prometheus_metrics() -> Response:
     return Response(

@@ -394,29 +394,56 @@ const handleGoToTrajectory = () => {
             >
           </div>
 
-          <a
-            v-if="traceUrl"
-            :href="traceUrl"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-indigo-700 bg-white border border-indigo-200 rounded-md shadow-2xs hover:bg-indigo-50 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-800 transition-colors"
-            data-testid="diagnostic-open-trace-btn"
-          >
-            <span>在 Langfuse 中打开追踪 (Open Trace)</span>
-            <svg
-              class="size-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div class="flex items-center gap-2">
+            <a
+              v-if="traceUrl"
+              :href="traceUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-indigo-700 bg-white border border-indigo-200 rounded-md shadow-2xs hover:bg-indigo-50 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-800 transition-colors"
+              data-testid="diagnostic-open-trace-btn"
             >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          </a>
+              <span>Langfuse 追踪</span>
+              <svg
+                class="size-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+            </a>
+            <router-link
+              v-if="traceId || resolvedRequestId"
+              :to="{
+                path: '/workspace/trace-diagnostics',
+                query: { traceId: traceId || resolvedRequestId },
+              }"
+              target="_blank"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-emerald-700 bg-white border border-emerald-200 rounded-md shadow-2xs hover:bg-emerald-50 dark:bg-emerald-900/50 dark:text-emerald-200 dark:border-emerald-800 transition-colors"
+              data-testid="diagnostic-open-logs-btn"
+            >
+              <span>微服务全链路日志</span>
+              <svg
+                class="size-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </router-link>
+          </div>
         </div>
 
         <!-- 诊断元数据表格 -->
