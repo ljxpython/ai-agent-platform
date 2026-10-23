@@ -24,6 +24,12 @@ def register_request_context_middleware(app: FastAPI) -> None:
         request.state.request_id = context.request.request_id
         request.state.platform_context = context
 
+        method = context.request.method.upper()
+        try:
+            metrics_registry.active_requests.labels(method=method).inc()
+        except Exception:
+            pass
+
         try:
             try:
                 response = await call_next(request)
@@ -49,6 +55,8 @@ def register_request_context_middleware(app: FastAPI) -> None:
             )
             response.headers["x-request-id"] = current_context.request.request_id
             response.headers["x-trace-id"] = current_context.request.trace_id
+            if current_context.request.traceparent:
+                response.headers["traceparent"] = current_context.request.traceparent
             path = current_context.request.path
             if path == "/api/usage/dashboard" or (
                 path.startswith("/api/projects/")
@@ -57,4 +65,8 @@ def register_request_context_middleware(app: FastAPI) -> None:
                 response.headers["Cache-Control"] = "no-store"
             return response
         finally:
+            try:
+                metrics_registry.active_requests.labels(method=method).dec()
+            except Exception:
+                pass
             reset_current_request_context(token)

@@ -1,0 +1,77 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: platform-prometheus
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.listen-address=127.0.0.1:9090'
+    deploy:
+      resources:
+        limits:
+          memory: 250M
+
+  grafana:
+    image: grafana/grafana-oss:10.4.0
+    container_name: platform-grafana
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123456
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_HTTP_PORT=3000
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Editor
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+
+  loki:
+    image: grafana/loki:2.9.4
+    container_name: platform-loki
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./loki.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 120M
+
+  promtail:
+    image: grafana/promtail:2.9.4
+    container_name: platform-promtail
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./promtail.yml:/etc/promtail/config.yml:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /var/log:/var/log:ro
+    command: -config.file=/etc/promtail/config.yml
+    deploy:
+      resources:
+        limits:
+          memory: 40M
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:

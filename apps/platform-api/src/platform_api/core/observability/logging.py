@@ -37,11 +37,14 @@ def _build_context_fields() -> dict[str, Any]:
     try:
         context = get_current_request_context()
     except RuntimeError:
-        return {}
+        return {"service": "platform-api"}
 
     return {
+        "service": "platform-api",
         "request_id": context.request.request_id,
         "trace_id": context.request.trace_id,
+        "span_id": getattr(context.request, "span_id", ""),
+        "traceparent": getattr(context.request, "traceparent", ""),
         "method": context.request.method,
         "path": context.request.path,
         "tenant_id": context.tenant.tenant_id,
@@ -53,6 +56,23 @@ def _build_context_fields() -> dict[str, Any]:
         "authentication_type": context.actor.authentication_type,
         "credential_id": context.actor.credential_id,
     }
+
+
+class PlatformTraceLogFilter(logging.Filter):
+    """Enriches all standard logging.LogRecord with service, trace_id, and span_id."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.service = "platform-api"  # type: ignore[attr-defined]
+        record.trace_id = ""  # type: ignore[attr-defined]
+        record.span_id = ""  # type: ignore[attr-defined]
+        try:
+            ctx = get_current_request_context()
+            if ctx and ctx.request:
+                record.trace_id = ctx.request.trace_id  # type: ignore[attr-defined]
+                record.span_id = getattr(ctx.request, "span_id", "")  # type: ignore[attr-defined]
+        except RuntimeError:
+            pass
+        return True
 
 
 def log_event(

@@ -36,6 +36,17 @@ class LangGraphRuntimeClient:
     ) -> dict[str, str]:
         headers = dict(self._forwarded_headers)
         headers.update(forwarded_headers or {})
+        try:
+            from platform_api.core.context import get_current_request_context
+
+            ctx = get_current_request_context()
+            if ctx and ctx.request:
+                if ctx.request.traceparent:
+                    headers.setdefault("traceparent", ctx.request.traceparent)
+                headers.setdefault("x-request-id", ctx.request.request_id)
+                headers.setdefault("x-trace-id", ctx.request.trace_id)
+        except RuntimeError:
+            pass
         if self._api_key:
             headers["x-api-key"] = self._api_key
         if accept:

@@ -1,0 +1,46 @@
+server:
+  http_listen_address: 127.0.0.1
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://127.0.0.1:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: systemd-journal
+    journal:
+      max_age: 12h
+      path: /var/log/journal
+      labels:
+        job: systemd-journal
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        regex: 'agent-platform-api\.service'
+        target_label: 'service'
+        replacement: 'platform-api'
+      - source_labels: ['__journal__systemd_unit']
+        regex: 'agent-runtime-service\.service'
+        target_label: 'service'
+        replacement: 'runtime-service'
+    pipeline_stages:
+      - regex:
+          expression: '(?P<trace_id>[0-9a-f]{32})'
+      - labels:
+          trace_id:
+
+  - job_name: app-file-logs
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: app-file-logs
+          __path__: /var/log/ai-agent-platform/*.log
+    pipeline_stages:
+      - regex:
+          expression: '\[(?P<service>platform-api|runtime-service)\](?:\[trace_id=(?P<trace_id>[0-9a-f]{32})\])?'
+      - labels:
+          service:
+          trace_id:

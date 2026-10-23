@@ -170,8 +170,9 @@ describe("DiagnosticDetailModal.vue", () => {
       '[data-testid="diagnostic-open-trace-btn"]',
     );
     expect(openTraceLink.exists()).toBe(true);
-    expect(openTraceLink.attributes("href")).toContain(
-      "https://jp.cloud.langfuse.com/trace/langfuse-trace-999",
+    expect(openTraceLink.attributes("href")).toContain("langfuse-trace-999");
+    expect(openTraceLink.attributes("href")).toMatch(
+      /^https:\/\/jp\.cloud\.langfuse\.com\//,
     );
 
     // 验证从后端的 model_errors 自动解析了错误消息与原因码

@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 分布式全链路追踪与大厂排障可视化大盘 | 已完成：实装四联指标概览卡片、耗时瀑布流甘特条、毫秒级即时过滤、极速时间轴与 Grafana Explore 双视角 Tab 对比、三级自适应 Langfuse 多租户动态精准跳转；Vitest 全量绿灯、类型检查 0 报错、打包成功 | [项目概览](projects/20261022-trace-to-logs-distributed-observability/README.md) · [验证记录](projects/20261022-trace-to-logs-distributed-observability/verification.md) |
 | 前端可观测性与端到端排障链路增强 | 已完成：实装全局 ErrorBoundary 拒绝白屏、CrashScreen 崩溃卡片、有界错误环形缓冲区 (Cap=10)、全链路 Request ID 契约对齐与一键脱敏排障包闭环；Vitest 34 项单测与 Playwright + Chromium 自动化 E2E 闭环全部 100% 绿灯 | [项目概览](projects/20261019-frontend-observability-and-diagnostic-tracing/README.md) · [验证记录](projects/20261019-frontend-observability-and-diagnostic-tracing/verification.md) |
 | 长期记忆系统容量感知与平滑淘汰前端展示 | 已完成：实装容量健康进度条、状态徽标（healthy/near_capacity/evicting）、超限平滑淘汰解释说明、MemoryStats 接口契约透传与 Vitest 单元测试覆盖 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
 | 通用后台 Workspace 任务界面 | 已完成：accepted 徽章文案（“续接已接受”）、unknown 徽章（“续接待确认”与防伪重试只读守卫）、候选严苛白名单过滤、clearDiscoveredRuns 协同清理与 useChatSession Iron Gate（interrupted 审批等待与 busy/Stop 避让）；Vitest 144 套件全绿、Playwright + Chromium 真实大模型端到端自动化测试 3 passed，三视口截图留痕通过，用户人工实测验收合格 | [接续专项](projects/20261011-background-acceptance-closeout/README.md) · [前端交接](projects/20261011-background-acceptance-closeout/frontend-handoff.md) |
@@ -83,6 +84,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 分布式全链路追踪与 Loki 轻量日志代理网关 | 已完成：生成与透传 W3C traceparent 协议（00-{trace_id}-{span_id}-01）、统一结构化日志打标、实现自研 Loki 轻量代理检索 API（过滤自回声日志并提取各步耗时）、免密白名单放行；单元测试全绿 | [项目概览](projects/20261022-trace-to-logs-distributed-observability/README.md) · [验证记录](projects/20261022-trace-to-logs-distributed-observability/verification.md) |
 | 长期记忆契约透传与健康状态（stats）模型下发 | 已完成：定义 MemoryStatsView，扩展 MemoryDocumentView 与 MemoryView 支持 stats 可选透传，7 项契约单测全绿 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
 | 平台/项目用量分析 API | 已完成：三GET、数字权限、名称/Thread ACL、cursor、审计和整链路并发预算已验；公开百万容量两轮通过、B01解除；前端全栈联合复验通过 | [接口/任务](projects/20261011-token-usage-dashboard/03-platform-api-and-security.md) · [验证](projects/20261011-token-usage-dashboard/05-delivery-and-verification.md) |
 | 后台任务网关与受管完成续接 | 已完成：最终 bytes / 固定只读 GET / guard 保留，新 Context/签名与 callback 共存修复；head 0009、SQLite/PG 与独立 Final 通过，镜像 notify/Stop/撤权模型 1/0/0；前端闭环与真实模型 Playwright E2E 验收通过，用户人工实测通过 | [接续专项](projects/20261011-background-acceptance-closeout/README.md) · [原专项](projects/20261009-agent-generic-production-capabilities/README.md) |

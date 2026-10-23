@@ -88,6 +88,23 @@ def diagnostic_metadata(
 
 
 def trace_id_for(metadata: Mapping[str, Any]) -> str | None:
+    # 优先继承上游显式传入的 platform_trace_id
+    upstream_trace_id = metadata.get("platform_trace_id")
+    if isinstance(upstream_trace_id, str):
+        candidate = upstream_trace_id.strip().lower()
+        if len(candidate) == 32 and all(c in "0123456789abcdef" for c in candidate):
+            return candidate
+
+    # 尝试从当前 HTTP 上下文中获取继承的 trace_id
+    try:
+        from runtime_service.observability.context import get_current_trace_context
+
+        ctx = get_current_trace_context()
+        if ctx and ctx.trace_id:
+            return ctx.trace_id
+    except Exception:
+        pass
+
     values = [metadata.get(key) for key in ("tenant_id", "project_id", "run_id")]
     if not all(isinstance(value, str) and value for value in values) or not uuid_string(
         values[2]
