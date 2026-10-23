@@ -10,6 +10,9 @@ from platform_api.modules.announcements.router import router as announcements_ro
 from platform_api.modules.audit.router import router as audit_router
 from platform_api.modules.identity.router import router as identity_router
 from platform_api.modules.knowledge.router import router as knowledge_router
+from platform_api.modules.observability.router import (
+    router as observability_router,
+)
 from platform_api.modules.projects.router import router as projects_router
 from platform_api.modules.runtime_catalog.presentation import (
     router as runtime_catalog_router,
@@ -56,3 +59,4 @@ api_router.include_router(runtime_gateway_router)
 api_router.include_router(runtime_completion_router)
 api_router.include_router(scheduled_tasks_router)
 api_router.include_router(usage_analytics_router)
+api_router.include_router(observability_router)

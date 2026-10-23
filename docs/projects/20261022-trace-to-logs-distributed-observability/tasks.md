@@ -134,8 +134,111 @@
 
 ---
 
+## Phase 5: 毫秒级直出架构重构（方案 A：自研轻量代理 API + 前端原生时间轴）
+
+### Task 5.1: 后端 Loki 轻量代理检索 API 实现与鉴权放行
+- **改动内容：**
+  - 在 `platform-api` 增加 Loki 代理查询服务，异步检索 LogQL `{job=~"systemd-journal|app-file-logs"} |= "{trace_id}"`；
+  - 自动提炼微服务执行时序、Span 标签、结构化元数据与可读摘要（Fail-soft 容灾）；
+  - 暴露 `GET /api/v1/observability/traces/{trace_id}/logs`，并在 `auth_context.py` 中配置免密放行。
+- **代码位置：**
+  - `apps/platform-api/src/platform_api/config.py`
+  - `apps/platform-api/src/platform_api/modules/observability/`
+  - `apps/platform-api/src/platform_api/entrypoints/http/middleware/auth_context.py`
+  - `apps/platform-api/src/platform_api/entrypoints/http/router.py`
+  - `apps/platform-api/tests/test_observability_api.py`
+- **验证项：** 后端单元测试 2 项全部通过，生产环境 curl 请求仅耗时 46ms → ✅ 通过
+- **状态：** `[x]` 已完成 2026-10-22 → 见 `implementation/05-native-timeline-and-loki-proxy-api.md`
+- **合规检查：**
+  - [x] 代码实现完成
+  - [x] 验证项已执行
+  - [x] tasks.md 状态已更新
+
+### Task 5.2: 前端原生毫秒级极速时间轴组件与生产环境验证
+- **改动内容：**
+  - 彻底剔除 `iframe` 容器与 5MB 前端加载开销，改用 Vue 原生微服务时序时间轴列表；
+  - 接入 `platformHttpClient` 发起代理检索，支持错误提示卡片、一键载入生产样例、微服务 Tag、全量包复制与 JSON 详情展开；
+  - 保留外部 Grafana Explore 外链供 SRE 逃生；
+  - 同步打包产物至生产环境 Nginx，通过 Playwright 完成真实端到端秒开与渲染验证。
+- **代码位置：**
+  - `apps/platform-web/src/modules/observability/pages/TraceDiagnosticsPage.vue`
+  - `apps/platform-web/src/modules/observability/pages/TraceDiagnosticsPage.spec.ts`
+- **验证项：** 前端单测 7 项全过，`vue-tsc` 0 报错，生产打包成功（gzip 仅 5KB），Playwright 实测秒开截图留痕 → ✅ 通过
+- **状态：** `[x]` 已完成 2026-10-22 → 见 `implementation/05-native-timeline-and-loki-proxy-api.md`
+- **合规检查：**
+  - [x] 代码实现完成
+  - [x] 验证项已执行
+  - [x] tasks.md 状态已更新
+
+---
+
+## Phase 6: 工业级可视化升级与 Langfuse 多租户 URL 兼容
+
+### Task 6.1: Langfuse 动态 URL 构造器与环境变量集成
+- **改动内容：**
+  - 扩充 `apps/platform-web/src/config/env.ts` Zod schema，支持 `VITE_LANGFUSE_BASE_URL`、`VITE_LANGFUSE_PROJECT_ID`、`VITE_LANGFUSE_TRACE_URL_TEMPLATE` 环境变量；
+  - 编写 `buildLangfuseTraceUrl` 工具函数，支持三级自适应路由（自定义模板 > 项目级精准搜索过滤直达 > 全局兜底）；
+  - 在 `DiagnosticDetailModal.vue` 与 `TraceDiagnosticsPage.vue` 统一接入；
+  - 覆盖高密度单测（含合法/非法模板兼容性验证）。
+- **代码位置：**
+  - `apps/platform-web/src/config/env.ts`
+  - `apps/platform-web/src/services/observability/langfuse-url.ts`
+  - `apps/platform-web/src/services/observability/langfuse-url.spec.ts`
+  - `apps/platform-web/src/modules/chat/components/DiagnosticDetailModal.vue`
+  - `apps/platform-web/src/modules/chat/components/DiagnosticDetailModal.spec.ts`
+  - `apps/platform-web/src/modules/observability/pages/TraceDiagnosticsPage.vue`
+- **预期结果：** 点击链路追踪跳转按钮直达项目精准过滤视图，彻底消灭 Langfuse Cloud 404 报错。
+- **验证项：** `langfuse-url.spec.ts` 4 passed，`DiagnosticDetailModal.spec.ts` 3 passed → ✅ 通过
+- **预计：** 0.5 天
+- **状态：** `[x]` 已完成 2026-10-23 → 见 `implementation/06-industrial-observability-visualization-and-langfuse-integration.md`
+- **合规检查：**
+  - [x] 代码实现完成
+  - [x] 验证项已执行
+  - [x] tasks.md 状态已更新
+
+### Task 6.2: 自回声日志过滤与耗时字段提取
+- **改动内容：**
+  - 在 `platform-api` 代理服务中，LogQL 追加 `!~ "loki/api/v1/query"` 过滤；
+  - 在代码处理层拦截并丢弃自身访问 Loki 的 `httpx` 查询日志，防止循环回声污染；
+  - 提取并计算单步 `duration_ms` 字段注入响应模型。
+- **代码位置：**
+  - `apps/platform-api/src/platform_api/modules/observability/service.py`
+  - `apps/platform-api/src/platform_api/modules/observability/models.py`
+  - `apps/platform-api/tests/test_observability_api.py`
+- **预期结果：** 排除 Loki 自回声日志，准确透出各步执行耗时。
+- **验证项：** `pytest tests/test_observability_api.py` 2 passed → ✅ 通过
+- **预计：** 0.2 天
+- **状态：** `[x]` 已完成 2026-10-23 → 见 `implementation/06-industrial-observability-visualization-and-langfuse-integration.md`
+- **合规检查：**
+  - [x] 代码实现完成
+  - [x] 验证项已执行
+  - [x] tasks.md 状态已更新
+
+### Task 6.3: 大厂排障大屏升级（甘特瀑布流 + 毫秒瞬时搜索 + 双 Tab 对比）
+- **改动内容：**
+  - 实现四联指标概览 Ribbon（耗时/日志总数/微服务拓扑/级别）；
+  - 实现节点耗时瀑布流甘特条（相对总耗时占比 + >500ms 慢调用警醒）；
+  - 实现纯前端瞬时过滤（关键词、级别、服务切片）；
+  - 实现同页双 Tab 切换对比（极速时间轴 vs Grafana Explore）；
+  - 适配标准 `pw-card` / `pw-panel`，解决界面死黑问题。
+- **代码位置：**
+  - `apps/platform-web/src/modules/observability/pages/TraceDiagnosticsPage.vue`
+  - `apps/platform-web/src/modules/observability/pages/TraceDiagnosticsPage.spec.ts`
+- **预期结果：** 界面视觉符合平台标准，具备大厂排障全景洞察能力。
+- **验证项：** `TraceDiagnosticsPage.spec.ts` 7 passed，`vue-tsc` 0 报错，Playwright 端到端验证通过 → ✅ 通过
+- **预计：** 0.5 天
+- **状态：** `[x]` 已完成 2026-10-23 → 见 `implementation/06-industrial-observability-visualization-and-langfuse-integration.md`
+- **合规检查：**
+  - [x] 代码实现完成
+  - [x] 验证项已执行
+  - [x] tasks.md 状态已更新
+
+---
+
 ## 进度追踪
 - [x] Phase 1: 协议标准化与结构化日志对齐完成
 - [x] Phase 2: 基础设施套件 (Loki + Promtail) 编排完成
 - [x] Phase 3: 诊断闭环与前端穿透完成
 - [x] Phase 4: 全量回归与生产验证通过
+- [x] Phase 5: 毫秒级直出架构重构（方案 A）完成
+- [x] Phase 6: 工业级可视化升级与 Langfuse 多租户 URL 兼容完成

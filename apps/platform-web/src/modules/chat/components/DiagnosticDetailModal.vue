@@ -7,6 +7,7 @@ import {
   type DiagnosticContext,
 } from "@/services/observability/diagnostic-packet";
 import { errorRingBuffer } from "@/services/observability/error-buffer";
+import { buildLangfuseTraceUrl } from "@/services/observability/langfuse-url";
 import { getRunDiagnostics } from "@/services/threads/diagnostics.service";
 import type { RunDiagnosticsV1 } from "../diagnostics/types";
 
@@ -177,8 +178,7 @@ const traceId = computed(() => {
 
 const traceUrl = computed(() => {
   if (!traceId.value) return "";
-  const base = "https://jp.cloud.langfuse.com";
-  return `${base}/trace/${traceId.value}`;
+  return buildLangfuseTraceUrl(traceId.value);
 });
 
 const handleClose = () => {

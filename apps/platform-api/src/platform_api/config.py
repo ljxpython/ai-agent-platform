@@ -88,6 +88,8 @@ class Settings(BaseSettings):
     platform_db_auto_create: bool = False
     database_url: str | None = None
     observability_metrics_top_paths_limit: int = Field(default=10, ge=1, le=50)
+    loki_url: str = Field(default="http://127.0.0.1:3100")
+    loki_timeout_seconds: float = Field(default=3.0, gt=0, le=30)
 
     auth_required: bool = True
     jwt_access_secret: str = "change-me-access-secret-at-least-32-bytes"

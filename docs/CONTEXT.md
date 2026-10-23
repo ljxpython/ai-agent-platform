@@ -7,10 +7,11 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-22
+**最后更新：** 2026-10-23
 
 ## 最近改动
 
+2026-10-23 | **工业级链路可视化升级与 Langfuse 多租户精准路由闭环**：彻底解决 Langfuse 404 跨租户路由报错，实现基于项目级精准搜索与 filter 参数的三级自适应 URL 构造器（全面支持 `VITE_LANGFUSE_PROJECT_ID` 等环境变量配置）；阻断平台代理查询 Loki 自身的自回声日志污染；重构工业级排障大屏（四联指标概览卡片、耗时瀑布流甘特条、毫秒级纯前端即时搜索与双视角 Tab 对比切换），适配平台标准深浅色主题；全量单测、TypeScript 0 错误、生产构建及 Playwright 自动化验证 100% 绿灯。
 2026-10-22 | **分布式全链路追踪与日志关联可观测性工程全栈交付**：对标大厂分布式排障体验（字节诊断、阿里 ARMS），在 Platform API 与 Runtime Service 全面落实 W3C `traceparent`（`00-{trace_id}-{span_id}-01`）跨微服务协议透传与结构化日志 `service`、`trace_id`、`span_id` 打标；基于 Grafana Loki (TSDB) + Promtail 建立超轻量微服务日志中心；在生产主机 sshmy1 实装部署，Prometheus + Grafana + Loki + Promtail 四容器常驻总内存仅 **186.47 MiB**（CPU < 1%）；在前端实装可观测诊断中心与 Explore 联动，根据单一 `trace_id` 一键穿透展示跨服务毫秒级对齐日志流，并结合 Derived Fields 提供直达 Langfuse 链路树的高亮外链；全量测试与 TypeScript 检查 100% 绿灯。
 2026-10-22 | **工业级可观测性与指标大盘全栈落地与前端方案 B 内嵌**：建立 Langfuse + Prometheus 双轨制架构；彻底重构 Platform API 内存锁计数器，引入标准 prometheus-client 并提供防内存泄漏的路径归一化；在 API (2142) 与 Runtime (8123) 暴露标准 /metrics 接口；生产主机 sshmy1 成功部署 Prometheus (19.59MB) 与 Grafana (50.5MB)，常驻内存总增量仅 70.09MB，双抓取 Targets 100% UP；实装前端方案 B 内嵌大盘（`ObservabilityDashboardPage.vue`，Kiosk 沉浸式无边框、深浅色主题双向联动、全屏与独立窗口跳转、系统探测快速直达），远端 Grafana 容器安全配置 `GF_SECURITY_ALLOW_EMBEDDING=true` 与免密只读已平滑热生效，前端全量 906 项单测及构建 100% 绿灯。
 

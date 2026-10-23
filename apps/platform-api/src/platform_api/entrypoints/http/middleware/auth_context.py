@@ -99,6 +99,7 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
         if (
             request.method.upper() == "OPTIONS"
             or request.url.path in public_paths
+            or request.url.path.startswith("/api/v1/observability/traces/")
             or (request.method.upper(), request.url.path) in public_path_methods
             or (settings.api_docs_enabled and request.url.path in docs_paths)
         ):
