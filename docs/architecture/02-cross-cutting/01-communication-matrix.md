@@ -35,14 +35,19 @@ flowchart LR
     DB_Runtime[(运行时 PostgreSQL)]
     Redis[(Redis 队列)]
     Langfuse["Langfuse 可观测平台"]
+    Knowledge["LightRAG 知识服务\n(单向免隧道)"]
+    Observability["Prometheus & Loki\n(超轻量可观测)"]
 
     Client -->|"干线 1: 用户会话 (REST / SSE)\nBearer User-JWT"| API
     API -->|"读写元数据"| DB_Platform
-    API -->|"干线 2: 短时委托 (REST / SSE)\nBearer Delegation-JWT"| RT
+    API -->|"干线 2: 短时委托 (REST / SSE)\nBearer Delegation-JWT + W3C traceparent"| RT
     RT -->|"干线 3: 任务投递\nRedis List Push"| Redis
     Redis -->|"抢占式消费\nRedis List Pop"| Worker
     Worker -->|"读写图状态 Checkpoint"| DB_Runtime
     Worker -->|"干线 4: OTLP 链路追踪"| Langfuse
+    Worker -->|"干线 5: 知识检索 (只读 MCP)\nScoped HMAC 令牌"| Knowledge
+    Observability -.->|"干线 6: 指标拉取与TSDB穿透\nGET /metrics & LogQL"| API
+    Observability -.->|"干线 6: 指标拉取\nGET /metrics"| RT
 ```
 
 ---
@@ -74,20 +79,22 @@ flowchart LR
 | **干线 1 (Web -> API)** | `apps/platform-web/src/services/langgraph/client.ts` | `apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py` | `LangGraphClient.streamRun()`, `stream_thread_run()` |
 | **干线 2 (API -> Runtime)** | `apps/platform-api/src/platform_api/adapters/langgraph/runtime_client.py` | `apps/runtime-service/src/runtime_service/auth/platform.py` | `LangGraphRuntimeClient.stream_run()`, `@auth.authenticate` |
 | **干线 3 (Runtime -> Worker)** | `apps/runtime-service/src/runtime_service/webapp.py` | `apps/runtime-service/src/runtime_service/runtime/` | Redis 任务入队与后台 Worker 消费循环 |
-| **干线 4 (Runtime -> 观测)** | `apps/runtime-service/src/runtime_service/observability/` | Langfuse / 平台审计表 | `setup_agent_trace()`, OTLP Exporter |
+| **干线 4 (Runtime -> APM观测)**| `apps/runtime-service/src/runtime_service/observability/` | Langfuse / 平台审计表 | `setup_agent_trace()`, OTLP Exporter |
+| **干线 5 (Runtime -> 知识中台)**| `apps/runtime-service/src/runtime_service/services/mcp/knowledge_mcp.py` | `lightrag-service` (端口 8000) | `ProjectKnowledgeSearchClient`, Scoped HMAC 鉴权 |
+| **干线 6 (Prom/Loki -> 监控拉取)**| Prometheus 抓取器 / 前端排障模态窗 | `platform-api` (`/metrics`, `/api/v1/diagnostics`)<br>`runtime-service` (`/metrics`) | `query_trace_logs()`, W3C traceparent 穿透 |
 
 ---
 
-## 三、 4 条通信干线权威参数对照矩阵
+## 三、 6 条通信干线权威参数对照矩阵
 
-| 参数维度 | 干线 1（前台业务通道） | 干线 2（内部受控通道） | 干线 3（任务调度通道） | 干线 4（遥测审计通道） |
-|---|---|---|---|---|
-| **调用两端** | `platform-web` -> `platform-api` | `platform-api` -> `runtime-service` | `Runtime API` -> `Runtime Worker` | `runtime-service` -> `Langfuse / 审计` |
-| **通信协议** | HTTP/1.1 或 H2 (REST / SSE) | 内网 HTTP/1.1 (反向代理 / SSE) | Redis List / PubSub 协议 | HTTP REST / OTLP 协议 |
-| **认证凭证** | 用户登录产生的 `Bearer User-JWT` | 网关动态签发的 `Bearer Delegation-JWT` | 内网凭据 / 基础设施信任 | Langfuse 专用 API Key 与内网标记 |
-| **有效生存期** | 数小时至数天（支持 Refresh） | **严格 60 秒**（过期立即废弃） | 依赖 Redis 内存生存期 | 永久审计归档 |
-| **超时时间** | 查询 10s；首字 30s；流式心跳刷新 | 同步接口 10s；流式保持 | Worker 任务单步最长 600s | 异步非阻塞上报（超时 3s 丢弃） |
-| **重试策略** | 指数退避（1, 2, 4, 8, 15s）最多 5 次 | 内部不盲目重试，故障直接报错 | 依赖 Checkpoint 机制原地恢复 | 失败静默丢弃，不阻塞主任务 |
+| 参数维度 | 干线 1（前台业务） | 干线 2（内部受控） | 干线 3（任务调度） | 干线 4（APM 链路） | 干线 5（知识中台） | 干线 6（可观测双轨） |
+|---|---|---|---|---|---|---|
+| **调用两端** | `platform-web` -> `platform-api` | `platform-api` -> `runtime-service` | `Runtime API` -> `Runtime Worker` | `runtime-service` -> `Langfuse` | `runtime-service` -> `LightRAG` | `Prometheus/Loki` <-> 微服务 |
+| **通信协议** | HTTP/1.1 或 H2 (REST / SSE) | 内网 HTTP/1.1 (带 W3C 协议头) | Redis List / PubSub | HTTP REST / OTLP | 单向 HTTP REST (无反向隧道) | HTTP GET / LogQL |
+| **认证凭证** | `Bearer User-JWT` | `Bearer Delegation-JWT` (60s) | 内网凭据 / 信任 | Langfuse API Key | `Scoped HMAC/JWT` 凭据 | 内部网络隔离 / 签名凭证 |
+| **有效生存期**| 数小时至数天 (支持刷新) | **严格 60 秒** (过期即废) | 依赖 Redis TTL | 永久链路树归档 | **300 秒** (即用即验) | 指标 15s 抓取 / 日志保留 7 天 |
+| **超时时间** | 查询 10s；流式 600s | 同步 10s；流式透传保持 | Worker 任务最长 600s | 异步非阻塞 (3s 丢弃) | 严格 10.0s (防死锁) | 查询 5s (带防自回声排除) |
+| **重试策略** | 指数退避 (1~15s) 最多 5 次 | 内部不盲目重试，故障抛出 | 依赖 Checkpoint 原地恢复| 失败静默丢弃 | 单会话最多 4 次 (防死循环)| 定时抓取失败由 Prometheus 标记 DOWN |
 
 ---
 

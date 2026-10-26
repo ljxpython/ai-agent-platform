@@ -200,3 +200,4 @@
 
 | Chat 服务端持久消息队列 | 规划完成，治理方案待评审；当前仍由页面消费 localStorage 队列，不支持关闭浏览器后自动提交后续消息 | [专项](projects/20261005-durable-chat-prompt-queue/README.md) |
 | 排队提交未决死锁与会话切换自愈 | 已完成；修复 storageKey 漂移遗留幽灵锁，补充历史 Runs 双重自愈与【放弃并恢复草稿】逃生通道 | [变更](apps/platform-web/docs/changes/20261007-prompt-queue-unconfirmed-deadlock-and-switch-healing.md) |
+| 全域架构文档全景同步与技术资产演进 | 已完成：系统性抹平 10 月份 52 项已交付成果与 docs/architecture/ 之间的 8 大技术断层，16 篇核心架构文档完成更新/新增，六维工业级规范审查全绿，相对链接 0 坏链 | [项目概览](projects/20261025-architecture-docs-synchronization/README.md) · [验证记录](projects/20261025-architecture-docs-synchronization/verification.md) |

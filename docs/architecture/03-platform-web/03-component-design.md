@@ -74,7 +74,12 @@ const renderMarkdown = (text) => marked.parse(text); // 每次追加全量重算
 ### 3. 本项目的架构升级与设计取舍（Trade-offs）
 - **思考过程与正文物理分块**：`MessageContent.vue` 识别 `block.kind === 'reasoning'`，在模型思考期间自动保持展开并带有流式脉冲呼吸灯；一旦模型开始输出正文（`hasTextOutput.value === true`），思考面板平滑折叠，突出最终回答；
 - **长文本保护阈值（12,000 字符门禁）**：单条消息超过 12,000 字符时，默认仅渲染前 12,000 字符并提供“展开全部”按钮，杜绝万字大输出拖垮虚拟滚动列表；
-- **分屏工件动态投影（`ChatArtifactPanel`）**：检测到 Agent 返回结构化 UI 数据（`values.ui`），自动在右侧展开工件面板，主副屏数据双向绑定。
+- **分屏工件动态投影（`ChatArtifactPanel`）**：检测到 Agent 返回结构化 UI 数据（`values.ui`），自动在右侧展开工件面板，主副屏数据双向绑定；
+- **工业级可观测与用量大屏标准**：
+  1. `ObservabilityDashboardPage.vue`：无缝内嵌 Grafana Kiosk，双向主题同步与系统探测；
+  2. `TokenUsageDashboardPage.vue`：平台/项目双级切换，原生 SVG 堆叠趋势图，消灭 CLS 布局抖动；
+  3. `PlanReview.vue`：先规划后执行模式审核卡片，Markdown XSS 伪协议消杀与修改建议安全交互；
+  4. `DiagnosticDetailModal.vue`：甘特瀑布流、单凭 trace_id 穿透毫秒级跨服务对齐日志与 Langfuse 直达。
 
 ---
 
@@ -83,6 +88,10 @@ const renderMarkdown = (text) => marked.parse(text); // 每次追加全量重算
 | 模块职责 | 核心代码路径 | 关键文件与组件 |
 |---|---|---|
 | **消息内容分块宿主** | `apps/platform-web/src/modules/chat/components/MessageContent.vue` | `blocks`, `isReasoningActivelyStreaming()`, `expanded` |
+| **可观测性大屏** | `apps/platform-web/src/modules/observability/pages/ObservabilityDashboardPage.vue` | 内嵌 Grafana Kiosk、深浅主题联动 |
+| **Token用量看板与抽屉** | `apps/platform-web/src/modules/usage/pages/TokenUsageDashboardPage.vue` | 原生 SVG 趋势图、`RunUsageDrawer.vue` |
+| **计划审批卡片** | `apps/platform-web/src/modules/chat/components/PlanReview.vue` | 双重视图、安全 XSS 清洗、修改建议 |
+| **排障诊断与日志穿透** | `apps/platform-web/src/modules/diagnostics/components/DiagnosticDetailModal.vue` | 毫秒级日志流水、Langfuse 外链直达 |
 | **Markdown 渲染与代码高亮** | `apps/platform-web/src/components/platform/MarkdownContent.vue` | 语法高亮引擎、DOMPurify 安全转义 |
 | **动态工件分屏面板** | `apps/platform-web/src/modules/chat/components/ChatArtifactPanel.vue` | `entries`, `selectedEntry`, `values.ui` 提取 |
 | **审批中断卡片** | `apps/platform-web/src/modules/chat/components/ApprovalPanel.vue` | 高危动作展示、参数对比、批准/驳回操作 |

@@ -58,9 +58,10 @@ es.onerror = () => es.reconnect(); // 盲目重试
 - **缺陷 3（410 游标失效死循环）**：网络断开几分钟后，前端带着失效的 `Last-Event-ID` 触发重连，服务端返回 410。简易客户端如果陷入盲目重试，会导致接口每秒几十次连续报错 410，页面彻底死锁卡死。
 
 ### 3. 本项目的架构升级与设计取舍（Trade-offs）
-- **引入双向异步队列与 15 秒独立心跳生成器**：即便上游彻底静默，网关依然能按严格的 15 秒间隔向下游发送 `: heartbeat\n\n`，保证 TCP 连接始终处于保活状态。
+- **引入双向异步队列与 15 秒独立心跳生成器**：即便上游大模型长思维链推理静默数十秒，网关依然能按严格的 15 秒间隔向下游发送 `: heartbeat\n\n`，保证 TCP 连接始终处于保活状态。
 - **滑动窗口硬限制（8 MiB）**：以 8,388,608 字节为绝对红线，发现单帧超限立刻主动关闭上下游连接，宁可阻断单次脏数据，也绝不牺牲系统内存稳定性。
-- **状态快照自愈替代死循环重试**：前端捕获 410 错误后，单飞一个 Promise 降级拉取最新状态（`service.state(id)`），重置会话后再订阅，实现用户无感恢复。
+- **默认统一采用 LangGraph v3 事件投影**：新建运行默认采用 v3 事件帧投影协议，同时保留显式 `version: "v2"` 的回退支持；前端 `useTranscriptMessages` 引入中间 values 帧防洪比对机制，消除了长会话频繁深拷贝导致的界面掉帧卡顿。
+- **轻量状态快照极速自愈（`service.state`）**：前端捕获 410 错误后，彻底切断对耗时巨型全量历史快照（Checkpoints History 504 超时）的依赖，改由单飞拉取毫秒级当前状态（`service.state(id)`），实现秒级极速自愈。
 
 ---
 
@@ -70,8 +71,9 @@ es.onerror = () => es.reconnect(); // 盲目重试
 |---|---|---|
 | **网关异步流式过滤器** | `apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py` | `_redact_protocol_event_stream()` |
 | **单帧审查与脱敏解析** | `apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py` | `_redact_sse_frame()`, `_redact_event_value()` |
-| **前端游标失效自愈** | `apps/platform-web/src/modules/chat/composables/useChatSession.ts` | `recoverExpiredStream()`, `reconnectStream()` |
-| **前端审批状态机自愈** | `apps/platform-web/src/modules/chat/composables/useSessionInterrupts.ts` | `useSessionInterrupts()` |
+| **前端状态防洪与事件解析** | `apps/platform-web/src/modules/chat/composables/useTranscriptMessages.ts` | `useTranscriptMessages()`, values 帧比对防抖 |
+| **前端游标失效与断流自愈** | `apps/platform-web/src/modules/chat/composables/useChatSession.ts` | `recoverExpiredStream()`, 轻量当前状态恢复 |
+| **前端审批状态机自愈** | `apps/platform-web/src/modules/chat/composables/useSessionInterrupts.ts` | `useSessionInterrupts()`, 状态机冲突自愈 |
 
 ---
 

@@ -7,16 +7,18 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-23
+**最后更新：** 2026-10-26
 
 ## 最近改动
 
+2026-10-26 | **全域架构文档全景同步与技术资产演进工程**：系统性抹平 10 月份 52 项已交付成果与 `docs/architecture/` 之间的 8 大技术断层；升级宏观拓扑图与选型原则，扩充通信大动脉为 6 条干线（新增知识中台单向通道与双轨监控抓取通道）；全面重构可观测性文档（落实 W3C traceparent 与 Loki TSDB 毫秒日志穿透）；新增原生知识中台与单向免隧道自治架构规范；全面重写 DearFlow 记忆系统（异步解耦、双池 MMR 重排与软淘汰）；新增 Token 看板百万聚合读模型专篇与 186MB 轻量可观测、异步记忆 MMR、弹性 MCP 容错三大硬核 concepts 专篇；新增 4 篇端到端场景时序（Plan Mode、Trace-to-Logs 穿透、知识检索、模型容灾）；刷新全局 README 知识地图，自动化相对链接 100% 绿灯校验。
 2026-10-23 | **工业级链路可视化升级与 Langfuse 多租户精准路由闭环**：彻底解决 Langfuse 404 跨租户路由报错，实现基于项目级精准搜索与 filter 参数的三级自适应 URL 构造器（全面支持 `VITE_LANGFUSE_PROJECT_ID` 等环境变量配置）；阻断平台代理查询 Loki 自身的自回声日志污染；重构工业级排障大屏（四联指标概览卡片、耗时瀑布流甘特条、毫秒级纯前端即时搜索与双视角 Tab 对比切换），适配平台标准深浅色主题；全量单测、TypeScript 0 错误、生产构建及 Playwright 自动化验证 100% 绿灯。
 2026-10-22 | **分布式全链路追踪与日志关联可观测性工程全栈交付**：对标大厂分布式排障体验（字节诊断、阿里 ARMS），在 Platform API 与 Runtime Service 全面落实 W3C `traceparent`（`00-{trace_id}-{span_id}-01`）跨微服务协议透传与结构化日志 `service`、`trace_id`、`span_id` 打标；基于 Grafana Loki (TSDB) + Promtail 建立超轻量微服务日志中心；在生产主机 sshmy1 实装部署，Prometheus + Grafana + Loki + Promtail 四容器常驻总内存仅 **186.47 MiB**（CPU < 1%）；在前端实装可观测诊断中心与 Explore 联动，根据单一 `trace_id` 一键穿透展示跨服务毫秒级对齐日志流，并结合 Derived Fields 提供直达 Langfuse 链路树的高亮外链；全量测试与 TypeScript 检查 100% 绿灯。
 2026-10-22 | **工业级可观测性与指标大盘全栈落地与前端方案 B 内嵌**：建立 Langfuse + Prometheus 双轨制架构；彻底重构 Platform API 内存锁计数器，引入标准 prometheus-client 并提供防内存泄漏的路径归一化；在 API (2142) 与 Runtime (8123) 暴露标准 /metrics 接口；生产主机 sshmy1 成功部署 Prometheus (19.59MB) 与 Grafana (50.5MB)，常驻内存总增量仅 70.09MB，双抓取 Targets 100% UP；实装前端方案 B 内嵌大盘（`ObservabilityDashboardPage.vue`，Kiosk 沉浸式无边框、深浅色主题双向联动、全屏与独立窗口跳转、系统探测快速直达），远端 Grafana 容器安全配置 `GF_SECURITY_ALLOW_EMBEDDING=true` 与免密只读已平滑热生效，前端全量 906 项单测及构建 100% 绿灯。
 
 ## 活跃项目
 
+- [全域架构文档全景同步与技术资产演进工程](projects/20261025-architecture-docs-synchronization/README.md)：`done`；系统性抹平 10 月份 52 项已交付成果与 `docs/architecture/` 之间的 8 大技术断层，4 个 Phase 全部交付闭环并通过六维合规验证，0 坏链。
 - [分布式全链路追踪与日志关联可观测性工程](projects/20261022-trace-to-logs-distributed-observability/README.md)：`done`；对标大厂分布式排障体验，基于 W3C traceparent 协议 + Grafana Loki/Promtail 超轻量日志中心（实测四容器常驻总内存仅 186.47MB），实现根据单一 trace_id 在一屏内同时展现微服务调用拓扑瀑布图与各服务毫秒级对齐的详细上下文日志，前端一键穿透与 Derived Fields 跳转全面实装，生产主机 sshmy1 验证通过。
 - [工业级可观测性与指标大盘架构工程](projects/20261022-industrial-observability-architecture/README.md)：`done`；建立 Langfuse + Prometheus 双轨制工业级可观测体系，彻底淘汰内存锁计数器，向外暴露标准 `/metrics` 接口，生产主机 `sshmy1` 实装 Prometheus + Grafana 双容器（总内存常驻仅 70.09MB，双 Targets 100% UP），实装方案 B 前端无缝内嵌工业指标大盘（Kiosk 沉浸、深浅主题联动、全屏与全量 906 单测全绿）。
 - [LightRAG MCP 知识库真实文档状态与图谱资产对齐](projects/20261021-lightrag-mcp-real-doc-status-alignment/README.md)：`done`；彻底消除假数据与跨租户内存串台，13 份多模态文档与真实状态完全透出，项目名称一一对齐，远端已部署，Playwright 真实模型测试通过。

@@ -1,7 +1,7 @@
-# 02-04 全链路追踪与可观测性体系深度解密
+# 02-04 分布式全链路追踪与工业级可观测性体系深度解密
 
-> **模块定位与核心价值**：建立整套系统的**分布式链路追踪与审计流水体系**。
-> 统一 `request_id`、`platform_trace_id` 与 `submission_id` 的生成与传导规范，让每一次用户操作在大模型生成、工具调用、网关清洗及数据库落库的全生命周期中拥有唯一确定性的追踪轨迹，杜绝线上排障无从下手的痛点。
+> **模块定位与核心价值**：建立整套系统的**分布式链路追踪、结构化日志关联与指标监控双轨制体系**。
+> 全面落实 W3C `traceparent`（`00-{trace_id}-{span_id}-01`）标准协议跨微服务传导与结构化日志 `[service] [trace_id] [span_id]` 打标；基于 Grafana Loki + Promtail 建立超轻量微服务日志中心（生产 4 容器常驻内存仅 186.47MB）；在前端实装可观测诊断中心与 Explore 联动，实现凭单一 `trace_id` 毫秒级穿透展示跨服务对齐日志瀑布流，并直达 Langfuse 链路树。
 
 ---
 
@@ -11,32 +11,36 @@
 
 ### 1. 前置必备概念速查
 
-- **概念 1：为什么需要区分 Request ID 与 Trace ID？**
-  - **`request_id`**：属于**单次 HTTP 传输层标识**。客户端与服务端之间的一次 HTTP 请求/响应生命周期对应一个唯一的 `request_id`。如果客户端因网络超时重试了 3 次，会产生 3 个完全不同的 `request_id`；
-  - **`platform_trace_id`**：属于**全局业务链路标识**。它自请求进入网关时生成，一路注入 Delegation JWT 传导给 Runtime Service，并与 Langfuse 的 Trace 树对齐。多次网络重试如果归属于同一业务会话，其 `platform_trace_id` 可以关联到同一棵执行树上。
-- **概念 2：Python 异步编程中的 `ContextVar` 协程安全隔离**
-  - 在 FastAPI / Starlette 的异步并发体系下，多个 HTTP 请求由同一个事件循环（Event Loop）交替调度执行。如果使用常规的全局变量存储当前请求的 Trace ID，会导致不同用户的请求发生严重的**变量污染与串号**；
-  - Python 标准库的 `contextvars.ContextVar` 提供协程局部存储能力，保证每个协程调用链拥有独立的上下文数据副本。
-- **概念 3：Langfuse 树状调用模型（Traces -> Generations -> Spans）**
-  - **Trace**：代表一次完整的用户问答生命周期；
-  - **Generation**：代表单次大模型的推理过程（记录输入 Prompt、输出 Chunk、Prompt Tokens 与 Completion Tokens 消耗）；
-  - **Span**：代表单次 Python 工具或 MCP 外部调用（记录工具入参、执行耗时与返回数据）。
+- **概念 1：W3C Trace Context（`traceparent`）标准规范**
+  - 分布式追踪标准定义了 4 段组成的头：`version-trace_id-parent_id-trace_flags`；
+  - 示例：`00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01`；
+  - `version`：固定 `00`；`trace_id`：32 位十六进制全局链路标识；`span_id`（parent_id）：16 位十六进制当前节点跨度；`trace_flags`：`01` 表示被采样。
+  - **跨服务派生**：请求从 Platform API 转发至 Runtime Service 时，保持 `trace_id` 不变，生成新的 `span_id`，从而构建出清晰的微服务调用父子关系。
+- **概念 2：可观测性双轨制（Prometheus 指标 + Loki 日志 + Langfuse APM）**
+  - **Metrics 轨（Prometheus）**：定量监控系统的 QPS、错误率、P95/P99 耗时分位，向外暴露标准 `/metrics` 端点；
+  - **Logs 轨（Grafana Loki + Promtail）**：按元数据标签（`service`、`trace_id`）做 TSDB 索引，专职毫秒级日志流水对齐；
+  - **APM 轨（Langfuse）**：专职 LLM 领域的 Token 消耗、提示词快照与复合智能体调用树。
+- **概念 3：Python 异步编程中的 `ContextVar` 协程安全隔离**
+  - 在 FastAPI / Starlette 异步事件循环中，多个 HTTP 请求交替执行。使用 `contextvars.ContextVar` 存储当前协程的 Trace ID 与 Span ID，杜绝跨请求变量污染与串号。
 
 ### 2. 链路上下文坐标
 
 - **输入来源（上游）**：
-  前端发起请求，网关层通过 `trace_propagation_middleware` 生成 32 位十六进制 `request_id` 并将其写入 `ContextVar`。
-- **当前处理（本层）**：
-  控制面在签发 Delegation JWT 时，将 `platform_trace_id` 显式写入 Payload，并在写入本地审计数据库时记录请求准入流水（`runtime.submission.attempt`）。
-- **输出去向（下游）**：
-  Runtime Service 提取 `platform_trace_id`，将其作为根标识注入给 Langfuse 客户端和 LangGraph 节点回调，同时在 HTTP 响应头回显 `X-Trace-Id` 供前端记录。
+  前端发起请求，网关层通过 `TracePropagationMiddleware` 解析或生成 W3C `traceparent`，注入 `ContextVar`。
+- **跨服务传递（中继）**：
+  Platform API 向 Runtime Service 发送 HTTP 请求时，自动在 Header 注入下游派生的 `traceparent`，并在 Delegation JWT 中携带 `platform_trace_id`。
+- **输出去向（下游与存储）**：
+  1. 两端微服务在输出日志时统一自动打标 `[service] [trace_id] [span_id]`；
+  2. Promtail 实时收集并推送至 Loki；
+  3. Runtime Service 将 `trace_id` 注入 Langfuse 客户端生成根 Trace；
+  4. HTTP 响应头回显 `traceparent`、`X-Trace-Id` 与 `X-Request-Id`；
+  5. 前端捕获报错或输入 `trace_id`，通过自研轻量后端代理 API 直查 Loki，渲染出跨服务毫秒对齐甘特流。
 
 ---
 
 ## 一、 对立视角：简易原型 vs 生产架构（Naive vs. Production）
 
 ### 1. 初学者的常规写法（Naive Demo）
-很多初学者处理分布式日志时，做法非常简陋：
 ```python
 # 简易日志记录（存在严重生产隐患）
 @app.middleware("http")
@@ -49,14 +53,17 @@ async def naive_logging(request: Request, call_next):
 ```
 
 ### 2. 生产环境下的致命缺陷
-- **盲目信任外部输入引发安全伪造**：黑客可以在请求头传入恶意的 `X-Trace-Id`（如包含 SQL 注入语句或超长字符），导致内部审计日志解析异常甚至被日志注入攻击污染；
-- **异常情况下协程上下文泄漏**：如果中间件没有把上下文设置与重置放在严格的 `try...finally` 块中，当请求中途抛出异常或被客户端掐断连接时，该协程复用的线程上下文未能清理，导致后续不相关的请求沿用旧的 Trace ID；
-- **大模型调用与平台操作脱节**：平台后台查到某条审计日志报错，但由于没有贯穿到大模型可观测系统，根本不知道那次报错究竟消耗了多少 Token，也无法查出当时发给模型的原始 Prompt 是什么。
+- **非标准私有 Header 导致生态割裂**：使用私有 `X-Trace-Id` 无法被标准 APM 工具（OTel、Loki、Jaeger）识别，跨服务无法建立标准化父子 Span 拓扑；
+- **重型日志组件吞噬系统资源**：许多团队盲目部署 ELK（Elasticsearch），内存动辄吃掉 8G~16G，给轻量化部署带来灾难；
+- **Loki 自回声污染死锁**：前端或平台代理查询 Loki 日志时，若查询请求本身也输出日志并被抓取，会导致查询请求自己记录自己，引发日志无限递归放大；
+- **Langfuse 跨租户路由 404**：前端硬编码项目跳转链接，多租户或不同环境（本地/预发/生产）下跳转 Langfuse 详情页频频抛出 404 找不到 Trace。
 
 ### 3. 本项目的架构升级与设计取舍（Trade-offs）
-- **单向生成，彻底忽略外部伪造 Header**：网关层无论收到什么外部 Header，强制在本地由安全随机数生成 32 位小写十六进制字符串（`uuid.uuid4().hex`），绝不回显外部不可信原值；
-- **严格防御的 ContextVar 生命周期治理**：设置与重置置于完整的 `try...finally` 结构中，覆盖正常响应、业务异常以及客户端提前断流（CancelledError）全部分支；
-- **全链路打通 Langfuse 深度观测**：将 `platform_trace_id` 深度融入 Delegation JWT 与 Langfuse 回调体系，实现“平台审计记录”与“大模型 Token 消耗树”双向毫秒级精确互查。
+- **全面落实 W3C `traceparent` 协议**：严格遵循 `00-{trace_id}-{span_id}-01` 规范，网关进站生成/校验，微服务出站自动派生子 Span，响应头双向回显；
+- **186MB 超轻量可观测四容器矩阵**：选择 Promtail + Loki + Prometheus + Grafana，TSDB 索引标签，实测生产常驻总内存仅 **186.47 MiB**（CPU < 1%）；
+- **阻断 Loki 自回声日志污染**：在 API 网关代理查询 Loki 端点时，显式配置日志记录器排除代理查询流水，彻底根治自引用污染；
+- **三级自适应 Langfuse URL 构造器**：支持基于 `VITE_LANGFUSE_PROJECT_ID` 环境变量、项目级动态元数据与回退全局的三级自适应跳转，消除 404；
+- **前端有界错误环形缓冲区 (Cap=10)**：全局 ErrorBoundary 拒绝白屏，就地弹出诊断抽屉，一键导出脱敏排障诊断包（Diagnostic Packet）。
 
 ---
 
@@ -64,41 +71,56 @@ async def naive_logging(request: Request, call_next):
 
 | 模块职责 | 核心代码路径 | 关键类 / 函数 / 变量 |
 |---|---|---|
-| **请求上下文与 ID 生成** | `apps/platform-api/src/platform_api/core/observability.py` | `trace_propagation_middleware()`, `current_trace_id_ctx` |
-| **令牌凭证注入** | `apps/platform-api/src/platform_api/core/security/tokens.py` | `create_runtime_delegation_token(..., platform_trace_id=...)` |
-| **审计流水白名单记录** | `apps/platform-api/src/platform_api/modules/audit/service.py` | `AuditService.record_runtime_event()`, `http_resolution.py` |
-| **运行时观测挂载** | `apps/runtime-service/src/runtime_service/observability/` | `setup_agent_trace()`, `LangGraphTraceCallbackHandler` |
+| **W3C 追踪中间件 (Platform-API)** | `apps/platform-api/src/platform_api/core/observability.py` | `TracePropagationMiddleware`, `current_trace_id_ctx`, `current_span_id_ctx` |
+| **W3C 追踪中间件 (Runtime-Service)**| `apps/runtime-service/src/runtime_service/api/middleware/trace.py` | `TraceparentMiddleware`, 解析/派生子 Span |
+| **结构化日志格式化器** | `apps/platform-api/src/platform_api/core/logging.py`<br>`apps/runtime-service/src/runtime_service/logging.py` | `StructuredLogFormatter`, 注入 `[service] [trace_id] [span_id]` |
+| **Prometheus 监控指标暴露** | `apps/platform-api/src/platform_api/core/metrics.py`<br>`apps/runtime-service/src/runtime_service/api/metrics.py` | `/metrics` 路由端点, 路径归一化 `normalize_metric_path` |
+| **Loki 排障代理与自回声阻断** | `apps/platform-api/src/platform_api/modules/diagnostics/router.py` | `query_trace_logs()`, 过滤探针与 Loki 自身查询日志 |
+| **前端可观测性大屏** | `apps/platform-web/src/modules/observability/pages/ObservabilityDashboardPage.vue` | 内嵌 Grafana Kiosk、深浅主题联动、系统探测 |
+| **前端 Trace-to-Logs 诊断穿透** | `apps/platform-web/src/modules/diagnostics/components/DiagnosticDetailModal.vue` | 毫秒级日志流水瀑布流、甘特条、Langfuse 外链直达 |
+| **前端有界错误缓冲区** | `apps/platform-web/src/core/errors/errorBuffer.ts` | `ErrorRingBuffer(capacity=10)`, `useErrorBoundary` |
 
 ---
 
 ## 三、 真实数据结构与报文（Real Payloads & DB Schemas）
 
-### 1. 3 个核心编号的生成与比对规则
+### 1. W3C `traceparent` 标准格式与跨服务派生
 
-| 编号字段 | 生成格式 | 校验规则 | 传递载体 |
-|---|---|---|---|
-| **`request_id`** | `uuid.uuid4().hex` | 32 位纯小写十六进制字符串 | HTTP 响应头 `X-Request-Id` |
-| **`platform_trace_id`** | 初始取 `request_id` | 32 位纯小写十六进制字符串 | Delegation JWT Payload、HTTP 响应头 `X-Trace-Id` |
-| **`submission_id`** | 客户端生成的标准 UUID | 36 位标准 UUIDv4（含连字符） | HTTP 请求头 `X-Submission-Id`、数据库 `submission_id` 列 |
+```text
+HTTP/1.1 200 OK
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+X-Trace-Id: 4bf92f3577b34da6a3ce929d0e0e4736
+X-Request-Id: 4bf92f3577b34da6a3ce929d0e0e4736
+```
 
-### 2. 真实审计数据库白名单字段（PostgreSQL 表 `audit_runtime_events`）
-```sql
-CREATE TABLE audit_runtime_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_type VARCHAR(64) NOT NULL,            -- 例如: runtime.stream.opened, runtime.submission.attempt
-    platform_trace_id VARCHAR(32) NOT NULL,     -- 关联全局追踪
-    request_id VARCHAR(32) NOT NULL,            -- 关联单次 HTTP
-    submission_id UUID,                         -- 关联业务幂等
-    project_id VARCHAR(64) NOT NULL,
-    thread_id VARCHAR(64),
-    run_id VARCHAR(64),
-    close_reason VARCHAR(32),                   -- 例如: eof, client_disconnect, frame_rejected
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+- **微服务跨度派生规约**：
+  - `Platform API` 收到请求：生成 `trace_id = 4bf92f35...`（32位小写十六进制），生成根 `span_id = a1b2c3d4e5f60718`（16位小写十六进制）；
+  - `Platform API` 转发给 `Runtime Service`：携带 Header `traceparent: 00-4bf92f35...-a1b2c3d4e5f60718-01`；
+  - `Runtime Service` 提取后：继承相同的 `trace_id`，生成下游子跨度 `span_id = 9988776655443322`，并以 `a1b2c3d4e5f60718` 为 parent。
 
--- 高频查询专用复合索引
-CREATE INDEX idx_audit_trace ON audit_runtime_events (platform_trace_id);
-CREATE INDEX idx_audit_submission ON audit_runtime_events (submission_id, created_at);
+### 2. 结构化标准控制台与 Promtail 抓取日志格式
+```text
+2026-10-22 14:30:15.123 [INFO] [platform-api] [4bf92f3577b34da6a3ce929d0e0e4736] [a1b2c3d4e5f60718] Incoming POST /api/v1/threads/th_123/runs
+2026-10-22 14:30:15.145 [INFO] [runtime-service] [4bf92f3577b34da6a3ce929d0e0e4736] [9988776655443322] LangGraph Worker dispatching task: node_execute
+```
+
+Promtail 解析该格式并提取标签：
+```yaml
+# promtail 配置提取示例
+scrape_configs:
+  - job_name: aiplatform-microservices
+    static_configs:
+      - targets: [localhost]
+        labels:
+          env: production
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<time>\S+ \S+) \[(?P<level>\w+)\] \[(?P<service>[^\]]+)\] \[(?P<trace_id>[a-f0-9]{32})\] \[(?P<span_id>[a-f0-9]{16})\] (?P<message>.*)$'
+      - labels:
+          level:
+          service:
+          trace_id:
+          span_id:
 ```
 
 ---
@@ -108,132 +130,135 @@ CREATE INDEX idx_audit_submission ON audit_runtime_events (submission_id, create
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Client as 客户端 (Vue3)
-    participant Middleware as 追踪中间件 (observability.py)
-    participant TokenSigner as 凭证签发 (tokens.py)
-    participant AuditDB as 平台审计库 (PostgreSQL)
-    participant RuntimeAPI as 运行时 (runtime_service)
-    participant Langfuse as Langfuse 观测平台
+    participant Browser as 客户端 (Vue3)
+    participant Gateway as Platform API (2142)
+    participant Runtime as Runtime Service (8123)
+    participant Loki as Grafana Loki (TSDB)
+    participant Langfuse as Langfuse APM
 
-    Client->>Middleware: 1. 发起请求 (带 X-Submission-Id)
-    Note over Middleware: 忽略外部伪造 Header<br>生成 request_id = uuid4().hex<br>token = current_trace_id_ctx.set(request_id)
+    Browser->>Gateway: 1. 发起请求 (可带或不带 traceparent)
+    Note over Gateway: TracePropagationMiddleware 激活<br>生成/继承 trace_id，生成 root span_id<br>绑定 ContextVar
+    Gateway->>Runtime: 2. 转发请求 (注入下游派生的 traceparent: 00-{trace_id}-{sub_span_id}-01)
+    Note over Runtime: TraceparentMiddleware 激活<br>继承 trace_id，生成执行 span_id<br>输出打标日志: [runtime-service] [trace_id] [sub_span]
+    Runtime->>Langfuse: 3. 上报大模型 Trace 树 (以 trace_id 为根)
+    Runtime-->>Gateway: 4. 返回流式响应 (Header: traceparent 回显)
+    Gateway-->>Browser: 5. 响应给前端 (Header 回显 traceparent & X-Trace-Id)
 
-    Middleware->>TokenSigner: 2. 签发小票
-    Note over TokenSigner: 将 platform_trace_id 写入 JWT Payload
-    TokenSigner-->>Middleware: 返回短时 JWT
-
-    Middleware->>AuditDB: 3. 记录 runtime.submission.attempt (写入 request_id & trace_id)
-    Middleware->>RuntimeAPI: 4. HTTP 调用 (携带 Authorization: Bearer <JWT>)
-
-    Note over RuntimeAPI: 提取 platform_trace_id
-    RuntimeAPI->>Langfuse: 5. client.trace(id=platform_trace_id, name="AgentRun")
-
-    loop 循环图推理
-        RuntimeAPI->>Langfuse: 6. 挂载 Generation (Token 消耗) & Span (工具调用)
-    end
-
-    RuntimeAPI-->>Middleware: 7. 响应返回 (Headers 携带 X-Trace-Id)
-    Note over Middleware: finally 块强制执行<br>current_trace_id_ctx.reset(token)
-    Middleware-->>Client: 8. 响应给前端 (Headers 回显 X-Request-Id 与 X-Trace-Id)
+    %% 毫秒排障穿透场景
+    Note over Browser: 用户点击报错 / 查阅执行轨迹<br>获得 trace_id = 4bf92f35...
+    Browser->>Gateway: 6. GET /api/v1/diagnostics/traces/{trace_id}/logs
+    Note over Gateway: 阻断自回声日志<br>向 Loki 发起 LogQL: {trace_id="4bf92f35..."}
+    Gateway->>Loki: 7. 查询毫秒日志
+    Loki-->>Gateway: 8. 返回 API 与 Runtime 毫秒对齐日志流
+    Gateway-->>Browser: 9. 格式化返回对齐日志 JSON
+    Browser->>Browser: 10. 前端甘特瀑布流渲染 + 高亮直达 Langfuse
 ```
 
 ---
 
 ## 五、 核心实现高保真伪代码（High-Fidelity Pseudocode）
 
-### 1. 控制面：协程安全隔离中间件（提取自 `observability.py`）
+### 1. W3C `traceparent` 解析与子跨度派生中间件
 
 ```python
-# 对应源码：apps/platform-api/src/platform_api/core/observability.py
+# 对应源码：apps/platform-api/src/platform_api/core/observability.py 与 runtime_service
 import contextvars
-import uuid
+import re
+import secrets
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-# 协程安全上下文变量
 current_trace_id_ctx = contextvars.ContextVar(
     "current_trace_id_ctx", default=None
 )
+current_span_id_ctx = contextvars.ContextVar(
+    "current_span_id_ctx", default=None
+)
+
+TRACEPARENT_REGEX = re.compile(r"^00-([a-f0-9]{32})-([a-f0-9]{16})-[a-f0-9]{2}$")
 
 
-class TracePropagationMiddleware(BaseHTTPMiddleware):
+class W3CTraceMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        # 规则 1：单向生成，彻底忽略客户端伪造的 X-Request-Id
-        generated_id = uuid.uuid4().hex
+        traceparent = request.headers.get("traceparent")
+        if traceparent and (match := TRACEPARENT_REGEX.match(traceparent)):
+            trace_id = match.group(1)
+        else:
+            trace_id = secrets.token_hex(16)  # 32 位小写十六进制
 
-        # 规则 2：绑定到当前协程上下文，返回用于还原的 token
-        token = current_trace_id_ctx.set(generated_id)
+        # 本微服务派生全新的 16 位 Span ID
+        span_id = secrets.token_hex(8)
 
-        # 挂载到 request.state 方便下游路由提取
-        request.state.request_id = generated_id
-        request.state.platform_trace_id = generated_id
+        t_token = current_trace_id_ctx.set(trace_id)
+        s_token = current_span_id_ctx.set(span_id)
+
+        request.state.trace_id = trace_id
+        request.state.span_id = span_id
 
         try:
             response: Response = await call_next(request)
-
-            # 规则 3：回显统一追踪头
-            response.headers["X-Request-Id"] = generated_id
-            response.headers["X-Trace-Id"] = generated_id
+            # 双向回显标准 W3C 头与兼容头
+            w3c_header = f"00-{trace_id}-{span_id}-01"
+            response.headers["traceparent"] = w3c_header
+            response.headers["X-Trace-Id"] = trace_id
             return response
-
         finally:
-            # 规则 4：无论正常完成、抛出未捕获异常还是连接断开，必须强制复原上下文，防协程污染
-            current_trace_id_ctx.reset(token)
+            current_trace_id_ctx.reset(t_token)
+            current_span_id_ctx.reset(s_token)
 ```
 
-### 2. 运行时：Langfuse 树状调用追踪器（提取自 `observability/`）
+### 2. 结构化日志格式化器（日志与 Trace 绑定）
 
 ```python
-# 对应源码：apps/runtime-service/src/runtime_service/observability/
-from langfuse import Langfuse
-from langfuse.callback import CallbackHandler
+# 对应源码：apps/platform-api/src/platform_api/core/logging.py
+import logging
 
 
-def create_agent_trace_handler(
-    platform_trace_id: str,
-    project_id: str,
-    thread_id: str,
-    assistant_id: str,
-) -> CallbackHandler:
-    langfuse = Langfuse()
+class DistributedStructuredFormatter(logging.Formatter):
 
-    # 规则 5：直接使用平台透传过来的 platform_trace_id 作为 Langfuse 根 Trace ID
-    trace = langfuse.trace(
-        id=platform_trace_id,
-        name="LangGraphExecution",
-        project_id=project_id,
-        metadata={
-            "thread_id": thread_id,
-            "assistant_id": assistant_id,
-            "runtime_environment": "production",
-        },
-    )
+    def __init__(self, service_name: str):
+        super().__init__()
+        self.service_name = service_name
 
-    # 返回 LangChain 原生回调处理器，自动拦截图内每一个大模型调用与工具调用
-    return trace.get_langchain_handler()
+    def format(self, record: logging.LogRecord) -> str:
+        trace_id = current_trace_id_ctx.get() or "-"
+        span_id = current_span_id_ctx.get() or "-"
+        timestamp = self.formatTime(record, self.datefmt)
+
+        return (
+            f"{timestamp} [{record.levelname}] [{self.service_name}] "
+            f"[{trace_id}] [{span_id}] {record.getMessage()}"
+        )
+```
+
+### 3. 前端自适应三级 Langfuse URL 构造器
+
+```typescript
+// 对应源码：apps/platform-web/src/modules/diagnostics/utils/langfuseUrl.ts
+export function resolveLangfuseTraceUrl(
+  traceId: string,
+  projectId?: string
+): string {
+  const baseUrl = import.meta.env.VITE_LANGFUSE_BASE_URL || 'http://localhost:3000'
+  const targetProject =
+    projectId ||
+    import.meta.env.VITE_LANGFUSE_PROJECT_ID ||
+    'default'
+
+  // 自适应三级路由，防 404
+  return `${baseUrl}/project/${targetProject}/traces/${encodeURIComponent(traceId)}`
+}
 ```
 
 ---
 
-## 六、 假想断电与极限场景推演（Thought Experiments）
+## 六、 架构不变量清单（Architectural Invariants）
 
-### 场景：大模型调用过程中，客户端突然拔掉网线
-- **简易系统表现**：服务端协程抛出 `ClientDisconnect` 异常崩溃。由于没有清理上下文，下一个进来的用户请求恰好复用了该工作线程，日志里输出了上一个用户的 Trace ID，线上排障时两条完全不同的会话被串成一条，引发运维误判。
-- **本系统表现**：
-  1. 客户端掐断连接，ASGI 服务器触发取消信号；
-  2. 控制面 `TracePropagationMiddleware` 捕获到取消事件，进入 `finally` 块；
-  3. 执行 `current_trace_id_ctx.reset(token)`，将协程上下文安全复位；
-  4. 审计模块记录 `runtime.stream.closed`，并将原因准确标记为 `client_disconnect`；
-  5. 后续任何请求进入该工作线程，均重新生成全新的 32 位 Trace ID，零上下文泄漏。
+任何后续二次开发与代码重构，绝不允许打破以下四条红线：
 
----
-
-## 七、 架构不变量清单（Architectural Invariants）
-
-任何后续二次开发与代码重构，绝不允许打破以下三条红线：
-
-1. **外部追踪头严禁轻信与持久化**：进入系统的 `request_id` 与 `platform_trace_id` 必须由控制面后端唯一签发，严禁把客户端传入的未过滤字符串直接当成系统追踪号记录。
-2. **上下文变量必须包裹在完整 try/finally 内**：对 `ContextVar` 的任何 `set()` 操作，必须且只能在匹配的 `finally` 块中通过其返回的 `token` 执行 `reset()`，防止异步协程池污染。
-3. **审计查询强制带索引时间窗口约束**：按照 `submission_id`、`thread_id` 或 `run_id` 检索审计流水时，查询必须强制附带小于等于 7 天的时间范围限制，严禁在无时间过滤条件下全表扫描。
+1. **必须严格遵循 W3C `traceparent` 标准格式**：全链路微服务通信跨度必须使用 `00-{trace_id}-{span_id}-01`，不得退回私有自定义非标准头。
+2. **Prometheus 与 Loki 保持极简轻量**：严禁在日志中引入全文字段倒排索引；严禁在微服务中直接开启重型 APM 侵入式探针反噬业务性能；常驻内存增量必须控制在 250MB 以内。
+3. **禁止 Loki 自回声日志污染**：网关在代理执行 LogQL 查询时，必须将自身查询路径加入日志排除白名单，严禁形成递归日志风暴。
+4. **前端错误绝不允许导致应用白屏崩溃**：所有核心视图必须受全局 `ErrorBoundary` 保护，未捕获异常必须进入有界环形缓冲区（`Cap=10`），并提供就地可导出的脱敏排障包。

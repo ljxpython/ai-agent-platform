@@ -73,22 +73,24 @@ docs/architecture/
 │   └── 03-design-principles.md              # 01-03 核心架构设计原则与权衡
 │
 ├── 02-cross-cutting/                        # 【第二层：跨服务通信与协同对接】(重中之重)
-│   ├── 01-communication-matrix.md           # 02-01 服务间通信全景矩阵 (4条干线对照)
+│   ├── 01-communication-matrix.md           # 02-01 服务间通信全景矩阵 (6条干线对照)
 │   ├── 02-delegation-auth.md                # 02-02 委托鉴权机制与短时令牌 (23项操作白名单/高保真伪代码)
-│   ├── 03-sse-streaming-pipeline.md         # 02-03 SSE 流式推送全链路与自愈机制 (8MiB截断/心跳注入/410自愈)
-│   ├── 04-trace-and-observability.md        # 02-04 全链路追踪与可观测性体系 (Trace ID/Langfuse/审计)
-│   └── 05-data-isolation.md                 # 02-05 存储架构与数据隔离模型 (双库物理边界与红线)
+│   ├── 03-sse-streaming-pipeline.md         # 02-03 SSE 流式推送全链路与自愈机制 (8MiB截断/v3帧防洪/410自愈)
+│   ├── 04-trace-and-observability.md        # 02-04 分布式全链路追踪与工业级可观测大盘 (W3C traceparent/Loki/Prometheus)
+│   ├── 05-data-isolation.md                 # 02-05 存储架构与数据隔离模型 (双库物理边界与红线)
+│   └── 06-knowledge-studio-and-zero-tunnel.md # 02-06 原生知识中台与单向免隧道自治架构 (Scoped HMAC/只读MCP/Graph Studio)
 │
 ├── 03-platform-web/                         # 【第三层：前端平台宿主架构 (Vue 3)】
-│   ├── 01-architecture.md                   # 03-01 前端分层与工程骨架 (Modules/Stores/Composables)
-│   ├── 02-chat-session-engine.md            # 03-02 对话会话池与多 Tab 保活状态机
-│   └── 03-component-design.md               # 03-03 控制台规范与动态 Artifacts 渲染
+│   ├── 01-architecture.md                   # 03-01 前端分层与工程骨架 (5层 Clean Architecture / ErrorBoundary)
+│   ├── 02-chat-session-engine.md            # 03-02 对话会话池与多 Tab 保活状态机 (四大顽疾治愈 / Iron Gate)
+│   └── 03-component-design.md               # 03-03 控制台规范与动态工件渲染 (Observability / Token看板 / PlanReview)
 │
 ├── 04-platform-api/                         # 【第四层：平台控制面与网关架构 (FastAPI)】
 │   ├── 01-architecture.md                   # 04-01 后端分层架构与领域划分
-│   ├── 02-runtime-gateway.md                # 04-02 网关反向代理与协议转换细节 (normalize_protocol)
-│   ├── 03-iam-and-governance.md             # 04-03 IAM 权限、租户隔离与 BYOK 模型治理
-│   ├── 04-catalog-management.md             # 04-04 智能体资产目录生命周期管理
+│   ├── 02-runtime-gateway.md                # 04-02 网关反向代理与协议转换细节 (W3C 头注入 / 自回声阻断)
+│   ├── 03-iam-and-governance.md             # 04-03 IAM 权限、租户隔离与 PII 脱敏网关治理
+│   ├── 04-catalog-management.md             # 04-04 智能体资产目录生命周期管理 (模型多Provider/费率配置)
+│   ├── 05-token-usage-and-read-models.md    # 04-05 平台与项目两级 Token 用量看板与可重建聚合读模型
 │   └── concepts/                            # 【控制面概念透析专篇库 (就近自治)】
 │       ├── 01-mvc-ddd-hexagonal.md          # 01 从 MVC 到 DDD 与六边形架构深度透析
 │       ├── 02-onion-middleware-model.md     # 02 深入理解中间件洋葱圈模型 (穿透/短路/防泄漏)
@@ -96,13 +98,14 @@ docs/architecture/
 │       ├── 04-control-vs-execution-plane-permissions.md # 04 控制面与执行面权限解耦与透传报文深度透析
 │       ├── 05-iam-and-rbac-architecture.md # 05 IAM 身份认证、双层 RBAC 与多租户安全治理
 │       ├── 06-dual-layer-rbac-deep-dive.md # 06 双层 RBAC 权限引擎设计与端到端实战推演
-│       └── 07-opaque-token-and-credential-governance.md # 07 大模型凭据零信任治理与不透明临时引用票据
+│       ├── 07-opaque-token-and-credential-governance.md # 07 大模型凭据零信任治理与不透明临时引用票据
+│       └── 08-lightweight-observability-philosophy.md # 08 186MB 超轻量微服务可观测体系设计哲学深度剖析
 │
 ├── 05-runtime-service/                      # 【第五层：Agent 运行时执行引擎 (LangGraph)】
 │   ├── 01-architecture.md                   # 05-01 运行时 API 与 Worker 双进程架构
-│   ├── 02-langgraph-execution.md            # 05-02 LangGraph 图执行与 checkpoint_ns 路由
-│   ├── 03-hitl-and-interrupts.md            # 05-03 人机协同中断与审批恢复机制
-│   ├── 04-tools-and-skills.md               # 05-04 MCP 协议适配与 Skills 动态挂载
+│   ├── 02-langgraph-execution.md            # 05-02 LangGraph 图执行与预算软收尾 (只读工具防死循环/模型容灾降级)
+│   ├── 03-hitl-and-interrupts.md            # 05-03 人机协同中断与审批恢复机制 (Plan Mode / Iron Gate 避让)
+│   ├── 04-tools-and-skills.md               # 05-04 MCP 协议适配与弹性装配容错 (防自杀软降级 / Skills 快照)
 │   └── concepts/                            # 【运行时概念透析专篇库 (就近自治)】
 │       ├── 01-runtime-autonomy-and-decoupled-testing.md # 01 执行层微服务自治与无依赖测试架构
 │       ├── 02-runtime-execution-and-developer-experience-critique.md # 02 运行时执行边界与架构批判式审视
@@ -112,23 +115,29 @@ docs/architecture/
 │       ├── 06-request-authentication-and-runtime-resolution-pipeline.md # 06 请求验签与配置净化全链路透析
 │       ├── 07-runtime-core-module-anatomy-and-code-responsibilities.md # 07 Runtime 核心内核源码与职责透析
 │       ├── 08-database-architecture-dual-chains-and-application-schema.md # 08 数据库双轨制架构与应用表全景透析
-│       ├── 09-workspace-sandbox-pty-and-asset-pipeline.md # 09 运行时操作系统级沙箱、PTY终端与资产管线透析
+│       ├── 09-workspace-sandbox-pty-and-asset-pipeline.md # 09 运行时沙箱、Smart Zip 流式直出与 PTY 终端透析
 │       ├── 10-runtime-webapp-api-server-and-inbox-pipeline.md # 10 运行时 Web 控制面、消息收件箱与对账引擎透析
 │       ├── 11-upstream-langgraph-monkey-patches-and-hitl-bug-anatomy.md # 11 LangGraph 官方源码级猴子补丁与人机中断避坑
-│       └── 12-runtime-observability-langfuse-and-otel-pipeline.md # 12 运行时可观测性架构与 Langfuse/OTel 追踪管线
+│       ├── 12-runtime-observability-langfuse-and-otel-pipeline.md # 12 运行时可观测性架构与 Langfuse/OTel 追踪管线
+│       ├── 13-asynchronous-memory-and-mmr-algorithm.md # 13 异步记忆提取与双池 MMR 重排算法深度透析
+│       └── 14-resilient-mcp-fault-isolation.md       # 14 弹性 MCP 容错与装配期短路保护机制深度透析
 │
 ├── 06-scenarios/                            # 【第六层：端到端经典全链路时序】
 │   ├── 01-agent-chat-flow.md                # 06-01 普通流式对话端到端全链路 (Web→API→Runtime→Web)
 │   ├── 02-hitl-approval-flow.md             # 06-02 工具调用触发审批与恢复全链路
-│   └── 03-subagent-dispatch.md              # 06-03 主智能体派发子智能体与历史回放
+│   ├── 03-subagent-dispatch.md              # 06-03 主智能体派发子智能体与历史回放
+│   ├── 04-plan-mode-flow.md                 # 06-04 先规划后执行（Plan Mode）端到端全链路时序
+│   ├── 05-trace-to-logs-flow.md             # 06-05 Trace-to-Logs 毫秒级分布式排障日志穿透时序
+│   ├── 06-knowledge-studio-flow.md          # 06-06 知识资产上传、异步入库与只读检索时序
+│   └── 07-model-resilience-fallback-flow.md # 06-07 大模型瞬态故障毫秒级主备容灾降级时序
 │
 └── 07-agents/                               # 【第七层：具体智能体深度剖析与伪代码】
     ├── 01-dearflow-agent/                   # 07-01 核心旗舰智能体：DearFlow Agent 专属专题目录
     │   ├── README.md                        # 专题导读与架构总览
     │   ├── 01-architecture-and-modes.md     # 07-01-01 总控编排与四档执行模式 (Pregel拓扑/10+中间件/算力预算)
-    │   ├── 02-memory-engine.md              # 07-01-02 三层记忆闭环系统 (Profile/Session/Working注入与语义检索)
+    │   ├── 02-memory-engine.md              # 07-01-02 企业级长期记忆闭环系统 (异步解耦/MMR重排/平滑软淘汰)
     │   ├── 03-tools-ecosystem.md            # 07-01-03 38类工具装配矩阵 (检索/ArXiv/GitHub/部署/多模态/图表)
-    │   ├── 04-workspace-sandbox.md          # 07-01-04 工作空间沙箱与资产管线 (DearWorkspaceBackend/PTY/防逃逸)
+    │   ├── 04-workspace-sandbox.md          # 07-01-04 工作空间沙箱与资产管线 (Smart Zip流式传输/PTY/防逃逸)
     │   ├── 05-skills-runtime.md             # 07-01-05 技能治理与动态热加载 (20+内置技能/ZIP乐观锁/快照隔离)
     │   ├── 06-high-fidelity-implementation.md # 07-01-06 端到端高保真实现伪代码 (单文件级全景装配闭环)
     │   └── 07-real-world-lifecycle-case-study.md # 07-01-07 真实案例端到端全链路实录 (从用户一句话到沙箱结果落盘)
@@ -175,6 +184,9 @@ docs/architecture/
 | **05-runtime-service** | [10-运行时Web控制面与消息对账引擎深度透析](05-runtime-service/concepts/10-runtime-webapp-api-server-and-inbox-pipeline.md) | 扫除控制面与消息追加盲区：`webapp.py` 组合根与 Lifespan 看门狗，`terminals.shutdown` 强杀终端僵尸容器，8 大业务子路由汇聚，`MessageInbox` 咨询锁原子落库与终态自愈对账。 |
 | **05-runtime-service** | [11-LangGraph官方源码级猴子补丁与人机中断避坑深度透析](05-runtime-service/concepts/11-upstream-langgraph-monkey-patches-and-hitl-bug-anatomy.md) | 扫除底座补丁认知盲区：`patches.py` 方法级替换（Method Swizzling），消灭流式输出把人机审批误判为报错的假报警，修补 `ToolNode` 异步冒泡吞没缺陷，上游最新 main 分支实测证据与切斯特顿栅栏对比。 |
 | **05-runtime-service** | [12-运行时可观测性架构与Langfuse/OTel追踪管线深度透析](05-runtime-service/concepts/12-runtime-observability-langfuse-and-otel-pipeline.md) | 扫除可观测性反噬业务盲区：`_FailSoftCallback` 软着陆动态代理吞噬 APM 异常，零信任元数据消杀与敏感密钥粉碎，本地轻量 `_RuntimeDiagnosticsCallback` 离线 0.05 秒自测断言与 5 秒优雅排空防死锁。 |
+| **04-platform-api** | [08-186MB超轻量微服务可观测体系设计哲学深度剖析](04-platform-api/concepts/08-lightweight-observability-philosophy.md) | 扫除监控中间件内存贪婪盲区：为什么 Loki 标签索引完胜 ES 倒排索引？内存锁泄漏复盘、Prometheus 路径归一化防维度爆炸与自回声递归阻断。 |
+| **05-runtime-service** | [13-异步记忆提取与双池MMR重排算法深度透析](05-runtime-service/concepts/13-asynchronous-memory-and-mmr-algorithm.md) | 扫除记忆系统长延迟盲区：主请求耗时从 2~5s 压缩至 < 5ms 异步后台派发，双池 MMR 多样性贪心选择数学模型，中文分词+IDF 与时间半衰期软淘汰。 |
+| **05-runtime-service** | [14-弹性MCP容错与装配期短路保护机制深度透析](05-runtime-service/concepts/14-resilient-mcp-fault-isolation.md) | 扫除外部依赖单点故障盲区：彻底废除“缺工具即自杀”的反模式强校验，装配期 10 秒超时看门狗隔离与软降级，运行期 ToolMessage 自愈与显式挂载。 |
 
 ---
 

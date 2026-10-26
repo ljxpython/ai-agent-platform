@@ -29,24 +29,27 @@ flowchart TD
     Router["Vue Router (路由守卫 & 鉴权拦截)"]
 
     subgraph Modules["业务模块层 (src/modules/)"]
-        M_Chat["chat / 对话与会话池"]
-        M_CP["control-plane / 管理控制台"]
-        M_Proj["projects / 多租户项目隔离"]
-        M_Gov["system-governance / 系统治理与审计"]
+        M_Chat["chat / 对话与会话池 (Clean Architecture 5层解耦)"]
+        M_CP["control-plane / 管理控制台 (模型Catalog / RBAC)"]
+        M_Proj["projects / 多租户项目隔离与配置"]
+        M_Knowledge["knowledge / 原生知识中台 (Canvas 力导向图谱)"]
+        M_Obs["observability / 工业级可观测大盘 (Grafana/Loki)"]
+        M_Gov["system-governance / 系统治理与审计中心"]
     end
 
-    subgraph Core["底层通用基础设施"]
-        Stores["Pinia 状态存储 (auth / workspace / theme)"]
-        Services["HTTP & LangGraph 传输服务层"]
+    subgraph Core["底层通用基础设施 (src/core/)"]
+        Stores["Pinia 状态存储 (auth / workspace / notifications)"]
+        Services["HTTP & LangGraph 传输服务层 (Axios / SSE)"]
+        ErrBoundary["全局 ErrorBoundary & 有界错误缓冲区 (Cap=10)"]
     end
 
-    API_Gateway["后端网关: platform-api (:8000)"]
+    API_Gateway["后端网关: platform-api (端口: 2142)"]
 
     User -->|"输入 URL / 触发点击"| Router
     Router -->|"校验 Token & 权限通过"| Modules
     Modules -->|"读取全局上下文"| Stores
     Modules -->|"发起 REST 查询 / SSE 订阅"| Services
-    Services -->|"带 Bearer User-JWT"| API_Gateway
+    Services -->|"带 Bearer User-JWT & W3C traceparent"| API_Gateway
 ```
 
 ---
@@ -76,7 +79,9 @@ const send = async (text) => {
 ### 3. 本项目的架构升级与设计取舍（Trade-offs）
 - **会话持久化与 DOM 渲染解耦**：引入集中式会话池（`ChatSessionPool`），切页面时不销毁会话与连接，只通过 Teleport 将 DOM 挂起至后台休眠；
 - **连接态与报错态严格分离**：重连中（Reconnecting）只展示温和的琥珀色脉冲指示，绝对不向用户弹红色报错条；
-- **全站项目工作区状态机（Workspace Context）**：路由与 Pinia `workspace` 深度联动，每次切换项目，全局自动派发清理事件并重新校验模型白名单与权限。
+- **全站项目工作区状态机（Workspace Context）**：路由与 Pinia `workspace` 深度联动，每次切换项目，全局自动派发清理事件并重新校验模型白名单与权限；
+- **对标谷歌范式的 5 层 Clean Architecture 解耦**：彻底重构对话核心，将原本动辄 3000 行的巨石组件拆解为核心领域层、流式传输层、Composables 状态机层、ViewModel 展示层与 UI 表现层，消息处理完全纯函数化；
+- **全局 ErrorBoundary 拒绝白屏与有界错误环形缓冲区 (Cap=10)**：所有核心页面包裹全局错误边界，未捕获异常降级为 CrashScreen 卡片，内存维持最近 10 条错误环形缓冲，支持就地一键导出脱敏排障包。
 
 ---
 
