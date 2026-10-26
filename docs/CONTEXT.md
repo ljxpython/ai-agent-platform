@@ -18,6 +18,7 @@
 
 ## 活跃项目
 
+- [GitHub 调研工具与远程沙箱证据元组契约韧性治理](projects/20261026-github-tool-and-remote-evidence-resilience/README.md)：`done`；针对 GitHub 匿名调用 403 限流击穿引入 GITHUB_TOKEN 鉴权支持（借鉴 deer-flow），实测限流额度提升至 5000/hr；同时彻底修复 Remote Sandbox RPC 证据回传将元组退化为 List 导致 LangChain 强校验失败抛出 `runtime.execution_failed` 的致命缺陷。53 项单测全绿。
 - [全域架构文档全景同步与技术资产演进工程](projects/20261025-architecture-docs-synchronization/README.md)：`done`；系统性抹平 10 月份 52 项已交付成果与 `docs/architecture/` 之间的 8 大技术断层，4 个 Phase 全部交付闭环并通过六维合规验证，0 坏链。
 - [分布式全链路追踪与日志关联可观测性工程](projects/20261022-trace-to-logs-distributed-observability/README.md)：`done`；对标大厂分布式排障体验，基于 W3C traceparent 协议 + Grafana Loki/Promtail 超轻量日志中心（实测四容器常驻总内存仅 186.47MB），实现根据单一 trace_id 在一屏内同时展现微服务调用拓扑瀑布图与各服务毫秒级对齐的详细上下文日志，前端一键穿透与 Derived Fields 跳转全面实装，生产主机 sshmy1 验证通过。
 - [工业级可观测性与指标大盘架构工程](projects/20261022-industrial-observability-architecture/README.md)：`done`；建立 Langfuse + Prometheus 双轨制工业级可观测体系，彻底淘汰内存锁计数器，向外暴露标准 `/metrics` 接口，生产主机 `sshmy1` 实装 Prometheus + Grafana 双容器（总内存常驻仅 70.09MB，双 Targets 100% UP），实装方案 B 前端无缝内嵌工业指标大盘（Kiosk 沉浸、深浅主题联动、全屏与全量 906 单测全绿）。

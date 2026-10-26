@@ -158,7 +158,7 @@ def _evidence(workspace, runtime: ToolRuntime, records: list[dict]):
     from runtime_service.workspace.target import RemoteWorkspace
 
     if isinstance(workspace.root, RemoteWorkspace):
-        return workspace.root.call(
+        evidence_result = workspace.root.call(
             "research_evidence",
             records=records,
             tool_call_id=runtime.tool_call_id,
@@ -166,6 +166,9 @@ def _evidence(workspace, runtime: ToolRuntime, records: list[dict]):
             run_id=info.run_id,
             namespace=info.checkpoint_ns,
         )
+        if isinstance(evidence_result, (list, tuple)) and len(evidence_result) == 2:
+            return (evidence_result[0], evidence_result[1])
+        return evidence_result
     directory = io._directory(("sources",), create=True)
     try:
         for record in records:

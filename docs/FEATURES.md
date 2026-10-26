@@ -113,6 +113,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| GitHub 调研工具限流与远程沙箱证据元组契约韧性治理 | 已完成：支持可选 GITHUB_TOKEN（限流从 60 提升至 5000 次/小时）；彻底修复远程沙箱 RPC 反序列化将二元组退化为 List 导致 LangChain 校验失败抛出 runtime.execution_failed 的致命缺陷；53 项单测全绿 | [项目概览](projects/20261026-github-tool-and-remote-evidence-resilience/README.md) · [验证记录](projects/20261026-github-tool-and-remote-evidence-resilience/verification.md) |
 | LightRAG MCP 知识库真实文档状态与项目物理隔离 | 已完成：彻底拔除 fake 静态目录伪造 ID，直连底层 `rag.doc_status`；修复多租户共享内存串台 Bug，实现 13 份多模态文档真实透出、项目名称完全对齐与 0 串台物理隔离；远端部署生效，Playwright 真实模型测试通过 | [项目概览](projects/20261021-lightrag-mcp-real-doc-status-alignment/README.md) · [验证记录](projects/20261021-lightrag-mcp-real-doc-status-alignment/verification.md) |
 | 企业级长期记忆系统升级（异步非阻塞+Prescreen+MMR检索+平滑软淘汰） | 已完成：后台异步非阻塞提取（主响应耗时 < 5ms）、Prescreen 成本门禁、中文 unigram+bigram 混合分词+IDF 加权与双池 MMR 多样性重排、Dice 相似度近重复合并、置信度/新鲜度优先级平滑软淘汰，33 项单测全绿 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
 | 已采集用量受控聚合与Run候选查询 | 已完成：HMAC两POST、RR同快照、0004索引/0005可重建桶、脏补齐/Run精确去重、有界查询和重建/重启/保留迁移回退通过；公开百万容量及写影响通过、B01解除；前端全栈闭环 | [Runtime方案/任务](projects/20261011-token-usage-dashboard/02-runtime-aggregation.md) · [容量证据](projects/20261011-token-usage-dashboard/05-delivery-and-verification.md) |

@@ -206,3 +206,98 @@ def test_provider_host_and_rate_limit(monkeypatch):
         with pytest.raises(ToolException, match="rate_limited"):
             await research_http.get_public("https://api.github.com/repos/owner/repo")
     asyncio.run(run())
+
+
+def test_github_token_injection_and_unauthorized_mapping(monkeypatch):
+    import httpx
+
+    captured_headers = []
+
+    def mock_handler(req):
+        captured_headers.append(dict(req.headers))
+        if req.headers.get("authorization") == "Bearer invalid_pat":
+            return httpx.Response(401, json={"message": "Bad credentials"})
+        return httpx.Response(200, json={"full_name": "owner/repo"})
+
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        research_http.httpx,
+        "AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(mock_handler), **kwargs),
+    )
+
+    async def run():
+        # 1. 设置 GITHUB_TOKEN
+        monkeypatch.setenv("GITHUB_TOKEN", "ghp_mock_token_123")
+        monkeypatch.delenv("GIT_TOKEN", raising=False)
+        captured_headers.clear()
+        await research_http.get_public("https://api.github.com/repos/owner/repo")
+        assert captured_headers[-1].get("authorization") == "Bearer ghp_mock_token_123"
+
+        # 2. 兼容 GIT_TOKEN
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.setenv("GIT_TOKEN", "ghp_git_token_456")
+        captured_headers.clear()
+        await research_http.get_public("https://api.github.com/repos/owner/repo")
+        assert captured_headers[-1].get("authorization") == "Bearer ghp_git_token_456"
+
+        # 3. 无 Token 时保持匿名请求
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+        monkeypatch.delenv("GIT_TOKEN", raising=False)
+        captured_headers.clear()
+        await research_http.get_public("https://api.github.com/repos/owner/repo")
+        assert "authorization" not in captured_headers[-1]
+
+        # 4. 401 Bad credentials 被安全映射为受控 ToolException
+        monkeypatch.setenv("GITHUB_TOKEN", "invalid_pat")
+        with pytest.raises(ToolException, match="rate_limited_or_forbidden"):
+            await research_http.get_public("https://api.github.com/repos/owner/repo")
+
+    asyncio.run(run())
+
+
+def test_remote_workspace_evidence_tuple_conversion_in_tool(monkeypatch):
+    from runtime_service.workspace.target import RemoteWorkspace
+
+    class MockRemoteWorkspace(RemoteWorkspace):
+        def __init__(self):
+            pass
+
+        def call(self, operation, **kwargs):
+            assert operation == "research_evidence"
+            # 模拟远端 RPC JSON 反序列化后返回 list 而非 tuple
+            return [json.dumps([{"summary": "ok"}]), {"version": 1, "sources": []}]
+
+    mock_remote = MockRemoteWorkspace()
+    workspace = SimpleNamespace(root=mock_remote)
+
+    async def provider(url, params=None):
+        return b'{"private":false,"default_branch":"main"}', {}
+
+    monkeypatch.setattr(github, "get_public", provider)
+    tool = github.build_github_tool(workspace)
+
+    async def run():
+        # 1. 验证 _evidence 底层直接返回为标准 tuple 且长度为 2
+        content_and_artifact = await tool.coroutine("owner", "repo", runtime(), operation="info")
+        assert isinstance(content_and_artifact, tuple)
+        assert len(content_and_artifact) == 2
+        content, artifact = content_and_artifact
+        assert "ok" in content
+        assert artifact["version"] == 1
+
+        # 2. 验证经由 LangChain 框架层解析时，content_and_artifact 元组契约严格成立，不触发 ValueError
+        content_output = await tool.arun({"owner": "owner", "repo": "repo", "operation": "info", "runtime": runtime()})
+        assert isinstance(content_output, str)
+        assert "ok" in content_output
+
+        # 3. 验证传入 tool_call_id 时正确生成包含 artifact 的 ToolMessage
+        tool_msg = await tool.arun(
+            {"owner": "owner", "repo": "repo", "operation": "info", "runtime": runtime()},
+            tool_call_id="call_test_123",
+        )
+        assert isinstance(tool_msg, ToolMessage)
+        assert tool_msg.artifact["version"] == 1
+        assert "ok" in tool_msg.content
+
+    asyncio.run(run())

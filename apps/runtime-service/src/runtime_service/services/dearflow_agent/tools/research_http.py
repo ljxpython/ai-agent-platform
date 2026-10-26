@@ -1,6 +1,7 @@
 """Bounded public research HTTP; no caller-provided host or credentials."""
 
 import asyncio
+import os
 from urllib.parse import urlsplit
 
 import httpx
@@ -15,6 +16,16 @@ async def get_public(url: str, params: dict | None = None) -> tuple[bytes, dict]
         == "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md"
     ):
         raise ToolException("research_endpoint_denied")
+    headers = {
+        "Accept": "application/json, application/atom+xml",
+        "User-Agent": "DearAgent-research/1.0",
+    }
+    if parsed.netloc == "api.github.com":
+        token = (
+            os.environ.get("GITHUB_TOKEN") or os.environ.get("GIT_TOKEN") or ""
+        ).strip()
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
     try:
         async with (
             asyncio.timeout(35),
@@ -25,13 +36,10 @@ async def get_public(url: str, params: dict | None = None) -> tuple[bytes, dict]
                 "GET",
                 url,
                 params=params,
-                headers={
-                    "Accept": "application/json, application/atom+xml",
-                    "User-Agent": "DearAgent-research/1.0",
-                },
+                headers=headers,
             ) as response,
         ):
-            if response.status_code in (403, 429):
+            if response.status_code in (401, 403, 429):
                 raise ToolException("research_rate_limited_or_forbidden")
             if response.status_code == 404:
                 raise ToolException("research_not_found_or_private")
