@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Markdown 渲染器 blob: 协议放行与工作区产物图表紧凑卡片渲染治理 | 已完成：放行 blob: 安全协议白名单，根治产物库与 Markdown 内部引用的图表由于安全清洗降级为 '#' 导致的破损；重构 Markdown 图像排版规格，建立 680px 宽度/460px 高度上限、居中、微圆角卡片边框与深浅模式自适应，彻底终结广告牌级巨型图表问题；补齐 6 项 Vitest 单测与 Playwright 自动化 E2E 验证 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-markdown-blob-image-rendering.md) |
 | 前端历史会话回放防误触（Replay Immunity）与上下文整理状态机收敛 | 已完成：根治进入已完成历史会话时底层 SSE 协议全量回放导致“正在整理上下文...”浮条误闪烁与永久悬挂漏洞；落实终态与活跃 Run 严格双重校验；单测 51/51 项与 Playwright 双会话端到端全绿 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-offload-replay-immunity.md) |
 | 会话取消（Stop）后乐观消息幽灵消除、时序防倒挂与 Loading 精准挂载治理 | 已完成：根治取消后乐观消息残留导致的跨回合时序颠倒；修复首轮 baseline=0 流式响应倒挂漏洞；修复已中断/已取消回合盲目渲染“正在组织答复”占位符；实装恢复连接与新发送时的错误横幅即时清空；Vitest 单测 100% 绿灯 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-chat-session-stop-and-ordering.md) |
 | 分布式全链路追踪与大厂排障可视化大盘 | 已完成：实装四联指标概览卡片、耗时瀑布流甘特条、毫秒级即时过滤、极速时间轴与 Grafana Explore 双视角 Tab 对比、三级自适应 Langfuse 多租户动态精准跳转；Vitest 全量绿灯、类型检查 0 报错、打包成功 | [项目概览](projects/20261022-trace-to-logs-distributed-observability/README.md) · [验证记录](projects/20261022-trace-to-logs-distributed-observability/verification.md) |

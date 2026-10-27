@@ -505,11 +505,30 @@ const codeLines = computed(() => {
 }
 
 .pw-workspace-markdown :deep(img) {
-  max-width: 100%;
+  display: block;
+  max-width: min(100%, 680px);
+  max-height: 460px;
+  width: auto;
   height: auto;
-  border-radius: 0.5rem;
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  object-fit: contain;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  background-color: #ffffff;
+  padding: 0.5rem;
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.08),
+    0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+:global(.dark) .pw-workspace-markdown :deep(img) {
+  border-color: rgba(51, 65, 85, 0.8);
+  background-color: #0f172a;
 }
 </style>

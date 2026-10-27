@@ -11,7 +11,7 @@ const markdownRenderer = new MarkdownIt({
 // 允许所有链接进入解析器，统一由 link_open 规则按白名单清洗 href
 markdownRenderer.validateLink = () => true;
 
-const SAFE_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+const SAFE_PROTOCOLS = new Set(["http:", "https:", "mailto:", "blob:"]);
 
 function sanitizeUrl(rawUrl: string): string {
   if (!rawUrl) return "";
