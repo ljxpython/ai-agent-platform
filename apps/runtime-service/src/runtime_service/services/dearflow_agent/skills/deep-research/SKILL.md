@@ -7,7 +7,26 @@ description: Use this skill instead of search_web for ANY question requiring web
 
 ## Overview
 
-This skill provides a systematic methodology for conducting thorough web research. **Load this skill BEFORE starting any content generation task** to ensure you gather sufficient information from multiple angles, depths, and sources.
+This skill provides a disciplined, bounded methodology for conducting high signal-to-noise web research. **Load this skill BEFORE starting any content generation task** to gather necessary evidence from multiple angles while strictly respecting the research budget and avoiding endless crawling.
+
+## Research Budget & Hard Limits
+
+**Research must strictly adhere to the following bounded budget to ensure timely delivery:**
+
+| Task Type | Target `search_web` Queries | Target `fetch_page` Reads | Maximum Allowable Searches |
+|---|---|---|---|
+| **Quick Investigation / Fact-finding** | 2 – 3 queries | 1 – 2 full reads | 4 queries max |
+| **Topic Deep Dive / Industry Report** | 3 – 5 queries | 2 – 4 full reads | 6 queries max |
+| **Comprehensive Multidisciplinary Research** | 4 – 6 queries | 3 – 5 full reads | 8 queries max |
+
+> ⚠️ **Hard Ceiling**: Under NO circumstances should any single task exceed **8 searches** or **5 page fetches**. Once the budget is reached, you **MUST immediately stop researching and begin synthesizing and producing output**.
+
+## Core Principles
+
+1. **Signal-to-Noise Over Raw Quantity**: The quality of your output depends on selecting authoritative, high-density sources, NOT the raw count of web requests.
+2. **Law of Diminishing Returns**: The first 3 to 5 well-targeted searches yield 80% of critical insights. Subsequent queries have rapidly diminishing returns. Stop when the core landscape and key figures are confirmed.
+3. **No Endless Rabbit Holes**: Do NOT follow every secondary reference or tangential company mentioned in articles. Focus strictly on the user's primary prompt.
+4. **Snippet-First Evaluation**: Evaluate search snippets first. Most facts (dates, specs, funding amounts, market rankings) are already clear in snippets. Only use `fetch_page` for deep analysis or conflicting claims.
 
 ## When to Use This Skill
 
@@ -26,84 +45,35 @@ This skill provides a systematic methodology for conducting thorough web researc
 - Producing videos or multimedia content
 - Any content that requires real-world information, examples, or current data
 
-## Core Principle
-
-**Never generate content based solely on general knowledge.** The quality of your output directly depends on the quality and quantity of research conducted beforehand. A single search query is NEVER enough.
-
 ## Research Methodology
 
-### Phase 1: Broad Exploration
+### Phase 1: Broad Exploration (1-2 Queries)
 
-Start with broad searches to understand the landscape:
+Start with 1-2 broad searches to map the landscape:
+1. **Initial Survey**: Search for the main topic with temporal awareness (`<current_date>`)
+2. **Identify Core Dimensions**: Identify 2-3 essential pillars (e.g., technical breakthrough, market status, commercial bottlenecks)
 
-1. **Initial Survey**: Search for the main topic to understand the overall context
-2. **Identify Dimensions**: From initial results, identify key subtopics, themes, angles, or aspects that need deeper exploration
-3. **Map the Territory**: Note different perspectives, stakeholders, or viewpoints that exist
+### Phase 2: Targeted Deep Dive (2-3 Queries)
 
-Example:
-```
-Topic: "AI in healthcare"
-Initial searches:
-- "AI healthcare applications 2024"
-- "artificial intelligence medical diagnosis"
-- "healthcare AI market trends"
+For each essential dimension, run 1 focused query:
+1. **Specific Queries**: Use precise terms (e.g., `"humanoid dexterous hand 2026 DOF tactile sensor"`)
+2. **Selective Reading**: Use `fetch_page` ONLY on the 2-3 most authoritative or data-rich reports.
 
-Identified dimensions:
-- Diagnostic AI (radiology, pathology)
-- Treatment recommendation systems
-- Administrative automation
-- Patient monitoring
-- Regulatory landscape
-- Ethical considerations
-```
+### Phase 3: Diversity & Validation (1 Query if needed)
 
-### Phase 2: Deep Dive
-
-For each important dimension identified, conduct targeted research:
-
-1. **Specific Queries**: Search with precise keywords for each subtopic
-2. **Multiple Phrasings**: Try different keyword combinations and phrasings
-3. **Fetch Full Content**: Use `fetch_page` to read important sources in full, not just snippets
-4. **Follow References**: When sources mention other important resources, search for those too
-
-Example:
-```
-Dimension: "Diagnostic AI in radiology"
-Targeted searches:
-- "AI radiology FDA approved systems"
-- "chest X-ray AI detection accuracy"
-- "radiology AI clinical trials results"
-
-Then fetch and read:
-- Key research papers or summaries
-- Industry reports
-- Real-world case studies
-```
-
-### Phase 3: Diversity & Validation
-
-Ensure comprehensive coverage by seeking diverse information types:
-
-| Information Type | Purpose | Example Searches |
-|-----------------|---------|------------------|
-| **Facts & Data** | Concrete evidence | "statistics", "data", "numbers", "market size" |
-| **Examples & Cases** | Real-world applications | "case study", "example", "implementation" |
-| **Expert Opinions** | Authority perspectives | "expert analysis", "interview", "commentary" |
-| **Trends & Predictions** | Future direction | "trends 2024", "forecast", "future of" |
-| **Comparisons** | Context and alternatives | "vs", "comparison", "alternatives" |
-| **Challenges & Criticisms** | Balanced view | "challenges", "limitations", "criticism" |
+Resolve conflicting figures or verify industry challenges:
+- Check concrete metrics (costs, yield, production volume, MTBF)
+- Identify industry consensus vs. marketing hype
 
 ### Phase 4: Synthesis Check
 
 Before proceeding to content generation, verify:
 
-- [ ] Have I searched from at least 3-5 different angles?
-- [ ] Have I fetched and read the most important sources in full?
-- [ ] Do I have concrete data, examples, and expert perspectives?
-- [ ] Have I explored both positive aspects and challenges/limitations?
-- [ ] Is my information current and from authoritative sources?
+- [ ] Have I answered the core user intent with concrete data and examples?
+- [ ] Have I captured the main technical bottlenecks and commercial reality?
+- [ ] Have I reached or approached my search budget (3-6 queries)?
 
-**If any answer is NO, continue researching before generating content.**
+**Stopping Rule**: If you have sufficient information to address the user's prompt, or if you have reached your search budget, **STOP searching immediately and start synthesizing**. Gaps in non-essential trivia should be acknowledged in the final report under "Recommended Next Inquiries" rather than delaying delivery with more searches.
 
 ## Search Strategy Tips
 
@@ -112,29 +82,21 @@ Before proceeding to content generation, verify:
 ```
 # Be specific with context
 ❌ "AI trends"
-✅ "enterprise AI adoption trends 2024"
+✅ "enterprise AI adoption trends 2026"
 
 # Include authoritative source hints
 "[topic] research paper"
-"[topic] McKinsey report"
 "[topic] industry analysis"
-
-# Search for specific content types
-"[topic] case study"
-"[topic] statistics"
-"[topic] expert interview"
+"[topic] market report"
 
 # Use temporal qualifiers — always use the ACTUAL current year from <current_date>
-"[topic] 2026"   # ← replace with real current year, never hardcode a past year
+"[topic] 2026"
 "[topic] latest"
-"[topic] recent developments"
 ```
 
 ### Temporal Awareness
 
 **Always check `<current_date>` in your context before forming ANY search query.**
-
-`<current_date>` gives you the full date: year, month, day, and weekday (e.g. `2026-02-28, Saturday`). Use the right level of precision depending on what the user is asking:
 
 | User intent | Temporal precision needed | Example query |
 |---|---|---|
@@ -143,56 +105,32 @@ Before proceeding to content generation, verify:
 | "recently / latest / new" | **Month** | `"AI breakthroughs February 2026"` |
 | "this year / trends" | **Year** | `"software trends 2026"` |
 
-**Rules:**
-- When the user asks about "today" or "just released", use **month + day + year** in your search queries to get same-day results
-- Never drop to year-only when day-level precision is needed — `"tech news 2026"` will NOT surface today's news
-- Try multiple phrasings: numeric form (`2026-02-28`), written form (`February 28 2026`), and relative terms (`today`, `this week`) across different queries
-
-❌ User asks "what's new in tech today" → searching `"new technology 2026"` → misses today's news
-✅ User asks "what's new in tech today" → searching `"new technology February 28 2026"` + `"tech news today Feb 28"` → gets today's results
-
 ### When to Use fetch_page
 
-Use `fetch_page` to read full content when:
-- A search result looks highly relevant and authoritative
-- You need detailed information beyond the snippet
-- The source contains data, case studies, or expert analysis
-- You want to understand the full context of a finding
-
-### Iterative Refinement
-
-Research is iterative. After initial searches:
-1. Review what you've learned
-2. Identify gaps in your understanding
-3. Formulate new, more targeted queries
-4. Repeat until you have comprehensive coverage
+Use `fetch_page` sparingly and selectively:
+- ✅ The source is an authoritative in-depth technical whitepaper or official OEM report
+- ✅ The snippet indicates vital data tables, architectural breakdown, or benchmarks needed for the report
+- ❌ Do NOT fetch generic news aggregators, social forums, or pages where the snippet already answered your question
 
 ## Quality Bar
 
-Your research is sufficient when you can confidently answer:
-- What are the key facts and data points?
-- What are 2-3 concrete real-world examples?
-- What do experts say about this topic?
-- What are the current trends and future directions?
-- What are the challenges or limitations?
-- What makes this topic relevant or important now?
+Your research is sufficient when you can clearly answer:
+1. What is the current status and latest breakthrough?
+2. What are the key metrics and real-world deployment cases?
+3. What are the core challenges or limitations preventing scale?
+4. Who are the representative players and what is their approach?
 
 ## Common Mistakes to Avoid
 
-- ❌ Stopping after 1-2 searches
-- ❌ Relying on search snippets without reading full sources
-- ❌ Searching only one aspect of a multi-faceted topic
-- ❌ Ignoring contradicting viewpoints or challenges
-- ❌ Using outdated information when current data exists
-- ❌ Starting content generation before research is complete
+- ❌ **Endless rabbit holes**: Searching every secondary company, component, or tangent mentioned
+- ❌ **Over-fetching**: Calling `fetch_page` on every single search result (wasting time and tokens)
+- ❌ **Perfectionist trap**: Trying to crawl the entire internet before typing a single sentence
+- ❌ **Ignoring the budget**: Continuing past 6-8 searches when diminishing returns have set in
+- ❌ **Superficial single search**: Relying on 1 generic search without cross-checking key numbers
 
 ## Output
 
-After completing research, you should have:
-1. A comprehensive understanding of the topic from multiple angles
-2. Specific facts, data points, and statistics
-3. Real-world examples and case studies
-4. Expert perspectives and authoritative sources
-5. Current trends and relevant context
-
-**Only then proceed to content generation**, using the gathered information to create high-quality, well-informed content.
+After completing research (strictly within 3-6 queries):
+1. **Deliver the synthesis immediately**: Produce the structured report, document, or answer.
+2. **Structured Evidence**: Cite specific sources and data points gathered.
+3. **Open Questions**: If certain niche details remain unverified due to budget limits, note them transparently in an "Open Questions / Next Steps" section.

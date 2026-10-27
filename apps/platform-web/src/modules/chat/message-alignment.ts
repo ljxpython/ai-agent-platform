@@ -166,7 +166,7 @@ export function resolveDisplayedMessages(
   // 若在提交后产生了当前轮次的实时 AI 流式响应，新消息锚定在历史基线之后、当前轮次实时响应之前。
   if (
     isSessionRunning &&
-    optimisticBaseCount > 0 &&
+    optimisticBaseCount >= 0 &&
     optimisticBaseCount < base.length
   ) {
     return [

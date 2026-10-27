@@ -11,6 +11,10 @@
 
 ## 最近改动
 
+2026-10-27 | **智能体联网调研预算约束（Research Budget）与边际收敛刹车治理**：彻底根治深度调研场景下由于技能煽动无限递归搜索导致单会话调用 250+ 次工具、耗时 34 分钟超时死循环的过犹不及缺陷。重构 `deep-research` 技能与全局系统提示词，确立严格调研预算（常规 3~5 次搜索、2~4 篇精读全文）、边际效用递减（前 3~5 轮已覆盖 80% 核心事实）及摘要优先评估原则，彻底废除顺藤摸瓜无限追溯与全量全文泛览反模式。全量 30 项技能单测全部跑绿。
+2026-10-27 | **前端历史会话回放防误触（Replay Immunity）与上下文整理状态机收敛**：彻底根治用户打开已结束历史会话时，底层 SSE 协议万帧历史事件全量回放（Replay）导致前端盲目展示“正在整理上下文...”甚至永久悬挂的问题。建立终态与活跃 Run 严格双重校验机制，并在会话验证收尾与取消确认时强制复位过渡态，确保静态历史会话展现干净稳定。单测 51/51 项、TypeScript 类型检查及 Playwright 双会话端到端真实验证全部 100% 绿灯。
+2026-10-27 | **会话取消（Stop）后乐观消息幽灵消除、时序防倒挂与 Loading 精准挂载治理**：彻底根除用户在发送消息并点击取消后再次提问导致的界面错乱（旧消息倒挂到末尾、被取消回合盲目渲染“Agent 正在组织答复...”）；修复 `message-alignment.ts` 中首轮空会话 baseline=0 时乐观消息被误追加在流式输出后的倒挂 Bug；加固 `ChatMessageList.vue` 的 `showPendingPlaceholder` 严禁在中断/已停止态渲染；在 `ChatSession.vue` 的取消、重连与新发送流程中彻底重置乐观消息与历史错误横幅。单测与类型检查全部 100% 绿灯。
+2026-10-27 | **智能体上下文窗口治理与 Token 预算韧性优化全栈闭环**：彻底终结智能体运行中频繁触发整理上下文微胶囊、残暴 10% 裁剪导致记忆断层并陷入“失忆重读文件再次撑爆”死循环、以及单次运行耗尽 100 万 Token 抛错红条猝死的问题；实现四层防御：1) 上下文保留策略由 10% 提升为复合保留 $\ge 40\%$ 输入预算或最近 16 条完整消息；2) 在 `ResultFilesystemMiddleware` 实现 Head+Tail 物理截断（首尾各 50 行），根治 `read_file`/`grep` 瞬爆上下文；3) 改造 `TokenBudgetMiddleware` 实现 `exit_behavior="end"` 优雅停机，耗尽时清空后续 tool_calls 并温和收尾，绝不崩溃；4) 批量校准数据库存量模型窗口（`deepseek-v4.1-flash` 由 64K/32K 校准为官方真实 128K 131,072，`step-5-preview` 同步校准为 128K），配齐触发水位与保留环境变量；全量核心单测全部绿灯。
 2026-10-27 | **DeerFlow Skills 全量迁移对齐、触发验证与缺陷治理工程**：系统性梳理参考项目 deer-flow 23 项 Skills 与本平台 20 项 Skills 的迁移对齐度；建立全景清单与触发指南；4 个 Phase（学术文献、数据图表、前端规范、多模态元技能）全量真实实测与测试套件 100% 跑通；彻底根治 GITHUB_TOKEN 403 限流、Docker RPC 元组退化、多处硬编码 trust_env=False 导致本地代理被屏蔽、_evidence 空指针防护、以及 skill_catalog 遗漏官方推荐等关键缺陷；明确收口音视频未开放边界；39 项单测全部通过。
 2026-10-26 | **全域架构文档全景同步与技术资产演进工程**：系统性抹平 10 月份 52 项已交付成果与 `docs/architecture/` 之间的 8 大技术断层；升级宏观拓扑图与选型原则，扩充通信大动脉为 6 条干线（新增知识中台单向通道与双轨监控抓取通道）；全面重构可观测性文档（落实 W3C traceparent 与 Loki TSDB 毫秒日志穿透）；新增原生知识中台与单向免隧道自治架构规范；全面重写 DearFlow 记忆系统（异步解耦、双池 MMR 重排与软淘汰）；新增 Token 看板百万聚合读模型专篇与 186MB 轻量可观测、异步记忆 MMR、弹性 MCP 容错三大硬核 concepts 专篇；新增 4 篇端到端场景时序（Plan Mode、Trace-to-Logs 穿透、知识检索、模型容灾）；刷新全局 README 知识地图，自动化相对链接 100% 绿灯校验。
 2026-10-23 | **工业级链路可视化升级与 Langfuse 多租户精准路由闭环**：彻底解决 Langfuse 404 跨租户路由报错，实现基于项目级精准搜索与 filter 参数的三级自适应 URL 构造器（全面支持 `VITE_LANGFUSE_PROJECT_ID` 等环境变量配置）；阻断平台代理查询 Loki 自身的自回声日志污染；重构工业级排障大屏（四联指标概览卡片、耗时瀑布流甘特条、毫秒级纯前端即时搜索与双视角 Tab 对比切换），适配平台标准深浅色主题；全量单测、TypeScript 0 错误、生产构建及 Playwright 自动化验证 100% 绿灯。
@@ -19,6 +23,7 @@
 
 ## 活跃项目
 
+- [智能体上下文窗口治理与 Token 预算韧性优化](projects/20261027-agent-context-budget-hardening/README.md)：`done`；彻底解决频繁触发整理上下文、10% 残暴裁剪引发失忆死循环、以及单次运行耗尽 100 万 Token 抛错红条猝死缺陷；四层防御（40% 复合保留、Head+Tail 工具防爆截断、Token 耗尽优雅停机、存量模型校准为官方真实 128K 窗口）全栈落地闭环，测试全绿。
 - [DeerFlow Skills 全量迁移对齐、触发验证与缺陷治理工程](projects/20261027-deerflow-skills-audit-and-verification/README.md)：`done`；系统性梳理参考项目 deer-flow 23 项 Skills 与本平台 20 项 Skills 的迁移对齐度，建立全景对照与触发指南，分 4 个 Phase 逐类验证并修复潜在执行缺陷。全部实测跑通，测试全绿。
 - [GitHub 调研工具与远程沙箱证据元组契约韧性治理](projects/20261026-github-tool-and-remote-evidence-resilience/README.md)：`done`；针对 GitHub 匿名调用 403 限流击穿引入 GITHUB_TOKEN 鉴权支持（借鉴 deer-flow），实测限流额度提升至 5000/hr；同时彻底修复 Remote Sandbox RPC 证据回传将元组退化为 List 导致 LangChain 强校验失败抛出 `runtime.execution_failed` 的致命缺陷。53 项单测全绿。
 - [全域架构文档全景同步与技术资产演进工程](projects/20261025-architecture-docs-synchronization/README.md)：`done`；系统性抹平 10 月份 52 项已交付成果与 `docs/architecture/` 之间的 8 大技术断层，4 个 Phase 全部交付闭环并通过六维合规验证，0 坏链。

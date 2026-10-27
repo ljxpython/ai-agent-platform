@@ -456,7 +456,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             run_budget if run_budget is not None else resolve_wrapup_after_seconds()
         )
         return [
-            TokenBudgetMiddleware(root=not child),
+            TokenBudgetMiddleware(root=not child, exit_behavior="end"),
             *(
                 [
                     ModelResilienceSummarizationMiddleware(

@@ -130,5 +130,31 @@ describe("message-alignment", () => {
 
       expect(displayed.map((m) => m.content)).toEqual(["Hello brand new"]);
     });
+
+    it("anchors optimistic user message before streaming AI response on initial turn (prevents inverted ordering when baseline is 0)", () => {
+      const user1 = new HumanMessage({
+        id: "u1-opt",
+        content: "Research topic from blank session",
+      });
+      const ai1Streaming = new AIMessage({
+        id: "a1",
+        content: "Starting research...",
+      });
+
+      const displayed = resolveDisplayedMessages({
+        baseMessages: [ai1Streaming],
+        snapshotMessages: null,
+        fallbackMessages: [],
+        optimisticUserMessage: user1,
+        optimisticBaseCount: 0,
+        isSessionRunning: true,
+      });
+
+      // 验证：首轮提问必须严格排在流式 AI 之前，绝不能倒挂在流式 AI 之下
+      expect(displayed.map((m) => m.content)).toEqual([
+        "Research topic from blank session",
+        "Starting research...",
+      ]);
+    });
   });
 });

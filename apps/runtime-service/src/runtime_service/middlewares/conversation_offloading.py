@@ -177,6 +177,79 @@ class _CheckedArchiveBackend:
                 operation.pending.discard(task)
 
 
+def resolve_context_governance_settings(
+    input_budget: int,
+    trigger_override: Any | None = None,
+    keep_override: Any | None = None,
+) -> tuple[tuple[str, Any], tuple[str, Any]]:
+    """Resolve trigger and keep settings with environment fallback and composite default."""
+    if trigger_override is not None:
+        trigger = trigger_override
+    else:
+        env_trigger = os.getenv("AGENT_CONTEXT_TRIGGER_POLICY")
+        if env_trigger:
+            raw_t = env_trigger.strip()
+            if raw_t.endswith("%"):
+                pct = float(raw_t[:-1]) / 100.0
+                trigger = ("tokens", max(1, math.floor(pct * input_budget)))
+            elif raw_t.replace(".", "", 1).isdigit():
+                f = float(raw_t)
+                trigger = (
+                    ("tokens", max(1, math.floor(f * input_budget)))
+                    if f <= 1.0
+                    else ("tokens", int(f))
+                )
+            else:
+                trigger = ("tokens", max(1, math.floor(0.85 * input_budget)))
+        else:
+            trigger = ("tokens", max(1, math.floor(0.85 * input_budget)))
+
+    if keep_override is not None:
+        keep = keep_override
+    else:
+        env_keep = os.getenv("AGENT_CONTEXT_KEEP_POLICY")
+        if env_keep:
+            raw_k = env_keep.strip()
+            if ":" in raw_k:
+                k_type, k_val = raw_k.split(":", 1)
+                k_type = k_type.strip().lower()
+                k_val = k_val.strip()
+                if k_val.endswith("%"):
+                    pct = float(k_val[:-1]) / 100.0
+                    keep = ("tokens", max(1, math.floor(pct * input_budget)))
+                elif k_type == "messages":
+                    keep = ("messages", int(float(k_val)))
+                elif k_type == "fraction":
+                    pct = float(k_val)
+                    keep = ("tokens", max(1, math.floor(pct * input_budget)))
+                elif k_type == "tokens":
+                    f = float(k_val)
+                    if f <= 1.0:
+                        keep = ("tokens", max(1, math.floor(f * input_budget)))
+                    else:
+                        keep = ("tokens", int(f))
+                else:
+                    keep = ("tokens", max(1, math.floor(0.40 * input_budget)))
+            elif raw_k.endswith("%"):
+                pct = float(raw_k[:-1]) / 100.0
+                keep = ("tokens", max(1, math.floor(pct * input_budget)))
+            elif raw_k.replace(".", "", 1).isdigit():
+                f = float(raw_k)
+                keep = (
+                    ("tokens", max(1, math.floor(f * input_budget)))
+                    if f <= 1.0
+                    else ("tokens", int(f))
+                )
+            else:
+                keep = ("tokens", max(1, math.floor(0.40 * input_budget)))
+        else:
+            # Default retention: keep 40% of input budget (4x more than legacy 10%),
+            # ensuring sufficient working memory for recent tools and user instructions.
+            keep = ("tokens", max(1, math.floor(0.40 * input_budget)))
+
+    return trigger, keep
+
+
 class ConversationOffloadingMiddleware(PiiSummarizationMiddleware):
     """Keep official cutoff, pairing, archive and checkpoint semantics."""
 
@@ -195,6 +268,9 @@ class ConversationOffloadingMiddleware(PiiSummarizationMiddleware):
         output_budget_tokens: int | None = None,
         manual: bool = False,
         pii_config: PiiRedactionConfig | None = None,
+        trigger: Any | None = None,
+        keep: Any | None = None,
+        truncate_args_keep: Any | None = None,
     ) -> None:
         self.manual = manual
         self.pii_config = pii_config
@@ -213,16 +289,23 @@ class ConversationOffloadingMiddleware(PiiSummarizationMiddleware):
                 "callbacks": callbacks,
             }
         )
+        resolved_trigger, resolved_keep = resolve_context_governance_settings(
+            self.input_budget, trigger, keep
+        )
+        resolved_truncate_args_keep = truncate_args_keep or (
+            "tokens",
+            max(1, math.floor(0.10 * self.input_budget)),
+        )
         super().__init__(
             model=summary_model,
             backend=backend,
             pii_config=pii_config,
-            trigger=("tokens", max(1, math.floor(0.85 * self.input_budget))),
-            keep=("tokens", max(1, math.floor(0.10 * self.input_budget))),
+            trigger=resolved_trigger,
+            keep=resolved_keep,
             trim_tokens_to_summarize=self.input_budget,
             truncate_args_settings={
-                "trigger": ("tokens", max(1, math.floor(0.85 * self.input_budget))),
-                "keep": ("tokens", max(1, math.floor(0.10 * self.input_budget))),
+                "trigger": resolved_trigger,
+                "keep": resolved_truncate_args_keep,
                 "max_length": 2000,
             },
         )
@@ -265,6 +348,13 @@ class ConversationOffloadingMiddleware(PiiSummarizationMiddleware):
 
     def _determine_cutoff_index(self, messages: list[Any]) -> int:
         cutoff = super()._determine_cutoff_index(messages)
+        if cutoff == 0 and len(messages) >= 2:
+            operation = _operation.get()
+            if operation is not None and not operation.manual:
+                # When an overflow triggers compaction but retention budget alone didn't cut,
+                # cut the older half to ensure context reduction for the retry.
+                half = max(1, len(messages) // 2)
+                cutoff = self._lc_helper._find_safe_cutoff_point(messages, half)
         return cutoff if self._filter_summary_messages(messages[:cutoff]) else 0
 
     def _partition_messages(

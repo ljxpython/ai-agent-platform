@@ -158,6 +158,8 @@ const session = useChatSession({
     submittedAttachments = new Set();
   },
   onStopConfirmed: () => {
+    setOptimisticUserMessage(null);
+    clearOffloadState();
     void promptQueue?.refresh();
     backgroundTasks?.clearDiscoveredRuns();
   },
@@ -367,6 +369,13 @@ const handleResume = () => {
       behavior: "smooth",
     });
   }
+};
+
+const handleReconnect = () => {
+  error.value = "";
+  localError.value = "";
+  setOptimisticUserMessage(null);
+  emit("reconnect");
 };
 const streamError = computed(() => {
   if (!stream.error.value) return "";
@@ -632,6 +641,9 @@ watch(
   () => props.threadId,
   () => {
     isStatusBarDismissed.value = false;
+    error.value = "";
+    localError.value = "";
+    setOptimisticUserMessage(null);
   },
 );
 
@@ -842,6 +854,7 @@ useAutomaticThreadTitle({
 const handleStop = () => {
   if (props.visible === false || !props.canWrite) return;
   followUp.markStoppedByUser();
+  setOptimisticUserMessage(null);
   void session.stop();
 };
 
@@ -1158,6 +1171,8 @@ async function send(queued = false) {
     return;
   }
   session.stopControl?.clearFeedback();
+  error.value = "";
+  localError.value = "";
   const isAgentActive =
     busy.value ||
     checking.value ||
@@ -1960,7 +1975,7 @@ defineExpose({
           !isPrivacyBlockedError
         "
         class="underline"
-        @click="emit('reconnect')"
+        @click="handleReconnect"
       >
         恢复连接
       </button>

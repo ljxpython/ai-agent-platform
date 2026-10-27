@@ -156,7 +156,11 @@ const visibleDisplayMessages = computed(() => {
         ),
       );
     const showPendingPlaceholder =
-      props.isRunning && Boolean(user) && isLastTurn && !hasVisibleAgentOutput;
+      props.isRunning &&
+      !props.isInterrupted &&
+      Boolean(user) &&
+      isLastTurn &&
+      !hasVisibleAgentOutput;
     if (turn.work.length || turn.answer.length || showPendingPlaceholder) {
       const pendingContent = [
         {

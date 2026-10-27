@@ -1872,7 +1872,7 @@ it("subscribes to custom offload events and clears offloadState upon send() or t
 
   const submitFn = vi.fn().mockResolvedValue(undefined);
   mocks.stream.mockReturnValue({
-    isLoading: ref(false),
+    isLoading: ref(true),
     error: ref(null),
     interrupts: ref([]),
     hydrationPromise: ref(Promise.resolve()),
@@ -1971,6 +1971,87 @@ it("subscribes to custom offload events and clears offloadState upon send() or t
   } finally {
     scope.stop();
     vi.useRealTimers();
+    mocks.useChannelEffect.mockReset();
+    mocks.stream.mockReset();
+    mocks.runs.mockReset();
+  }
+});
+
+it("ignores replay of past offload events when session is not busy (replay immunity)", async () => {
+  let channelHandler: ((event: unknown) => void) | undefined;
+  mocks.useChannelEffect.mockImplementation((_stream, _channels, options) => {
+    channelHandler = options.onEvent;
+  });
+
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    submit: vi.fn(),
+    disconnect: vi.fn(),
+  });
+  mocks.runs.mockResolvedValue([
+    {
+      run_id: "historical-run-1",
+      thread_id: "t",
+      assistant_id: "dearflow_agent",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: "success",
+    },
+  ]);
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    expect(channelHandler).toBeDefined();
+
+    // 在已完结的静态会话中收到历史回放的 started 事件，必须严格忽略
+    channelHandler!({
+      method: "custom",
+      params: {
+        namespace: [],
+        data: {
+          type: "conversation_offloading",
+          status: "started",
+          operation_id: "replay-op-1",
+          run_id: "historical-run-1",
+        },
+      },
+    });
+    expect(session.offloadState.value).toBeNull();
+    expect(session.isOffloading.value).toBe(false);
+
+    // 收到历史回放的 completed 事件也必须忽略，不得弹出误导性的 4 秒通知
+    channelHandler!({
+      method: "custom",
+      params: {
+        namespace: [],
+        data: {
+          type: "conversation_offloading",
+          status: "completed",
+          operation_id: "replay-op-1",
+          run_id: "historical-run-1",
+        },
+      },
+    });
+    expect(session.offloadState.value).toBeNull();
+  } finally {
+    scope.stop();
     mocks.useChannelEffect.mockReset();
     mocks.stream.mockReset();
     mocks.runs.mockReset();

@@ -855,3 +855,28 @@ def test_official_overflow_tail_preserves_originals_and_pairs(
         assert not request.state
 
     asyncio.run(run())
+
+
+def test_context_governance_settings_and_keep_policy(tmp_path, monkeypatch):
+    from runtime_service.middlewares.conversation_offloading import (
+        resolve_context_governance_settings,
+    )
+
+    # 1. Default fallback (40% budget)
+    trig, keep = resolve_context_governance_settings(10000)
+    assert trig == ("tokens", 8500)
+    assert keep == ("tokens", 4000)
+
+    # 2. Environment override
+    monkeypatch.setenv("AGENT_CONTEXT_KEEP_POLICY", "messages:16")
+    monkeypatch.setenv("AGENT_CONTEXT_TRIGGER_POLICY", "0.90")
+    trig, keep = resolve_context_governance_settings(10000)
+    assert trig == ("tokens", 9000)
+    assert keep == ("messages", 16)
+
+    # 3. Explicit parameter override
+    trig, keep = resolve_context_governance_settings(
+        10000, trigger_override=("messages", 50), keep_override=("tokens", 5000)
+    )
+    assert trig == ("messages", 50)
+    assert keep == ("tokens", 5000)

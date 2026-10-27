@@ -286,7 +286,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             local_fallback=runtime_model is not None or local_test_auth,
             probe_only=probe_only,
         ),
-        TokenBudgetMiddleware(),
+        TokenBudgetMiddleware(exit_behavior="end"),
         PlanModeMiddleware([read_reference]),
         ExecutionBudgetMiddleware(
             run_limit=10, exit_behavior="end", graph_key="reference_agent"

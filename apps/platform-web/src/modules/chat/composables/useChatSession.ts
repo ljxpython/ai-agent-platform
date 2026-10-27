@@ -280,6 +280,25 @@ export function useChatSession(options: {
     onEvent(event) {
       const parsed = parseOffloadCustomEvent(event);
       if (!parsed || disposed) return;
+
+      // 核心防线：
+      // 1. 如果当前已知最新 run 处于非活跃终态（如 success/error/interrupted），且当前并未处于新的流式传输中，
+      //    说明会话完全处于已完结状态，所有到来的 started 事件均为历史重放（Replay），一律丢弃！
+      if (
+        run.value &&
+        !active(run.value) &&
+        !stream.isLoading.value &&
+        !streamInFlight.value
+      ) {
+        return;
+      }
+
+      // 2. 如果事件携带明确的 run_id，且与当前会话跟踪的活跃 run_id 不匹配，说明是过去回合的历史事件，忽略
+      const currentRunId = run.value?.run_id ?? actions.current.value?.runId;
+      if (parsed.run_id && currentRunId && parsed.run_id !== currentRunId) {
+        return;
+      }
+
       if (parsed.status === "started") {
         if (offloadDismissTimer) clearTimeout(offloadDismissTimer);
         offloadState.value = toOffloadDisplayState(parsed);
@@ -759,6 +778,9 @@ export function useChatSession(options: {
             streamInFlight.value = false;
             if (actions.current.value?.status === "submitting") {
               actions.acknowledge();
+            }
+            if (offloadState.value?.status === "started") {
+              clearOffloadState();
             }
           }
           if (waitForTerminal) {

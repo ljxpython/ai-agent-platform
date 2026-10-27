@@ -9,6 +9,8 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 前端历史会话回放防误触（Replay Immunity）与上下文整理状态机收敛 | 已完成：根治进入已完成历史会话时底层 SSE 协议全量回放导致“正在整理上下文...”浮条误闪烁与永久悬挂漏洞；落实终态与活跃 Run 严格双重校验；单测 51/51 项与 Playwright 双会话端到端全绿 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-offload-replay-immunity.md) |
+| 会话取消（Stop）后乐观消息幽灵消除、时序防倒挂与 Loading 精准挂载治理 | 已完成：根治取消后乐观消息残留导致的跨回合时序颠倒；修复首轮 baseline=0 流式响应倒挂漏洞；修复已中断/已取消回合盲目渲染“正在组织答复”占位符；实装恢复连接与新发送时的错误横幅即时清空；Vitest 单测 100% 绿灯 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-chat-session-stop-and-ordering.md) |
 | 分布式全链路追踪与大厂排障可视化大盘 | 已完成：实装四联指标概览卡片、耗时瀑布流甘特条、毫秒级即时过滤、极速时间轴与 Grafana Explore 双视角 Tab 对比、三级自适应 Langfuse 多租户动态精准跳转；Vitest 全量绿灯、类型检查 0 报错、打包成功 | [项目概览](projects/20261022-trace-to-logs-distributed-observability/README.md) · [验证记录](projects/20261022-trace-to-logs-distributed-observability/verification.md) |
 | 前端可观测性与端到端排障链路增强 | 已完成：实装全局 ErrorBoundary 拒绝白屏、CrashScreen 崩溃卡片、有界错误环形缓冲区 (Cap=10)、全链路 Request ID 契约对齐与一键脱敏排障包闭环；Vitest 34 项单测与 Playwright + Chromium 自动化 E2E 闭环全部 100% 绿灯 | [项目概览](projects/20261019-frontend-observability-and-diagnostic-tracing/README.md) · [验证记录](projects/20261019-frontend-observability-and-diagnostic-tracing/verification.md) |
 | 长期记忆系统容量感知与平滑淘汰前端展示 | 已完成：实装容量健康进度条、状态徽标（healthy/near_capacity/evicting）、超限平滑淘汰解释说明、MemoryStats 接口契约透传与 Vitest 单元测试覆盖 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
@@ -25,6 +27,7 @@
 | Agent 会话级停止控制与状态报告展示 | 已完成：实装三接口接入、Zod DTO 校验、useThreadStopControl 状态机解耦、45s 超时降级与单飞保护、RunStopReportBanner 顶部提示条与 RunStopReportDetails 抽屉报告，Vitest 553 项全绿，Playwright+Chromium 真实模型全链路自动化闭环通过（1440/768/390 截图已存档） | [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 | Agent 运行诊断面板（Run Diagnostics） | 已完成：实装独立解耦面板 RunDiagnostics、Zod 白名单契约、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与无缝切换，全仓 115 套件 535 项单测全绿，浏览器联合验收通过 | [前端交接](projects/20261006-agent-observability-hardening/frontend-handoff.md) |
 | Agent 上下文整理反馈与手动动作 | 已完成：单模型容量编辑与查看（F01）、整理微胶囊与 4 秒淡出/输入打断机制（F02）、手动整理菜单与守卫隔离（F03）；63 项单测、vue-tsc 0 错误与生产打包全通过；用户在真实平台页面完成端到端人工实测联合验收，全链路闭环通过 | [项目概览](projects/20261006-agent-context-window-governance/README.md) · [前端交接](projects/20261006-agent-context-window-governance/frontend-handoff.md) |
+| 智能体上下文窗口治理与 Token 预算韧性加固 | 已完成：四层韧性防御全栈闭环；40% 复合保留、Head+Tail 工具防爆截断（首尾 50 行）、Token 达到 100% 优雅停机清空 tool_calls 避免崩溃红条、数据库存量模型窗口批量校准为 128K（131,072）；核心单测 100% 绿灯 | [项目概览](projects/20261027-agent-context-budget-hardening/README.md) |
 | 定时 Agent 任务页面 | 已完成：实装现代化卡片网格列表、双栏创建/编辑抽屉、DeerFlow 预设体系、历史记录抽屉与权限守卫，481 套单测、类型检查与生产打包全绿 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
 | 工具卡片错误结构化摘要提取与微胶囊 Tag 徽章展示 | 已完成：纯函数 parseToolErrorSummary 抽取，统一支持第一方 JSON、MCP 文本块数组与纯文本截断，微胶囊 Tag 徽章（recoveryHint）与展开态格式化排版实装，根治 tool.error 为空时不显红条 bug，31 项单测、类型检查与打包全绿 | [实现记录](projects/20261006-agent-tool-error-resilience/implementation/04-frontend-error-presentation.md) |
 | Chat 顶栏选择 Agent 历史会话队列联动过滤与 Pad 侧栏体验治理 | 已完成：修正 currentSelectedAgent 优先级倒挂、拔除 graph_id 过滤劫持恢复 agent_id 精准匹配、优化 Pad 侧边栏折叠交互，210项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-agent-history-filter-fix.md) |
@@ -113,6 +116,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 智能体联网调研预算约束（Research Budget）与边际收敛刹车治理 | 已完成：彻底根治深度调研中由于技能煽动无限递归搜索导致单会话调用 250+ 次工具、耗时 34 分钟超时死循环的过犹不及缺陷；重构 deep-research 技能与全局 SYSTEM_PROMPT，确立 3~5 轮搜索与 2~4 篇精读预算、边际效用递减及摘要优先法则，28 项技能单测全部通过 | [变更记录](../apps/runtime-service/docs/changes/20261027-bounded-research-budget-and-convergence.md) |
 | GitHub 调研工具限流与远程沙箱证据元组契约韧性治理 | 已完成：支持可选 GITHUB_TOKEN（限流从 60 提升至 5000 次/小时）；彻底修复远程沙箱 RPC 反序列化将二元组退化为 List 导致 LangChain 校验失败抛出 runtime.execution_failed 的致命缺陷；53 项单测全绿 | [项目概览](projects/20261026-github-tool-and-remote-evidence-resilience/README.md) · [验证记录](projects/20261026-github-tool-and-remote-evidence-resilience/verification.md) |
 | LightRAG MCP 知识库真实文档状态与项目物理隔离 | 已完成：彻底拔除 fake 静态目录伪造 ID，直连底层 `rag.doc_status`；修复多租户共享内存串台 Bug，实现 13 份多模态文档真实透出、项目名称完全对齐与 0 串台物理隔离；远端部署生效，Playwright 真实模型测试通过 | [项目概览](projects/20261021-lightrag-mcp-real-doc-status-alignment/README.md) · [验证记录](projects/20261021-lightrag-mcp-real-doc-status-alignment/verification.md) |
 | 企业级长期记忆系统升级（异步非阻塞+Prescreen+MMR检索+平滑软淘汰） | 已完成：后台异步非阻塞提取（主响应耗时 < 5ms）、Prescreen 成本门禁、中文 unigram+bigram 混合分词+IDF 加权与双池 MMR 多样性重排、Dice 相似度近重复合并、置信度/新鲜度优先级平滑软淘汰，33 项单测全绿 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |

@@ -439,3 +439,45 @@ def test_disabled_budget_has_no_extra_budget_read(ledger, monkeypatch):
         ].content
         == "done"
     )
+
+
+def test_token_budget_graceful_exit_stops_cleanly_without_exception(ledger):
+    effects = []
+
+    @tool
+    def write_file() -> str:
+        """Write a test file."""
+        effects.append("written")
+        return "written"
+
+    # Simulate model producing a tool call while hitting the 10-token budget limit
+    model = CountingModel(
+        responses=[
+            message(
+                tool_calls=[
+                    {
+                        "name": "write_file",
+                        "args": {},
+                        "id": "write-1",
+                    }
+                ]
+            )
+        ]
+    )
+    # Using exit_behavior="end"
+    graph = bound(
+        create_agent(
+            model,
+            tools=[write_file],
+            middleware=[TokenBudgetMiddleware(exit_behavior="end")],
+        )
+    )
+
+    result = asyncio.run(graph.ainvoke({"messages": [("user", "write")]}))
+    # Does NOT raise TokenBudgetExceededError!
+    # Clears tool_calls and concludes gracefully
+    last_msg = result["messages"][-1]
+    assert isinstance(last_msg, AIMessage)
+    assert not last_msg.tool_calls
+    assert "预算上限" in str(last_msg.content)
+    assert not effects  # Tool was not executed!

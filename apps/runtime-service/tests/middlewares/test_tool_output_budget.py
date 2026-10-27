@@ -648,3 +648,61 @@ def test_failed_archive_keeps_original_result_without_fake_reference():
         assert "/failed-1" not in state.get("files", {})
 
     asyncio.run(run())
+
+
+def test_truncate_tool_output_text_head_tail():
+    from runtime_service.middlewares.filesystem import truncate_tool_output_text
+
+    # Within limit -> no truncation
+    short_text = "line1\nline2\nline3"
+    assert truncate_tool_output_text(short_text, max_chars=100) == short_text
+
+    # Oversized text -> head + tail truncation
+    lines = [f"line {i}: " + ("x" * 50) for i in range(200)]
+    long_text = "\n".join(lines)
+    truncated = truncate_tool_output_text(
+        long_text, head_lines=10, tail_lines=10, max_chars=500, tool_name="read_file"
+    )
+
+    assert "工具 'read_file' 输出过长" in truncated
+    assert "line 0:" in truncated
+    assert "line 9:" in truncated
+    assert "line 199:" in truncated
+    assert "line 100:" not in truncated
+
+
+def test_result_filesystem_middleware_truncates_excluded_tools(tmp_path):
+    from types import SimpleNamespace
+
+    from deepagents.backends.filesystem import FilesystemBackend
+
+    from runtime_service.middlewares.filesystem import ResultFilesystemMiddleware
+
+    backend = FilesystemBackend(root_dir=tmp_path / "fs-guard")
+    mw = ResultFilesystemMiddleware(backend=backend, tool_token_limit_before_evict=2000)
+
+    # 1. read_file with oversized text -> truncated with metadata
+    lines = [f"row_{i}: " + ("content_" * 10) for i in range(500)]
+    oversized_file_content = "\n".join(lines)
+    read_req = SimpleNamespace(tool_call={"name": "read_file"})
+    tool_msg = ToolMessage(
+        content=oversized_file_content,
+        tool_call_id="call-read-1",
+        name="read_file",
+    )
+
+    res = mw.wrap_tool_call(read_req, lambda _: tool_msg)
+    assert res is not tool_msg
+    assert "工具 'read_file' 输出过长" in res.content
+    assert "row_0:" in res.content
+    assert "row_499:" in res.content
+
+    # 2. read_file with normal text -> untouched
+    normal_req = SimpleNamespace(tool_call={"name": "read_file"})
+    normal_msg = ToolMessage(
+        content="normal file content",
+        tool_call_id="call-read-2",
+        name="read_file",
+    )
+    res_normal = mw.wrap_tool_call(normal_req, lambda _: normal_msg)
+    assert res_normal is normal_msg
