@@ -56,7 +56,7 @@ async def tavily(operation: str, payload: dict) -> dict:
         async with (
             asyncio.timeout(30),
             httpx.AsyncClient(
-                timeout=25, follow_redirects=False, trust_env=False
+                timeout=25, follow_redirects=False, trust_env=True
             ) as client,
         ):
             async with client.stream(
@@ -151,7 +151,10 @@ async def jina_extract(url: str) -> dict:
 def _evidence(workspace, runtime: ToolRuntime, records: list[dict]):
     if workspace is None:
         raise ToolException("research_probe_only")
-    info = runtime.execution_info
+    info = getattr(runtime, "execution_info", None)
+    thread_id = getattr(info, "thread_id", "") if info else ""
+    run_id = getattr(info, "run_id", "") if info else ""
+    namespace = getattr(info, "checkpoint_ns", "") if info else ""
     artifacts = []
     summaries = []
     io = ImageWorkspace(workspace.root)
@@ -161,10 +164,10 @@ def _evidence(workspace, runtime: ToolRuntime, records: list[dict]):
         evidence_result = workspace.root.call(
             "research_evidence",
             records=records,
-            tool_call_id=runtime.tool_call_id,
-            thread_id=info.thread_id,
-            run_id=info.run_id,
-            namespace=info.checkpoint_ns,
+            tool_call_id=getattr(runtime, "tool_call_id", ""),
+            thread_id=thread_id,
+            run_id=run_id,
+            namespace=namespace,
         )
         if isinstance(evidence_result, (list, tuple)) and len(evidence_result) == 2:
             return (evidence_result[0], evidence_result[1])
@@ -211,10 +214,10 @@ def _evidence(workspace, runtime: ToolRuntime, records: list[dict]):
                 **record,
                 "content_hash": digest,
                 "path": "/workspace/sources/" + filename,
-                "tool_call_id": runtime.tool_call_id,
-                "thread_id": info.thread_id,
-                "run_id": info.run_id,
-                "namespace": info.checkpoint_ns,
+                "tool_call_id": getattr(runtime, "tool_call_id", ""),
+                "thread_id": thread_id,
+                "run_id": run_id,
+                "namespace": namespace,
                 "observed_at": datetime.now(UTC).isoformat(),
             }
             artifacts.append(evidence)

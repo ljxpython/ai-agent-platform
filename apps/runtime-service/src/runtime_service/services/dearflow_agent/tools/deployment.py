@@ -113,7 +113,7 @@ def build_deployment_tool(workspace):
         )
         if claimed:
             try:
-                async with httpx.AsyncClient(timeout=120, trust_env=False) as client:
+                async with httpx.AsyncClient(timeout=120, trust_env=True) as client:
                     response = await client.post(
                         DEPLOY_ENDPOINT,
                         files={"file": ("site.tgz", package, "application/gzip")},

@@ -30,7 +30,7 @@ async def get_public(url: str, params: dict | None = None) -> tuple[bytes, dict]
         async with (
             asyncio.timeout(35),
             httpx.AsyncClient(
-                timeout=30, follow_redirects=False, trust_env=False
+                timeout=30, follow_redirects=False, trust_env=True
             ) as client,
             client.stream(
                 "GET",

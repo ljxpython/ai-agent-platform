@@ -145,7 +145,7 @@ def build_skill_tools(workspace, model):
             or directory.startswith("/")
         ):
             raise DocumentError("invalid_skill_source")
-        async with httpx.AsyncClient(timeout=30, trust_env=False) as client:
+        async with httpx.AsyncClient(timeout=30, trust_env=True) as client:
             raw_tree = await read_bounded(
                 client,
                 f"https://api.github.com/repos/{repository}/git/trees/{commit}",

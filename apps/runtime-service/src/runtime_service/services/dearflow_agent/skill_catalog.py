@@ -14,9 +14,13 @@ MAX_TEXT = 256 * 1024
 VERIFIED = {
     "deep-research",
     "academic-paper-review",
+    "github-deep-research",
+    "systematic-literature-review",
+    "consulting-analysis",
     "code-documentation",
     "newsletter-generation",
     "data-analysis",
+    "chart-visualization",
     "frontend-design",
     "web-design-guidelines",
     "ppt-generation",

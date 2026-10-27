@@ -7,10 +7,11 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-26
+**最后更新：** 2026-10-27
 
 ## 最近改动
 
+2026-10-27 | **DeerFlow Skills 全量迁移对齐、触发验证与缺陷治理工程**：系统性梳理参考项目 deer-flow 23 项 Skills 与本平台 20 项 Skills 的迁移对齐度；建立全景清单与触发指南；4 个 Phase（学术文献、数据图表、前端规范、多模态元技能）全量真实实测与测试套件 100% 跑通；彻底根治 GITHUB_TOKEN 403 限流、Docker RPC 元组退化、多处硬编码 trust_env=False 导致本地代理被屏蔽、_evidence 空指针防护、以及 skill_catalog 遗漏官方推荐等关键缺陷；明确收口音视频未开放边界；39 项单测全部通过。
 2026-10-26 | **全域架构文档全景同步与技术资产演进工程**：系统性抹平 10 月份 52 项已交付成果与 `docs/architecture/` 之间的 8 大技术断层；升级宏观拓扑图与选型原则，扩充通信大动脉为 6 条干线（新增知识中台单向通道与双轨监控抓取通道）；全面重构可观测性文档（落实 W3C traceparent 与 Loki TSDB 毫秒日志穿透）；新增原生知识中台与单向免隧道自治架构规范；全面重写 DearFlow 记忆系统（异步解耦、双池 MMR 重排与软淘汰）；新增 Token 看板百万聚合读模型专篇与 186MB 轻量可观测、异步记忆 MMR、弹性 MCP 容错三大硬核 concepts 专篇；新增 4 篇端到端场景时序（Plan Mode、Trace-to-Logs 穿透、知识检索、模型容灾）；刷新全局 README 知识地图，自动化相对链接 100% 绿灯校验。
 2026-10-23 | **工业级链路可视化升级与 Langfuse 多租户精准路由闭环**：彻底解决 Langfuse 404 跨租户路由报错，实现基于项目级精准搜索与 filter 参数的三级自适应 URL 构造器（全面支持 `VITE_LANGFUSE_PROJECT_ID` 等环境变量配置）；阻断平台代理查询 Loki 自身的自回声日志污染；重构工业级排障大屏（四联指标概览卡片、耗时瀑布流甘特条、毫秒级纯前端即时搜索与双视角 Tab 对比切换），适配平台标准深浅色主题；全量单测、TypeScript 0 错误、生产构建及 Playwright 自动化验证 100% 绿灯。
 2026-10-22 | **分布式全链路追踪与日志关联可观测性工程全栈交付**：对标大厂分布式排障体验（字节诊断、阿里 ARMS），在 Platform API 与 Runtime Service 全面落实 W3C `traceparent`（`00-{trace_id}-{span_id}-01`）跨微服务协议透传与结构化日志 `service`、`trace_id`、`span_id` 打标；基于 Grafana Loki (TSDB) + Promtail 建立超轻量微服务日志中心；在生产主机 sshmy1 实装部署，Prometheus + Grafana + Loki + Promtail 四容器常驻总内存仅 **186.47 MiB**（CPU < 1%）；在前端实装可观测诊断中心与 Explore 联动，根据单一 `trace_id` 一键穿透展示跨服务毫秒级对齐日志流，并结合 Derived Fields 提供直达 Langfuse 链路树的高亮外链；全量测试与 TypeScript 检查 100% 绿灯。
@@ -18,6 +19,7 @@
 
 ## 活跃项目
 
+- [DeerFlow Skills 全量迁移对齐、触发验证与缺陷治理工程](projects/20261027-deerflow-skills-audit-and-verification/README.md)：`done`；系统性梳理参考项目 deer-flow 23 项 Skills 与本平台 20 项 Skills 的迁移对齐度，建立全景对照与触发指南，分 4 个 Phase 逐类验证并修复潜在执行缺陷。全部实测跑通，测试全绿。
 - [GitHub 调研工具与远程沙箱证据元组契约韧性治理](projects/20261026-github-tool-and-remote-evidence-resilience/README.md)：`done`；针对 GitHub 匿名调用 403 限流击穿引入 GITHUB_TOKEN 鉴权支持（借鉴 deer-flow），实测限流额度提升至 5000/hr；同时彻底修复 Remote Sandbox RPC 证据回传将元组退化为 List 导致 LangChain 强校验失败抛出 `runtime.execution_failed` 的致命缺陷。53 项单测全绿。
 - [全域架构文档全景同步与技术资产演进工程](projects/20261025-architecture-docs-synchronization/README.md)：`done`；系统性抹平 10 月份 52 项已交付成果与 `docs/architecture/` 之间的 8 大技术断层，4 个 Phase 全部交付闭环并通过六维合规验证，0 坏链。
 - [分布式全链路追踪与日志关联可观测性工程](projects/20261022-trace-to-logs-distributed-observability/README.md)：`done`；对标大厂分布式排障体验，基于 W3C traceparent 协议 + Grafana Loki/Promtail 超轻量日志中心（实测四容器常驻总内存仅 186.47MB），实现根据单一 trace_id 在一屏内同时展现微服务调用拓扑瀑布图与各服务毫秒级对齐的详细上下文日志，前端一键穿透与 Derived Fields 跳转全面实装，生产主机 sshmy1 验证通过。
