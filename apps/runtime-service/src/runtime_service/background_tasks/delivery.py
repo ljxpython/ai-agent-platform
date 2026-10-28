@@ -11,7 +11,7 @@ import httpx
 
 from runtime_service.auth.acl_client import post_acl
 from runtime_service.background_tasks import repository
-from runtime_service.runtime.errors import RuntimeAuthError
+from runtime_service.errors import RuntimeAuthError
 
 
 async def callback(operation, payload):

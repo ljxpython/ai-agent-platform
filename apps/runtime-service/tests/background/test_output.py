@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 
 from runtime_service.background_tasks import output
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.errors import RuntimeWorkspaceError
 
 
 @pytest.fixture

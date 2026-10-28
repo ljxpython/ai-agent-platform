@@ -26,10 +26,10 @@ from langchain_core.runnables.config import patch_config, set_config_context
 from langgraph.config import get_config
 from langgraph.errors import GraphBubbleUp
 
+from runtime_service.errors import RuntimeExecutionError
 from runtime_service.observability.diagnostics import log_diagnostic
 from runtime_service.observability.errors import classify_exception
 from runtime_service.observability.langfuse import record_diagnostic_event
-from runtime_service.runtime.errors import RuntimeExecutionError
 from runtime_service.tools.errors import task_failure_content
 
 try:

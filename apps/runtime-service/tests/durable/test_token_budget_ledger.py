@@ -22,13 +22,13 @@ from langgraph.graph import END, START, StateGraph
 from support import BindableFakeMessagesChatModel
 
 from runtime_service.db.repositories import usage as repo
+from runtime_service.errors import TokenBudgetUnverifiableError
 from runtime_service.observability.usage import (
     RuntimeUsageCallback,
     usage_only_config,
     with_runtime_usage,
 )
 from runtime_service.observability.usage_query import query_run_usage
-from runtime_service.runtime.errors import TokenBudgetUnverifiableError
 from tests.durable.test_usage_ledger import ledger_dsn  # noqa: F401 - pytest fixture
 
 

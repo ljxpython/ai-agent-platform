@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from runtime_service.auth.acl_client import acl_client_lifespan
 from runtime_service.auth.platform import authenticate
 from runtime_service.background_tasks.service import background_tasks_lifespan
+from runtime_service.errors import RuntimePrivacyError, RuntimeWorkspaceError
 from runtime_service.http.background_tasks import router as background_tasks_router
 from runtime_service.http.crons import router as crons_router
 from runtime_service.http.dear_governance import router as dear_governance_router
@@ -45,7 +46,6 @@ from runtime_service.observability import (
 from runtime_service.observability.query import diagnostics_client_lifespan
 from runtime_service.observability.usage_projection import usage_projection_lifespan
 from runtime_service.run_control.service import run_control_lifespan
-from runtime_service.runtime.errors import RuntimePrivacyError, RuntimeWorkspaceError
 from runtime_service.runtime.pii import load_pii_redaction_config
 from runtime_service.workspace.file_refs import validate_file_ref
 from runtime_service.workspace.image_refs import validate_image_ref

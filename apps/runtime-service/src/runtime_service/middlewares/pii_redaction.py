@@ -17,7 +17,7 @@ from langchain.agents.middleware.types import (
 from langchain_core.exceptions import ContextOverflowError
 from langchain_core.messages import AIMessage, ToolMessage
 
-from runtime_service.runtime.errors import RuntimePrivacyError
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.runtime.pii import (
     PII_REDACTION_ERROR,
     PiiRedactionConfig,

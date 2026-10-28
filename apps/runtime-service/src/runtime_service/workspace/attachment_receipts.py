@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from langchain_core.tools import ToolException
 
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.file_refs import validate_file_name, validate_file_ref
 from runtime_service.workspace.image_refs import validate_uploaded_image_ref

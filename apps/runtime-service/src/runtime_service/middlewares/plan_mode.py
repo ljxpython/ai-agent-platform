@@ -7,7 +7,7 @@ from langchain.agents.middleware import AgentMiddleware, AgentState, hook_config
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.tools import BaseTool
 
-from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.runtime.planning import (
     PLAN_TOOL_NAMES,
     new_plan,

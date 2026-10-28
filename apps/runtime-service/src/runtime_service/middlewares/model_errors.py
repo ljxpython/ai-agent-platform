@@ -9,10 +9,10 @@ from uuid import uuid4
 from langchain.agents.middleware import AgentMiddleware, ModelRequest
 from langgraph.config import get_config
 
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.observability.diagnostics import log_diagnostic
 from runtime_service.observability.errors import is_control_flow, model_error_fields
 from runtime_service.observability.langfuse import record_diagnostic_event
-from runtime_service.runtime.errors import RuntimePrivacyError
 
 
 class ModelErrorMiddleware(AgentMiddleware):

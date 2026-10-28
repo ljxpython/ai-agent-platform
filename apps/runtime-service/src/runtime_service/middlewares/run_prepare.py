@@ -12,10 +12,10 @@ from typing import Annotated, NotRequired
 from langchain.agents.middleware import AgentMiddleware, AgentState
 from langchain.agents.middleware.types import PrivateStateAttr
 
+from runtime_service.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.observability.diagnostics import log_diagnostic
 from runtime_service.observability.langfuse import record_diagnostic_event
 from runtime_service.runtime import verified_delegation_from_user
-from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
 
 
 def merge_preparations(left: dict, right: dict) -> dict[str, str]:

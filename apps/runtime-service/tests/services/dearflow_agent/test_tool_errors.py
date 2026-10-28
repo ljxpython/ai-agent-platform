@@ -11,12 +11,12 @@ from langgraph.types import Command
 from pydantic import Field
 from support import BindableFakeMessagesChatModel
 
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.runtime import (
     RuntimeAuthError,
     RuntimeResolutionError,
     runtime_context_hash,
 )
-from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.services.dearflow_agent import agent
 from runtime_service.services.dearflow_agent.tools import search
 from runtime_service.services.dearflow_agent.workspace.backend import (

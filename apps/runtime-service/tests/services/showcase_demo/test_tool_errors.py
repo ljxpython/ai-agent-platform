@@ -7,7 +7,7 @@ import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.types import Command
 
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.workspace import execution
 
 from .test_agent import build as graph_builder

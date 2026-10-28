@@ -15,6 +15,7 @@ from typing import Any
 import httpx
 from langfuse.api.client import AsyncLangfuseAPI
 
+from runtime_service.errors import WORKSPACE_ERROR_CODES
 from runtime_service.observability.diagnostics import (
     loop_detection_fields,
     trace_id_for,
@@ -22,7 +23,6 @@ from runtime_service.observability.diagnostics import (
 )
 from runtime_service.observability.errors import MODEL_ERROR_CODES
 from runtime_service.observability.startup import PHASE_NAMES
-from runtime_service.runtime.errors import WORKSPACE_ERROR_CODES
 
 _client: AsyncLangfuseAPI | None = None
 _FIELDS = "core,basic,time,metadata"

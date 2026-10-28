@@ -6,8 +6,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.runtime.contracts import RuntimePrincipal
-from runtime_service.runtime.errors import RuntimeResolutionError
 
 _SCHEMA = "runtime-resource-bindings/v1"
 _REQUIRED_FIELDS = frozenset(

@@ -16,6 +16,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.runtime import Runtime
 from support import BindableFakeMessagesChatModel
 
+from runtime_service.errors import RuntimeExecutionError
 from runtime_service.middlewares.execution_budget import WRAPUP_INSTRUCTION
 from runtime_service.middlewares.loop_detection import (
     MAX_MESSAGES,
@@ -23,7 +24,6 @@ from runtime_service.middlewares.loop_detection import (
     _completed_batch,
     loop_detection_enabled,
 )
-from runtime_service.runtime.errors import RuntimeExecutionError
 
 
 def batch(calls=None, contents=None, *, ai_id="ai"):

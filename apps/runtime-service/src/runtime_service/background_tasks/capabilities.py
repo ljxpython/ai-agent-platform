@@ -2,7 +2,7 @@
 
 import os
 
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.workspace.background import host_id
 
 

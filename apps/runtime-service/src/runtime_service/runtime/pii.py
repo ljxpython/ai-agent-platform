@@ -23,8 +23,8 @@ from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.tools import BaseTool
 from langgraph.errors import GraphBubbleUp
 
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.runtime.auth import VerifiedDelegation
-from runtime_service.runtime.errors import RuntimePrivacyError
 
 PII_REDACTION_ERROR = "runtime.privacy.redaction_failed"
 PII_DETECTORS = ("email", "api_key", "national_id", "credit_card", "phone")

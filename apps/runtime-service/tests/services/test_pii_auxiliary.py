@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from services.showcase_demo.test_images_chart import png
 from services.test_suggestions import _facts
 
-from runtime_service.runtime.errors import RuntimePrivacyError
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.runtime.pii import PiiRedactionConfig
 from runtime_service.services.dearflow_agent.middleware import memory
 from runtime_service.services.suggestions import generate_suggestions

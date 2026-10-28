@@ -9,9 +9,9 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.middlewares.execution_budget import check_graph_budget
 from runtime_service.runtime.contracts import RuntimeContext
-from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.services.demo.workflow_demo.schemas import (
     WorkflowBudgetState,
     WorkflowState,

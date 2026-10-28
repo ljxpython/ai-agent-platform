@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-from runtime_service.runtime.errors import RuntimeAuthError
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.services.demo.workflow_demo import agent as workflow
 from runtime_service.services.reference_agent import agent as reference
 

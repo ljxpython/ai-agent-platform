@@ -8,8 +8,8 @@ import httpx
 import pytest
 from langchain_mcp_adapters.interceptors import MCPToolCallRequest
 
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.runtime import RuntimeAuthError
-from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.services.dearflow_agent.workspace.backend import (
     DearWorkspaceBackend,
 )

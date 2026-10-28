@@ -18,11 +18,11 @@ from psycopg.conninfo import make_conninfo
 
 from runtime_service.background_tasks import output, repository, service
 from runtime_service.db import connect, upgrade
-from runtime_service.run_control.repository import request_stop
-from runtime_service.runtime.errors import (
+from runtime_service.errors import (
     BackgroundTaskNotStarted,
     RuntimeWorkspaceError,
 )
+from runtime_service.run_control.repository import request_stop
 from runtime_service.workspace.background import (
     BackgroundBinding,
     remove_task_container,
@@ -316,7 +316,7 @@ def test_two_processes_cannot_exceed_thread_capacity(database):
         )
         for offset in (0, 10)
     ]
-    script = "import json,sys; from runtime_service.background_tasks.repository import reserve_task; from runtime_service.runtime.errors import RuntimeWorkspaceError\nfor value in json.load(sys.stdin):\n try:\n  row,fresh=reserve_task(value,'binding','request','background-test',300); print(row['task_id'])\n except RuntimeWorkspaceError as exc:\n  print(exc.code)"
+    script = "import json,sys; from runtime_service.background_tasks.repository import reserve_task; from runtime_service.errors import RuntimeWorkspaceError\nfor value in json.load(sys.stdin):\n try:\n  row,fresh=reserve_task(value,'binding','request','background-test',300); print(row['task_id'])\n except RuntimeWorkspaceError as exc:\n  print(exc.code)"
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(
             pool.map(

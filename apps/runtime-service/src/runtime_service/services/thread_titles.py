@@ -65,7 +65,7 @@ def _timeout_seconds(value: object) -> float:
 def _attachment_title(
     facts: VerifiedDelegation, thread_id: str, files: list
 ) -> str | None:
-    from runtime_service.runtime.errors import RuntimeWorkspaceError
+    from runtime_service.errors import RuntimeWorkspaceError
     from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
     from runtime_service.workspace.file_refs import validate_file_ref
     from runtime_service.workspace.scoped import resolve_thread_workspace

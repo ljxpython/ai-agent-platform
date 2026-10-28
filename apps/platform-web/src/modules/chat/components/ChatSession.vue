@@ -1280,14 +1280,12 @@ async function send(queued = false) {
           throw new Error(session.error.value);
         }
         setOptimisticUserMessage(null);
-        if (!(await submitQueuedMessage(content))) {
-          emit("update:draft", submittedDraft || "");
-          attachments.value = Array.from(
-            submittedAttachments,
-          ) as ChatAttachmentBlock[];
-          if (submittedPlanMode) {
-            draftPlanMode.value = true;
-          }
+        emit("update:draft", submittedDraft || "");
+        attachments.value = Array.from(
+          submittedAttachments,
+        ) as ChatAttachmentBlock[];
+        if (submittedPlanMode) {
+          draftPlanMode.value = true;
         }
         submittedDraft = undefined;
         submittedAttachments = new Set();

@@ -11,8 +11,8 @@ from pydantic import Field
 from support import BindableFakeMessagesChatModel, with_run_budget
 
 from runtime_service.background_tasks import service
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.middlewares.message_queue import MessageQueueMiddleware
-from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.services.dearflow_agent import agent as dearflow
 from runtime_service.services.demo.showcase_demo import agent as showcase

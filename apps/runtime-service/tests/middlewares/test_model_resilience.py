@@ -20,6 +20,7 @@ from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
 from langchain_core.outputs import ChatGenerationChunk
 from support import BindableFakeChatModel
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.middlewares.model_call_timeout import ModelCallTimeoutMiddleware
 from runtime_service.middlewares.model_resilience import (
     ModelResilienceMiddleware,
@@ -28,7 +29,6 @@ from runtime_service.middlewares.model_resilience import (
     retry_after_seconds,
 )
 from runtime_service.runtime.contracts import ModelResiliencePolicy
-from runtime_service.runtime.errors import RuntimeResolutionError
 
 A = "00000000-0000-0000-0000-000000000001"
 B = "00000000-0000-0000-0000-000000000002"

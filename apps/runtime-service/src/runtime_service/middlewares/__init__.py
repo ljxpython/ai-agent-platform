@@ -39,6 +39,10 @@ from runtime_service.middlewares.timeout_wrapup import (
     resolve_wrapup_after_seconds,
 )
 from runtime_service.middlewares.token_budget import TokenBudgetMiddleware
+from runtime_service.middlewares.tool_output_pruning import (
+    ToolOutputPruningMiddleware,
+    prune_messages_for_model,
+)
 
 __all__ = [
     "TokenBudgetMiddleware",
@@ -67,4 +71,6 @@ __all__ = [
     "is_conversation_maintenance",
     "resolve_tool_output_limit",
     "ResultFilesystemMiddleware",
+    "ToolOutputPruningMiddleware",
+    "prune_messages_for_model",
 ]

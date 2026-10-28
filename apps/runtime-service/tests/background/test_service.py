@@ -10,7 +10,7 @@ import httpx
 import pytest
 
 from runtime_service.background_tasks import delivery, service
-from runtime_service.runtime.errors import (
+from runtime_service.errors import (
     BackgroundTaskNotStarted,
     RuntimeWorkspaceError,
 )

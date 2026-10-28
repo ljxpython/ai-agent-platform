@@ -124,7 +124,15 @@ test.describe("Agent 会话停止与状态报告 E2E 验证", () => {
       // 等待停止完成：精准定位 RunStopReportBanner
       const banner = page.getByTestId("run-stop-report-banner");
       await expect(banner).toBeVisible({ timeout: 45000 });
-      await expect(banner).toContainText("已停止", { timeout: 45000 });
+
+      // 持续等待直到“已停止”，若遇锁竞争临时出现待确认状态则点击“重新核实”拉取已收敛的终态
+      await expect(async () => {
+        const verifyBtn = banner.getByRole("button", { name: "重新核实" });
+        if (await verifyBtn.isVisible()) {
+          await verifyBtn.click();
+        }
+        await expect(banner).toContainText("已停止");
+      }).toPass({ timeout: 45000, intervals: [1000, 2000] });
 
       // 截取阶段 2 截图：Stopped 终态与 Banner
       await page.screenshot({

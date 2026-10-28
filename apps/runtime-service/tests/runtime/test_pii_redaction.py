@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 
-from runtime_service.runtime.errors import RuntimePrivacyError
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.runtime.pii import (
     PiiRedactionConfig,
     contains_pii,
@@ -186,7 +186,7 @@ def test_scope_only_comes_from_verified_execution_facts(monkeypatch):
     ["pii_redaction", "pii_config", "pii_token_secret", "pii_scope", "pii_detectors"],
 )
 def test_runtime_rejects_client_policy_configuration(key):
-    from runtime_service.runtime.errors import RuntimeResolutionError
+    from runtime_service.errors import RuntimeResolutionError
     from runtime_service.runtime.resolver import reject_untrusted_configurable
 
     with pytest.raises(RuntimeResolutionError, match="runtime.configurable.forbidden"):

@@ -2,8 +2,8 @@
 
 from fastapi import HTTPException
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.runtime.capabilities import graph_tools
-from runtime_service.runtime.errors import RuntimeResolutionError
 from runtime_service.runtime.resolver import parse_runtime_policy
 
 

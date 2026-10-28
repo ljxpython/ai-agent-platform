@@ -32,10 +32,10 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphBubbleUp
 
+from runtime_service.errors import RuntimeErrorBase, RuntimeResolutionError
 from runtime_service.middlewares.pii_redaction import PiiSummarizationMiddleware
 from runtime_service.observability.errors import classify_exception
 from runtime_service.runtime.contracts import ModelResiliencePolicy
-from runtime_service.runtime.errors import RuntimeErrorBase, RuntimeResolutionError
 from runtime_service.runtime.pii import PiiRedactionConfig
 
 logger = logging.getLogger(__name__)

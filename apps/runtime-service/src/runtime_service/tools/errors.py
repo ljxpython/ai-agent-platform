@@ -13,7 +13,7 @@ from langchain_core.exceptions import ContextOverflowError, ModelInvalidRequestE
 from langchain_core.tools import ToolException
 from langgraph.errors import GraphBubbleUp
 
-from runtime_service.runtime.errors import (
+from runtime_service.errors import (
     BackgroundTaskNotStarted,
     RuntimeErrorBase,
     RuntimeWorkspaceError,

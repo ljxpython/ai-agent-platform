@@ -478,7 +478,7 @@ def test_disabled_submit_is_omitted_from_defaults_and_catalog(monkeypatch):
 def test_loader_rejects_mutations_and_unsafe_upload_declarations(
     case, monkeypatch, mode
 ):
-    from runtime_service.runtime.errors import RuntimeResolutionError
+    from runtime_service.errors import RuntimeResolutionError
     from runtime_service.tools import mcp
 
     name = "mcp_delete_documents" if mode == "unknown_mutation" else SUBMIT_TOOL

@@ -706,3 +706,71 @@ def test_result_filesystem_middleware_truncates_excluded_tools(tmp_path):
     )
     res_normal = mw.wrap_tool_call(normal_req, lambda _: normal_msg)
     assert res_normal is normal_msg
+
+
+def test_resolve_tool_output_limit_respects_env(monkeypatch):
+    model = SimpleNamespace(profile={"max_input_tokens": 128_000})
+    # Default without env
+    monkeypatch.delenv("AGENT_TOOL_TOKEN_LIMIT_BEFORE_EVICT", raising=False)
+    default_limit = resolve_tool_output_limit((model,), 256)
+    assert default_limit > 5000
+
+    # With env override
+    monkeypatch.setenv("AGENT_TOOL_TOKEN_LIMIT_BEFORE_EVICT", "1200")
+    custom_limit = resolve_tool_output_limit((model,), 256)
+    assert custom_limit == 1200
+
+
+def test_guard_message_intercepts_unexcluded_tools_like_execute(tmp_path, monkeypatch):
+    backend = FilesystemBackend(root_dir=tmp_path / "execute-guard")
+    mw = ResultFilesystemMiddleware(backend=backend, tool_token_limit_before_evict=4000)
+
+    # 1. Simulate execute outputting 30KB logs -> exceeds 4 * 4000 (16000), parent evicts to filesystem
+    huge_log = "\n".join(f"log line {i}: " + ("x" * 50) for i in range(500))
+    exec_req = SimpleNamespace(tool_call={"name": "execute"})
+    tool_msg = ToolMessage(
+        content=huge_log,
+        tool_call_id="call-exec-1",
+        name="execute",
+    )
+
+    res = mw.wrap_tool_call(exec_req, lambda _: tool_msg)
+    assert res is not tool_msg
+    assert "/large_tool_results/" in res.content
+    assert "saved in the filesystem at this path" in res.content
+
+    # 2. Simulate execute outputting 6KB logs with AGENT_TOOL_OUTPUT_MAX_CHARS=3000
+    monkeypatch.setenv("AGENT_TOOL_OUTPUT_MAX_CHARS", "3000")
+    mid_log = "\n".join(f"mid line {i}: content" for i in range(250))
+    tool_msg_mid = ToolMessage(
+        content=mid_log,
+        tool_call_id="call-exec-2",
+        name="execute",
+    )
+    res_mid = mw.wrap_tool_call(exec_req, lambda _: tool_msg_mid)
+    assert res_mid is not tool_msg_mid
+    assert "工具 'execute' 输出过长" in res_mid.content
+    assert "mid line 0:" in res_mid.content
+    assert "mid line 249:" in res_mid.content
+
+
+def test_guard_message_respects_custom_max_chars_env(tmp_path, monkeypatch):
+    backend = FilesystemBackend(root_dir=tmp_path / "custom-max-guard")
+    mw = ResultFilesystemMiddleware(backend=backend, tool_token_limit_before_evict=4000)
+
+    # Set strict 2000 chars limit
+    monkeypatch.setenv("AGENT_TOOL_OUTPUT_MAX_CHARS", "2000")
+
+    content = "\n".join(f"line {i}: content" for i in range(200))
+    req = SimpleNamespace(tool_call={"name": "github_query"})
+    tool_msg = ToolMessage(
+        content=content,
+        tool_call_id="call-gh-1",
+        name="github_query",
+    )
+
+    res = mw.wrap_tool_call(req, lambda _: tool_msg)
+    assert res is not tool_msg
+    assert "工具 'github_query' 输出过长" in res.content
+    assert "line 0:" in res.content
+    assert "line 199:" in res.content

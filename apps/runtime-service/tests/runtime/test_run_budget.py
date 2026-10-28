@@ -5,7 +5,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 from support import with_run_budget
 
-from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.runtime.run_budget import (
     RUN_BUDGET_KEY,
     read_run_budget,

@@ -13,7 +13,7 @@ from langchain_core.tools import ToolException, tool
 from langgraph.errors import GraphBubbleUp
 from support import BindableFakeMessagesChatModel
 
-from runtime_service.runtime.errors import (
+from runtime_service.errors import (
     RuntimeAuthError,
     RuntimeResolutionError,
     RuntimeWorkspaceError,

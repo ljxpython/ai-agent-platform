@@ -16,12 +16,12 @@ from deepagents.backends import (
 )
 from deepagents.backends.protocol import ExecuteResponse, SandboxBackendProtocol
 
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
 from runtime_service.middlewares.run_prepare import RunPrepareMiddleware
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
-from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.execution import runtime_backend
 from runtime_service.workspace.scoped import resolve_thread_workspace, thread_scope_hash

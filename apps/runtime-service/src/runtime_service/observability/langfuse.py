@@ -19,6 +19,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.errors import GraphBubbleUp
 from langgraph.pregel import Pregel
 
+from runtime_service.errors import RuntimeExecutionError, workspace_error_code
 from runtime_service.observability.diagnostics import (
     log_diagnostic,
     safe_fields,
@@ -31,7 +32,6 @@ from runtime_service.observability.otel import (
     close_otel,
     initialize_otel,
 )
-from runtime_service.runtime.errors import RuntimeExecutionError, workspace_error_code
 
 logger = logging.getLogger(__name__)
 

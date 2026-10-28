@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 
-from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.errors import RuntimeResolutionError
 
 REVIEW = "review"
 WORKSPACE_WRITE = "workspace_write"

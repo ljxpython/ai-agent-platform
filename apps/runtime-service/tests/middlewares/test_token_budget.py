@@ -13,16 +13,16 @@ from pydantic import PrivateAttr
 from support import BindableFakeMessagesChatModel
 
 from runtime_service.db.repositories import usage as repository
+from runtime_service.errors import (
+    TokenBudgetExceededError,
+    TokenBudgetUnverifiableError,
+)
 from runtime_service.middlewares.retry import RuntimeModelRetryMiddleware
 from runtime_service.middlewares.token_budget import TokenBudgetMiddleware
 from runtime_service.observability.usage import (
     RuntimeUsageCallback,
     usage_only_config,
     with_runtime_usage,
-)
-from runtime_service.runtime.errors import (
-    TokenBudgetExceededError,
-    TokenBudgetUnverifiableError,
 )
 
 

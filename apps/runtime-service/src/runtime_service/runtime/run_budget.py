@@ -10,7 +10,7 @@ from datetime import datetime
 
 from langchain_core.runnables import RunnableConfig
 
-from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.errors import RuntimeResolutionError
 
 RUN_BUDGET_KEY = "__graphharbor_run_budget"
 DEFAULT_WRAPUP_RESERVE_SECONDS = 120

@@ -27,6 +27,10 @@ fi
 
 CLEAN_RUNTIME_DATA=false
 CLEAN_TEST_ENV=false
+CLEAN_DEEP=false
+CLEAN_REDIS=false
+CLEAN_LOGS=false
+CLEAN_BACKUPS=false
 DRY_RUN=false
 ASSUME_YES=false
 CLEAN_PLATFORM_LEDGERS=false
@@ -66,24 +70,29 @@ ${BOLD}用法:${NC}
     $(basename "$0") [模式 / 选项]
 
 ${BOLD}常用模式 (人话指南):${NC}
-    ${GREEN}1. 日常快速清理 (零风险，仅清日志与编译缓存)${NC}
+    ${GREEN}1. 日常快速清理 (零风险，仅清构建/测试缓存与临时报告)${NC}
        ./scripts/cleanup_env.sh
        ./scripts/cleanup_env.sh --dry-run             # 仅预览待清理项
 
-    ${GREEN}2. 测试环境一键重置 (删除测试产物与对话，保留模型/记忆/技能/用户/指定项目)${NC}
-       # 演练预览：查看沙箱文件、将清空的对话数以及将软删除的项目
-       ./scripts/cleanup_env.sh --clean-test-env --keep-project-name Test --dry-run
+    ${GREEN}2. 测试环境一键重置 (清空沙箱与对话快照，软删除多余测试项目)${NC}
+       ./scripts/cleanup_env.sh --clean-test-env --dry-run
+       ./scripts/cleanup_env.sh --clean-test-env -y
 
-       # 真正执行一键重置 (默认保留 'Test' 项目，其余软删除；清空沙箱与用户对话数据)
-       ./scripts/cleanup_env.sh --clean-test-env --keep-project-name Test
+    ${GREEN}3. 终极全量深度大扫除 (清空对话+控制面审计+本地日志+Redis+旧备份)${NC}
+       ./scripts/cleanup_env.sh --deep --dry-run
+       ./scripts/cleanup_env.sh --deep -y
 
 ${BOLD}参数详情:${NC}
-    ${BOLD}[测试环境重置]${NC}
+    ${BOLD}[场景模式]${NC}
+    --deep                      全量深度清理：沙箱 + 对话快照 + 审计流水 + 本地日志 + Redis + 旧备份
     --clean-test-env            一键清理测试环境：沙箱文件 + 数据库对话快照 + 软删除多余项目
     --keep-project-name NAME    重置时保留的活跃项目名称 (大小写不敏感，默认: Test)
     --keep-project UUID         重置时保留的活跃项目 UUID
 
-    ${BOLD}[细粒度底层选项]${NC}
+    ${BOLD}[细粒度选项]${NC}
+    --clean-redis               清空本地 Redis (默认 DB 7 及测试库 DB 0/2/13/14/15)
+    --clean-logs                清空 .local-stack/logs/ 本地服务运行日志
+    --clean-backups             清空 apps/platform-api/.data/backups/ 历史 dump 归档
     --include-runtime           单独清理 .runtime 沙箱临时工作区文件 (需停写)
     --platform-ledgers          单独清空控制面请求历史与审计流水 (run_requests / audit_logs)
     --history [OPTIONS]         底层高级历史清理入口 (调用 cleanup_history.py)
@@ -101,6 +110,28 @@ ${BOLD}安全保护保证:${NC}
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --deep)
+            CLEAN_DEEP=true
+            CLEAN_TEST_ENV=true
+            CLEAN_RUNTIME_DATA=true
+            CLEAN_PLATFORM_LEDGERS=true
+            CLEAN_REDIS=true
+            CLEAN_LOGS=true
+            CLEAN_BACKUPS=true
+            shift
+            ;;
+        --clean-redis)
+            CLEAN_REDIS=true
+            shift
+            ;;
+        --clean-logs)
+            CLEAN_LOGS=true
+            shift
+            ;;
+        --clean-backups)
+            CLEAN_BACKUPS=true
+            shift
+            ;;
         --clean-test-env)
             CLEAN_TEST_ENV=true
             CLEAN_RUNTIME_DATA=true
@@ -250,6 +281,43 @@ clean_runtime_workspaces() {
     fi
 }
 
+# 5. 清理 Redis
+clean_redis() {
+    if [[ "$CLEAN_REDIS" == "true" ]]; then
+        log_info "清理 Redis 缓存与测试队列残留 (DB 7 以及测试库 DB 0/2/13/14/15)..."
+        if command -v redis-cli >/dev/null 2>&1; then
+            for db in 0 2 7 13 14 15; do
+                redis-cli -n "$db" flushdb >/dev/null 2>&1 || true
+            done
+            log_success "Redis 相关库已清空。"
+        else
+            log_warn "未检测到 redis-cli 命令，跳过 Redis 清理。"
+        fi
+    fi
+}
+
+# 6. 清理本地服务日志
+clean_local_logs() {
+    if [[ "$CLEAN_LOGS" == "true" ]]; then
+        log_info "清理 .local-stack/logs/ 本地服务运行日志..."
+        if [[ -d "${ROOT_DIR}/.local-stack/logs" ]]; then
+            rm -f "${ROOT_DIR}/.local-stack/logs"/*.log 2>/dev/null || true
+            log_success ".local-stack/logs/*.log 已清空。"
+        fi
+    fi
+}
+
+# 7. 清理历史 dump 备份归档
+clean_backup_archives() {
+    if [[ "$CLEAN_BACKUPS" == "true" ]]; then
+        log_info "清理 apps/platform-api/.data/backups/ 历史 dump 归档..."
+        if [[ -d "${ROOT_DIR}/apps/platform-api/.data/backups" ]]; then
+            rm -rf "${ROOT_DIR}/apps/platform-api/.data/backups"/* 2>/dev/null || true
+            log_success "apps/platform-api/.data/backups/ 历史备份归档已清空。"
+        fi
+    fi
+}
+
 # ==============================================================================
 # 模式 A: 一键测试环境重置 (--clean-test-env)
 # ==============================================================================
@@ -317,8 +385,21 @@ if [[ "$CLEAN_TEST_ENV" == "true" ]]; then
     log_info "正在清空对话快照与运行记录 (自动创建目标库备份)..."
     (cd "$ROOT_DIR/apps/platform-api" && uv run --frozen python scripts/cleanup_history.py --runtime --cancel-unfinished-runs --execute --writers-stopped --confirm-database "$RUNTIME_DB_NAME")
 
+    # 如果是深度清理或单独指定清理控制面流水
+    if [[ "$CLEAN_PLATFORM_LEDGERS" == "true" ]]; then
+        log_info "正在清空控制面请求历史与审计流水..."
+        (cd "$ROOT_DIR/apps/platform-api" && uv run --frozen python scripts/cleanup_history.py --platform --execute --writers-stopped --confirm-database "$PLATFORM_DB_NAME")
+    fi
+
     # 清理沙箱临时文件
     clean_runtime_workspaces
+
+    # 清理 Redis 缓存
+    clean_redis
+
+    # 清理本地服务日志与旧 dump 归档
+    clean_local_logs
+    clean_backup_archives
 
     # 清理测试报告与缓存
     clean_logs_and_reports
@@ -410,6 +491,9 @@ fi
 clean_logs_and_reports
 clean_caches
 clean_runtime_workspaces
+clean_redis
+clean_local_logs
+clean_backup_archives
 
 echo "================================================================="
 log_success "🎉 一键环境与数据清理圆满完成！"

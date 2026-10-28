@@ -8,12 +8,12 @@ from uuid import uuid4
 import jwt
 import pytest
 
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.runtime import RuntimeContext
 from runtime_service.runtime.auth import (
     verify_delegation_claims,
     verify_delegation_token,
 )
-from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.resolver import runtime_context_hash
 
 SECRET = "r1-test-secret-with-at-least-32-bytes"

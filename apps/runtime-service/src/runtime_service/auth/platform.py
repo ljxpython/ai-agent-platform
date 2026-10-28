@@ -14,8 +14,8 @@ import httpx
 from langgraph_sdk import Auth
 
 from runtime_service.auth.acl_client import post_acl
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.runtime.auth import _user_value, verify_delegation_claims
-from runtime_service.runtime.errors import RuntimeAuthError
 
 logger = logging.getLogger(__name__)
 auth = Auth()

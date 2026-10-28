@@ -4,8 +4,8 @@ from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededE
 from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
 from langgraph.errors import GraphRecursionError
 
+from runtime_service.errors import WORKSPACE_ERROR_CODES, RuntimeErrorBase
 from runtime_service.observability.errors import MODEL_ERROR_CODES, is_control_flow
-from runtime_service.runtime.errors import WORKSPACE_ERROR_CODES, RuntimeErrorBase
 
 MODEL_FAILURE_CODES = frozenset(
     {

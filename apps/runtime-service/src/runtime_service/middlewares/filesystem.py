@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Awaitable, Callable
 from copy import copy
 from hashlib import sha256
@@ -33,11 +34,12 @@ def truncate_tool_output_text(
         return content
 
     lines = content.splitlines(keepends=True)
+    tool_desc = f"工具 '{tool_name}' " if tool_name else "工具"
     if len(lines) <= head_lines + tail_lines:
         half = max_chars // 2
         return (
             content[:half]
-            + f"\n\n[... ⚠️ 工具输出单行超限 ({len(content)} 字符)，已自动截断中间部分 ...]\n\n"
+            + f"\n\n[... ⚠️ {tool_desc}输出单行超限 ({len(content)} 字符)，已自动截断中间部分 ...]\n\n"
             + content[-half:]
         )
 
@@ -82,20 +84,39 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
 
     def _guard_message(self, message: ToolMessage, tool_name: str = "") -> ToolMessage:
         actual_name = tool_name or getattr(message, "name", "")
-        # Only guard tools that are excluded from normal eviction (e.g. read_file, grep)
-        # to prevent oversized raw outputs from flooding the LLM context.
-        if actual_name not in TOOLS_EXCLUDED_FROM_EVICTION:
+        content = _extract_text_from_message(message)
+        if not content:
             return message
 
-        content = _extract_text_from_message(message)
+        # If already evicted by parent FilesystemMiddleware, keep as-is.
+        if "saved in the filesystem at" in content:
+            return message
+
         limit_tokens = self._tool_token_limit_before_evict or 4000
-        max_chars = max(8000, min(24000, NUM_CHARS_PER_TOKEN * limit_tokens))
-        if len(content) > max_chars:
+        env_max = os.getenv("AGENT_TOOL_OUTPUT_MAX_CHARS")
+        if env_max:
+            try:
+                max_chars = int(env_max.strip())
+            except ValueError:
+                max_chars = max(4000, min(24000, NUM_CHARS_PER_TOKEN * limit_tokens))
+        else:
+            max_chars = max(4000, min(24000, NUM_CHARS_PER_TOKEN * limit_tokens))
+
+        # Guard excluded tools (e.g. read_file, grep) or execute / any tool that wasn't evicted
+        # but exceeds safety threshold.
+        threshold = max_chars
+        if actual_name not in TOOLS_EXCLUDED_FROM_EVICTION:
+            if self._tool_token_limit_before_evict is not None and not env_max:
+                threshold = max(
+                    max_chars, NUM_CHARS_PER_TOKEN * self._tool_token_limit_before_evict
+                )
+
+        if len(content) > threshold:
             truncated = truncate_tool_output_text(
                 content,
                 head_lines=50,
                 tail_lines=50,
-                max_chars=max_chars,
+                max_chars=threshold,
                 tool_name=actual_name,
             )
             return message.model_copy(update={"content": truncated})

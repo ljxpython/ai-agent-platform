@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from typing import Any
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.runtime.contracts import (
     AgentDefaults,
     ResolvedRuntimeConfig,
@@ -16,7 +17,6 @@ from runtime_service.runtime.contracts import (
     RuntimePolicy,
     RuntimePrincipal,
 )
-from runtime_service.runtime.errors import RuntimeResolutionError
 
 _CONTEXT_FIELDS = frozenset(
     {

@@ -13,6 +13,7 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.runtime import (
     AgentDefaults,
     RuntimeAuthError,
@@ -24,7 +25,6 @@ from runtime_service.runtime import (
     resolve_runtime_config,
     runtime_context_hash,
 )
-from runtime_service.runtime.errors import RuntimePrivacyError
 from runtime_service.runtime.pii import (
     pii_config_for_facts,
     redact_messages,

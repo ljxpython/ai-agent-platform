@@ -18,7 +18,7 @@ from pydantic import (
     model_validator,
 )
 
-from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.runtime.resolver import parse_runtime_context
 
 PLAN_TOOL_NAMES = ("enter_plan_mode", "save_plan", "submit_plan")

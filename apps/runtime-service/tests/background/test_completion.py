@@ -12,9 +12,9 @@ import pytest
 from langgraph_sdk import Auth
 
 from runtime_service.background_tasks import authorization
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.run_control.authorization import cancellation_context_hash
 from runtime_service.runtime import background_completion as guard
-from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.resolver import runtime_context_hash
 
 SECRET = "synthetic-background-test-secret-at-least-32-bytes"

@@ -6,8 +6,8 @@ import secrets
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from runtime_service.db import connect
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.run_control.repository import inbox_blocked
-from runtime_service.runtime.errors import RuntimeWorkspaceError
 
 TERMINAL = frozenset(("succeeded", "failed", "timed_out", "cancelled"))
 UNRESOLVED = "(cleanup_state IN ('pending','unconfirmed') OR delivery_state IN ('pending','dispatching','blocked','unknown') OR (stop_id IS NOT NULL AND (delivery_inflight OR (delivery_run_id IS NOT NULL AND NOT delivery_cancel_confirmed))))"

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from runtime_service.runtime.errors import RuntimeAuthError
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.runtime.resolver import (
     persisted_context_hash_v4,
     runtime_context_hash,

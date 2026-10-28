@@ -101,7 +101,7 @@ def test_bad_reader_results_are_safe_tool_errors(monkeypatch, tmp_path, response
 
 
 def test_cancel_and_runtime_policy_propagate(monkeypatch, tmp_path):
-    from runtime_service.runtime.errors import RuntimeWorkspaceError
+    from runtime_service.errors import RuntimeWorkspaceError
 
     _, ref = stored(tmp_path)
     tool = build_document_tools(tmp_path, execution_image="reader:fixture")[0]

@@ -14,6 +14,7 @@ from langchain_core.tools import BaseTool
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
 from runtime_service.background_tasks.capabilities import query_enabled, start_enabled
+from runtime_service.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
@@ -30,7 +31,6 @@ from runtime_service.runtime import (
     verified_delegation_from_user,
 )
 from runtime_service.runtime.auth import VerifiedDelegation
-from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.runtime.planning import PLAN_GRAPHS
 
 ModelBuilder = Callable[[ResolvedRuntimeConfig], BaseChatModel]

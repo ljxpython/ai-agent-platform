@@ -18,6 +18,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.pregel import Pregel
 
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.middlewares import (
     ExecutionBudgetMiddleware,
     LoopDetectionMiddleware,
@@ -54,7 +55,6 @@ from runtime_service.runtime import (
 )
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.capabilities import REFERENCE_TOOLS
-from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.runtime.run_budget import RUN_BUDGET_KEY, read_run_budget
 from runtime_service.services.reference_agent.prompts import SYSTEM_PROMPT

@@ -25,12 +25,12 @@ except ImportError:  # pragma: no cover
 
 from dataclasses import replace
 
+from runtime_service.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.runtime.contracts import (
     ModelConnectionBundle,
     ModelResiliencePolicy,
     ResolvedRuntimeConfig,
 )
-from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
 
 
 def _reasoning_text(message: Mapping[str, object]) -> str:

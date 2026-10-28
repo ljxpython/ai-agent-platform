@@ -3,9 +3,9 @@ import asyncio
 import pytest
 from langgraph.errors import GraphRecursionError
 
+from runtime_service.errors import RuntimeAuthError, RuntimeErrorBase
 from runtime_service.run_completion.projector import project_terminal_outcome
 from runtime_service.runtime.auth import _optional_callback_context
-from runtime_service.runtime.errors import RuntimeAuthError, RuntimeErrorBase
 
 
 @pytest.mark.parametrize(

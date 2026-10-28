@@ -10,8 +10,8 @@ import httpx
 import pytest
 from langfuse.api.client import AsyncLangfuseAPI
 
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.observability import langfuse, query, startup
-from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.services.reference_agent.agent import _local_test_facts
 
 SCOPE = {

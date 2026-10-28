@@ -7,8 +7,8 @@ from importlib.resources import files
 
 import pytest
 
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.runtime import RuntimeAuthError
-from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.services.demo.showcase_demo.backend import (
     DockerWorkspaceBackend,
     LocalWorkspaceBackend,

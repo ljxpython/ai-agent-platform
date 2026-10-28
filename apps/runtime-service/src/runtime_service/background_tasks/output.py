@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from uuid import UUID, uuid4
 
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.workspace.background import MAX_LOG_BYTES, host_id
 
 MAX_TOTAL_BYTES = 2 * 1024 * MAX_LOG_BYTES

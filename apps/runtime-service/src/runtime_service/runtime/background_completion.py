@@ -13,8 +13,8 @@ from runtime_service.background_tasks.repository import (
     bind_completion_run,
     completion_allowed,
 )
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.runtime.auth import verified_delegation_from_user
-from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.resolver import runtime_context_hash
 
 MARKER = "platform_background_completion"

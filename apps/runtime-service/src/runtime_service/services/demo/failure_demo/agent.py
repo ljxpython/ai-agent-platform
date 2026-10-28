@@ -14,6 +14,7 @@ from langchain_core.tools import BaseTool
 from langgraph.graph import END, START, StateGraph
 from langgraph.pregel import Pregel
 
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.middlewares import RuntimeConfigMiddleware
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.runtime import (
@@ -24,7 +25,6 @@ from runtime_service.runtime import (
     verified_delegation_from_user,
 )
 from runtime_service.runtime.auth import VerifiedDelegation
-from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.services.demo.failure_demo.tools import (
     slow_tool,
     unrecoverable_tool,

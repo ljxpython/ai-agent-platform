@@ -12,8 +12,8 @@ from uuid import UUID
 
 import jwt
 
+from runtime_service.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.runtime.contracts import RuntimePolicy, RuntimePrincipal
-from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.runtime.resolver import (
     parse_runtime_policy,
     parse_runtime_principal,

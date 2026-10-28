@@ -242,9 +242,41 @@ class Storage:
         path = arguments.get("path") or "/workspace"
         parts = path_parts(path)
         directory = root.joinpath(*parts)
+        is_dir = True
         try:
             os.close(ImageWorkspace(root)._directory(parts))
         except ToolException:
+            is_dir = False
+        cap = min(arguments.get("max_count") or 1000, 1000)
+        if not is_dir:
+            if grep and parts:
+                virtual = "/workspace/" + "/".join(parts)
+                try:
+                    data = self.read_bytes(root, virtual)
+                except DocumentError:
+                    return GrepResult(error="directory_unavailable")
+                if len(data) > MAX_FILE_BYTES:
+                    return GrepResult(
+                        error="file_too_large", matches=[], truncated=True
+                    )
+                glob_pat = arguments.get("glob")
+                if glob_pat and not compile_recursive_glob(glob_pat)(parts[-1]):
+                    return GrepResult(matches=[])
+                text = data.decode("utf-8", errors="replace")
+                pattern = arguments["pattern"]
+                found = []
+                for line, content in enumerate(text.splitlines(), 1):
+                    if pattern in content:
+                        found.append(
+                            {
+                                "path": virtual,
+                                "line": line,
+                                "text": content[:2000],
+                            }
+                        )
+                        if len(found) > cap:
+                            return GrepResult(matches=found[:cap], truncated=True)
+                return GrepResult(matches=found)
             return (
                 GrepResult(error="directory_unavailable")
                 if grep
@@ -253,7 +285,6 @@ class Storage:
         pattern = arguments.get("glob") if grep else arguments["pattern"]
         matcher = compile_recursive_glob(pattern or "*")
         found, count, total, deadline = [], 0, 0, time.monotonic() + 10
-        cap = min(arguments.get("max_count") or 1000, 1000)
 
         def walk_error(exc):
             raise exc

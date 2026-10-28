@@ -27,6 +27,7 @@ from pydantic import Field
 from services.dearflow_agent.test_agent import config as dear_config
 from support import BindableFakeMessagesChatModel
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.middlewares.model_resilience import (
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
@@ -36,7 +37,6 @@ from runtime_service.runtime import (
     ModelResiliencePolicy,
     modeling,
 )
-from runtime_service.runtime.errors import RuntimeResolutionError
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.services.dearflow_agent import agent as dearflow
 from runtime_service.services.demo.showcase_demo import agent as showcase

@@ -12,6 +12,7 @@ from uuid import uuid4
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
 
+from runtime_service.errors import workspace_error_code
 from runtime_service.observability.diagnostics import (
     diagnostic_metadata,
     log_diagnostic,
@@ -20,7 +21,6 @@ from runtime_service.observability.errors import error_type, execution_outcome
 from runtime_service.observability.langfuse import record_diagnostic_event
 from runtime_service.observability.otel import initialize_otel
 from runtime_service.runtime.auth import VerifiedDelegation
-from runtime_service.runtime.errors import workspace_error_code
 
 PHASE_NAMES = frozenset(
     {

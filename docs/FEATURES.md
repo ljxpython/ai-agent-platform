@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 运行异常重投拦截与草稿防丢回填 | 已完成：彻底移除回合失败时前端私自调用 `submitQueuedMessage` 导致原 Prompt 被静默包装为排队消息拉起死循环的严重 Bug，规范为草稿安全回填用户输入框并撤销乐观气泡；58 项 Vitest 单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/01-frontend-resubmission-fix.md) |
 | Markdown 渲染器 blob: 协议放行与工作区产物图表紧凑卡片渲染治理 | 已完成：放行 blob: 安全协议白名单，根治产物库与 Markdown 内部引用的图表由于安全清洗降级为 '#' 导致的破损；重构 Markdown 图像排版规格，建立 680px 宽度/460px 高度上限、居中、微圆角卡片边框与深浅模式自适应，彻底终结广告牌级巨型图表问题；补齐 6 项 Vitest 单测与 Playwright 自动化 E2E 验证 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-markdown-blob-image-rendering.md) |
 | 前端历史会话回放防误触（Replay Immunity）与上下文整理状态机收敛 | 已完成：根治进入已完成历史会话时底层 SSE 协议全量回放导致“正在整理上下文...”浮条误闪烁与永久悬挂漏洞；落实终态与活跃 Run 严格双重校验；单测 51/51 项与 Playwright 双会话端到端全绿 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-offload-replay-immunity.md) |
 | 会话取消（Stop）后乐观消息幽灵消除、时序防倒挂与 Loading 精准挂载治理 | 已完成：根治取消后乐观消息残留导致的跨回合时序颠倒；修复首轮 baseline=0 流式响应倒挂漏洞；修复已中断/已取消回合盲目渲染“正在组织答复”占位符；实装恢复连接与新发送时的错误横幅即时清空；Vitest 单测 100% 绿灯 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-chat-session-stop-and-ordering.md) |
@@ -117,6 +118,8 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent 代码库剖析收敛准则与高优先级预算收尾感知 | 已完成：SYSTEM_PROMPT 确立代码资产剖析 Top-Down 自顶向下原则、单轮 5~8 次探索硬约束、严禁写脚本正则遍历海量文件树；将 WRAPUP_INSTRUCTION 升级为中英双语最高优先级强制收尾指令，warning_calls 提早至 5 轮；76 项自动化单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/02-agent-convergence-and-wrapup-governance.md) |
+| 智能体上下文防爆治理与工业级工具截断/视口虚拟折叠全栈闭环 | 已完成：实装单工具输出驱逐落盘（AGENT_TOOL_TOKEN_LIMIT_BEFORE_EVICT=1200 Tokens）、全工具物理 Head+Tail 截断（AGENT_TOOL_OUTPUT_MAX_CHARS=4800）、以及 ToolOutputPruningMiddleware 视口动态虚拟折叠（保留最近 4 次）；在生产大长会话真实回放测算中，Token 消耗暴降 58% ~ 82%，压缩触发归零；全量 300 项中间件单测 100% 绿灯 | [项目概览](projects/20261028-context-governance-and-tool-resilience/README.md) · [验证记录](projects/20261028-context-governance-and-tool-resilience/verification.md) |
 | 智能体联网调研预算约束（Research Budget）与边际收敛刹车治理 | 已完成：彻底根治深度调研中由于技能煽动无限递归搜索导致单会话调用 250+ 次工具、耗时 34 分钟超时死循环的过犹不及缺陷；重构 deep-research 技能与全局 SYSTEM_PROMPT，确立 3~5 轮搜索与 2~4 篇精读预算、边际效用递减及摘要优先法则，28 项技能单测全部通过 | [变更记录](../apps/runtime-service/docs/changes/20261027-bounded-research-budget-and-convergence.md) |
 | GitHub 调研工具限流与远程沙箱证据元组契约韧性治理 | 已完成：支持可选 GITHUB_TOKEN（限流从 60 提升至 5000 次/小时）；彻底修复远程沙箱 RPC 反序列化将二元组退化为 List 导致 LangChain 校验失败抛出 runtime.execution_failed 的致命缺陷；53 项单测全绿 | [项目概览](projects/20261026-github-tool-and-remote-evidence-resilience/README.md) · [验证记录](projects/20261026-github-tool-and-remote-evidence-resilience/verification.md) |
 | LightRAG MCP 知识库真实文档状态与项目物理隔离 | 已完成：彻底拔除 fake 静态目录伪造 ID，直连底层 `rag.doc_status`；修复多租户共享内存串台 Bug，实现 13 份多模态文档真实透出、项目名称完全对齐与 0 串台物理隔离；远端部署生效，Playwright 真实模型测试通过 | [项目概览](projects/20261021-lightrag-mcp-real-doc-status-alignment/README.md) · [验证记录](projects/20261021-lightrag-mcp-real-doc-status-alignment/verification.md) |

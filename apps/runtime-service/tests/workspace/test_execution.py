@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.workspace import execution
 
 UNKNOWN = "runtime.workspace.execution_outcome_unknown"

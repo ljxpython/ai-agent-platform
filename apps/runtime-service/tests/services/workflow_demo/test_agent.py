@@ -17,9 +17,9 @@ from support import (
     with_run_budget,
 )
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.graphs.workflow_demo import get_agent
 from runtime_service.middlewares.timeout_wrapup import TIMEOUT_WRAPUP_INSTRUCTION
-from runtime_service.runtime.errors import RuntimeResolutionError
 from runtime_service.services.demo.workflow_demo import agent
 
 

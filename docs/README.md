@@ -24,6 +24,7 @@
 
 ### 🔧 运维 / 上线操作
 
+→ **[runbooks/environment-cleanup.md](runbooks/environment-cleanup.md)** 环境、日志与测试数据清理手册
 → **[runbooks/](runbooks/)** 运维操作手册
 → **[releases/](releases/)** 版本发布记录
 

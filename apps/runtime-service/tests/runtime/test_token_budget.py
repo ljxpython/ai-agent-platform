@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.runtime.token_budget import (
     MAX_SAFE_INTEGER,
     RunTokenBudget,

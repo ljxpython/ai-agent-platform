@@ -10,8 +10,8 @@ from langchain_core.tools import tool
 from langgraph.errors import GraphInterrupt
 from support import BindableFakeMessagesChatModel
 
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.middlewares.pii_redaction import PiiRedactionMiddleware
-from runtime_service.runtime.errors import RuntimePrivacyError
 from runtime_service.runtime.pii import (
     PiiRedactionConfig,
     redact_messages,

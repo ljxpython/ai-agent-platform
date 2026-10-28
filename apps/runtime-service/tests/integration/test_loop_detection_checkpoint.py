@@ -15,13 +15,13 @@ from middlewares.test_loop_detection import loop_responses
 from pydantic import Field
 from support import BindableFakeMessagesChatModel
 
+from runtime_service.errors import RuntimeExecutionError
 from runtime_service.middlewares import (
     ConversationOffloadingMiddleware,
     LoopDetectionMiddleware,
     MaintenanceSafeToolCallsMiddleware,
 )
 from runtime_service.runtime import RuntimeContext
-from runtime_service.runtime.errors import RuntimeExecutionError
 
 
 def test_postgres_loop_survives_auto_and_manual_offloading(tmp_path):

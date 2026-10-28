@@ -22,6 +22,9 @@ from typing_extensions import TypedDict
 from runtime_service.observability.diagnostics import log_diagnostic
 
 WRAPUP_INSTRUCTION = (
+    "【最高优先级紧急通知：执行预算即将耗尽 / Critical Execution Budget Alert】\n"
+    "模型调用额度接近上限，这是最后几次调用机会。必须立即停止一切探索性调研与工具调用（严禁调用 fetch_page、execute、read_file 等搜索/探索工具），"
+    "必须立即利用当前已有信息整合并输出最终答复与产物。明确列出已完成结论、未完成项与后续建议，严禁继续漫游或因求证次要细节导致调用耗尽。\n"
     "Execution budget is running low. Finish the current task using the information "
     "already available. Do not start new investigations or delegate new work. "
     "Clearly report completed and unfinished items and a useful continuation point. "

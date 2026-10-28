@@ -14,8 +14,8 @@ from functools import wraps
 import httpx
 
 from runtime_service.auth.acl_client import post_acl
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.runtime.auth import verified_delegation_from_user
-from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.resolver import (
     persisted_context_hash_v4,
     persisted_context_hash_v5,

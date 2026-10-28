@@ -1,5 +1,11 @@
 """Public Runtime contracts and pure resolution entrypoints."""
 
+from runtime_service.errors import (
+    RuntimeAuthError,
+    RuntimeErrorBase,
+    RuntimePrivacyError,
+    RuntimeResolutionError,
+)
 from runtime_service.runtime.access_policy import interrupts_for_access_policy
 from runtime_service.runtime.auth import (
     RuntimeScope,
@@ -16,12 +22,6 @@ from runtime_service.runtime.contracts import (
     RuntimeContext,
     RuntimePolicy,
     RuntimePrincipal,
-)
-from runtime_service.runtime.errors import (
-    RuntimeAuthError,
-    RuntimeErrorBase,
-    RuntimePrivacyError,
-    RuntimeResolutionError,
 )
 from runtime_service.runtime.modeling import (
     build_fallback_model,

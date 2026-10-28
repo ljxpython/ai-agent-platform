@@ -24,12 +24,12 @@ from langchain_core.messages import AIMessageChunk, ToolMessage
 from langchain_core.outputs import ChatGenerationChunk
 from langgraph.errors import GraphBubbleUp
 
-from runtime_service.middlewares import ModelCallTimeoutMiddleware, retry
-from runtime_service.runtime.errors import (
+from runtime_service.errors import (
     RuntimeAuthError,
     RuntimeExecutionError,
     RuntimeWorkspaceError,
 )
+from runtime_service.middlewares import ModelCallTimeoutMiddleware, retry
 from runtime_service.tools.errors import on_tool_error
 
 

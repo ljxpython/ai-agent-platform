@@ -40,6 +40,7 @@ from runtime_service.middlewares import (
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
     TokenBudgetMiddleware,
+    ToolOutputPruningMiddleware,
     context_management_enabled,
     loop_detection_enabled,
     resolve_tool_output_limit,
@@ -493,6 +494,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 run_limit=run_model,
                 thread_limit=thread_model,
                 exit_behavior="error",
+                warning_calls=5,
                 scope="subagent" if child else "primary",
                 graph_key="dearflow_agent",
             ),
@@ -551,6 +553,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             ),
             *([PiiRedactionMiddleware(pii_config)] if pii_config.enabled else []),
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
+            ToolOutputPruningMiddleware(),
         ]
 
     with startup.phase("factory.agent_compile"):

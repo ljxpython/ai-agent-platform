@@ -18,13 +18,13 @@ from runtime_service.background_tasks.output import (
     delete_output,
     directory,
 )
-from runtime_service.run_control.authorization import native_headers
-from runtime_service.run_control.resources import wait_cleanup
-from runtime_service.run_control.service import engine_url
-from runtime_service.runtime.errors import (
+from runtime_service.errors import (
     BackgroundTaskNotStarted,
     RuntimeWorkspaceError,
 )
+from runtime_service.run_control.authorization import native_headers
+from runtime_service.run_control.resources import wait_cleanup
+from runtime_service.run_control.service import engine_url
 from runtime_service.workspace.background import (
     create_task_container,
     host_id,

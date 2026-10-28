@@ -9,9 +9,9 @@ from typing import Literal
 from langchain.agents.middleware import AgentMiddleware, hook_config
 from langchain_core.messages import AIMessage, ToolMessage
 
+from runtime_service.errors import TokenBudgetUnverifiableError
 from runtime_service.middlewares.execution_budget import add_wrapup_instruction
 from runtime_service.observability.usage import current_runtime_usage_callback
-from runtime_service.runtime.errors import TokenBudgetUnverifiableError
 from runtime_service.runtime.token_budget import token_budget_enabled
 
 TOKEN_BUDGET_EXHAUSTED_WRAPUP_NOTICE = (

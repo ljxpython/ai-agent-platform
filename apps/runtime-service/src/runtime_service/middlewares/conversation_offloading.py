@@ -40,11 +40,11 @@ from langgraph.config import get_config, get_stream_writer
 from langgraph.runtime import Runtime
 from langgraph.types import Command
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.middlewares.model_call_timeout import (
     resolve_model_call_timeout_seconds,
 )
 from runtime_service.middlewares.pii_redaction import PiiSummarizationMiddleware
-from runtime_service.runtime.errors import RuntimeResolutionError
 from runtime_service.runtime.pii import PiiRedactionConfig, redact_messages
 
 logger = logging.getLogger(__name__)
@@ -141,6 +141,15 @@ def resolve_tool_output_limit(
     models: Iterable[Any], output_budget_tokens: int | None
 ) -> int:
     """Keep one large result below a conservative fraction of model input budget."""
+
+    env_limit = os.getenv("AGENT_TOOL_TOKEN_LIMIT_BEFORE_EVICT")
+    if env_limit:
+        try:
+            val = int(env_limit.strip())
+            if val > 0:
+                return val
+        except ValueError:
+            pass
 
     budgets = [
         _input_budget(model, None, output_budget_tokens)

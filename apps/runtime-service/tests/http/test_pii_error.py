@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from starlette.testclient import TestClient
 
-from runtime_service.runtime.errors import RuntimePrivacyError
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.webapp import app
 
 

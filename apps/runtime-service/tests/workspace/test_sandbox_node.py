@@ -454,6 +454,36 @@ def test_search_empty_exact_limit_extra_and_partial_error(node):
     assert len(exact["matches"]) == 2 and not exact["truncated"]
     extra = invoke(node, "grep", pattern="match", max_count=1)
     assert len(extra["matches"]) == 1 and extra["truncated"]
+
+    # Single-file grep support
+    file_grep = invoke(node, "grep", pattern="match", path="/workspace/work/a")
+    assert len(file_grep["matches"]) == 2
+    assert file_grep["matches"][0]["path"] == "/workspace/work/a"
+    assert not file_grep.get("error") and not file_grep["truncated"]
+    file_capped = invoke(
+        node, "grep", pattern="match", path="/workspace/work/a", max_count=1
+    )
+    assert len(file_capped["matches"]) == 1 and file_capped["truncated"]
+    assert (
+        invoke(node, "grep", pattern="match", path="/workspace/work/a", glob="*.py")[
+            "matches"
+        ]
+        == []
+    )
+    assert (
+        len(
+            invoke(node, "grep", pattern="match", path="/workspace/work/a", glob="*a")[
+                "matches"
+            ]
+        )
+        == 2
+    )
+    assert (
+        invoke(node, "grep", pattern="match", path="/workspace/work/missing.txt")[
+            "error"
+        ]
+        == "directory_unavailable"
+    )
     root = node.storage.check(request("prepare"))
     denied = root / "work/z"
     denied.mkdir()

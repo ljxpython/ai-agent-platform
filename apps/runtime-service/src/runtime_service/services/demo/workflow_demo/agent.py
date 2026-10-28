@@ -10,6 +10,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 
+from runtime_service.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.middlewares import (
     ExecutionBudgetMiddleware,
     ModelCallTimeoutMiddleware,
@@ -42,7 +43,6 @@ from runtime_service.runtime import (
 )
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.capabilities import REFERENCE_TOOLS
-from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.runtime.run_budget import RUN_BUDGET_KEY, read_run_budget
 from runtime_service.services.demo.workflow_demo.workflow import build_graph

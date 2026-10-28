@@ -137,6 +137,8 @@ uv run --frozen python scripts/database.py check
 
 ## 5. 清理、备份和审计
 
+> 完整的一键环境清理命令、三级清理模式与速查表请直接参考：**[docs/runbooks/environment-cleanup.md](../runbooks/environment-cleanup.md)**。
+
 `scripts/cleanup_env.sh` 默认仅清理日志/缓存；SQLite 源库、所有备份、Runtime 库和测试数据库不自动删除。若确需清理本地控制面流水，先预览：
 
 ```bash

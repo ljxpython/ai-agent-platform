@@ -26,6 +26,7 @@ from services.test_model_resilience_composition import (
 )
 from support import BindableFakeMessagesChatModel
 
+from runtime_service.errors import RuntimePrivacyError
 from runtime_service.middlewares.conversation_offloading import (
     ConversationOffloadingMiddleware,
 )
@@ -34,7 +35,6 @@ from runtime_service.middlewares.pii_redaction import (
     PiiSummarizationMiddleware,
 )
 from runtime_service.runtime import ModelConnectionBundle, ModelResiliencePolicy
-from runtime_service.runtime.errors import RuntimePrivacyError
 from runtime_service.runtime.pii import PiiRedactionConfig
 
 EMAIL = "alice@example.test"

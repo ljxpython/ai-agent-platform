@@ -11,8 +11,8 @@ from collections.abc import Mapping
 from typing import Any
 from uuid import UUID
 
+from runtime_service.errors import WORKSPACE_ERROR_CODES
 from runtime_service.runtime.auth import VerifiedDelegation
-from runtime_service.runtime.errors import WORKSPACE_ERROR_CODES
 
 logger = logging.getLogger(__name__)
 _FIELDS = frozenset(

@@ -67,7 +67,9 @@ test.describe("Agent 运行完成通知与失败回调 (P4.1 - P4.3 E2E)", () =>
       const passwordInput = page
         .locator('input[name="password"], input[type="password"]')
         .first();
-      await passwordInput.fill("admin123");
+      await passwordInput.fill(
+        process.env.PLATFORM_TEST_PASSWORD || "admin123456",
+      );
     }
 
     const submitBtn = page.locator('button[type="submit"]');
@@ -254,6 +256,29 @@ test.describe("Agent 运行完成通知与失败回调 (P4.1 - P4.3 E2E)", () =>
   test("F04 & 真实模型全链路: 真实大模型调用与成功终态对账", async ({
     page,
   }) => {
+    // 开启通知中心可用性
+    await page.route(
+      "**/api/runtime/run-notifications**",
+      async (route: any) => {
+        if (route.request().method() === "GET") {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              version: 1,
+              availability: "available",
+              items: [],
+              next_cursor: null,
+              scan_limit_reached: false,
+              request_id: "req_test_feed_f04",
+            }),
+          });
+        } else {
+          await route.continue();
+        }
+      },
+    );
+
     await loginAsAdmin(page);
 
     const projectId = "5a5b7239-43e3-40e6-bba3-e64d96057607";
@@ -296,7 +321,8 @@ test.describe("Agent 运行完成通知与失败回调 (P4.1 - P4.3 E2E)", () =>
     // 等待模型回复或会话处理完毕
     console.log("等待真实大模型响应结束...");
     // 监听发送按钮恢复可用或停止按钮消失
-    await page.waitForTimeout(10000);
+    const stopBtn = page.getByRole("button", { name: "停止生成" });
+    await expect(stopBtn).not.toBeVisible({ timeout: 45000 });
 
     // 截图记录回复后状态
     await page.screenshot({

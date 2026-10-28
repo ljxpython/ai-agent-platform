@@ -14,6 +14,7 @@ from langchain.agents.middleware.types import PrivateStateAttr
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.config import get_config
 
+from runtime_service.errors import RuntimeExecutionError
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
@@ -24,7 +25,6 @@ from runtime_service.middlewares.execution_budget import (
 )
 from runtime_service.observability.diagnostics import log_diagnostic
 from runtime_service.observability.langfuse import record_diagnostic_event
-from runtime_service.runtime.errors import RuntimeExecutionError
 
 READ_TOOLS = frozenset({"ls", "read_file", "glob", "grep", "read_reference"})
 WARN_THRESHOLD = 3

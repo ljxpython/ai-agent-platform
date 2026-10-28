@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from threading import RLock
 from typing import Any
 
-from runtime_service.runtime.errors import (
+from runtime_service.errors import (
     RuntimeResolutionError,
     TokenBudgetExceededError,
     TokenBudgetUnverifiableError,

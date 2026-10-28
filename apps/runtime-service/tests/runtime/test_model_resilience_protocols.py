@@ -9,6 +9,7 @@ from langchain.agents import create_agent
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_deepseek import ChatDeepSeek
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.middlewares import (
     ModelCallTimeoutMiddleware,
     ModelResilienceMiddleware,
@@ -25,7 +26,6 @@ from runtime_service.runtime.contracts import (
     ModelConnectionBundle,
     ModelResiliencePolicy,
 )
-from runtime_service.runtime.errors import RuntimeResolutionError
 from runtime_service.services.reference_agent.tools import read_reference
 
 A = "00000000-0000-0000-0000-000000000001"

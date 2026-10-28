@@ -4,10 +4,10 @@ from langchain.tools import ToolRuntime, tool
 from langchain_core.messages import ToolMessage
 from langgraph.types import Command, interrupt
 
+from runtime_service.errors import RuntimeResolutionError
 from runtime_service.observability.diagnostics import log_diagnostic
 from runtime_service.observability.langfuse import record_diagnostic_event
 from runtime_service.runtime.auth import verified_delegation_from_user
-from runtime_service.runtime.errors import RuntimeResolutionError
 from runtime_service.runtime.planning import (
     PlanSnapshot,
     apply_plan_reply,

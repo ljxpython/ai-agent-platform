@@ -15,7 +15,7 @@ from runtime_service.auth.platform import authenticate, authorize_thread_targets
 from runtime_service.background_tasks import repository
 from runtime_service.background_tasks.output import read_output
 from runtime_service.background_tasks.schemas import list_view, output_view, task_view
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.errors import RuntimeWorkspaceError
 from runtime_service.runtime.tool_access import require_tool_access
 
 router = APIRouter(
