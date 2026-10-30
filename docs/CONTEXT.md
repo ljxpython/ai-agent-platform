@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-30（官方 task + 只读 general-purpose 的简化实现与工程验证完成，用户已验收通过，所属服务已停止，提交合并与资源清理收尾中；调研答案稳定性和费用收益未证明。历史失败保留，未提交或部署到共享环境。）
+> **最后更新：** 2026-10-30（委派简化需求经用户人工验收通过，分支已推送并快进合并main；所属服务停止、Worktree和两个专属测试数据库/角色已清理。收尾文档随main推送，未部署共享服务；原模型质量/费用局限保留。）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -11,7 +11,7 @@
 
 ## 最近改动
 
-2026-10-30 | **委派交接架构简化**：按用户确认删除5个自研交接模块及6个专属测试/夹具（973行实现、1720行测试），直接复用DeepAgents官方task和只读general-purpose；预算、限宽、PII、Usage、取消、并发和失败隔离保留。真实烟测发现的子工具额度异常穿透已在原错误入口修复。扩大相关回归560通过/13跳过/1项默认Docker环境失败，该项local后端复验通过。最后一次正式Run正常交付，主峰40,707/131,072（31.1%），root自动整理观测值0，28/28 Usage完整，总497,831 Token；原五项明确语义覆盖3/5，价格未知，不宣称答案稳定全对或费用收益。当前简化版本已由用户验收通过；所属隔离栈五服务全部停止，正在按授权提交推送、合并与销毁本项目隔离资源，未部署共享服务。
+2026-10-30 | **委派交接架构简化验收收尾**：用户确认需求验收通过。功能提交`e40742baa14082c7dcab8765b152325b16305e90`已推送`feat/subagent-open-swe-simplification`并快进合并main；合并逐项核对原主目录61份代码/测试/配置，除AST等价格式化外内容保留。所属五服务已停，Worktree及`wt_bf33bcf838fd`两个专属数据库/同名角色、Redis/Workspace和登记已清理，其他57个数据库定义不变。3877份验证证据已另存Worktree外私有归档。当前代码与需求完成，历史语义3/5和费用未知仍保留，不因人工验收改写统计结论；收尾文档随main提交推送，未部署共享服务。
 
 ## 本月归并
 
@@ -30,7 +30,7 @@
 
 ## 活跃项目
 
-- [有界调研委派与子智能体上下文隔离](projects/20261028-subagent-fanout-and-prefix-caching/README.md)：`done`（当前简化实现与工程验证），用户验收通过，所属服务已停止，提交合并和清理收尾中。官方task+只读general-purpose、额度异常隔离、相关回归及正式烟测完成；原五项明确语义覆盖3/5，稳定性/泛化/统计收益未证明。全部历史失败保留，未提交或部署到共享环境。
+- [有界调研委派与子智能体上下文隔离](projects/20261028-subagent-fanout-and-prefix-caching/README.md)：`done`，2026-10-30用户人工验收通过；功能分支已推送并快进合并main，服务停止、所属Worktree/测试库已清理。收尾记录随main推送，历史失败与质量/费用局限保留；未部署共享服务。
 - [修复运行异常重投与 Agent 代码剖析死循环收敛治理](projects/20261028-run-resubmission-and-agent-convergence/README.md)：`done`；彻底修复前端在回合失败时私自调用 submitQueuedMessage 自动重投 Prompt 的 Bug；在 SYSTEM_PROMPT 确立代码库/本地架构剖析自顶向下原则、单轮 5~8 次探索硬约束、禁止遍历脚本正则扫描；将 ExecutionBudgetMiddleware 预警阈值提升至 warning_calls=5 并强化中文化最高优先级收尾指令；前端 58 项单测、后端 76 项测试全绿。
 - [智能体上下文防爆治理与工业级工具截断/子任务架构升级](projects/20261028-context-governance-and-tool-resilience/README.md)：`done`；对标 Antigravity / Cursor / Manus 工业级架构，从源头解决灵巧手调研与全库代码剖析等重度长任务中工具无脑倾倒巨量输出（单次 188KB/6.4万 Token）、单上下文硬抗 60+ 次工具调用导致的上下文反复爆炸与 6 次恶性循环压缩问题。实装溢出落盘（Spill-to-Disk）与历史工具视口虚拟折叠（Ephemeral Pruning），生产真实大长会话回放 Token 暴降 58% ~ 82%，压缩触发归零，300 项中间件单测 100% 绿灯。
 - [智能体上下文窗口治理与 Token 预算韧性优化](projects/20261027-agent-context-budget-hardening/README.md)：`done`；彻底解决频繁触发整理上下文、10% 残暴裁剪引发失忆死循环、以及单次运行耗尽 100 万 Token 抛错红条猝死缺陷；四层防御（40% 复合保留、Head+Tail 工具防爆截断、Token 耗尽优雅停机、存量模型校准为官方真实 128K 窗口）全栈落地闭环，测试全绿。
@@ -88,9 +88,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-30 | 自研交接已撤除，官方task+只读general-purpose及只读子额度错误隔离完成；相关回归和正式模型烟测已执行，模型语义质量局限见项目Final。所属隔离栈已同步并重启Runtime API/Worker，Web29201/API29713/Runtime26751健康运行，backend=local、无Docker；用户验收通过后所属服务已全部停止，提交合并及清理收尾中，未部署共享服务。 |
-| platform-api | 2026-10-29 | 隔离Worktree既有预算准入Usage投影修复；T4真实Usage200/finalized/complete，token_budget=null，无新增字段；源码已同步主目录，未提交或部署。 |
-| platform-web | 2026-10-29 | 隔离Worktree既有预算通知与Pro入口修复；T4经正式页面选择xiaok/Pro/8192输出完成预算接线，保留真实Run及截图；源码已同步主目录，未提交或部署。 |
+| runtime-service | 2026-10-30 | 官方task+只读general-purpose简化及子额度错误隔离已完成人工验收，功能提交e40742ba已推送并快进合并main；所属Runtime API/Worker及其余隔离服务全部停止，Worktree与专属测试库已清理。未部署共享服务，历史质量局限见项目Final。 |
+| platform-api | 2026-10-30 | 既有预算准入Usage投影修复随e40742ba保留并合并main；T4真实Usage200/finalized/complete、token_budget=null，既有证据不改写。所属隔离服务已停、测试库已清理，未部署共享服务。 |
+| platform-web | 2026-10-30 | 既有预算通知与Pro入口修复随e40742ba保留并合并main；用户完成当前简化版验收，所属Web服务已停止、Worktree已清理，未部署共享服务。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。
