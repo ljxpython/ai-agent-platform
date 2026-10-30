@@ -103,7 +103,7 @@ const TokensExhaustedNoticeSchema = z
     code: z.literal("token_budget_exhausted"),
     limit: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
     used: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
-    remaining: z.literal(0),
+    remaining: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
     unit: z.literal("tokens_total"),
   })
   .strip();

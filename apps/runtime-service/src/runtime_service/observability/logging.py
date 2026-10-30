@@ -1,9 +1,37 @@
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
+from langgraph.config import get_config
+
 from runtime_service.observability.context import get_current_trace_context
+
+_context_metrics = logging.getLogger("runtime_service.context_metrics")
+_context_metrics.setLevel(logging.INFO)
+_context_metrics.propagate = False
+if not _context_metrics.handlers:
+    _context_metrics.addHandler(logging.StreamHandler())
+
+
+def log_context_metric(fields: dict[str, Any]) -> None:
+    """Private counters must be visible even when the host configures only structlog."""
+    try:
+        try:
+            config = get_config()
+        except RuntimeError:
+            config = {}
+        metadata = config.get("metadata") or {}
+        identity = {
+            "run_id": metadata.get("run_id"),
+            "checkpoint_ns": str(metadata.get("langgraph_checkpoint_ns", ""))[:1024],
+        }
+        _context_metrics.info(
+            json.dumps({**identity, **fields}, ensure_ascii=True, separators=(",", ":"))
+        )
+    except Exception:
+        pass  # Diagnostics cannot replace the execution result.
 
 
 class RuntimeTraceLogFilter(logging.Filter):

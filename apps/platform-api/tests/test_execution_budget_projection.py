@@ -204,6 +204,7 @@ class ExecutionBudgetProjectionTest(unittest.TestCase):
         for code, used, remaining in (
             ("token_budget_approaching", 80, 20),
             ("token_budget_exhausted", 105, 0),
+            ("token_budget_exhausted", 27, 73),
             ("token_budget_unverifiable", None, None),
         ):
             value = notice(

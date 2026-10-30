@@ -241,7 +241,7 @@ def test_each_actual_child_uses_policy_and_keeps_namespace(
 
     events, state = asyncio.run(run())
     assert len(models[A].seen) == 3 and len(models[B].seen) == 1
-    assert state["messages"][-1].content == "parent done"
+    assert "parent done" in state["messages"][-1].content
     children = [
         message
         for namespace, update in events

@@ -391,7 +391,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     )
     child_filesystem = filesystem_cls(
         backend=backend,
-        tools=["read_file"],
+        tools=["ls", "read_file", "glob", "grep"],
         _permissions=PERMISSIONS,
         **filesystem_kwargs,
     )
@@ -453,6 +453,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             if context_management_enabled() and executing
             else []
         )
+        tool_output_pruning = ToolOutputPruningMiddleware(
+            trigger_tokens=offloading[0].pruning_trigger_tokens if offloading else None,
+        )
+        if offloading:
+            offloading[0].tool_output_pruning = tool_output_pruning
         wrapup_target = (
             run_budget if run_budget is not None else resolve_wrapup_after_seconds()
         )
@@ -480,7 +485,9 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 tool_names=tool_names,
             ),
             PlanModeMiddleware(
-                [*research_tools, *child_filesystem.tools] if child else readonly_tools,
+                [*research_tools, github_tool, *child_filesystem.tools]
+                if child
+                else readonly_tools,
                 child=child,
             ),
             *offloading,
@@ -553,7 +560,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             ),
             *([PiiRedactionMiddleware(pii_config)] if pii_config.enabled else []),
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
-            ToolOutputPruningMiddleware(),
+            tool_output_pruning,
         ]
 
     with startup.phase("factory.agent_compile"):
@@ -602,11 +609,20 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             ),
             subagents=[
                 researcher(
-                    research_tools if mode.delegation else [],
+                    [*research_tools, github_tool] if mode.delegation else [],
                     [
                         child_filesystem,
                         *middleware(
-                            available & {"read_file", "search_web", "fetch_page"}
+                            available
+                            & {
+                                "ls",
+                                "read_file",
+                                "glob",
+                                "grep",
+                                "search_web",
+                                "fetch_page",
+                                "github_query",
+                            }
                             if mode.delegation
                             else (),
                             child=True,

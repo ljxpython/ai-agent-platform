@@ -250,6 +250,18 @@ def test_optional_budget_old_payload_and_projection():
     assert "SECRET" not in result.model_dump_json()
 
 
+def test_budget_admission_refusal_can_leave_remaining_tokens():
+    value = token_budget(
+        max_tokens=100000,
+        warn_at_tokens=80000,
+        known_used_tokens=27338,
+        remaining_tokens=72662,
+    )
+    result = RuntimeRunUsage.model_validate({**summary(), "token_budget": value})
+    assert result.token_budget.stop_code == "token_budget_exhausted"
+    assert result.token_budget.remaining_tokens == 72662
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -264,7 +276,7 @@ def test_optional_budget_old_payload_and_projection():
         {"scope": "subagent", "budget_scope": "thread"},
         {"stop_code": "anything"},
         {"coverage": "partial"},
-        {"known_used_tokens": 10, "remaining_tokens": 90},
+        {"known_used_tokens": 10, "remaining_tokens": 89},
     ],
 )
 def test_invalid_budget_dto(changes):

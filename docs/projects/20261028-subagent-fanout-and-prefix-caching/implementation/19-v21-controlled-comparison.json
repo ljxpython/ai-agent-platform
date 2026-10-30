@@ -1,0 +1,596 @@
+{
+  "version": "v21",
+  "status": "failed_acceptance",
+  "target_sha": "477b4f420553e8a52c2fbccc464d7561b239c443",
+  "prompt_sha256": "2568adff93f0d58f3b97b90ce59b8be2350fa2bac909983549fc0962ea5314bc",
+  "provider": "xiaok",
+  "model_id": "bcaf9543-5cc9-40cb-9848-d1fbe90cc086",
+  "configured_context_window": 262144,
+  "max_output_tokens": 8192,
+  "run_token_budget": 1000000,
+  "provider_window_metadata": "not_reported",
+  "deployment_fingerprint": "not_reported",
+  "pricing": "unknown",
+  "manifest_sha256": "c863f8c57b4e5258adfb6987183bd2deae4f0dc08a8f2219b5a36bc71443e057",
+  "arms": {
+    "delegation": {
+      "samples": [
+        {
+          "index": 1,
+          "thread_id": "d2f6557f-fa82-47a3-b368-19aef3775be0",
+          "run_id": "120bc4ee-5317-4890-8bbe-d18906b9886a",
+          "raw_sha256": "8d95f46d75fa5fa2c32042ff298ae6b51ee8d958770686ca9eee4678db137e92",
+          "status": "success",
+          "duration_seconds": 465.761101,
+          "tokens": {
+            "input_tokens": 446564,
+            "output_tokens": 10779,
+            "total_tokens": 457343,
+            "cache_read_tokens": 352512,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 566
+          },
+          "known_tokens": {
+            "input_tokens": 446564,
+            "output_tokens": 10779,
+            "total_tokens": 457343,
+            "cache_read_tokens": 352512,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 566
+          },
+          "coverage": {
+            "observed_call_count": 40,
+            "reported_call_count": 40,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "ledger_complete": true,
+          "primary_input_tokens": 152930,
+          "reported_primary_peak_tokens": 21223,
+          "primary_peak_complete": true,
+          "root_automatic_offloads": 0,
+          "task_count": 3,
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final table 1 identifies shared compaction contract, automatic backend, command and named subagent service/model tools; group README citations support these roles."
+            },
+            "2": {
+              "passed": true,
+              "reason": "Final report jointly covers pressure-driven compaction, /compact, pruning, default enablement, and earlier closed-step condensation in table 2. Score follows semantic coverage across final-report rows, not child reports."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final table 2 explicitly states pre-step before derivation, canonical context-overflow guard, prune before summary selection, and retry only after replacement generation advances."
+            },
+            "4": {
+              "passed": true,
+              "reason": "Final capability table explicitly says optional and outside agent loop, multiple named providers coexist; docs/subsystems/subagent.md L5 directly supports it."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Final package and provider tables jointly cover fresh in-process, completed-parent-turn history for fork, four out-of-process forms and parent discovery; cited group README and subsystem lines support them."
+            }
+          },
+          "manual_score": "5/5",
+          "core_sample_accepted": true,
+          "limitations": [
+            "One child model-call limit failure was preserved and transparently reported; parent completed missing direction.",
+            "Provider deployment fingerprint and true context metadata not reported; price unknown.",
+            "Core semantic grading combines explicitly stated facts across final-report rows; child text never used to fill omitted claims."
+          ],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T21:18:45.268873+00:00",
+              "used_memory": 196022352,
+              "maxmemory": 1073741824,
+              "error_replies": 23339,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T21:26:39.574068+00:00",
+              "used_memory": 196203840,
+              "maxmemory": 1073741824,
+              "error_replies": 23341,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 2,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "index": 2,
+          "thread_id": "4c023f16-6336-427f-90cf-7eb4f7c7f98b",
+          "run_id": "d231114c-204e-409c-ae63-fd5d4c7dcfa0",
+          "raw_sha256": "3ee9e5688919f3c8d70cee6fdb34ff8f4792fcf990d9bb59fc5864bac6c98fd3",
+          "status": "success",
+          "duration_seconds": 236.846763,
+          "tokens": {
+            "input_tokens": 269072,
+            "output_tokens": 10919,
+            "total_tokens": 279991,
+            "cache_read_tokens": 224256,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 481
+          },
+          "known_tokens": {
+            "input_tokens": 269072,
+            "output_tokens": 10919,
+            "total_tokens": 279991,
+            "cache_read_tokens": 224256,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 481
+          },
+          "coverage": {
+            "observed_call_count": 26,
+            "reported_call_count": 26,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "ledger_complete": true,
+          "primary_input_tokens": 66730,
+          "reported_primary_peak_tokens": 20493,
+          "primary_peak_complete": true,
+          "root_automatic_offloads": 0,
+          "task_count": 3,
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final package table specifies shared contract, automatic provider, /compact consumer and subagent registry/model tools with group README lines."
+            },
+            "2": {
+              "passed": true,
+              "reason": "Final report explicitly states automatic condensation of older history under pressure, /compact, pruning first and dsh base default enablement."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final compaction table states pre-step before derivation, canonical CONTEXT_WINDOW_EXCEEDED, prune before summary selection, and retry only after surface replacement advances; basic README L113 directly supports."
+            },
+            "4": {
+              "passed": true,
+              "reason": "Final subagent table explicitly says optional outside agent loop, multiple named providers coexist; subsystem L5-L7 supports."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Final package and provider tables cover fresh in-process, fork completed-turn snapshot, four out-of-process forms, and parent discovery with group README L12/L25-L36 and fork README L12."
+            }
+          },
+          "manual_score": "5/5",
+          "core_sample_accepted": true,
+          "limitations": [
+            "Expanded external-provider seeding table groups more claims than its immediately adjacent references independently establish; core fact 5 is supported separately by group README and fork README. This does not establish correctness of every optional detail.",
+            "Comma-separated L53/L211-L214 and subsystem L169/L397-L405/L410-L414 manually checked against observed windows; generic parser does not extract all these suffixes.",
+            "Provider fingerprint, actual window metadata and prices unknown."
+          ],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T21:26:46.493392+00:00",
+              "used_memory": 196203840,
+              "maxmemory": 1073741824,
+              "error_replies": 23342,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T21:31:10.076281+00:00",
+              "used_memory": 226635520,
+              "maxmemory": 1073741824,
+              "error_replies": 23343,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "index": 3,
+          "thread_id": "5d541b25-edb0-484a-a50f-9e65b111ac51",
+          "run_id": "67c94ead-3df9-402d-9323-bb249700f958",
+          "raw_sha256": "7b2d92e2990fb5506ca859a0953fdd07af2ab4d8de3962c8ce6a2c682e265da8",
+          "status": "success",
+          "duration_seconds": 219.887296,
+          "tokens": {
+            "input_tokens": 205416,
+            "output_tokens": 10934,
+            "total_tokens": 216350,
+            "cache_read_tokens": 167424,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 478
+          },
+          "known_tokens": {
+            "input_tokens": 205416,
+            "output_tokens": 10934,
+            "total_tokens": 216350,
+            "cache_read_tokens": 167424,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 478
+          },
+          "coverage": {
+            "observed_call_count": 23,
+            "reported_call_count": 23,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "ledger_complete": true,
+          "primary_input_tokens": 45933,
+          "reported_primary_peak_tokens": 18418,
+          "primary_peak_complete": true,
+          "root_automatic_offloads": 0,
+          "task_count": 3,
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final report names service definition, automatic compaction provider, /compact consumer, subagent registry and model-facing tools with supporting group/subsystem citations."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final report does not state compaction summarization of earlier history or shipped base default enablement; generic dsh-base grouping and subagent-default-unknown cannot replace those facts."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final table explicitly supplies pre-step before derivation, canonical overflow, prune before range selection, and retry only after replacement generation advances."
+            },
+            "4": {
+              "passed": false,
+              "reason": "Final subagent table says optional and multiple named providers but omits outside-agent-loop boundary; the cited L5 text cannot substitute for an unstated final conclusion."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Final fork section and provider table cover fresh/finished-history in-process forms, four external forms and parent discovery using fixed group/fork/subsystem citations."
+            }
+          },
+          "manual_score": "3/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "Optional provider lifecycle comparison overgeneralizes a single catalog/continuation-manager story across different provider forms.",
+            "All 20 mechanically parsed citations were in observed windows; this does not repair missing final conclusions."
+          ],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T21:31:10.605534+00:00",
+              "used_memory": 226635520,
+              "maxmemory": 1073741824,
+              "error_replies": 23344,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T21:35:24.558598+00:00",
+              "used_memory": 190176544,
+              "maxmemory": 1073741824,
+              "error_replies": 23345,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        }
+      ],
+      "accepted_core_samples": 2,
+      "sample_count": 3,
+      "complete_ledgers": 3,
+      "primary_input_median": 66730,
+      "total_tokens_median": 279991
+    },
+    "serial": {
+      "samples": [
+        {
+          "index": 1,
+          "thread_id": "dd0f28cc-37b6-4e33-ac82-d054e976e8f7",
+          "run_id": "a05ce3b8-9abc-492c-b478-ad2d54fc85b7",
+          "raw_sha256": "e9e0848f4bbb84f5b646a476dc4b8e3cae485037bb8277db826f61574aadac64",
+          "status": "success",
+          "duration_seconds": 227.664789,
+          "tokens": {
+            "input_tokens": 319545,
+            "output_tokens": 5899,
+            "total_tokens": 325444,
+            "cache_read_tokens": 286976,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 291
+          },
+          "known_tokens": {
+            "input_tokens": 319545,
+            "output_tokens": 5899,
+            "total_tokens": 325444,
+            "cache_read_tokens": 286976,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 291
+          },
+          "coverage": {
+            "observed_call_count": 14,
+            "reported_call_count": 14,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "ledger_complete": true,
+          "primary_input_tokens": 319545,
+          "reported_primary_peak_tokens": 33172,
+          "primary_peak_complete": true,
+          "root_automatic_offloads": 0,
+          "task_count": 0,
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final first table explicitly describes service definition/provider/consumer and subagent named registry/model tools."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final report covers older-history summary, /compact and pruning, but never states shipped dsh base enables compaction by default."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final compaction table states pre-step before derivation, canonical provider overflow guard, prune before summary, and replacement-generation gate for retry."
+            },
+            "4": {
+              "passed": true,
+              "reason": "Final first table explicitly says optional outside agent loop and coexistence of named providers."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Final provider forms and discovery rows explicitly cover fresh in-process, finished-parent-history fork, four external forms, and parent discovery."
+            }
+          },
+          "manual_score": "4/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "Optional final provider table says spawn/fork occupy active slots, conflicting with earlier report statement that one-shot routes do not occupy that continuable limit.",
+            "Mechanical citation-window pass does not supply omitted default-enablement statement."
+          ],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T21:38:06.041018+00:00",
+              "used_memory": 195397856,
+              "maxmemory": 1073741824,
+              "error_replies": 23354,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T21:41:54.939790+00:00",
+              "used_memory": 226698240,
+              "maxmemory": 1073741824,
+              "error_replies": 23355,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "index": 2,
+          "thread_id": "c6dadd8b-ff32-4d8c-bafe-d91a1aec858b",
+          "run_id": "fbf196b9-e565-4679-8580-d7a66affc1f3",
+          "raw_sha256": "1dc8bebb7ed5d540ae1d1088f14b69771cd10975dcc7058a136fd4d800f02618",
+          "status": "error",
+          "duration_seconds": 97.428831,
+          "tokens": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "cache_creation_5m_tokens": null,
+            "cache_creation_1h_tokens": null,
+            "reasoning_tokens": null
+          },
+          "known_tokens": {
+            "input_tokens": 65589,
+            "output_tokens": 1084,
+            "total_tokens": 66673,
+            "cache_read_tokens": 60416,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 54
+          },
+          "coverage": {
+            "observed_call_count": 6,
+            "reported_call_count": 5,
+            "missing_usage_call_count": 1,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "ledger_complete": false,
+          "primary_input_tokens": null,
+          "reported_primary_peak_tokens": 14130,
+          "primary_peak_complete": false,
+          "root_automatic_offloads": 0,
+          "task_count": 0,
+          "fact_scores": {
+            "1": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            },
+            "2": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            },
+            "3": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            },
+            "4": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            },
+            "5": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            }
+          },
+          "manual_score": "0/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "Complete token totals unknown; never substitute zero or known subset."
+          ],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T21:41:55.507746+00:00",
+              "used_memory": 226698240,
+              "maxmemory": 1073741824,
+              "error_replies": 23356,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T21:43:54.607280+00:00",
+              "used_memory": 253359568,
+              "maxmemory": 1073741824,
+              "error_replies": 23357,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "index": 3,
+          "thread_id": "a4be766b-7ff7-4d5c-b440-81d024418713",
+          "run_id": "ab700b7f-f208-4360-9c23-237a8aa79016",
+          "raw_sha256": "e817a5773a8fcc6ebeeba895a57900689598d573eea5dfe44ffb2199b188d67a",
+          "status": "error",
+          "duration_seconds": 12.229615,
+          "tokens": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "cache_creation_5m_tokens": null,
+            "cache_creation_1h_tokens": null,
+            "reasoning_tokens": null
+          },
+          "known_tokens": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "cache_creation_5m_tokens": null,
+            "cache_creation_1h_tokens": null,
+            "reasoning_tokens": null
+          },
+          "coverage": {
+            "observed_call_count": 1,
+            "reported_call_count": 0,
+            "missing_usage_call_count": 1,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "ledger_complete": false,
+          "primary_input_tokens": null,
+          "reported_primary_peak_tokens": 0,
+          "primary_peak_complete": false,
+          "root_automatic_offloads": 0,
+          "task_count": 0,
+          "fact_scores": {
+            "1": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            },
+            "2": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            },
+            "3": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            },
+            "4": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            },
+            "5": {
+              "passed": false,
+              "reason": "Run error; no completed final research report"
+            }
+          },
+          "manual_score": "0/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "Complete token totals unknown; never substitute zero or known subset."
+          ],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T21:43:55.231988+00:00",
+              "used_memory": 253359568,
+              "maxmemory": 1073741824,
+              "error_replies": 23358,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T21:44:26.686344+00:00",
+              "used_memory": 256948480,
+              "maxmemory": 1073741824,
+              "error_replies": 23359,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        }
+      ],
+      "accepted_core_samples": 0,
+      "sample_count": 3,
+      "complete_ledgers": 1,
+      "primary_input_median": null,
+      "total_tokens_median": null
+    }
+  },
+  "same_quality_comparison_allowed": false,
+  "primary_input_reduction": null,
+  "conclusion": "Delegation core pass 2/3; serial core pass 0/3 with two incomplete ledgers. No same-quality reduction claim; no complete serial median. All six original runs retained. Next change requires a new frozen group."
+}

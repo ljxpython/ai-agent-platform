@@ -1,0 +1,297 @@
+{
+  "status": "retained_failed_baseline_100k; human_revision_approved; new_same_budget_comparison_pending",
+  "base_commit": "78aa17177ca597443bd708e741d60312e1d4a600",
+  "target_repository": "deepseek-ai/deepseek-harness",
+  "target_commit": "477b4f420553e8a52c2fbccc464d7561b239c443",
+  "implementation_worktree": "/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform",
+  "common_source_sha256": {
+    "apps/runtime-service/src/runtime_service/middlewares/token_budget.py": "520723729410f21cad06f0860195935258aa303c7276770e7e0c1164bf68eef8",
+    "apps/runtime-service/src/runtime_service/observability/usage.py": "bd5a3551115bf2da535d95bef1651df29b12f0a22171cfebed7d71adcdbec0bd",
+    "apps/runtime-service/src/runtime_service/runtime/token_budget.py": "db6f134ad1b44971d89f08daaaa928a7e7855a8e029b7943fae48925b721ce66",
+    "apps/runtime-service/src/runtime_service/runtime/modeling.py": "75c02af34b987f1e146bb9f9ac96ec888a4771c1c728f7579dba938175f01b93",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py": "4cb0fe58ca6c9402aba1ed5104e40642b4e032f22f8b0c0b0dc8909780fc17d7",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/github.py": "a1eccb4e51d1c713ca11b28d7eecaee52bd6b4f09e5c55668df187d15818b76c",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/skills.py": "3eb67c66aafa038c004edbceb0949da7eead4feb62c00c7e897b429c8e682745",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/chart-visualization/SKILL.md": "24483a18fe4dbda57b623ee80c6da934e8148977c7afcb7e39c025ae94b60104",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/github-deep-research/SKILL.md": "ec8754627dcd95462fbe92c49a1d2a7d5e387dd8de4151f0529d0eacf7c65fa6"
+  },
+  "samples": [
+    {
+      "sample": 1,
+      "run_id": "94a276d0-cc6f-4eb4-bb81-012c5c0debab",
+      "thread_id": "75896231-f107-4382-9a50-179a990ea94c",
+      "created_at": "2026-10-28T16:13:16.596888+00:00",
+      "ended_at": "2026-10-28T16:14:18.510588+00:00",
+      "duration_seconds": 61.9137,
+      "run_status": "success",
+      "task_completed": false,
+      "final_report_delivered": false,
+      "facts_passed": 0,
+      "facts_required": 5,
+      "scoring_reason": "No final report; a runtime success terminal is not task success.",
+      "provider_models": [
+        [
+          "xiaok",
+          "deepseek-v4.1-flash",
+          "070cced3-350b-42ec-b678-994dd07b7078"
+        ]
+      ],
+      "model_fingerprints": [
+        "None"
+      ],
+      "context": {
+        "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+        "plan_mode": false,
+        "max_tokens": 4096,
+        "access_policy": "full_access",
+        "execution_mode": "pro",
+        "offload_conversation": false
+      },
+      "prompt_sha256": "2568adff93f0d58f3b97b90ce59b8be2350fa2bac909983549fc0962ea5314bc",
+      "tokens": {
+        "input_tokens": 77806,
+        "output_tokens": 1691,
+        "total_tokens": 79497,
+        "cache_read_tokens": 66304,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 214
+      },
+      "primary_input_tokens": 77806,
+      "primary_max_input_tokens": 17282,
+      "subagent_input_tokens": 0,
+      "auxiliary_total_tokens": 0,
+      "cache_read_ratio": 0.8521707837441842,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 5,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 5,
+        "reported_call_count": 5,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "budget": {
+        "version": 1,
+        "budget_scope": "run",
+        "unit": "tokens_total",
+        "max_tokens": 100000,
+        "warn_at_tokens": 80000,
+        "known_used_tokens": 79497,
+        "remaining_tokens": 20503,
+        "coverage": "complete",
+        "stop_code": "token_budget_exhausted"
+      },
+      "root_offloading_events": [],
+      "root_automatic_offloading_completed": 0,
+      "sse_root_start_and_terminal_observed": true,
+      "github_calls": 10,
+      "github_fixed_ref_verified": true,
+      "raw_evidence_path": "/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform/.local-stack/serial-final-1.json",
+      "raw_evidence_sha256": "f650fdb595a17deacadcb056ce5b76f22bd0aacb7126441ede8d5f824f6388f4"
+    },
+    {
+      "sample": 2,
+      "run_id": "3d278a0e-50f6-4d28-9e92-53ead57480b1",
+      "thread_id": "cb422278-fcd7-406c-b8a5-a448ab17091f",
+      "created_at": "2026-10-28T16:17:17.638464+00:00",
+      "ended_at": "2026-10-28T16:18:29.154095+00:00",
+      "duration_seconds": 71.515631,
+      "run_status": "success",
+      "task_completed": false,
+      "final_report_delivered": false,
+      "facts_passed": 0,
+      "facts_required": 5,
+      "scoring_reason": "No final report; a runtime success terminal is not task success.",
+      "provider_models": [
+        [
+          "xiaok",
+          "deepseek-v4.1-flash",
+          "070cced3-350b-42ec-b678-994dd07b7078"
+        ]
+      ],
+      "model_fingerprints": [
+        "None"
+      ],
+      "context": {
+        "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+        "plan_mode": false,
+        "max_tokens": 4096,
+        "access_policy": "full_access",
+        "execution_mode": "pro",
+        "offload_conversation": false
+      },
+      "prompt_sha256": "2568adff93f0d58f3b97b90ce59b8be2350fa2bac909983549fc0962ea5314bc",
+      "tokens": {
+        "input_tokens": 77869,
+        "output_tokens": 1759,
+        "total_tokens": 79628,
+        "cache_read_tokens": 63104,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 324
+      },
+      "primary_input_tokens": 77869,
+      "primary_max_input_tokens": 17378,
+      "subagent_input_tokens": 0,
+      "auxiliary_total_tokens": 0,
+      "cache_read_ratio": 0.8103866750568262,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 5,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 5,
+        "reported_call_count": 5,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "budget": {
+        "version": 1,
+        "budget_scope": "run",
+        "unit": "tokens_total",
+        "max_tokens": 100000,
+        "warn_at_tokens": 80000,
+        "known_used_tokens": 79628,
+        "remaining_tokens": 20372,
+        "coverage": "complete",
+        "stop_code": "token_budget_exhausted"
+      },
+      "root_offloading_events": [],
+      "root_automatic_offloading_completed": 0,
+      "sse_root_start_and_terminal_observed": true,
+      "github_calls": 10,
+      "github_fixed_ref_verified": true,
+      "raw_evidence_path": "/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform/.local-stack/serial-final-2.json",
+      "raw_evidence_sha256": "45fa3fc7fdcc767befddec452b87b4cd24e7e810f7b7232685cc0f9cdab0b714"
+    },
+    {
+      "sample": 3,
+      "run_id": "972373e3-fbc3-4469-b12b-c28e2a38c8e4",
+      "thread_id": "5a7d1ffa-1f8b-4e13-89bd-012005055e36",
+      "created_at": "2026-10-28T16:20:39.331690+00:00",
+      "ended_at": "2026-10-28T16:21:42.075943+00:00",
+      "duration_seconds": 62.744253,
+      "run_status": "success",
+      "task_completed": false,
+      "final_report_delivered": false,
+      "facts_passed": 0,
+      "facts_required": 5,
+      "scoring_reason": "No final report; a runtime success terminal is not task success.",
+      "provider_models": [
+        [
+          "xiaok",
+          "deepseek-v4.1-flash",
+          "070cced3-350b-42ec-b678-994dd07b7078"
+        ]
+      ],
+      "model_fingerprints": [
+        "None"
+      ],
+      "context": {
+        "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+        "plan_mode": false,
+        "max_tokens": 4096,
+        "access_policy": "full_access",
+        "execution_mode": "pro",
+        "offload_conversation": false
+      },
+      "prompt_sha256": "2568adff93f0d58f3b97b90ce59b8be2350fa2bac909983549fc0962ea5314bc",
+      "tokens": {
+        "input_tokens": 77685,
+        "output_tokens": 1849,
+        "total_tokens": 79534,
+        "cache_read_tokens": 63616,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 358
+      },
+      "primary_input_tokens": 77685,
+      "primary_max_input_tokens": 17190,
+      "subagent_input_tokens": 0,
+      "auxiliary_total_tokens": 0,
+      "cache_read_ratio": 0.8188968269292656,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 5,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 5,
+        "reported_call_count": 5,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "budget": {
+        "version": 1,
+        "budget_scope": "run",
+        "unit": "tokens_total",
+        "max_tokens": 100000,
+        "warn_at_tokens": 80000,
+        "known_used_tokens": 79534,
+        "remaining_tokens": 20466,
+        "coverage": "complete",
+        "stop_code": "token_budget_exhausted"
+      },
+      "root_offloading_events": [],
+      "root_automatic_offloading_completed": 0,
+      "sse_root_start_and_terminal_observed": true,
+      "github_calls": 10,
+      "github_fixed_ref_verified": true,
+      "raw_evidence_path": "/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform/.local-stack/serial-final-3.json",
+      "raw_evidence_sha256": "05e4d584378fb0d008c3b22be36eebe64e3f82b6e9119e85a482a45832a8233a"
+    }
+  ],
+  "summary": {
+    "samples": 3,
+    "completed_tasks": 0,
+    "completion_rate": 0,
+    "median_primary_input_tokens": 77806,
+    "median_total_tokens": 79534,
+    "median_duration_seconds": 62.744253,
+    "median_cache_read_ratio": 0.8188968269292656,
+    "primary_reduction_claim": null,
+    "reason": "No completed serial reports; do not claim a same-quality reduction."
+  },
+  "acceptance_revision": {
+    "approved_on": "2026-10-29",
+    "approval": "同意修订，保留失败基线",
+    "budget_relaxation": "用户随后允许放宽100,000；新增两组采用1,000,000兜底，此旧组不与新额度混算。"
+  }
+}

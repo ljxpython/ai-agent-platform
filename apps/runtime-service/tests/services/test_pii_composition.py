@@ -246,7 +246,10 @@ def test_roots_compile_exactly_one_protected_summary(
 
 
 @pytest.mark.parametrize("manual", [False, True])
-def test_engineering_summary_protects_inputs_and_preserves_archive(tmp_path, manual):
+def test_engineering_summary_protects_inputs_and_preserves_archive(
+    tmp_path, manual, monkeypatch
+):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     policy = PiiRedactionConfig(True, SECRET, scope=("tenant", "project", "thread"))
     instance = model()
     backend = FilesystemBackend(root_dir=str(tmp_path), virtual_mode=True)

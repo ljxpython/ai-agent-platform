@@ -45,6 +45,7 @@ from runtime_service.middlewares.model_call_timeout import (
     resolve_model_call_timeout_seconds,
 )
 from runtime_service.middlewares.pii_redaction import PiiSummarizationMiddleware
+from runtime_service.middlewares.tool_output_pruning import ToolOutputPruningMiddleware
 from runtime_service.runtime.pii import PiiRedactionConfig, redact_messages
 
 logger = logging.getLogger(__name__)
@@ -116,7 +117,9 @@ def _positive_int(value: Any) -> int | None:
     return value if type(value) is int and value > 0 else None
 
 
-def _input_budget(model: Any, capacity: int | None, output: int | None) -> int:
+def _context_limits(
+    model: Any, capacity: int | None, output: int | None
+) -> tuple[int, int]:
     profile = getattr(model, "profile", None) or {}
     capacity = _positive_int(capacity) or _positive_int(profile.get("max_input_tokens"))
     if capacity is None:
@@ -131,6 +134,11 @@ def _input_budget(model: Any, capacity: int | None, output: int | None) -> int:
         raise RuntimeResolutionError("runtime.context.output_budget_unknown")
     if maximum_output is not None and output > maximum_output:
         raise RuntimeResolutionError("runtime.context.output_budget_exceeded")
+    return capacity, output
+
+
+def _input_budget(model: Any, capacity: int | None, output: int | None) -> int:
+    capacity, output = _context_limits(model, capacity, output)
     budget = capacity - output - max(1024, math.ceil(capacity * 0.05))
     if budget <= 0:
         raise RuntimeResolutionError("runtime.context.input_budget_exceeded")
@@ -190,8 +198,29 @@ def resolve_context_governance_settings(
     input_budget: int,
     trigger_override: Any | None = None,
     keep_override: Any | None = None,
+    *,
+    context_window_tokens: int,
+    output_budget_tokens: int,
 ) -> tuple[tuple[str, Any], tuple[str, Any]]:
-    """Resolve trigger and keep settings with environment fallback and composite default."""
+    """Use DSH window defaults; preserve the input-budget basis of explicit overrides."""
+    try:
+        headroom = int(
+            os.getenv("AGENT_CONTEXT_HEADROOM_TOKENS", "65536").strip() or "65536"
+        )
+    except ValueError as exc:
+        raise RuntimeResolutionError(
+            "runtime.context.input_budget_exceeded", "AGENT_CONTEXT_HEADROOM_TOKENS"
+        ) from exc
+    if headroom < 0:
+        raise RuntimeResolutionError(
+            "runtime.context.input_budget_exceeded", "AGENT_CONTEXT_HEADROOM_TOKENS"
+        )
+    message_budget = context_window_tokens - output_budget_tokens
+    default_trigger = (
+        "tokens",
+        math.floor(min(context_window_tokens * 0.8, message_budget - headroom)),
+    )
+    default_keep = ("tokens", max(1, math.floor(message_budget * 0.16)))
     if trigger_override is not None:
         trigger = trigger_override
     else:
@@ -209,9 +238,9 @@ def resolve_context_governance_settings(
                     else ("tokens", int(f))
                 )
             else:
-                trigger = ("tokens", max(1, math.floor(0.85 * input_budget)))
+                trigger = default_trigger
         else:
-            trigger = ("tokens", max(1, math.floor(0.85 * input_budget)))
+            trigger = default_trigger
 
     if keep_override is not None:
         keep = keep_override
@@ -238,7 +267,7 @@ def resolve_context_governance_settings(
                     else:
                         keep = ("tokens", int(f))
                 else:
-                    keep = ("tokens", max(1, math.floor(0.40 * input_budget)))
+                    keep = default_keep
             elif raw_k.endswith("%"):
                 pct = float(raw_k[:-1]) / 100.0
                 keep = ("tokens", max(1, math.floor(pct * input_budget)))
@@ -250,12 +279,14 @@ def resolve_context_governance_settings(
                     else ("tokens", int(f))
                 )
             else:
-                keep = ("tokens", max(1, math.floor(0.40 * input_budget)))
+                keep = default_keep
         else:
-            # Default retention: keep 40% of input budget (4x more than legacy 10%),
-            # ensuring sufficient working memory for recent tools and user instructions.
-            keep = ("tokens", max(1, math.floor(0.40 * input_budget)))
+            keep = default_keep
 
+    if trigger[0] == "tokens" and (
+        trigger[1] <= 0 or (keep[0] == "tokens" and keep[1] >= trigger[1])
+    ):
+        raise RuntimeResolutionError("runtime.context.input_budget_exceeded")
     return trigger, keep
 
 
@@ -280,12 +311,15 @@ class ConversationOffloadingMiddleware(PiiSummarizationMiddleware):
         trigger: Any | None = None,
         keep: Any | None = None,
         truncate_args_keep: Any | None = None,
+        tool_output_pruning: ToolOutputPruningMiddleware | None = None,
     ) -> None:
         self.manual = manual
+        self.tool_output_pruning = tool_output_pruning
         self.pii_config = pii_config
         self.capacity = context_window_tokens
         self.output = output_budget_tokens
         self.input_budget = _input_budget(model, self.capacity, self.output)
+        capacity, output = _context_limits(model, self.capacity, self.output)
         callbacks = CallbackManager.configure(local_callbacks=model.callbacks)
         callbacks.add_handler(_SummaryUsageCallback(), inherit=False)
         summary_model = model.model_copy(
@@ -296,10 +330,23 @@ class ConversationOffloadingMiddleware(PiiSummarizationMiddleware):
                     "langsmith:hidden",
                 ],
                 "callbacks": callbacks,
+                "metadata": {
+                    **(getattr(model, "metadata", None) or {}),
+                    "runtime_usage_purpose": "summarization",
+                },
             }
         )
         resolved_trigger, resolved_keep = resolve_context_governance_settings(
-            self.input_budget, trigger, keep
+            self.input_budget,
+            trigger,
+            keep,
+            context_window_tokens=capacity,
+            output_budget_tokens=output,
+        )
+        self.pruning_trigger_tokens = (
+            resolved_trigger[1]
+            if resolved_trigger[0] == "tokens"
+            else max(1, math.floor(self.input_budget * 0.40))
         )
         resolved_truncate_args_keep = truncate_args_keep or (
             "tokens",
@@ -348,6 +395,16 @@ class ConversationOffloadingMiddleware(PiiSummarizationMiddleware):
         except RuntimeError:
             pass  # Direct middleware calls have no graph stream writer.
         return payload
+
+    def _count_tokens(self, messages, system_message, tools) -> int:
+        # Measure the model view without replacing originals used by summary/archive.
+        return super()._count_tokens(
+            self.tool_output_pruning.filter_messages(messages, system_message, tools)
+            if self.tool_output_pruning is not None
+            else messages,
+            system_message,
+            tools,
+        )
 
     def _should_summarize(self, messages: list[Any], total_tokens: int) -> bool:
         operation = _operation.get()

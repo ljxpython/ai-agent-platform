@@ -24,7 +24,8 @@ from runtime_service.middlewares import (
 from runtime_service.runtime import RuntimeContext
 
 
-def test_postgres_loop_survives_auto_and_manual_offloading(tmp_path):
+def test_postgres_loop_survives_auto_and_manual_offloading(tmp_path, monkeypatch):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     dsn = os.getenv("LOOP_TEST_CHECKPOINT_DSN")
     if not dsn:
         pytest.skip("LOOP_TEST_CHECKPOINT_DSN must be a disposable PostgreSQL database")

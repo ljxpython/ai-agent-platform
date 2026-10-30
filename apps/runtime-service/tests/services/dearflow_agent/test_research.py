@@ -4,16 +4,91 @@ from types import SimpleNamespace
 
 import pytest
 from langchain.tools import ToolRuntime
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import ToolException
 
 from runtime_service.runtime import RuntimeResolutionError, runtime_context_hash
-from runtime_service.services.dearflow_agent.tools import search
+from runtime_service.services.dearflow_agent.tools import github, search
 
 from .test_agent import build as graph_builder
 from .test_agent import call, config
 
 build = graph_builder
+
+
+@pytest.mark.parametrize(
+    "name,args,expected",
+    [
+        ("ls", {"path": "/workspace/work/"}, "source.txt"),
+        ("glob", {"pattern": "**/*.txt", "path": "/workspace/work/"}, "source.txt"),
+        ("grep", {"pattern": "sentinel", "path": "/workspace/work/"}, "source.txt"),
+        ("read_file", {"file_path": "/workspace/work/source.txt"}, "sentinel"),
+        (
+            "github_query",
+            {"owner": "owner", "repo": "repo", "operation": "info"},
+            "sentinel",
+        ),
+    ],
+)
+def test_general_purpose_can_use_readonly_research_tools(
+    build, monkeypatch, name, args, expected
+):
+    from runtime_service.services.dearflow_agent.workspace.backend import (
+        DearWorkspaceBackend,
+    )
+
+    async def public(*args, **kwargs):
+        return b'{"private":false,"description":"sentinel"}', {}
+
+    monkeypatch.setattr(github, "get_public", public)
+
+    async def run():
+        root = DearWorkspaceBackend("tenant", "project", "dear-thread").root
+        (root / "work").mkdir(parents=True, exist_ok=True)
+        (root / "work/source.txt").write_text("sentinel\n")
+        cfg = config()
+        cfg["context"] = {"execution_mode": "pro"}
+        cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = (
+            runtime_context_hash(cfg["context"])
+        )
+        graph, cfg = await build(
+            [
+                call(
+                    "task",
+                    {
+                        "description": "Read the research source",
+                        "subagent_type": "general-purpose",
+                    },
+                ),
+                call(name, args, "child-read"),
+                AIMessage(content="Verified sentinel."),
+                AIMessage(content="Research complete."),
+            ],
+            cfg,
+        )
+        child_results = []
+        final = None
+        async for namespace, state in graph.astream(
+            {"messages": [("user", "delegate")]},
+            cfg,
+            context=cfg["context"],
+            subgraphs=True,
+            stream_mode="values",
+        ):
+            if namespace:
+                child_results.extend(
+                    m
+                    for m in state["messages"]
+                    if isinstance(m, ToolMessage) and m.name == name
+                )
+            else:
+                final = state
+        assert any(
+            expected in str(m.content) and m.status != "error" for m in child_results
+        )
+        assert final["messages"][-1].content == "Research complete."
+
+    asyncio.run(run())
 
 
 def test_source_records_are_scoped_and_read_only(build, monkeypatch):
@@ -172,47 +247,47 @@ def test_live_search_and_extract(tmp_path, monkeypatch):
             {"file_path": "/workspace/work/forbidden", "content": "forbidden"},
         ),
         (
+            "edit_file",
+            {
+                "file_path": "/workspace/work/forbidden",
+                "old_string": "old",
+                "new_string": "new",
+            },
+        ),
+        (
             "task",
             {"description": "nested delegation", "subagent_type": "general-purpose"},
         ),
     ],
 )
-def test_ultra_uses_restricted_child_and_pro_cannot_delegate(build, forbidden, args):
+@pytest.mark.parametrize("mode", ["pro", "ultra"])
+def test_delegation_uses_restricted_child(build, forbidden, args, mode):
     async def run():
-        for mode in ("pro", "ultra"):
-            cfg = config()
-            cfg["context"] = {"execution_mode": mode}
-            cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = (
-                runtime_context_hash(cfg["context"])
-            )
-            graph, cfg = await build(
-                [
-                    call(
-                        "task",
-                        {
-                            "description": "Research without writing",
-                            "subagent_type": "general-purpose",
-                        },
-                    ),
-                    AIMessage(content="No external evidence collected; cannot verify."),
-                    AIMessage(content="No verified sources."),
-                ],
-                cfg,
-            )
-            if mode == "pro":
-                with pytest.raises(RuntimeResolutionError):
-                    await graph.ainvoke(
-                        {"messages": [("user", "delegate")]},
-                        cfg,
-                        context=cfg["context"],
-                    )
-            else:
-                state = await graph.ainvoke(
-                    {"messages": [("user", "delegate")]}, cfg, context=cfg["context"]
-                )
-                assert any(getattr(m, "name", "") == "task" for m in state["messages"])
         cfg = config()
-        cfg["context"] = {"execution_mode": "ultra"}
+        cfg["context"] = {"execution_mode": mode}
+        cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = (
+            runtime_context_hash(cfg["context"])
+        )
+        graph, cfg = await build(
+            [
+                call(
+                    "task",
+                    {
+                        "description": "Research without writing",
+                        "subagent_type": "general-purpose",
+                    },
+                ),
+                AIMessage(content="No external evidence collected; cannot verify."),
+                AIMessage(content="No verified sources."),
+            ],
+            cfg,
+        )
+        state = await graph.ainvoke(
+            {"messages": [("user", "delegate")]}, cfg, context=cfg["context"]
+        )
+        assert any(getattr(m, "name", "") == "task" for m in state["messages"])
+        cfg = config()
+        cfg["context"] = {"execution_mode": mode}
         cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = (
             runtime_context_hash(cfg["context"])
         )

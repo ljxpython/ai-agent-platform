@@ -9,11 +9,13 @@ from typing import Annotated, NotRequired
 
 from deepagents.middleware.skills import SkillsMiddleware, SkillsState
 from langchain.agents.middleware.types import PrivateStateAttr
+from langchain_core.messages import AIMessage, ToolMessage
 
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
+from runtime_service.services.dearflow_agent.capabilities import CHART_NAMES
 from runtime_service.services.dearflow_agent.skill_governance import SkillStorage
 from runtime_service.services.dearflow_agent.workspace.backend import (
     prepare_custom_skills,
@@ -132,6 +134,33 @@ class ExecutionSkillsMiddleware(SkillsMiddleware):
 
     async def awrap_model_call(self, request, handler):
         await asyncio.to_thread(self._restore, request.state.get("dear_skill_snapshot"))
+        messages = request.state.get("messages", [])
+        completed = {
+            message.tool_call_id
+            for message in messages
+            if isinstance(message, ToolMessage) and message.status == "success"
+        }
+        loaded = {
+            call["args"].get("file_path")
+            for message in messages
+            if isinstance(message, AIMessage)
+            for call in message.tool_calls
+            if call["name"] == "read_file" and call["id"] in completed
+        }
+        # shortcut: after history compaction, re-read a chart spec to expose its schema again.
+        selected = {
+            name
+            for name in CHART_NAMES
+            if f"/skills/chart-visualization/references/{name}.md" in loaded
+        }
+        request = request.override(
+            tools=[
+                tool
+                for tool in request.tools
+                if getattr(tool, "name", None) not in CHART_NAMES
+                or tool.name in selected
+            ]
+        )
         return await super().awrap_model_call(request, handler)
 
     async def awrap_tool_call(self, request, handler):

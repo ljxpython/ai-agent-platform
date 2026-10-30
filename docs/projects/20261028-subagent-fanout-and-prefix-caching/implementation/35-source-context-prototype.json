@@ -1,0 +1,53 @@
+{
+  "source_run": "c5b7ce5b-8fb7-4fc4-82b9-d875e67d274d",
+  "raw_sha256": "b3f4797042f060a62b38d2b614bdd1ffe07b53c73ea5bb8a37eb3c0c6b0a969c",
+  "mechanism": "First at most two complete Summary paragraphs in successfully read immutable public GitHub README results, at most 1600 serialized characters per child; no keyword matching against expected facts",
+  "contexts": {
+    "tools:1ae2bc7a-e90e-a972-9a77-556fd111fb2e": [
+      {
+        "repository": "deepseek-ai/deepseek-harness",
+        "commit": "477b4f420553e8a52c2fbccc464d7561b239c443",
+        "path": "packages/compaction/README.md",
+        "start_line": 12,
+        "end_line": 12,
+        "text": "The `compaction/` group keeps long agent conversations working near the model's context limit: older history is condensed into a summary automatically as token pressure builds, on demand with `/compact`, oversized tool outputs can be trimmed first so there is less to condense, and images an image-capable route can no longer send are replaced with placeholders. The shipped `dsh` base enables the feature by default — mount the packages explicitly to tune when and how condensation happens. The token measurement that decides when to condense lives in a separate LLM-family service.",
+        "observed_window_sha256": "cb0dc5017c1e7f30127a1baebdd1f249c9582886c8c903bd9fbe4c3c0365f7ec",
+        "source_call_id": "call_00_5gr8Aeb4N68ZAJlyi8US7541"
+      }
+    ],
+    "tools:9e75d6d6-1382-aa09-75d9-869996042bc1": [
+      {
+        "repository": "deepseek-ai/deepseek-harness",
+        "commit": "477b4f420553e8a52c2fbccc464d7561b239c443",
+        "path": "packages/subagent/README.md",
+        "start_line": 12,
+        "end_line": 12,
+        "text": "The subagent package family lets an agent delegate a task to a child, continue the child's work, and discover every child it created. Choose a fresh in-process child for isolated work, a history-seeded in-process child when prior conversation matters, or an out-of-process child backed by ACP, Codex, Claude Code, or another Harness runtime. Model-facing tools also let agents message adjacent agents, interrupt work, and list child status. Each child remains visible to its parent whether it is running or stored; the package READMEs document provider-specific setup and limits.",
+        "observed_window_sha256": "a5afd5c8a4b43422b78b46eea1b69b82d617cf292d3a04ec028adfcb1c1743c4",
+        "source_call_id": "call_01_vmj50jqtj9wiMbfEM3mI6473"
+      }
+    ],
+    "tools:5613a22f-7cfc-5fad-9ade-e555743b2b63": [
+      {
+        "repository": "deepseek-ai/deepseek-harness",
+        "commit": "477b4f420553e8a52c2fbccc464d7561b239c443",
+        "path": "packages/subagent/README.md",
+        "start_line": 12,
+        "end_line": 12,
+        "text": "The subagent package family lets an agent delegate a task to a child, continue the child's work, and discover every child it created. Choose a fresh in-process child for isolated work, a history-seeded in-process child when prior conversation matters, or an out-of-process child backed by ACP, Codex, Claude Code, or another Harness runtime. Model-facing tools also let agents message adjacent agents, interrupt work, and list child status. Each child remains visible to its parent whether it is running or stored; the package READMEs document provider-specific setup and limits.",
+        "observed_window_sha256": "a5afd5c8a4b43422b78b46eea1b69b82d617cf292d3a04ec028adfcb1c1743c4",
+        "source_call_id": "call_00_DXqs9xgc05paDiysskW64361"
+      }
+    ]
+  },
+  "serialized_characters_per_child": {
+    "tools:1ae2bc7a-e90e-a972-9a77-556fd111fb2e": 905,
+    "tools:9e75d6d6-1382-aa09-75d9-869996042bc1": 899,
+    "tools:5613a22f-7cfc-5fad-9ade-e555743b2b63": 899
+  },
+  "maximum_additional_three_child_characters": 4800,
+  "self_checks": 7,
+  "implemented_in_application": false,
+  "model_called": false,
+  "quality_claim": "Preserves selected source paragraphs only. No inference that the parent notices or includes every relevant fact; no Platform, budget, isolation, stream, or research-quality acceptance."
+}

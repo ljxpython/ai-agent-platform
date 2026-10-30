@@ -145,8 +145,8 @@ async def graph(config, *, showcase=False):
         responses=[AIMessage(content="initial")],
         profile={"max_input_tokens": 32_000, "max_output_tokens": 2048},
     )
-    documents.build_document_tools = lambda workspace: [parse_document]
-    dear.build_research_tools = lambda workspace: [search_web]
+    documents.build_document_tools = lambda workspace, **kwargs: [parse_document]
+    dear.build_research_tools = lambda workspace, **kwargs: [search_web]
     return await agent.get_agent(config)
 
 

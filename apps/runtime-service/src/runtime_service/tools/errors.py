@@ -9,6 +9,8 @@ from importlib.resources import files
 
 import anyio
 import httpx
+from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededError
+from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
 from langchain_core.exceptions import ContextOverflowError, ModelInvalidRequestError
 from langchain_core.tools import ToolException
 from langgraph.errors import GraphBubbleUp
@@ -16,6 +18,8 @@ from langgraph.errors import GraphBubbleUp
 from runtime_service.errors import (
     BackgroundTaskNotStarted,
     RuntimeErrorBase,
+    RuntimeExecutionError,
+    RuntimeResolutionError,
     RuntimeWorkspaceError,
 )
 
@@ -23,6 +27,7 @@ _RESEARCH = {
     "invalid_research_query",
     "research_url_denied",
     "invalid_github_query",
+    "invalid_github_ref",
     "invalid_github_operation",
     "invalid_github_path",
     "invalid_arxiv_query",
@@ -40,6 +45,7 @@ _RESEARCH_FAILURES = {
     "github_private_repository_denied",
     "github_default_branch_unavailable",
     "github_file_unavailable",
+    "github_directory_unavailable",
     "github_file_not_text",
     "invalid_arxiv_response",
     "invalid_guidelines_encoding",
@@ -209,13 +215,19 @@ _MESSAGES = {
 
 
 def _content(
-    tool_name: str, error_type: str, code: str, recovery: str, outcome: str
+    tool_name: str,
+    error_type: str,
+    code: str,
+    recovery: str,
+    outcome: str,
+    *,
+    message: str | None = None,
 ) -> str:
     return json.dumps(
         {
             "status": "error",
             "code": code,
-            "error": _MESSAGES[code],
+            "error": message if message is not None else _MESSAGES[code],
             "error_type": error_type,
             "name": tool_name,
             "recovery": recovery,
@@ -285,6 +297,12 @@ def tool_error_content(exc: BaseException, tool_name: str) -> str | None:
             "tool.invalid_input",
             "correct_input",
             "not_started",
+            message=(
+                "读取 GitHub 内容必须显式提供 ref（提交 SHA、标签或分支），不会回退默认分支。"
+                "若用户指定提交，原样传入该提交 SHA。"
+                if tool_name == "github_query" and native_code == "invalid_github_ref"
+                else None
+            ),
         )
     if tool_name == "parse_document" and native_code in {
         "office_async_required",
@@ -316,6 +334,19 @@ def tool_error_content(exc: BaseException, tool_name: str) -> str | None:
             "tool.upstream_unavailable",
             "choose_alternative",
             "failed",
+            message=(
+                "无法访问此 GitHub 公开位置。请按用户原始任务核对 owner（账号/组织）、"
+                "repo（仓库名）、ref（提交）和 path（相对路径），不要原样重试。"
+                "无法确认时保留已有证据并标为未知。"
+                if tool_name == "github_query"
+                and native_code
+                in {
+                    "research_not_found_or_private",
+                    "github_file_unavailable",
+                    "github_directory_unavailable",
+                }
+                else None
+            ),
         )
     if tool_name in {"generate_image", "edit_image"} and native_code in {
         "image_submission_unknown",
@@ -360,6 +391,36 @@ def on_tool_error(exc: Exception, request, *, readonly_roles=frozenset()) -> str
         and isinstance(role, str)
         and role in readonly_roles
     ):
+        if type(exc) is RuntimeExecutionError and exc.code == "runtime.loop.detected":
+            return _content(
+                "task",
+                type(exc).__name__,
+                "tool.operation_failed",
+                "do_not_repeat",
+                "failed",
+                message="The read-only child was stopped for repeated tool calls. Its task is incomplete; do not repeat it. Use completed sibling evidence or report the gap.",
+            )
+        if (
+            isinstance(exc, RuntimeResolutionError)
+            and exc.code == "runtime.model.stream_interrupted"
+        ):
+            return _content(
+                "task",
+                type(exc).__name__,
+                "tool.upstream_unavailable",
+                "do_not_repeat",
+                "failed",
+                message="The read-only child's model stream ended before a validated report. Its task is incomplete; do not repeat it. Use completed sibling evidence or report the gap.",
+            )
+        if isinstance(exc, (ModelCallLimitExceededError, ToolCallLimitExceededError)):
+            return _content(
+                "task",
+                type(exc).__name__,
+                "tool.upstream_unavailable",
+                "choose_alternative",
+                "failed",
+                message="The read-only child exhausted its model or tool call limit. Its task is incomplete; do not repeat it. Use completed sibling evidence or report the gap.",
+            )
         body = getattr(exc, "body", None)
         body = body.get("error", body) if isinstance(body, dict) else {}
         code = body.get("code") or body.get("type") if isinstance(body, dict) else None

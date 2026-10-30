@@ -1,0 +1,163 @@
+{
+  "manifest_sha256": "a8ec2cf0d8c5c3eafe030eb679c26d5730e12bcc6d974e9401e1b3465c73ad21",
+  "samples": [
+    {
+      "arm": "delegation",
+      "sample": 1,
+      "run_id": "984c447b-a52a-47bd-860d-7dabd445646c",
+      "thread_id": "b9f0e412-95ec-4b73-a429-240fd0bcc2a4",
+      "raw_sha256": "1250f22ee1e9c5c065b1fea2152ba06bbd6e54cdfcd6eaeac5678ff365ba757e",
+      "status": "success",
+      "fact_scores": [
+        true,
+        true,
+        false,
+        true,
+        true
+      ],
+      "all_gates_pass": false,
+      "usage_complete": true,
+      "primary_input_tokens": 152575,
+      "primary_peak_tokens": 34335,
+      "primary_peak_fraction": 0.26195526123046875,
+      "total_tokens": 1428146,
+      "known_total_tokens": 1428146,
+      "root_automatic_summaries": 0,
+      "duration_seconds": 538.635452
+    },
+    {
+      "arm": "delegation",
+      "sample": 2,
+      "run_id": "26cae377-8bc1-4a8b-bdb8-20add324f99e",
+      "thread_id": "46cd510e-21f3-485a-8ad2-2e532c786a71",
+      "raw_sha256": "73b3ccbd17fc19e98fdf24a378eb8d4836ad6c54537e32480bdab3b5fd7040c8",
+      "status": "success",
+      "fact_scores": [
+        true,
+        false,
+        true,
+        true,
+        true
+      ],
+      "all_gates_pass": false,
+      "usage_complete": true,
+      "primary_input_tokens": 245971,
+      "primary_peak_tokens": 39908,
+      "primary_peak_fraction": 0.304473876953125,
+      "total_tokens": 1265494,
+      "known_total_tokens": 1265494,
+      "root_automatic_summaries": 0,
+      "duration_seconds": 485.675991
+    },
+    {
+      "arm": "delegation",
+      "sample": 3,
+      "run_id": "bbfd0203-9cb9-43f4-88b8-7e1071cded84",
+      "thread_id": "9db0863d-4823-4567-b00c-7eeabaecf46e",
+      "raw_sha256": "e750e4a209b8095dcfda947099eeaf4bbb3ca29d5c3ef751432c0fd12a055957",
+      "status": "success",
+      "fact_scores": [
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      "all_gates_pass": false,
+      "usage_complete": true,
+      "primary_input_tokens": 75035,
+      "primary_peak_tokens": 25354,
+      "primary_peak_fraction": 0.1934356689453125,
+      "total_tokens": 827730,
+      "known_total_tokens": 827730,
+      "root_automatic_summaries": 0,
+      "duration_seconds": 298.0699
+    },
+    {
+      "arm": "serial",
+      "sample": 1,
+      "run_id": "4b1d82c4-d534-4b80-8bd8-db24d347c1c7",
+      "thread_id": "b17c91a4-c7ac-434a-83ad-411c1744d52c",
+      "raw_sha256": "f1f6177198fc556c5b2af49634d6aca73c3fef0bcd214b0c8888542bbc2c02ea",
+      "status": "error",
+      "fact_scores": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "all_gates_pass": false,
+      "usage_complete": false,
+      "primary_input_tokens": 323193,
+      "primary_peak_tokens": 50621,
+      "primary_peak_fraction": 0.38620758056640625,
+      "total_tokens": null,
+      "known_total_tokens": 333058,
+      "root_automatic_summaries": 0,
+      "duration_seconds": 130.972112
+    },
+    {
+      "arm": "serial",
+      "sample": 2,
+      "run_id": "96a79d53-b6b7-4c3a-8352-d6e3109d2f0c",
+      "thread_id": "4e183d62-4bc7-4c15-a357-c25c1d8bfe03",
+      "raw_sha256": "cc9cc7c941b26cb8a4cddca288fa81d881dd609968fef62fb79f75f396643917",
+      "status": "error",
+      "fact_scores": [
+        false,
+        false,
+        false,
+        false,
+        false
+      ],
+      "all_gates_pass": false,
+      "usage_complete": false,
+      "primary_input_tokens": 566006,
+      "primary_peak_tokens": 53062,
+      "primary_peak_fraction": 0.4048309326171875,
+      "total_tokens": null,
+      "known_total_tokens": 601650,
+      "root_automatic_summaries": 0,
+      "duration_seconds": 285.736289
+    },
+    {
+      "arm": "serial",
+      "sample": 3,
+      "run_id": "f8cc0c2f-e9c4-4d22-8293-f58b3c9796b6",
+      "thread_id": "65971019-2169-4e96-81e7-ad56a4f5bf50",
+      "raw_sha256": "551b7c7d48343ca6536d943a86f2c3849417a90b772b2f248d357f57fdab0751",
+      "status": "success",
+      "fact_scores": [
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      "all_gates_pass": false,
+      "usage_complete": true,
+      "primary_input_tokens": 235882,
+      "primary_peak_tokens": 45394,
+      "primary_peak_fraction": 0.3463287353515625,
+      "total_tokens": 246999,
+      "known_total_tokens": 246999,
+      "root_automatic_summaries": 0,
+      "duration_seconds": 121.300661
+    }
+  ],
+  "normal_terminal_success": {
+    "delegation": 3,
+    "serial": 1
+  },
+  "all_quality_gates_success": {
+    "delegation": 0,
+    "serial": 0
+  },
+  "complete_usage": {
+    "delegation": 3,
+    "serial": 1
+  },
+  "same_quality_primary_input_reduction": null,
+  "conclusion": "Frozen v33 fails original quality/stability gates; all original samples retained. No same-quality efficiency reduction claim. Pro restored and no public source drift at the end of capture."
+}

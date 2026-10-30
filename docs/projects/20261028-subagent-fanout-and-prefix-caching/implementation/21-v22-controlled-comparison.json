@@ -1,0 +1,849 @@
+{
+  "version": "v22",
+  "status": "failed_acceptance",
+  "target_sha": "477b4f420553e8a52c2fbccc464d7561b239c443",
+  "prompt_sha256": "2568adff93f0d58f3b97b90ce59b8be2350fa2bac909983549fc0962ea5314bc",
+  "provider": "xiaok",
+  "model_id": "bcaf9543-5cc9-40cb-9848-d1fbe90cc086",
+  "configured_context_window": 262144,
+  "max_output_tokens": 8192,
+  "run_token_budget": 1000000,
+  "provider_window_metadata": "not_reported",
+  "deployment_fingerprint": "not_reported",
+  "pricing": "unknown",
+  "manifest_sha256": "1587ec76db2e894c7c491a893dcc8a5a7cecd2033f9a80e2d1e462bc6a21d947",
+  "arms": {
+    "delegation": {
+      "samples": [
+        {
+          "thread_id": "72225b49-4249-4643-af8c-0cba92c108f2",
+          "run_id": "ed08bbb0-7f51-41c7-a442-2fdc3db51d19",
+          "status": "success",
+          "duration_seconds": 440.831028,
+          "tokens": {
+            "input_tokens": 421180,
+            "output_tokens": 14361,
+            "total_tokens": 435541,
+            "cache_read_tokens": 353280,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 534
+          },
+          "known_tokens": {
+            "input_tokens": 421180,
+            "output_tokens": 14361,
+            "total_tokens": 435541,
+            "cache_read_tokens": 353280,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 534
+          },
+          "coverage": {
+            "observed_call_count": 34,
+            "reported_call_count": 34,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "scopes": {
+            "primary": {
+              "calls": 11,
+              "input_tokens": 229335,
+              "output_tokens": 6345,
+              "total_tokens": 235680,
+              "cache_read_tokens": 198656,
+              "peak_input_tokens": 29135,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            },
+            "subagent": {
+              "calls": 23,
+              "input_tokens": 191845,
+              "output_tokens": 8016,
+              "total_tokens": 199861,
+              "cache_read_tokens": 154624,
+              "peak_input_tokens": 15512,
+              "namespaces": [
+                [
+                  "tools:12ba6b44-c259-a81f-14a2-c65a0f0be97d",
+                  "model"
+                ],
+                [
+                  "tools:9b245239-548a-d0e3-091e-51a528d72636",
+                  "model"
+                ],
+                [
+                  "tools:a43e8d3d-6aee-f485-0d65-ddf3616d17c6",
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final package table distinguishes shared contract, implementation and command consumer, and names subagent registry/model-facing tools with fixed group citations."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final report states pressure trigger, /compact, pruning before summarization and shipped base default enablement, but never states that summarization condenses older history; first non-system range start alone is insufficient. Recent-tail retention is descriptive context, not an added grading requirement."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final flow explicitly covers pre-step before request derivation, canonical provider-confirmed context overflow, prune then remeasure/summarize, and retry only after replacement generation advances."
+            },
+            "4": {
+              "passed": true,
+              "reason": "Final boundary explicitly says optional capability outside the agent loop and multiple named providers coexist in ctx.subagents, supported by subsystem lines."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Across the final package/form names, seeding row and discovery row, spawn/fork-in-process, fork=true conversation seeding, optional completed-parent-turn prefix versus fresh child, the four external forms and parent discovery are present. Their combined semantic coverage meets the original forms rubric; no prescribed table layout is required. The same-process-provider paragraph remains an exposition limitation, not an additional core requirement."
+            }
+          },
+          "index": 1,
+          "raw_sha256": "d44fe272e1bad96db1f0d15b907e507301c000866a6cc19dfdd1c3386a894ae6",
+          "ledger_complete": true,
+          "stop_code": null,
+          "primary_input_tokens": 229335,
+          "reported_primary_peak_tokens": 29135,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.11114120483398438,
+          "root_automatic_offloads": 0,
+          "task_count": 3,
+          "manual_score": "4/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "The report includes optional lifecycle/type details while omitting core overview qualifiers.",
+            "Mechanical 31-citation coverage proves observation windows, not semantic completeness.",
+            "Execution location is discussed partly in terms of provider implementation rather than child execution; the group/form and seeding rows together cover the original core fact."
+          ],
+          "manual_review_history": [
+            {
+              "fact": "5",
+              "prior": {
+                "passed": false,
+                "reason": "Final report names spawn/fork, conversation-seeding flags and a generic optional completed-prefix seed, but does not clearly map fresh in-process spawn versus parent-completed-history in-process fork. The execution-location row describes same-process provider implementations, which is not a substitute for mapping child execution locations per provider. External transport forms and parent discovery are present."
+              },
+              "reason": "Recheck the original semantic rubric across final-report rows, without requiring a provider-by-provider layout. This correction does not change arm acceptance."
+            }
+          ],
+          "source_count": 49,
+          "child_source_count": 32,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": true,
+          "parsed_citation_count": 31,
+          "unresolved_short_citations": [],
+          "citation_manual_resolution": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T21:55:13.174113+00:00",
+              "used_memory": 277388224,
+              "maxmemory": 1073741824,
+              "error_replies": 23369,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:01:53.322349+00:00",
+              "used_memory": 345261504,
+              "maxmemory": 1073741824,
+              "error_replies": 23371,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 2,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "thread_id": "52ca1cae-8db4-4960-af68-a483b0c66ae5",
+          "run_id": "658e5eb0-a40f-4241-885c-f3f41135ac55",
+          "status": "success",
+          "duration_seconds": 282.214028,
+          "tokens": {
+            "input_tokens": 282241,
+            "output_tokens": 12042,
+            "total_tokens": 294283,
+            "cache_read_tokens": 240640,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 426
+          },
+          "known_tokens": {
+            "input_tokens": 282241,
+            "output_tokens": 12042,
+            "total_tokens": 294283,
+            "cache_read_tokens": 240640,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 426
+          },
+          "coverage": {
+            "observed_call_count": 29,
+            "reported_call_count": 29,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "scopes": {
+            "primary": {
+              "calls": 4,
+              "input_tokens": 64997,
+              "output_tokens": 3936,
+              "total_tokens": 68933,
+              "cache_read_tokens": 56576,
+              "peak_input_tokens": 20154,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            },
+            "subagent": {
+              "calls": 25,
+              "input_tokens": 217244,
+              "output_tokens": 8106,
+              "total_tokens": 225350,
+              "cache_read_tokens": 184064,
+              "peak_input_tokens": 14245,
+              "namespaces": [
+                [
+                  "tools:42ff9f5a-89b8-70f9-8306-0eb47b7d6da9",
+                  "model"
+                ],
+                [
+                  "tools:5a91312f-1968-4298-d5a6-eb6c50227278",
+                  "model"
+                ],
+                [
+                  "tools:6b50f464-7519-9b94-626b-db938165fc25",
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final package table describes contract/basic implementation/command consumer and subagent registry/model-facing tools with fixed group README evidence."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final report states pressure, recent-tail retention, /compact, prior pruning and shipped base enablement, but never identifies earlier history as the summarization target. Retention tuning alone is not the required behavioral overview."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final flow identifies agent/pre-step pressure handling, canonical overflow event, pruning before summary and retry only on surface generation advance. The exact pre-step event is accepted as the lifecycle shorthand, not graded on wording."
+            },
+            "4": {
+              "passed": true,
+              "reason": "Final boundary explicitly states optional outside-loop seam and coexistence of named providers with the fixed subsystem citation."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Across the final seed and execution-location rows, fresh in-process spawn, fork completed-parent-history seed, four external forms and parent discovery are all stated with supporting group/subsystem citations."
+            }
+          },
+          "index": 2,
+          "raw_sha256": "f10abadc9b669612f9eec8b82cdfd588d323e7a57acec3c580eec5173b4ad816",
+          "ledger_complete": true,
+          "stop_code": null,
+          "primary_input_tokens": 64997,
+          "reported_primary_peak_tokens": 20154,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.07688140869140625,
+          "root_automatic_offloads": 0,
+          "task_count": 3,
+          "manual_score": "4/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "The lifecycle boundary row generalizes continuable-provider creation/manager ownership to all providers without its continuable qualifier.",
+            "The machine citation checker resolves 22 citations but cannot resolve the single same-as-above reference; manual resolution is recorded separately."
+          ],
+          "manual_review_history": [],
+          "source_count": 40,
+          "child_source_count": 34,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": false,
+          "parsed_citation_count": 22,
+          "unresolved_short_citations": [
+            "#L12-L33"
+          ],
+          "citation_manual_resolution": [
+            {
+              "raw": "同上 README#L12-L33",
+              "path": "packages/compaction/README.md",
+              "start": 12,
+              "end": 33,
+              "reason": "Compaction-family row refers to the immediately preceding row whose compaction README link has this exact range; the child observed that file at lines 1-44. Root group lists basic implementation and command roles.",
+              "sha": "477b4f420553e8a52c2fbccc464d7561b239c443",
+              "covered": true
+            }
+          ],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T22:01:54.173772+00:00",
+              "used_memory": 345261504,
+              "maxmemory": 1073741824,
+              "error_replies": 23372,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:07:10.529804+00:00",
+              "used_memory": 358961712,
+              "maxmemory": 1073741824,
+              "error_replies": 23373,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "thread_id": "67c43572-268d-46bc-ab8c-de0015b70408",
+          "run_id": "fa2a8ad8-2ae9-4d63-a299-8fb2e0b9a219",
+          "status": "success",
+          "duration_seconds": 382.999299,
+          "tokens": {
+            "input_tokens": 411145,
+            "output_tokens": 13379,
+            "total_tokens": 424524,
+            "cache_read_tokens": 359936,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 851
+          },
+          "known_tokens": {
+            "input_tokens": 411145,
+            "output_tokens": 13379,
+            "total_tokens": 424524,
+            "cache_read_tokens": 359936,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 851
+          },
+          "coverage": {
+            "observed_call_count": 38,
+            "reported_call_count": 38,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "scopes": {
+            "primary": {
+              "calls": 8,
+              "input_tokens": 143220,
+              "output_tokens": 4174,
+              "total_tokens": 147394,
+              "cache_read_tokens": 130816,
+              "peak_input_tokens": 23773,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            },
+            "subagent": {
+              "calls": 30,
+              "input_tokens": 267925,
+              "output_tokens": 9205,
+              "total_tokens": 277130,
+              "cache_read_tokens": 229120,
+              "peak_input_tokens": 16751,
+              "namespaces": [
+                [
+                  "tools:6b594498-d687-70a3-a074-f358b8f2305d",
+                  "model"
+                ],
+                [
+                  "tools:727a3ac0-507f-159f-0059-eaae42f51df4",
+                  "model"
+                ],
+                [
+                  "tools:dd49c195-c617-c600-b6e4-ba242addbaf0",
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final package table explicitly describes Service Definition/Provider/Consumer roles, shared compaction contract/basic implementation/command and subagent registry/tools with fixed path-line references."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final report states pressure, /compact, pruning, retention tuning and shipped default enablement, but does not state earlier history as the summarization target; overflow head reduction alone is not that overview."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final flow explicitly states pre-step before request derivation, canonical provider-confirmed overflow, pruning before range selection/summary and retry after replacement generation advances."
+            },
+            "4": {
+              "passed": true,
+              "reason": "Final boundary explicitly states optional seam outside the loop and named providers in one registry, supported by subsystem L5-L7."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Final provider table states fresh in-process spawn, completed-parent-history in-process fork, ACP/Codex/Claude Code/external Harness forms; parent discovery is explicit in the final boundary row."
+            }
+          },
+          "index": 3,
+          "raw_sha256": "fda662608332eac0363638d592c6820e364ede894b9372cb6616ae858895105f",
+          "ledger_complete": true,
+          "stop_code": null,
+          "primary_input_tokens": 143220,
+          "reported_primary_peak_tokens": 23773,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.09068679809570312,
+          "root_automatic_offloads": 0,
+          "task_count": 3,
+          "manual_score": "4/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "The claim of no mutual dependencies is inferred from group READMEs rather than supported; the cited compaction L43 is not dependency proof.",
+            "The /compact low-pressure/turn-serialization clause is attributed to group README command/link rows rather than direct behavioral lines.",
+            "Mechanical observation coverage is not semantic support for every extra assertion."
+          ],
+          "manual_review_history": [],
+          "source_count": 50,
+          "child_source_count": 42,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": true,
+          "parsed_citation_count": 23,
+          "unresolved_short_citations": [],
+          "citation_manual_resolution": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T22:07:11.122831+00:00",
+              "used_memory": 358961712,
+              "maxmemory": 1073741824,
+              "error_replies": 23374,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:14:00.701631+00:00",
+              "used_memory": 420384672,
+              "maxmemory": 1073741824,
+              "error_replies": 23375,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        }
+      ],
+      "quality_pass_count": 0,
+      "terminal_report_count": 3,
+      "complete_ledger_count": 3,
+      "median_primary_input_tokens": 143220,
+      "median_total_tokens": 424524,
+      "median_duration_seconds": 382.999299
+    },
+    "serial": {
+      "samples": [
+        {
+          "thread_id": "93635f30-4d37-4b29-98d0-4ea17a53d7b1",
+          "run_id": "d0867012-3dc0-44d4-84e2-e1678fa56d06",
+          "status": "success",
+          "duration_seconds": 275.751114,
+          "tokens": {
+            "input_tokens": 153067,
+            "output_tokens": 5282,
+            "total_tokens": 158349,
+            "cache_read_tokens": 127488,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 397
+          },
+          "known_tokens": {
+            "input_tokens": 153067,
+            "output_tokens": 5282,
+            "total_tokens": 158349,
+            "cache_read_tokens": 127488,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 397
+          },
+          "coverage": {
+            "observed_call_count": 8,
+            "reported_call_count": 8,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "scopes": {
+            "primary": {
+              "calls": 8,
+              "input_tokens": 153067,
+              "output_tokens": 5282,
+              "total_tokens": 158349,
+              "cache_read_tokens": 127488,
+              "peak_input_tokens": 27082,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final package table describes compaction contract/basic backend/command and subagent registry/model-facing tools with group references."
+            },
+            "2": {
+              "passed": true,
+              "reason": "Final report explicitly states oldest balanced history condensed into one summary, pressure trigger, /compact, earlier pruning and shipped base default enablement; referenced basic/group READMEs contain supporting behavior."
+            },
+            "3": {
+              "passed": false,
+              "reason": "Final report gives tuning counts and generic confirmed overflow retry, but omits pre-step-before-request derivation, the canonical request-error guard and replacement-generation advancement required for retry."
+            },
+            "4": {
+              "passed": false,
+              "reason": "Final report states a named provider registry, but does not state subagent is an optional capability outside the agent loop."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Final report explicitly compares fresh/finished-parent-history in-process children, four external forms and parent discovery using fixed group/service READMEs."
+            }
+          },
+          "index": 1,
+          "raw_sha256": "b289f60d00397f3ec54c534ce9de23660adaa389e8970b70ef0089d33e9ecd76",
+          "ledger_complete": true,
+          "stop_code": null,
+          "primary_input_tokens": 153067,
+          "reported_primary_peak_tokens": 27082,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.10330963134765625,
+          "root_automatic_offloads": 0,
+          "task_count": 0,
+          "manual_score": "3/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "The general lifecycle and flow internals are left unknown or replaced by configuration details.",
+            "Some optional source attributions are broader than their immediately adjacent line ranges; mechanical coverage is not full semantic validation."
+          ],
+          "manual_review_history": [],
+          "source_count": 16,
+          "child_source_count": 0,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": true,
+          "parsed_citation_count": 25,
+          "unresolved_short_citations": [],
+          "citation_manual_resolution": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T22:16:57.772200+00:00",
+              "used_memory": 423928576,
+              "maxmemory": 1073741824,
+              "error_replies": 23384,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:21:05.325582+00:00",
+              "used_memory": 445584144,
+              "maxmemory": 1073741824,
+              "error_replies": 23385,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "thread_id": "6ab690da-b376-4e61-86c5-9ce3cfe2965d",
+          "run_id": "2cc2b580-c583-4c44-babf-d10e09c2b883",
+          "status": "success",
+          "duration_seconds": 218.055869,
+          "tokens": {
+            "input_tokens": 221612,
+            "output_tokens": 5597,
+            "total_tokens": 227209,
+            "cache_read_tokens": 200704,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 194
+          },
+          "known_tokens": {
+            "input_tokens": 221612,
+            "output_tokens": 5597,
+            "total_tokens": 227209,
+            "cache_read_tokens": 200704,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 194
+          },
+          "coverage": {
+            "observed_call_count": 10,
+            "reported_call_count": 10,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "scopes": {
+            "primary": {
+              "calls": 10,
+              "input_tokens": 221612,
+              "output_tokens": 5597,
+              "total_tokens": 227209,
+              "cache_read_tokens": 200704,
+              "peak_input_tokens": 31559,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final report explicitly identifies Service Definition/Provider/Consumer family organization, compaction contract/basic/command and subagent registry/tools with fixed group/subsystem support."
+            },
+            "2": {
+              "passed": true,
+              "reason": "Final report explicitly states old balanced span replacement by a summary, pressure, /compact, prior pruning and shipped base default enablement."
+            },
+            "3": {
+              "passed": false,
+              "reason": "Final report replaces the lifecycle/retry guard with tuning counts; it does not state pre-step before derivation, canonical request-error handling or the replacement-generation advance prerequisite."
+            },
+            "4": {
+              "passed": true,
+              "reason": "Final package overview explicitly calls both optional capabilities outside agent-loop and later describes multiple named providers in the registry."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Final provider rows explicitly cover fresh spawn and completed-parent-history fork in-process, four external forms and parent discovery, with fixed group/provider/subsystem support."
+            }
+          },
+          "index": 2,
+          "raw_sha256": "db1dc4808b457355604aafaf23bd1125a53a043b2acce8122fb5425561711a20",
+          "ledger_complete": true,
+          "stop_code": null,
+          "primary_input_tokens": 221612,
+          "reported_primary_peak_tokens": 31559,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.12038803100585938,
+          "root_automatic_offloads": 0,
+          "task_count": 0,
+          "manual_score": "4/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "The report leaves overflow confirmation as future work, although precise lifecycle guards are part of the original required core.",
+            "Extra provider/setup details were not exhaustively audited; 36 mechanically covered references do not certify all optional clauses."
+          ],
+          "manual_review_history": [],
+          "source_count": 19,
+          "child_source_count": 0,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": true,
+          "parsed_citation_count": 36,
+          "unresolved_short_citations": [],
+          "citation_manual_resolution": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T22:21:06.423457+00:00",
+              "used_memory": 445584144,
+              "maxmemory": 1073741824,
+              "error_replies": 23386,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:25:21.629054+00:00",
+              "used_memory": 471667680,
+              "maxmemory": 1073741824,
+              "error_replies": 23387,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "thread_id": "57299b5a-acbb-47c4-96a5-aef84b756a54",
+          "run_id": "eb0510df-dcb1-4cc5-a2ba-edb630264be3",
+          "status": "success",
+          "duration_seconds": 362.884777,
+          "tokens": {
+            "input_tokens": 374157,
+            "output_tokens": 5857,
+            "total_tokens": 380014,
+            "cache_read_tokens": 351488,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 425
+          },
+          "known_tokens": {
+            "input_tokens": 374157,
+            "output_tokens": 5857,
+            "total_tokens": 380014,
+            "cache_read_tokens": 351488,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 425
+          },
+          "coverage": {
+            "observed_call_count": 16,
+            "reported_call_count": 16,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "scopes": {
+            "primary": {
+              "calls": 16,
+              "input_tokens": 374157,
+              "output_tokens": 5857,
+              "total_tokens": 380014,
+              "cache_read_tokens": 351488,
+              "peak_input_tokens": 32861,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final family table explicitly describes service-definition/provider/consumer roles and corresponding compaction and subagent packages with fixed sources."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final report discusses summary replacement mechanics and extra model cost, pressure, /compact and default enablement, but never identifies earlier history as the summary target."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final flow jointly covers pressure versus context-overflow triggers, pre-step before derivation, prune before range selection, failed-step request-error recovery and retry only after replacement generation advances. The named context-overflow trigger is accepted as semantic normalization without requiring a literal uppercase error token."
+            },
+            "4": {
+              "passed": true,
+              "reason": "Final overview explicitly states optional outside-loop capabilities and named provider coexistence."
+            },
+            "5": {
+              "passed": false,
+              "reason": "Final report covers fresh/completed-parent-history in-process and four external forms, but omits parent discovery; capability-method discovery and settled notifications do not state parent child-catalog/discovery behavior."
+            }
+          },
+          "index": 3,
+          "raw_sha256": "0f497a8f9460d8c5c6b656df96fa2b984f034bf23be7e0307d188e983905a808",
+          "ledger_complete": true,
+          "stop_code": null,
+          "primary_input_tokens": 374157,
+          "reported_primary_peak_tokens": 32861,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.12535476684570312,
+          "root_automatic_offloads": 0,
+          "task_count": 0,
+          "manual_score": "3/5",
+          "core_sample_accepted": false,
+          "limitations": [
+            "Additional capability and lifecycle type inventories do not replace the missing high-level summary target and parent discovery.",
+            "Some line ranges support only subsets of optional clauses; mechanical coverage alone does not certify every extra detail."
+          ],
+          "manual_review_history": [],
+          "source_count": 20,
+          "child_source_count": 0,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": true,
+          "parsed_citation_count": 25,
+          "unresolved_short_citations": [],
+          "citation_manual_resolution": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T22:25:22.653479+00:00",
+              "used_memory": 471667680,
+              "maxmemory": 1073741824,
+              "error_replies": 23388,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:32:24.517044+00:00",
+              "used_memory": 436878688,
+              "maxmemory": 1073741824,
+              "error_replies": 23390,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 2,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        }
+      ],
+      "quality_pass_count": 0,
+      "terminal_report_count": 3,
+      "complete_ledger_count": 3,
+      "median_primary_input_tokens": 221612,
+      "median_total_tokens": 227209,
+      "median_duration_seconds": 275.751114
+    }
+  },
+  "same_quality_comparison_allowed": false,
+  "primary_input_reduction": null,
+  "conclusion": "All six frozen Kimi runs retained; complete ledgers, no budget stop or automatic root compaction. Delegation quality 0/3 and serial quality 0/3; no same-quality reduction claim. Independent DeepSeek group changes model/provider/configured window only, never pools with Kimi."
+}

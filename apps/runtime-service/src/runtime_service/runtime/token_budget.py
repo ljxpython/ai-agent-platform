@@ -96,6 +96,7 @@ class RunTokenBudget:
 
     policy: TokenBudgetPolicy
     _calls: dict[str, _CallUsage] = field(default_factory=dict)
+    _reservations: dict[str, int] = field(default_factory=dict)
     _used_tokens: int = 0
     _unknown_calls: int = 0
     _unverifiable: bool = False
@@ -143,6 +144,7 @@ class RunTokenBudget:
             if policy is not None:
                 self.policy = policy
             self._calls.clear()
+            self._reservations.clear()
             self._unknown_calls = 0
             for call in calls or []:
                 self._calls[str(call["model_call_id"])] = _CallUsage(
@@ -165,6 +167,37 @@ class RunTokenBudget:
         with self._lock:
             self._calls.setdefault(call_id, _CallUsage(None, "started"))
 
+    def reserve_call(self, call_id: str, tokens: int) -> bool:
+        if type(tokens) is not int or tokens <= 0:
+            raise ValueError("invalid token reservation")
+        with self._lock:
+            if call_id in self._reservations:
+                return True
+            if (
+                self._stop_code is not None
+                or self._unverifiable
+                or self._unknown_calls > 0
+            ):
+                return False
+            reserved = sum(self._reservations.values())
+            if self._used_tokens + reserved + tokens > self.policy.max_tokens:
+                return False
+            self._reservations[call_id] = tokens
+            return True
+
+    def release_call(self, call_id: str) -> None:
+        with self._lock:
+            self._reservations.pop(call_id, None)
+
+    def has_reservation(self, call_id: str) -> bool:
+        with self._lock:
+            return call_id in self._reservations
+
+    @property
+    def reserved_tokens(self) -> int:
+        with self._lock:
+            return sum(self._reservations.values())
+
     def record_call(
         self,
         call_id: str,
@@ -186,6 +219,7 @@ class RunTokenBudget:
             total_tokens = None
             quality = "invalid"
         with self._lock:
+            self._reservations.pop(call_id, None)
             previous = self._calls.get(call_id)
             if previous and previous.quality in {"reported", "derived_from_reported"}:
                 return
@@ -214,9 +248,10 @@ class RunTokenBudget:
                 return "exhausted"
             if self._stop_code == "token_budget_unverifiable" or self.unverifiable:
                 return "unverifiable"
-            if self._used_tokens >= self.policy.max_tokens:
+            projected_tokens = self._used_tokens + sum(self._reservations.values())
+            if projected_tokens >= self.policy.max_tokens:
                 return "exhausted"
-            if self._used_tokens >= self.policy.warn_at_tokens:
+            if projected_tokens >= self.policy.warn_at_tokens:
                 return "approaching"
             return "ok"
 

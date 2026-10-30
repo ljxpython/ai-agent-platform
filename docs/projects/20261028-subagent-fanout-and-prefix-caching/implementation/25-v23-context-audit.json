@@ -1,0 +1,1419 @@
+{
+  "group": "v23 retained failures",
+  "method": "same SHA/path/namespace interval union; cross-child observations kept separate",
+  "runs": [
+    {
+      "arm": "delegation",
+      "sample": 1,
+      "run_id": "268384cd-1bb3-49d5-89f6-40935dc798b8",
+      "raw_sha256": "98125c08548d4d5f5997054417c5cbff2a9e4871f577004e78df402c27b270d1",
+      "provider_tokens": {
+        "input_tokens": 642264,
+        "output_tokens": 33796,
+        "total_tokens": 676060,
+        "cache_read_tokens": 480384,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 13200
+      },
+      "scopes": {
+        "primary": {
+          "calls": 11,
+          "input_tokens": 335804,
+          "output_tokens": 13961,
+          "total_tokens": 349765,
+          "cache_read_tokens": 252800,
+          "peak_input_tokens": 47551,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "subagent": {
+          "calls": 26,
+          "input_tokens": 306460,
+          "output_tokens": 19835,
+          "total_tokens": 326295,
+          "cache_read_tokens": 227584,
+          "peak_input_tokens": 23946,
+          "namespaces": [
+            [
+              "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+              "model"
+            ],
+            [
+              "tools:6ff8fc66-b0b6-be73-57a4-2d8a24d9c727",
+              "model"
+            ],
+            [
+              "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+              "model"
+            ]
+          ]
+        }
+      },
+      "request_components": null,
+      "schema_bytes": null,
+      "skill_injection_bytes": null,
+      "request_components_unknown_reason": "v23 retained provider Usage and persistent messages, not model-bound payloads; do not infer components from totals or checkpoints",
+      "http_capture_bytes": null,
+      "spill_count": null,
+      "pruning_count": null,
+      "automatic_root_summaries": 0,
+      "windows": 54,
+      "truncated_windows_excluded": 0,
+      "readings": [
+        {
+          "namespace": "root",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/architecture.md",
+          "windows": 2,
+          "line_observations": 54,
+          "unique_lines": 54,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/compaction.md",
+          "windows": 2,
+          "line_observations": 53,
+          "unique_lines": 53,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/subagent.md",
+          "windows": 3,
+          "line_observations": 89,
+          "unique_lines": 89,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/bundle/base/cordis.patch.yml",
+          "windows": 3,
+          "line_observations": 138,
+          "unique_lines": 107,
+          "repeated_line_observations": 31,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/README.md",
+          "windows": 1,
+          "line_observations": 44,
+          "unique_lines": 44,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-basic/README.md",
+          "windows": 3,
+          "line_observations": 104,
+          "unique_lines": 102,
+          "repeated_line_observations": 2,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-tool-result-pruner/README.md",
+          "windows": 1,
+          "line_observations": 38,
+          "unique_lines": 38,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/README.md",
+          "windows": 1,
+          "line_observations": 43,
+          "unique_lines": 43,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-claude-code/README.md",
+          "windows": 1,
+          "line_observations": 28,
+          "unique_lines": 28,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-codex/README.md",
+          "windows": 1,
+          "line_observations": 35,
+          "unique_lines": 35,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/tool-subagent-control/README.md",
+          "windows": 1,
+          "line_observations": 45,
+          "unique_lines": 45,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/tool-subagent/README.md",
+          "windows": 2,
+          "line_observations": 56,
+          "unique_lines": 52,
+          "repeated_line_observations": 4,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "docs/subsystems/subagent.md",
+          "windows": 4,
+          "line_observations": 104,
+          "unique_lines": 104,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "packages/README.md",
+          "windows": 1,
+          "line_observations": 46,
+          "unique_lines": 46,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "packages/subagent/README.md",
+          "windows": 1,
+          "line_observations": 43,
+          "unique_lines": 43,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "packages/subagent/subagent-claude-code/README.md",
+          "windows": 1,
+          "line_observations": 30,
+          "unique_lines": 30,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "packages/subagent/subagent-codex/README.md",
+          "windows": 1,
+          "line_observations": 40,
+          "unique_lines": 40,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "packages/subagent/subagent/README.md",
+          "windows": 1,
+          "line_observations": 45,
+          "unique_lines": 45,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "packages/subagent/tool-subagent-control/README.md",
+          "windows": 1,
+          "line_observations": 52,
+          "unique_lines": 52,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+          "path": "packages/subagent/tool-subagent/README.md",
+          "windows": 2,
+          "line_observations": 73,
+          "unique_lines": 73,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:6ff8fc66-b0b6-be73-57a4-2d8a24d9c727",
+          "path": "packages/bundle/README.md",
+          "windows": 1,
+          "line_observations": 45,
+          "unique_lines": 45,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:6ff8fc66-b0b6-be73-57a4-2d8a24d9c727",
+          "path": "packages/bundle/base/cordis.patch.yml",
+          "windows": 2,
+          "line_observations": 135,
+          "unique_lines": 135,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:6ff8fc66-b0b6-be73-57a4-2d8a24d9c727",
+          "path": "packages/compaction/README.md",
+          "windows": 1,
+          "line_observations": 44,
+          "unique_lines": 44,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:6ff8fc66-b0b6-be73-57a4-2d8a24d9c727",
+          "path": "packages/compaction/compaction/package.json",
+          "windows": 1,
+          "line_observations": 25,
+          "unique_lines": 25,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:6ff8fc66-b0b6-be73-57a4-2d8a24d9c727",
+          "path": "packages/subagent/README.md",
+          "windows": 1,
+          "line_observations": 43,
+          "unique_lines": 43,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:6ff8fc66-b0b6-be73-57a4-2d8a24d9c727",
+          "path": "packages/subagent/subagent/package.json",
+          "windows": 1,
+          "line_observations": 25,
+          "unique_lines": 25,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+          "path": "docs/subsystems/compaction.md",
+          "windows": 2,
+          "line_observations": 53,
+          "unique_lines": 53,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+          "path": "packages/compaction/README.md",
+          "windows": 1,
+          "line_observations": 44,
+          "unique_lines": 44,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+          "path": "packages/compaction/command-compact/README.md",
+          "windows": 2,
+          "line_observations": 90,
+          "unique_lines": 90,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+          "path": "packages/compaction/compaction-basic/README.md",
+          "windows": 3,
+          "line_observations": 106,
+          "unique_lines": 106,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+          "path": "packages/compaction/compaction-image-offload/README.md",
+          "windows": 1,
+          "line_observations": 51,
+          "unique_lines": 51,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+          "path": "packages/compaction/compaction-tool-result-pruner/README.md",
+          "windows": 2,
+          "line_observations": 88,
+          "unique_lines": 88,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        }
+      ],
+      "line_observations": 2140,
+      "repeated_line_observations": 37
+    },
+    {
+      "arm": "delegation",
+      "sample": 2,
+      "run_id": "503ccb68-a0f6-4129-89e4-d47202fa27a0",
+      "raw_sha256": "62f62c945ded8b18d9fbcbdf5519b73bd4062a2f79e8b28a580701c7bcf2f4e8",
+      "provider_tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "scopes": {
+        "primary": {
+          "calls": 1,
+          "input_tokens": 13496,
+          "output_tokens": 1385,
+          "total_tokens": 14881,
+          "cache_read_tokens": 13312,
+          "peak_input_tokens": 13496,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "subagent": {
+          "calls": 6,
+          "input_tokens": null,
+          "output_tokens": null,
+          "total_tokens": null,
+          "cache_read_tokens": null,
+          "peak_input_tokens": 3330,
+          "namespaces": [
+            [
+              "tools:958c3800-2782-2c68-5821-44f7346571b6",
+              "model"
+            ],
+            [
+              "tools:dde7e110-b1e4-a102-8180-6d50fbd012dc",
+              "model"
+            ],
+            [
+              "tools:e1136019-b63f-241c-b2ac-02c85ab8282d",
+              "model"
+            ]
+          ]
+        }
+      },
+      "request_components": null,
+      "schema_bytes": null,
+      "skill_injection_bytes": null,
+      "request_components_unknown_reason": "v23 retained provider Usage and persistent messages, not model-bound payloads; do not infer components from totals or checkpoints",
+      "http_capture_bytes": null,
+      "spill_count": null,
+      "pruning_count": null,
+      "automatic_root_summaries": 0,
+      "windows": 3,
+      "truncated_windows_excluded": 0,
+      "readings": [
+        {
+          "namespace": "tools:958c3800-2782-2c68-5821-44f7346571b6",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:dde7e110-b1e4-a102-8180-6d50fbd012dc",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:e1136019-b63f-241c-b2ac-02c85ab8282d",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        }
+      ],
+      "line_observations": 231,
+      "repeated_line_observations": 0
+    },
+    {
+      "arm": "delegation",
+      "sample": 3,
+      "run_id": "df549392-3334-461a-8819-bc5e0d2ee8b8",
+      "raw_sha256": "2c110186cc4c96bf57e819214ce6b6802d91580a83482d61973a0713432d5111",
+      "provider_tokens": {
+        "input_tokens": 481824,
+        "output_tokens": 28107,
+        "total_tokens": 509931,
+        "cache_read_tokens": 317440,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 8289
+      },
+      "scopes": {
+        "primary": {
+          "calls": 6,
+          "input_tokens": 149063,
+          "output_tokens": 10616,
+          "total_tokens": 159679,
+          "cache_read_tokens": 102016,
+          "peak_input_tokens": 34269,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "subagent": {
+          "calls": 26,
+          "input_tokens": 332761,
+          "output_tokens": 17491,
+          "total_tokens": 350252,
+          "cache_read_tokens": 215424,
+          "peak_input_tokens": 24653,
+          "namespaces": [
+            [
+              "tools:4d666d33-0e1c-0036-45ae-8b7835b60bca",
+              "model"
+            ],
+            [
+              "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+              "model"
+            ],
+            [
+              "tools:e9667891-bbc1-4b61-669c-d0b78ff2f511",
+              "model"
+            ]
+          ]
+        }
+      },
+      "request_components": null,
+      "schema_bytes": null,
+      "skill_injection_bytes": null,
+      "request_components_unknown_reason": "v23 retained provider Usage and persistent messages, not model-bound payloads; do not infer components from totals or checkpoints",
+      "http_capture_bytes": null,
+      "spill_count": null,
+      "pruning_count": null,
+      "automatic_root_summaries": 0,
+      "windows": 55,
+      "truncated_windows_excluded": 0,
+      "readings": [
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/compaction.md",
+          "windows": 1,
+          "line_observations": 16,
+          "unique_lines": 16,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/subagent.md",
+          "windows": 4,
+          "line_observations": 112,
+          "unique_lines": 111,
+          "repeated_line_observations": 1,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/README.md",
+          "windows": 2,
+          "line_observations": 72,
+          "unique_lines": 72,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/README.md",
+          "windows": 1,
+          "line_observations": 40,
+          "unique_lines": 40,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-basic/README.md",
+          "windows": 4,
+          "line_observations": 118,
+          "unique_lines": 118,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-tool-result-pruner/README.md",
+          "windows": 1,
+          "line_observations": 46,
+          "unique_lines": 46,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/README.md",
+          "windows": 1,
+          "line_observations": 43,
+          "unique_lines": 43,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent/README.md",
+          "windows": 1,
+          "line_observations": 50,
+          "unique_lines": 50,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:4d666d33-0e1c-0036-45ae-8b7835b60bca",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:4d666d33-0e1c-0036-45ae-8b7835b60bca",
+          "path": "docs/subsystems/subagent.md",
+          "windows": 8,
+          "line_observations": 213,
+          "unique_lines": 168,
+          "repeated_line_observations": 45,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:4d666d33-0e1c-0036-45ae-8b7835b60bca",
+          "path": "packages/subagent/README.md",
+          "windows": 1,
+          "line_observations": 43,
+          "unique_lines": 43,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:4d666d33-0e1c-0036-45ae-8b7835b60bca",
+          "path": "packages/subagent/subagent-acp/README.md",
+          "windows": 1,
+          "line_observations": 40,
+          "unique_lines": 40,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:4d666d33-0e1c-0036-45ae-8b7835b60bca",
+          "path": "packages/subagent/subagent/README.md",
+          "windows": 2,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:4d666d33-0e1c-0036-45ae-8b7835b60bca",
+          "path": "packages/subagent/tool-subagent/README.md",
+          "windows": 2,
+          "line_observations": 69,
+          "unique_lines": 68,
+          "repeated_line_observations": 1,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "docs/architecture.md",
+          "windows": 2,
+          "line_observations": 54,
+          "unique_lines": 54,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "docs/subsystems/compaction.md",
+          "windows": 1,
+          "line_observations": 16,
+          "unique_lines": 16,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "docs/subsystems/subagent.md",
+          "windows": 1,
+          "line_observations": 11,
+          "unique_lines": 11,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "packages/README.md",
+          "windows": 2,
+          "line_observations": 72,
+          "unique_lines": 72,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "packages/compaction/README.md",
+          "windows": 1,
+          "line_observations": 44,
+          "unique_lines": 44,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "packages/compaction/compaction/package.json",
+          "windows": 1,
+          "line_observations": 59,
+          "unique_lines": 59,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "packages/subagent/README.md",
+          "windows": 1,
+          "line_observations": 43,
+          "unique_lines": 43,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "packages/subagent/subagent/package.json",
+          "windows": 1,
+          "line_observations": 80,
+          "unique_lines": 80,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+          "path": "pnpm-workspace.yaml",
+          "windows": 1,
+          "line_observations": 62,
+          "unique_lines": 62,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:e9667891-bbc1-4b61-669c-d0b78ff2f511",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:e9667891-bbc1-4b61-669c-d0b78ff2f511",
+          "path": "docs/subsystems/compaction.md",
+          "windows": 3,
+          "line_observations": 101,
+          "unique_lines": 101,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:e9667891-bbc1-4b61-669c-d0b78ff2f511",
+          "path": "packages/compaction/README.md",
+          "windows": 1,
+          "line_observations": 44,
+          "unique_lines": 44,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:e9667891-bbc1-4b61-669c-d0b78ff2f511",
+          "path": "packages/compaction/compaction-basic/README.md",
+          "windows": 4,
+          "line_observations": 118,
+          "unique_lines": 118,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:e9667891-bbc1-4b61-669c-d0b78ff2f511",
+          "path": "packages/compaction/compaction-basic/src/index.ts",
+          "windows": 2,
+          "line_observations": 120,
+          "unique_lines": 61,
+          "repeated_line_observations": 59,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "tools:e9667891-bbc1-4b61-669c-d0b78ff2f511",
+          "path": "packages/compaction/compaction-tool-result-pruner/README.md",
+          "windows": 2,
+          "line_observations": 88,
+          "unique_lines": 88,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        }
+      ],
+      "line_observations": 2082,
+      "repeated_line_observations": 106
+    },
+    {
+      "arm": "serial",
+      "sample": 1,
+      "run_id": "6e00135a-739f-48f1-9816-d824270f0ab5",
+      "raw_sha256": "624fb09c7d64acfca02cca05e8e6a734254ca5d2a6237773017c34e64837a2d2",
+      "provider_tokens": {
+        "input_tokens": 942096,
+        "output_tokens": 16553,
+        "total_tokens": 958649,
+        "cache_read_tokens": 731264,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 3959
+      },
+      "scopes": {
+        "primary": {
+          "calls": 31,
+          "input_tokens": 942096,
+          "output_tokens": 16553,
+          "total_tokens": 958649,
+          "cache_read_tokens": 731264,
+          "peak_input_tokens": 50735,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        }
+      },
+      "request_components": null,
+      "schema_bytes": null,
+      "skill_injection_bytes": null,
+      "request_components_unknown_reason": "v23 retained provider Usage and persistent messages, not model-bound payloads; do not infer components from totals or checkpoints",
+      "http_capture_bytes": null,
+      "spill_count": null,
+      "pruning_count": null,
+      "automatic_root_summaries": 0,
+      "windows": 68,
+      "truncated_windows_excluded": 0,
+      "readings": [
+        {
+          "namespace": "root",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/architecture.md",
+          "windows": 1,
+          "line_observations": 32,
+          "unique_lines": 32,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/compaction.md",
+          "windows": 7,
+          "line_observations": 205,
+          "unique_lines": 133,
+          "repeated_line_observations": 72,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/subagent.md",
+          "windows": 9,
+          "line_observations": 262,
+          "unique_lines": 250,
+          "repeated_line_observations": 12,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/README.md",
+          "windows": 3,
+          "line_observations": 112,
+          "unique_lines": 44,
+          "repeated_line_observations": 68,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-basic/README.md",
+          "windows": 21,
+          "line_observations": 539,
+          "unique_lines": 166,
+          "repeated_line_observations": 373,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-tool-result-pruner/README.md",
+          "windows": 8,
+          "line_observations": 293,
+          "unique_lines": 111,
+          "repeated_line_observations": 182,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/README.md",
+          "windows": 4,
+          "line_observations": 122,
+          "unique_lines": 51,
+          "repeated_line_observations": 71,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-acp/README.md",
+          "windows": 1,
+          "line_observations": 40,
+          "unique_lines": 40,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-claude-code/README.md",
+          "windows": 1,
+          "line_observations": 40,
+          "unique_lines": 40,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-codex/README.md",
+          "windows": 1,
+          "line_observations": 49,
+          "unique_lines": 49,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-dsh-sdk/README.md",
+          "windows": 1,
+          "line_observations": 39,
+          "unique_lines": 39,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-fork-in-process/README.md",
+          "windows": 1,
+          "line_observations": 40,
+          "unique_lines": 40,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-spawn-in-process/README.md",
+          "windows": 1,
+          "line_observations": 40,
+          "unique_lines": 40,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent/README.md",
+          "windows": 3,
+          "line_observations": 91,
+          "unique_lines": 90,
+          "repeated_line_observations": 1,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/tool-subagent-control/README.md",
+          "windows": 1,
+          "line_observations": 52,
+          "unique_lines": 52,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/tool-subagent/README.md",
+          "windows": 4,
+          "line_observations": 131,
+          "unique_lines": 68,
+          "repeated_line_observations": 63,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        }
+      ],
+      "line_observations": 2164,
+      "repeated_line_observations": 842
+    },
+    {
+      "arm": "serial",
+      "sample": 2,
+      "run_id": "418a92b9-08f5-4c24-8484-9612942eeab4",
+      "raw_sha256": "75826916fc5abf8ceaf1bfb986d2c40d7df825e8b32c1dc2f7d23757749c2ffa",
+      "provider_tokens": {
+        "input_tokens": 961399,
+        "output_tokens": 11404,
+        "total_tokens": 972803,
+        "cache_read_tokens": 790528,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 1600
+      },
+      "scopes": {
+        "primary": {
+          "calls": 33,
+          "input_tokens": 961399,
+          "output_tokens": 11404,
+          "total_tokens": 972803,
+          "cache_read_tokens": 790528,
+          "peak_input_tokens": 49717,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        }
+      },
+      "request_components": null,
+      "schema_bytes": null,
+      "skill_injection_bytes": null,
+      "request_components_unknown_reason": "v23 retained provider Usage and persistent messages, not model-bound payloads; do not infer components from totals or checkpoints",
+      "http_capture_bytes": null,
+      "spill_count": null,
+      "pruning_count": null,
+      "automatic_root_summaries": 0,
+      "windows": 54,
+      "truncated_windows_excluded": 0,
+      "readings": [
+        {
+          "namespace": "root",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/architecture.md",
+          "windows": 1,
+          "line_observations": 32,
+          "unique_lines": 32,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/compaction.md",
+          "windows": 13,
+          "line_observations": 439,
+          "unique_lines": 276,
+          "repeated_line_observations": 163,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/subagent.md",
+          "windows": 4,
+          "line_observations": 141,
+          "unique_lines": 141,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/README.md",
+          "windows": 5,
+          "line_observations": 138,
+          "unique_lines": 72,
+          "repeated_line_observations": 66,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/README.md",
+          "windows": 2,
+          "line_observations": 74,
+          "unique_lines": 55,
+          "repeated_line_observations": 19,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-basic/README.md",
+          "windows": 8,
+          "line_observations": 236,
+          "unique_lines": 176,
+          "repeated_line_observations": 60,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-tool-result-pruner/README.md",
+          "windows": 2,
+          "line_observations": 88,
+          "unique_lines": 88,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/README.md",
+          "windows": 2,
+          "line_observations": 68,
+          "unique_lines": 50,
+          "repeated_line_observations": 18,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-acp/README.md",
+          "windows": 1,
+          "line_observations": 44,
+          "unique_lines": 44,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-claude-code/README.md",
+          "windows": 1,
+          "line_observations": 48,
+          "unique_lines": 48,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-codex/README.md",
+          "windows": 1,
+          "line_observations": 49,
+          "unique_lines": 49,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-dsh-sdk/README.md",
+          "windows": 1,
+          "line_observations": 39,
+          "unique_lines": 39,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-fork-in-process/README.md",
+          "windows": 1,
+          "line_observations": 55,
+          "unique_lines": 55,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-spawn-in-process/README.md",
+          "windows": 2,
+          "line_observations": 100,
+          "unique_lines": 74,
+          "repeated_line_observations": 26,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent/README.md",
+          "windows": 6,
+          "line_observations": 187,
+          "unique_lines": 90,
+          "repeated_line_observations": 97,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/tool-subagent-control/README.md",
+          "windows": 1,
+          "line_observations": 50,
+          "unique_lines": 50,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/tool-subagent/README.md",
+          "windows": 2,
+          "line_observations": 69,
+          "unique_lines": 68,
+          "repeated_line_observations": 1,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        }
+      ],
+      "line_observations": 1934,
+      "repeated_line_observations": 450
+    },
+    {
+      "arm": "serial",
+      "sample": 3,
+      "run_id": "634cf56d-6ae2-463d-b332-6b4365231e57",
+      "raw_sha256": "39554e64942c315766395a25d2db9da5d891c5774a731258a042145cc2a12d2a",
+      "provider_tokens": {
+        "input_tokens": 952409,
+        "output_tokens": 12864,
+        "total_tokens": 965273,
+        "cache_read_tokens": 769280,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 2555
+      },
+      "scopes": {
+        "primary": {
+          "calls": 31,
+          "input_tokens": 952409,
+          "output_tokens": 12864,
+          "total_tokens": 965273,
+          "cache_read_tokens": 769280,
+          "peak_input_tokens": 52393,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        }
+      },
+      "request_components": null,
+      "schema_bytes": null,
+      "skill_injection_bytes": null,
+      "request_components_unknown_reason": "v23 retained provider Usage and persistent messages, not model-bound payloads; do not infer components from totals or checkpoints",
+      "http_capture_bytes": null,
+      "spill_count": null,
+      "pruning_count": null,
+      "automatic_root_summaries": 0,
+      "windows": 54,
+      "truncated_windows_excluded": 0,
+      "readings": [
+        {
+          "namespace": "root",
+          "path": "README.md",
+          "windows": 1,
+          "line_observations": 77,
+          "unique_lines": 77,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/compaction.md",
+          "windows": 11,
+          "line_observations": 352,
+          "unique_lines": 244,
+          "repeated_line_observations": 108,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "docs/subsystems/subagent.md",
+          "windows": 5,
+          "line_observations": 153,
+          "unique_lines": 153,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/README.md",
+          "windows": 2,
+          "line_observations": 72,
+          "unique_lines": 51,
+          "repeated_line_observations": 21,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-basic/README.md",
+          "windows": 16,
+          "line_observations": 405,
+          "unique_lines": 216,
+          "repeated_line_observations": 189,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/compaction/compaction-tool-result-pruner/README.md",
+          "windows": 4,
+          "line_observations": 170,
+          "unique_lines": 88,
+          "repeated_line_observations": 82,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/README.md",
+          "windows": 2,
+          "line_observations": 71,
+          "unique_lines": 49,
+          "repeated_line_observations": 22,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-acp/README.md",
+          "windows": 2,
+          "line_observations": 52,
+          "unique_lines": 52,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-claude-code/README.md",
+          "windows": 2,
+          "line_observations": 68,
+          "unique_lines": 68,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-codex/README.md",
+          "windows": 2,
+          "line_observations": 69,
+          "unique_lines": 69,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-dsh-sdk/README.md",
+          "windows": 1,
+          "line_observations": 39,
+          "unique_lines": 39,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-fork-in-process/README.md",
+          "windows": 1,
+          "line_observations": 55,
+          "unique_lines": 55,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent-spawn-in-process/README.md",
+          "windows": 1,
+          "line_observations": 53,
+          "unique_lines": 53,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/subagent/README.md",
+          "windows": 2,
+          "line_observations": 63,
+          "unique_lines": 62,
+          "repeated_line_observations": 1,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/tool-subagent-control/README.md",
+          "windows": 1,
+          "line_observations": 52,
+          "unique_lines": 52,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        },
+        {
+          "namespace": "root",
+          "path": "packages/subagent/tool-subagent/README.md",
+          "windows": 1,
+          "line_observations": 50,
+          "unique_lines": 50,
+          "repeated_line_observations": 0,
+          "repeat_reason": "unknown: follow-up, citation checking and unnecessary rereading cannot be separated from intervals alone"
+        }
+      ],
+      "line_observations": 1801,
+      "repeated_line_observations": 423
+    }
+  ],
+  "assembly_review": {
+    "skills": "ExecutionSkillsMiddleware calls SDK SkillsMiddleware on a request override; metadata and immutable snapshot persist, injected system blocks are not appended to checkpoint messages",
+    "chart_tools": "existing successful spec-read gate already hides unrelated chart schemas",
+    "action": "no further skill/schema assembly change without evidence of duplication",
+    "runtime_measurement_still_required": true
+  }
+}

@@ -121,6 +121,7 @@ def test_context_wrapper_is_explicit_for_root_and_all_children(monkeypatch, tmp_
     )
     from runtime_service.runtime.capabilities import graph_capabilities
 
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", "1")
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))
     instance = RecordingModel(

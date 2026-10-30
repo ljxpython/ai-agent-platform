@@ -30,6 +30,64 @@ def result_path(raw, call_id):
     return f"/large_tool_results/{sha256(raw.encode()).hexdigest()}/{call_id}"
 
 
+@pytest.mark.parametrize(
+    "line", ["x" * 100, "中" * 100, "x" * 4000], ids=["ascii", "cjk", "long-lines"]
+)
+def test_multiline_guard_counts_notice_inside_character_cap(line):
+    from runtime_service.middlewares.filesystem import truncate_tool_output_text
+
+    raw = "\n".join(line for _ in range(200))
+    result = truncate_tool_output_text(raw, max_chars=4800, tool_name="read_file")
+    assert len(result) <= 4800
+    assert "截断" in result
+    assert result.startswith(line[:100])
+    assert result.endswith(line[-100:])
+
+
+def test_guard_preserves_images_and_command_state(tmp_path, monkeypatch):
+    monkeypatch.setenv("AGENT_TOOL_OUTPUT_MAX_CHARS", "4800")
+    mw = ResultFilesystemMiddleware(backend=FilesystemBackend(root_dir=tmp_path))
+    image = {"type": "image_url", "image_url": {"url": "https://example.com/image.png"}}
+    message = ToolMessage(
+        content=[{"type": "text", "text": "x" * 20000}, image], tool_call_id="image"
+    )
+    command = Command(
+        update={"messages": [message], "evidence": "untouched"}, goto="next"
+    )
+    guarded = mw._guard_result(command, "read_file")
+    assert guarded.goto == "next" and guarded.update["evidence"] == "untouched"
+    content = guarded.update["messages"][0].content
+    assert any(
+        block.get("url") == "https://example.com/image.png" or block == image
+        for block in content
+    )
+    assert len(content[0]["text"]) <= 4800
+    assert len(message.content[0]["text"]) == 20000
+
+
+def test_large_grep_is_saved_and_middle_page_can_be_read(tmp_path, monkeypatch):
+    monkeypatch.setenv("AGENT_TOOL_OUTPUT_MAX_CHARS", "4800")
+    backend = FilesystemBackend(root_dir=tmp_path)
+    mw = ResultFilesystemMiddleware(backend=backend, tool_token_limit_before_evict=1200)
+    raw = "\n".join(f"match-{i}: " + "evidence " * 10 for i in range(200))
+    original = ToolMessage(content=raw, tool_call_id="grep-large", name="grep")
+    result = mw.wrap_tool_call(
+        SimpleNamespace(tool_call={"name": "grep"}), lambda _: original
+    )
+    path = result_path(raw, "grep-large")
+    assert path in result.content and len(result.content) <= 4800
+    assert backend.download_files([path])[0].content.decode() == raw
+    read = next(t for t in mw.tools if t.name == "read_file")
+    page = read.func(
+        file_path=path, offset=99, limit=2, runtime=SimpleNamespace(tool_call_id="page")
+    )
+    visible = mw.wrap_tool_call(
+        SimpleNamespace(tool_call={"name": "read_file"}), lambda _: page
+    )
+    assert "match-100:" in str(visible.content)
+    assert "saved in the filesystem" not in str(visible.content)
+
+
 def _model(*responses: AIMessage) -> BindableFakeMessagesChatModel:
     return BindableFakeMessagesChatModel(
         responses=list(responses),
@@ -61,7 +119,8 @@ def large_result(label: str = "evidence") -> str:
 LARGE_PATH = result_path(large_result.invoke({}), "large-1")
 
 
-def test_capacity_concurrency_and_preview_cost_matrix(tmp_path):
+def test_capacity_concurrency_and_preview_cost_matrix(tmp_path, monkeypatch):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     rows = []
     for capacity in (12_000, 32_000, 128_000):
         instance = BindableFakeMessagesChatModel(
@@ -154,11 +213,7 @@ def test_capacity_concurrency_and_preview_cost_matrix(tmp_path):
     assert all(
         r["tool_text_within_budget"] for r in calibrated if r["shape"] != "long-lines"
     )
-    assert any(
-        not r["tool_text_within_budget"]
-        for r in calibrated
-        if r["shape"] == "long-lines"
-    )
+    assert all(r["tool_text_within_budget"] for r in calibrated)
     artifact = tmp_path / "f04-budget-matrix.json"
     artifact.write_text(json.dumps(rows, indent=2))
     print(
@@ -666,7 +721,7 @@ def test_truncate_tool_output_text_head_tail():
 
     assert "工具 'read_file' 输出过长" in truncated
     assert "line 0:" in truncated
-    assert "line 9:" in truncated
+    assert len(truncated) <= 500
     assert "line 199:" in truncated
     assert "line 100:" not in truncated
 

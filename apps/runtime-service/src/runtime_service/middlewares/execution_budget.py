@@ -13,6 +13,8 @@ from langchain.agents.middleware.model_call_limit import (
     ModelCallLimitState,
 )
 from langchain.agents.middleware.types import PrivateStateAttr
+from langchain.agents.structured_output import ToolStrategy
+from langchain_core.messages import AIMessage
 from langgraph.channels import UntrackedValue
 from langgraph.config import get_config
 from langgraph.errors import GraphBubbleUp
@@ -127,6 +129,25 @@ def add_wrapup_instruction(request: ModelRequest) -> ModelRequest:
         else SystemMessage(content=content)
     )
     return request.override(system_message=system_message)
+
+
+def disable_tool_calls(request: ModelRequest) -> ModelRequest:
+    if isinstance(request.response_format, ToolStrategy):
+        # SDK adds only the declared response schema; no executable tools remain.
+        return request.override(
+            tools=[],
+            tool_choice=None,
+            model_settings={
+                k: v for k, v in request.model_settings.items() if k != "tool_choice"
+            },
+        )
+    choice = {"type": "none"} if request.model._llm_type == "anthropic-chat" else "none"
+    # Empty-tool binding ignores request.tool_choice; pass it as a model setting.
+    return request.override(
+        tools=[],
+        tool_choice=choice,
+        model_settings={**request.model_settings, "tool_choice": choice},
+    )
 
 
 def check_graph_budget(
@@ -268,19 +289,68 @@ class ExecutionBudgetMiddleware(ModelCallLimitMiddleware):
             ),
         }
 
-    def wrap_model_call(self, request, handler):
-        return handler(
+    def _delivery_request(self, request):
+        last_call = any(
+            limit is not None and request.state.get(counter, 0) >= limit - 1
+            for limit, counter in (
+                (self.run_limit, "run_model_call_count"),
+                (self.thread_limit, "thread_model_call_count"),
+            )
+        )
+        if last_call:
+            # Keep the final model call for delivery instead of another tool round.
+            request = disable_tool_calls(request)
+        return (
             add_wrapup_instruction(request)
-            if self.wrapup_requested or request.state.get("runtime_budget_wrapup")
+            if last_call
+            or self.wrapup_requested
+            or request.state.get("runtime_budget_wrapup")
             else request
         )
 
+    def wrap_model_call(self, request, handler):
+        return handler(self._delivery_request(request))
+
     async def awrap_model_call(self, request, handler):
-        return await handler(
-            add_wrapup_instruction(request)
-            if self.wrapup_requested or request.state.get("runtime_budget_wrapup")
-            else request
-        )
+        return await handler(self._delivery_request(request))
+
+    @hook_config(can_jump_to=["end"])
+    def after_model(self, state, runtime):
+        update = super().after_model(state, runtime)
+        last = state["messages"][-1]
+        if getattr(last, "tool_calls", None) and any(
+            limit is not None and update[counter] >= limit
+            for limit, counter in (
+                (self.run_limit, "run_model_call_count"),
+                (self.thread_limit, "thread_model_call_count"),
+            )
+        ):
+            # Providers can ignore tool_choice; enforce delivery before tools run.
+            latches, notices = self._model_notices(
+                {**state, **update}, runtime, reached=True
+            )
+            if self.exit_behavior == "error":
+                raise ModelCallLimitExceededError(
+                    thread_count=update["thread_model_call_count"],
+                    run_count=update["run_model_call_count"],
+                    thread_limit=self.thread_limit,
+                    run_limit=self.run_limit,
+                )
+            return {
+                **update,
+                "jump_to": "end",
+                "runtime_budget_latches": latches,
+                "messages": [
+                    AIMessage(
+                        id=last.id,
+                        content="模型调用额度已耗尽；收尾响应仍请求工具，已拒绝执行。本次任务尚未完成。",
+                        additional_kwargs={"runtime_budget_notice": notices[0]}
+                        if notices
+                        else {},
+                    )
+                ],
+            }
+        return update
 
 
 __all__ = [

@@ -225,7 +225,12 @@ def _observed_request(request: ModelRequest, observer: _OutputObserver) -> Model
         callbacks = [*(callbacks or []), observer]
     # A shallow per-attempt copy keeps callbacks local and preserves the SDK clients.
     model = request.model.model_copy(update={"callbacks": callbacks})
-    return request.override(model=model)
+    request = request.override(model=model)
+    if request.tool_choice == "none" or request.tool_choice == {"type": "none"}:
+        from runtime_service.middlewares.execution_budget import disable_tool_calls
+
+        request = disable_tool_calls(request)
+    return request
 
 
 def _add_summary(result, summary: dict) -> None:

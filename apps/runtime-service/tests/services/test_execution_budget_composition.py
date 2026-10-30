@@ -62,7 +62,10 @@ def test_deep_agent_primary_and_children_explicitly_compose_budget(
         "read_file",
         "glob",
         "grep",
+        "github_query",
     }
+    if service == "dearflow":
+        assert "github_query" in detector.observed_tools
     assert primary.index(detector) > primary.index(budget)
     for child in captured["subagents"]:
         child_budget = next(

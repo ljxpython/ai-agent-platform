@@ -348,6 +348,7 @@ from pathlib import Path
 
 from dotenv import dotenv_values
 from redis.asyncio import Redis
+from redis.exceptions import BusyLoadingError
 
 
 async def main() -> None:
@@ -357,7 +358,14 @@ async def main() -> None:
         raise SystemExit("REDIS_URI is empty")
     client = Redis.from_url(redis_uri)
     try:
-        await client.ping()
+        for attempt in range(120):
+            try:
+                await client.ping()
+                break
+            except BusyLoadingError:
+                if attempt == 119:
+                    raise
+                await asyncio.sleep(0.5)
     except Exception as exc:
         raise SystemExit("Redis is unavailable at REDIS_URI") from exc
     finally:

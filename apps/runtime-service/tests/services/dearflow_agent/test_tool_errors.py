@@ -4,7 +4,8 @@ import asyncio
 import json
 
 import pytest
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import ToolException
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -71,12 +72,18 @@ def test_main_model_consumes_safe_native_error(build):
             {"messages": [("user", "research")]}, cfg, context={}
         )
         message = error_messages(model)[0]
-        payload = json.loads(message.content)
+        payload, _ = json.JSONDecoder().raw_decode(message.content)
+        persisted = next(
+            m
+            for m in result["messages"]
+            if isinstance(m, ToolMessage) and m.status == "error"
+        )
+        assert json.loads(persisted.content) == payload
         assert payload["code"] == "tool.invalid_input"
         assert payload["outcome"] == "not_started"
         assert message.name == payload["name"] == "search_web"
         assert message.tool_call_id == "tool-1"
-        assert result["messages"][-1].content == "alternative answer"
+        assert "alternative answer" in result["messages"][-1].content
 
     asyncio.run(run())
 
@@ -159,8 +166,9 @@ def test_researcher_consumes_its_own_error_then_returns_to_parent(build):
         assert message.tool_call_id == "child-error"
         parent_tools = [m for m in result["messages"] if isinstance(m, ToolMessage)]
         assert [m.name for m in parent_tools] == ["task"]
+        assert parent_tools[0].status == "success"
         assert "child alternative" in parent_tools[0].content
-        assert result["messages"][-1].content == "parent answer"
+        assert "parent answer" in result["messages"][-1].content
 
     asyncio.run(run())
 
@@ -214,7 +222,7 @@ def test_parallel_success_and_error_are_paired_and_consumed_once(
         assert sorted((m.tool_call_id, m.status) for m in messages) == expected
         assert calls == ["valid"]
         assert len(error_messages(model)) == 1
-        assert result["messages"][-1].content == "continued"
+        assert "continued" in result["messages"][-1].content
 
     asyncio.run(run())
 
@@ -282,12 +290,46 @@ def test_tool_policy_rejects_before_any_provider_call(build, monkeypatch):
     asyncio.run(run())
 
 
-def test_repeated_recoverable_errors_still_exhaust_existing_child_budget(
-    build, monkeypatch
+@pytest.mark.parametrize("name", ["unregistered_tool", "execute"])
+def test_child_cannot_expand_tool_permissions(build, name):
+    async def run():
+        cfg = config()
+        cfg["configurable"]["langgraph_auth_user"]["runtime_policy"][
+            "tool_overrides"
+        ] = {"execute": False}
+        graph, cfg, model = await build(
+            [
+                call("search_web", {"query": ""}, "source-error"),
+                call(name, {}, "forbidden"),
+            ],
+            cfg,
+        )
+        with pytest.raises(RuntimeResolutionError, match="runtime.tool.not_allowed"):
+            await graph.ainvoke({"messages": [("user", "Research")]}, cfg, context={})
+        assert len(model.seen) == 2
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("parent_requests_tool", [False, True])
+@pytest.mark.parametrize("limit_kind", ["model", "tool"])
+def test_exhausted_readonly_child_returns_failure_for_parent_wrapup(
+    build, monkeypatch, parent_requests_tool, limit_kind
 ):
     from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededError
+    from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
 
-    monkeypatch.setenv("AGENT_MODEL_CALL_LIMIT_PER_RUN", "2")
+    if limit_kind == "model":
+        monkeypatch.setenv("AGENT_MODEL_CALL_LIMIT_PER_RUN", "2")
+        expected_error = ModelCallLimitExceededError
+    else:
+        monkeypatch.setenv("AGENT_TOOL_CALL_LIMIT_PER_RUN", "1")
+        expected_error = ToolCallLimitExceededError
+
+    async def forbidden(*args, **kwargs):
+        pytest.fail("The parent's final response must not execute another tool")
+
+    monkeypatch.setattr(search, "tavily", forbidden)
 
     async def run():
         cfg = config()
@@ -303,13 +345,94 @@ def test_repeated_recoverable_errors_still_exhaust_existing_child_budget(
                 ),
                 call("search_web", {"query": ""}, "first"),
                 call("search_web", {"query": ""}, "second"),
+                call("search_web", {"query": "must-not-run"})
+                if parent_requests_tool
+                else AIMessage(content="partial"),
             ],
             cfg,
         )
-        with pytest.raises(ModelCallLimitExceededError):
-            await graph.ainvoke(
+        if parent_requests_tool:
+            with pytest.raises(expected_error):
+                await graph.ainvoke(
+                    {"messages": [("user", "delegate")]}, cfg, context=cfg["context"]
+                )
+        else:
+            result = await graph.ainvoke(
                 {"messages": [("user", "delegate")]}, cfg, context=cfg["context"]
             )
-        assert len(model.seen) == 3
+            assert "partial" in result["messages"][-1].content
+        failure = next(m for m in model.seen[-1] if isinstance(m, ToolMessage))
+        assert failure.name == "task" and failure.status == "error"
+        payload = json.loads(failure.content)
+        assert payload["error_type"] == expected_error.__name__
+        assert "incomplete" in payload["error"]
+        assert len(model.seen) == 4
+
+    asyncio.run(run())
+
+
+def test_exhausted_readonly_child_preserves_completed_sibling(monkeypatch, tmp_path):
+    monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
+    monkeypatch.setenv("TAVILY_API_KEY", "synthetic")
+    monkeypatch.setenv("AGENT_TOOL_CALL_LIMIT_PER_RUN", "2")
+
+    class Model(BindableFakeMessagesChatModel):
+        async def _agenerate(self, messages, **kwargs):
+            prompt = next(m.content for m in messages if isinstance(m, HumanMessage))
+            if prompt == "delegate":
+                if any(isinstance(m, ToolMessage) for m in messages):
+                    response = AIMessage(content="parent wrapup")
+                else:
+                    response = call(
+                        "task",
+                        {
+                            "subagent_type": "general-purpose",
+                            "description": "completed",
+                        },
+                        "completed",
+                    )
+                    response.tool_calls += call(
+                        "task",
+                        {
+                            "subagent_type": "general-purpose",
+                            "description": "exhausted",
+                        },
+                        "exhausted",
+                    ).tool_calls
+            elif prompt == "completed":
+                response = AIMessage(content="sibling evidence")
+            else:
+                assert prompt == "exhausted"
+                response = call("search_web", {"query": ""}, "over-limit-0")
+                for index in (1, 2):
+                    response.tool_calls += call(
+                        "search_web", {"query": ""}, f"over-limit-{index}"
+                    ).tool_calls
+            return ChatResult(generations=[ChatGeneration(message=response)])
+
+    monkeypatch.setattr(agent, "build_model", lambda *a, **kw: Model(responses=[]))
+
+    async def run():
+        cfg = config()
+        cfg["context"] = {"execution_mode": "ultra"}
+        cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = (
+            runtime_context_hash(cfg["context"])
+        )
+        graph = await agent.get_agent(cfg)
+        graph.checkpointer = InMemorySaver()
+        result = await graph.ainvoke(
+            {"messages": [("user", "delegate")]}, cfg, context=cfg["context"]
+        )
+        returned = {
+            m.tool_call_id: m for m in result["messages"] if isinstance(m, ToolMessage)
+        }
+        assert returned["completed"].status == "success"
+        assert returned["completed"].content == "sibling evidence"
+        assert returned["exhausted"].status == "error"
+        assert (
+            json.loads(returned["exhausted"].content)["error_type"]
+            == "ToolCallLimitExceededError"
+        )
+        assert "parent wrapup" in result["messages"][-1].content
 
     asyncio.run(run())

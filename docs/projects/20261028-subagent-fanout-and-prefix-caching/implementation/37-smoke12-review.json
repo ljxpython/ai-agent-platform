@@ -1,0 +1,61 @@
+{
+  "run_id": "bbefc3ee-6e35-48e0-8d8a-2f0261219ec4",
+  "thread_id": "617cf583-aa6c-43e5-9f34-3430e23413aa",
+  "raw_sha256": "9d574ad826f71590a2833584abc24829e0264007721fbacb1a868cc419861587",
+  "fact_scores": [
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "fact_review": [
+    "Rows 1/2/4 state service definition, basic provider and command consumer versus provider registry and model-facing delegation tools; package README sources support these.",
+    "Rows 2/6 explicitly state older-history summarization under pressure, /compact, optional prior trimming and the shipped dsh base enabling it by default; compaction README L12/L27-L33 supports the conclusion.",
+    "Rows 7/8/10 state pre-step before request derivation, canonical context overflow only, optional pruning before summary selection and retry only after replaceGeneration advances, with observed fixed-SHA sources.",
+    "Row 11 explicitly states the optional seam outside the agent loop and coexisting named providers, supported by the group and subsystem READMEs.",
+    "Row 11 states fresh in-process spawn, fork seeded with completed parent history, all four external provider forms and parent discovery of children, supported by the observed group summary L12."
+  ],
+  "prose_citation_resolution": {
+    "original_mechanical_audit_retained": true,
+    "false_positive": "docs/module-graph.md#L27-L33",
+    "literal_report_text": "5 个 compaction 子包均与 README#L27-L33 一致",
+    "resolved_reference": "packages/compaction/README.md#L27-L33",
+    "reason": "The table row explicitly lists this compaction README source; the parser incorrectly carries the last source-column path across into the treatment column. The referenced package rows exist and were observed."
+  },
+  "quality_limitations": [
+    "The child has a provider-count inconsistency; the final treatment marks it disputed and explicitly corrects it to six in the addition rather than adopting five.",
+    "Schema, coordinate and literal-quote checks do not prove arbitrary semantic entailment; this review scores only the preregistered facts and checks the reported citation discrepancy.",
+    "Provider deployment fingerprint and monetary prices remain unknown."
+  ],
+  "core_quality_pass": true,
+  "successful_child_reports": 3,
+  "source_fields_ranges_verified": 51,
+  "all_usage_complete": true,
+  "primary_peak_tokens": 28073,
+  "primary_peak_fraction": 0.21417999267578125,
+  "primary_input_tokens": 102637,
+  "total_tokens": 766725,
+  "duration_seconds": 637.627594,
+  "root_automatic_summaries": 0,
+  "frozen_public_source_files_verified": 1131,
+  "redis": {
+    "before": {
+      "at": "2026-10-29T09:32:05.918628+00:00",
+      "used_memory": 1124000,
+      "maxmemory": 1073741824,
+      "error_replies": 18,
+      "oom_errors": 0
+    },
+    "after": {
+      "at": "2026-10-29T09:48:48.923936+00:00",
+      "used_memory": 75620016,
+      "maxmemory": 1073741824,
+      "error_replies": 22,
+      "oom_errors": 0
+    },
+    "new_oom_errors": 0
+  },
+  "same_quality_reduction": null,
+  "status": "independent_smoke_passed; not a six-run sample or proof of repeated stability"
+}

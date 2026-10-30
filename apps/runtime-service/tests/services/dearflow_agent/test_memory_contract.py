@@ -317,7 +317,7 @@ def test_extraction_retries_once_with_shared_deadline(monkeypatch):
             ainvoke=model_call
         )
     )
-    middleware = middleware_module.MemoryContextMiddleware(model)
+    middleware = middleware_module.MemoryContextMiddleware(model, sync_mode=True)
     runtime = SimpleNamespace(
         execution_info=SimpleNamespace(thread_id="thread", run_id="run")
     )
@@ -426,7 +426,9 @@ def test_extraction_batches_owner_queue_sources_once(monkeypatch):
         execution_info=SimpleNamespace(thread_id="thread", run_id="run")
     )
     asyncio.run(
-        middleware_module.MemoryContextMiddleware(model).aafter_agent(state, runtime)
+        middleware_module.MemoryContextMiddleware(model, sync_mode=True).aafter_agent(
+            state, runtime
+        )
     )
     assert model_call.await_count == 1
     call_kwargs = model_call.call_args.kwargs

@@ -81,23 +81,28 @@ import { useAutomaticThreadTitle } from "../composables/useAutomaticThreadTitle"
 
 const activeView = ref<"chat" | "trajectory">("chat");
 
-const props = defineProps<{
-  projectId: string;
-  graphId: string;
-  agentId?: string;
-  threadId?: string;
-  initialThread?: ChatThread;
-  canWrite: boolean;
-  draft: string;
-  focusMode?: boolean;
-  targetName?: string;
-  projectName?: string;
-  threadTitle?: string;
-  enableExecutionMode?: boolean;
-  visible?: boolean;
-  onAccessRevoked?: () => void;
-  recursionLimitKey?: string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    projectId: string;
+    graphId: string;
+    agentId?: string;
+    threadId?: string;
+    initialThread?: ChatThread;
+    canWrite: boolean;
+    draft: string;
+    focusMode?: boolean;
+    targetName?: string;
+    projectName?: string;
+    threadTitle?: string;
+    enableExecutionMode?: boolean;
+    visible?: boolean;
+    onAccessRevoked?: () => void;
+    recursionLimitKey?: string;
+  }>(),
+  {
+    enableExecutionMode: undefined,
+  },
+);
 const emit = defineEmits<{
   thread: [id: string];
   "fork-thread": [id: string];

@@ -26,6 +26,7 @@ STACK = {
     "env": {
         "RUNTIME_BACKEND": "local",
         "AGENT_CONTEXT_MANAGEMENT_ENABLED": "1",
+        "AGENT_CONTEXT_HEADROOM_TOKENS": "1024",
         "WORKSPACE_TEST_PROBE_FAILURE_FILE": "",
     },
 }

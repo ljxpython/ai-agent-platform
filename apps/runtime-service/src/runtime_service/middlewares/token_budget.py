@@ -9,7 +9,10 @@ from typing import Literal
 from langchain.agents.middleware import AgentMiddleware, hook_config
 from langchain_core.messages import AIMessage, ToolMessage
 
-from runtime_service.errors import TokenBudgetUnverifiableError
+from runtime_service.errors import (
+    TokenBudgetExceededError,
+    TokenBudgetUnverifiableError,
+)
 from runtime_service.middlewares.execution_budget import add_wrapup_instruction
 from runtime_service.observability.usage import current_runtime_usage_callback
 from runtime_service.runtime.token_budget import token_budget_enabled
@@ -65,6 +68,7 @@ class TokenBudgetMiddleware(AgentMiddleware):
         if usage is not None and usage.token_budget is not None:
             status = usage.check_budget(optional=True)
             if status == "exhausted":
+                usage.mark_budget_stop("token_budget_exhausted")
                 msg = AIMessage(
                     content=(
                         "⚠️ 本次任务 Token 消耗已达到运行预算上限。已停止新的模型调用与工具执行，"
@@ -84,12 +88,19 @@ class TokenBudgetMiddleware(AgentMiddleware):
             req = (
                 add_wrapup_instruction(request) if status == "approaching" else request
             )
-            response = handler(req)
+            try:
+                response = handler(req)
+            except TokenBudgetExceededError:
+                return AIMessage(
+                    content="⚠️ 剩余 Token 预算不足以容纳下一次模型调用，已安全停止。"
+                    "现有消息和来源证据已保留，本次任务尚未完成。"
+                )
             usage = current_runtime_usage_callback()
             if usage is not None and usage.token_budget is not None:
                 post_status = usage.check_budget(optional=True)
                 if post_status == "exhausted" and isinstance(response, AIMessage):
                     if response.tool_calls:
+                        usage.mark_budget_stop("token_budget_exhausted")
                         return response.model_copy(
                             update={
                                 "tool_calls": [],
@@ -116,12 +127,19 @@ class TokenBudgetMiddleware(AgentMiddleware):
             req = (
                 add_wrapup_instruction(request) if status == "approaching" else request
             )
-            response = await handler(req)
+            try:
+                response = await handler(req)
+            except TokenBudgetExceededError:
+                return AIMessage(
+                    content="⚠️ 剩余 Token 预算不足以容纳下一次模型调用，已安全停止。"
+                    "现有消息和来源证据已保留，本次任务尚未完成。"
+                )
             usage = current_runtime_usage_callback()
             if usage is not None and usage.token_budget is not None:
                 post_status = usage.check_budget(optional=True)
                 if post_status == "exhausted" and isinstance(response, AIMessage):
                     if response.tool_calls:
+                        usage.mark_budget_stop("token_budget_exhausted")
                         return response.model_copy(
                             update={
                                 "tool_calls": [],
@@ -146,6 +164,7 @@ class TokenBudgetMiddleware(AgentMiddleware):
             usage = current_runtime_usage_callback()
             if usage is not None and usage.token_budget is not None:
                 if usage.check_budget(optional=True) == "exhausted":
+                    usage.mark_budget_stop("token_budget_exhausted")
                     tool_call = (
                         request.tool_call if isinstance(request.tool_call, dict) else {}
                     )
@@ -162,6 +181,7 @@ class TokenBudgetMiddleware(AgentMiddleware):
             usage = current_runtime_usage_callback()
             if usage is not None and usage.token_budget is not None:
                 if usage.check_budget(optional=True) == "exhausted":
+                    usage.mark_budget_stop("token_budget_exhausted")
                     tool_call = (
                         request.tool_call if isinstance(request.tool_call, dict) else {}
                     )

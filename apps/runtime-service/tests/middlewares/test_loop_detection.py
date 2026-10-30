@@ -12,6 +12,7 @@ from langchain.agents.middleware import AgentMiddleware, ModelCallLimitMiddlewar
 from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededError
 from langchain.tools import tool
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.tools import ToolException
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.runtime import Runtime
 from support import BindableFakeMessagesChatModel
@@ -24,6 +25,63 @@ from runtime_service.middlewares.loop_detection import (
     _completed_batch,
     loop_detection_enabled,
 )
+from runtime_service.tools.errors import tool_error_handler
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+@pytest.mark.parametrize("vary_page", [False, True])
+def test_github_error_loop_is_bounded_but_pagination_is_progress(
+    asynchronous, vary_page
+):
+    calls = []
+
+    @tool
+    def github_query(owner: str, repo: str, ref: str, start_line: int) -> str:
+        """Read one public GitHub source window."""
+        calls.append(start_line)
+        raise ToolException("research_not_found_or_private")
+
+    github_query.handle_tool_error = tool_error_handler("github_query")
+    responses = [
+        AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "name": "github_query",
+                    "args": {
+                        "owner": "deepseek-ai",
+                        "repo": "deepseek-ai",
+                        "ref": "a" * 40,
+                        "start_line": index + 1 if vary_page else 1,
+                    },
+                    "id": f"github-{index}",
+                }
+            ],
+        )
+        for index in range(6)
+    ] + [AIMessage(content="unavailable")]
+    graph = create_agent(
+        BindableFakeMessagesChatModel(responses=responses),
+        tools=[github_query],
+        middleware=[LoopDetectionMiddleware(["github_query"])],
+    )
+
+    def run():
+        request = {"messages": [("user", "read public source")]}
+        config = {"recursion_limit": 100}
+        return (
+            asyncio.run(graph.ainvoke(request, config))
+            if asynchronous
+            else graph.invoke(request, config)
+        )
+
+    if vary_page:
+        assert run()["messages"][-1].content == "unavailable"
+        assert len(calls) == 6
+    else:
+        with pytest.raises(RuntimeExecutionError, match="runtime.loop.detected"):
+            run()
+        assert len(calls) == 5
 
 
 def batch(calls=None, contents=None, *, ai_id="ai"):

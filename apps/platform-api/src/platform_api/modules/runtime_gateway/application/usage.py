@@ -191,12 +191,6 @@ class TokenBudgetSummary(UsageFields):
         expected = max(0, self.max_tokens - (self.known_used_tokens or 0))
         if self.remaining_tokens != (expected if self.coverage == "complete" else None):
             raise ValueError("Inconsistent token budget coverage")
-        if (
-            self.stop_code == "token_budget_exhausted"
-            and self.known_used_tokens is not None
-            and self.known_used_tokens < self.max_tokens
-        ):
-            raise ValueError("Inconsistent token budget stop reason")
         return self
 
 

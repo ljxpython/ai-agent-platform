@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 import os
 import re
@@ -10,9 +12,11 @@ from collections import Counter
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation, localcontext
+from math import ceil
 from typing import Any
 
 from langchain_core.callbacks import AsyncCallbackHandler, BaseCallbackHandler
+from langchain_core.messages.utils import count_tokens_approximately
 from langgraph.config import get_config
 
 from runtime_service.errors import (
@@ -20,6 +24,7 @@ from runtime_service.errors import (
     TokenBudgetUnverifiableError,
 )
 from runtime_service.observability.diagnostics import uuid_string
+from runtime_service.observability.logging import log_context_metric
 from runtime_service.runtime.token_budget import (
     RunTokenBudget,
     TokenBudgetPolicy,
@@ -53,6 +58,86 @@ def usage_enabled() -> bool:
 
 def empty_tokens(value=None) -> dict:
     return dict.fromkeys(TOKEN_FIELDS, value)
+
+
+def _estimate_input_tokens(messages, tools, response_format=None) -> int:
+    conversations = (
+        messages if messages and isinstance(messages[0], (list, tuple)) else [messages]
+    )
+    estimate = sum(
+        count_tokens_approximately(conversation, chars_per_token=4.0, tools=tools)
+        for conversation in conversations
+    )
+    if response_format is not None:
+        estimate += ceil(len(json.dumps(response_format, ensure_ascii=False)) / 4)
+    # shortcut: the generic estimate is model-agnostic, retain 25% margin until provider tokenizers are available.
+    return ceil(estimate * 1.25)
+
+
+def _request_profile(messages, tools, response_format=None) -> dict:
+    """Count model-bound input without exporting prompts, arguments, or schemas."""
+    conversations = (
+        messages if messages and isinstance(messages[0], (list, tuple)) else [messages]
+    )
+    grouped = {key: [] for key in ("system", "user", "assistant", "tool", "other")}
+    roles = {"system": "system", "human": "user", "ai": "assistant", "tool": "tool"}
+    for conversation in conversations:
+        for message in conversation:
+            grouped[roles.get(getattr(message, "type", None), "other")].append(message)
+    components = {}
+    for role, items in grouped.items():
+        texts, nontext = [], 0
+        for message in items:
+            content = message.content
+            if isinstance(content, str):
+                texts.append(content)
+            elif isinstance(content, list):
+                for block in content:
+                    if isinstance(block, str):
+                        texts.append(block)
+                    elif isinstance(block, Mapping) and block.get("type") == "text":
+                        texts.append(block.get("text", ""))
+                    else:
+                        nontext += 1
+        components[role] = {
+            "messages": len(items),
+            "text_chars": sum(len(text) for text in texts),
+            "text_bytes": sum(len(text.encode()) for text in texts),
+            "nontext_blocks": nontext,
+            "estimated_tokens": count_tokens_approximately(items) if items else 0,
+        }
+    schema = json.dumps(
+        tools or [], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    response_schema = (
+        json.dumps(
+            response_format, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        if response_format is not None
+        else ""
+    )
+    return {
+        "boundary": "model_callback",
+        "estimate_method": "langchain_approximate",
+        "injection_provenance": "unavailable",
+        "components": components,
+        "tool_schema_count": len(tools or []),
+        "tool_schema_chars": len(schema),
+        "tool_schema_bytes": len(schema.encode()),
+        "tool_schema_sha256": hashlib.sha256(schema.encode()).hexdigest(),
+        "response_schema_chars": len(response_schema),
+        "response_schema_bytes": len(response_schema.encode()),
+        "response_schema_sha256": hashlib.sha256(response_schema.encode()).hexdigest()
+        if response_schema
+        else None,
+        "response_schema_estimated_tokens": ceil(len(response_schema) / 4),
+        "nontext_token_estimate": "unavailable",
+        "estimated_input_tokens": sum(
+            count_tokens_approximately(conversation, tools=tools)
+            for conversation in conversations
+        )
+        + ceil(len(response_schema) / 4),
+    }
 
 
 def _usage_payload(response: Any) -> tuple[Mapping, str]:
@@ -398,6 +483,50 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             raise TokenBudgetUnverifiableError()
         return state
 
+    def mark_budget_stop(self, code):
+        if self.token_budget is None:
+            return
+        self.token_budget.mark_stop(code)
+        self._emit_budget_notice(code)
+
+    def reserve_model_call(self, run_id, messages, *, invocation_params, metadata):
+        budget = self.token_budget
+        if budget is None:
+            return
+        call_id = str(run_id)
+        if budget.has_reservation(call_id):
+            if budget.unverifiable or budget.stop_code == "token_budget_unverifiable":
+                self.check_budget()
+            return
+        self.check_budget()
+        params = invocation_params if isinstance(invocation_params, Mapping) else {}
+        metadata = metadata if isinstance(metadata, Mapping) else {}
+        model_metadata = metadata.get("runtime_usage_model") or {}
+        model_metadata = model_metadata if isinstance(model_metadata, Mapping) else {}
+        max_output_tokens = params.get("max_tokens") or params.get(
+            "max_completion_tokens"
+        )
+        if max_output_tokens is None:
+            max_output_tokens = model_metadata.get("max_output_tokens")
+        if type(max_output_tokens) is not int or max_output_tokens <= 0:
+            budget.mark_unverifiable()
+            self.check_budget()
+        tools = params.get("tools")
+        if tools is not None and not isinstance(tools, list):
+            budget.mark_unverifiable()
+            self.check_budget()
+        try:
+            estimated_input = _estimate_input_tokens(
+                messages, tools, params.get("response_format")
+            )
+        except Exception:
+            budget.mark_unverifiable()
+            self.check_budget()
+        reservation = estimated_input + max_output_tokens
+        if not budget.reserve_call(call_id, reservation):
+            self.mark_budget_stop("token_budget_exhausted")
+            raise TokenBudgetExceededError()
+
     def _emit_budget_notice(self, code):
         from runtime_service.middlewares.execution_budget import (
             build_budget_notice,
@@ -472,11 +601,13 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
         tags=None,
         **kwargs,
     ):
-        if self.token_budget and self.check_budget(optional=True) in {
-            "exhausted",
-            "unverifiable",
-        }:
-            return
+        if self.token_budget:
+            self.reserve_model_call(
+                run_id,
+                messages,
+                invocation_params=kwargs.get("invocation_params"),
+                metadata=metadata,
+            )
         if run_id in self._calls:
             return
         metadata = metadata or {}
@@ -490,10 +621,14 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             if protocol in {"openai", "openai-compatible", "openai_compatible"}
             else _identifier(model.get("provider")) or ""
         )
-        namespace = [
-            _identifier(p.split(":", 1)[0])
+        segments = [
+            p
             for p in str(metadata.get("langgraph_checkpoint_ns") or "").split("|")
             if p
+        ]
+        namespace = [
+            _identifier(p if index < len(segments) - 1 else p.split(":", 1)[0])
+            for index, p in enumerate(segments)
         ]
         namespace = [p for p in namespace if p][:8]
         purpose = metadata.get("runtime_usage_purpose", "agent")
@@ -537,6 +672,23 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             "cost_reason": "incomplete_call",
         }
         self._calls[run_id] = call
+        try:
+            params = kwargs.get("invocation_params") or {}
+            profile = _request_profile(
+                messages, params.get("tools"), params.get("response_format")
+            )
+            log_context_metric(
+                {
+                    "event": "runtime.model_request.profile",
+                    "run_id": self.identity.get("run_id"),
+                    "model_call_id": str(run_id),
+                    "scope": call["scope"],
+                    "namespace": namespace,
+                    **profile,
+                }
+            )
+        except Exception:
+            logger.debug("Model request profile unavailable")
         if self.token_budget:
             self.token_budget.begin_call(str(run_id))
         await self._write("upsert_call", call)
@@ -546,6 +698,7 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
         if call is None:
             self._degraded = True
             if self.token_budget:
+                self.token_budget.release_call(str(run_id))
                 self.token_budget.mark_unverifiable()
             return
         usage = normalize_usage(response, provider=self._usage_providers[run_id])
@@ -588,14 +741,19 @@ class _TokenBudgetDispatchGuard(BaseCallbackHandler):
     """Sync guard because LangChain's sync bridge swallows coroutine errors."""
 
     raise_error = True
-    # Async dispatch must schedule all handlers before a refusal can propagate.
+    # Let the async usage callback persist or refuse its preflight first.
     run_inline = False
 
     def __init__(self, usage: RuntimeUsageCallback):
         self.usage = usage
 
-    def on_chat_model_start(self, serialized, messages, **kwargs):
-        self.usage.check_budget()
+    def on_chat_model_start(self, serialized, messages, *, run_id, **kwargs):
+        self.usage.reserve_model_call(
+            run_id,
+            messages,
+            invocation_params=kwargs.get("invocation_params"),
+            metadata=kwargs.get("metadata"),
+        )
 
 
 def with_runtime_usage(

@@ -298,8 +298,6 @@ def project_budget_notice(value: Any) -> dict[str, Any] | None:
             type(used) is not int
             or type(remaining) is not int
             or remaining != max(0, limit - used)
-            or value["code"] == "token_budget_exhausted"
-            and used < limit
             or value["code"] == "token_budget_approaching"
             and not (limit * 4 + 4) // 5 <= used < limit
         ):

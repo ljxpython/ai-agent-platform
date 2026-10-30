@@ -82,6 +82,7 @@ def test_dearflow_maintenance_composition_skips_business_setup(monkeypatch, tmp_
 
     from .test_agent import config
 
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", "1")
     monkeypatch.setenv("RUNTIME_DEAR_GOVERNANCE_ENABLED", "1")
     monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))

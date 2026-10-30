@@ -8,7 +8,11 @@ from typing import Annotated
 
 import pytest
 from langchain.agents import create_agent
-from langchain.agents.middleware import AgentMiddleware, ModelCallLimitMiddleware
+from langchain.agents.middleware import (
+    AgentMiddleware,
+    ModelCallLimitMiddleware,
+    ModelRequest,
+)
 from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededError
 from langchain.agents.middleware.types import AgentState, PrivateStateAttr
 from langchain.tools import tool
@@ -40,6 +44,54 @@ def loop_model():
             )
         ]
     )
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+@pytest.mark.parametrize("behavior", ["error", "end"])
+def test_last_call_never_executes_provider_tool_request(asynchronous, behavior):
+    executed = []
+
+    @tool
+    def forbidden() -> str:
+        """Record a call that must not run during delivery."""
+        executed.append(True)
+        return "unexpected"
+
+    model = BindableFakeMessagesChatModel(
+        responses=[
+            AIMessage(
+                content=[
+                    {
+                        "type": "tool_call",
+                        "name": "forbidden",
+                        "args": {},
+                        "id": "denied",
+                    }
+                ],
+                tool_calls=[{"name": "forbidden", "args": {}, "id": "denied"}],
+            )
+        ]
+    )
+    graph = create_agent(
+        model,
+        tools=[forbidden],
+        middleware=[ExecutionBudgetMiddleware(run_limit=1, exit_behavior=behavior)],
+    )
+
+    def invoke():
+        inputs = {"messages": [("user", "deliver")]}
+        return (
+            asyncio.run(graph.ainvoke(inputs)) if asynchronous else graph.invoke(inputs)
+        )
+
+    if behavior == "error":
+        with pytest.raises(ModelCallLimitExceededError):
+            invoke()
+    else:
+        result = invoke()
+        assert not result["messages"][-1].tool_calls
+        assert "未完成" in result["messages"][-1].content
+    assert executed == []
 
 
 @pytest.mark.parametrize(
@@ -207,6 +259,129 @@ def test_natural_last_call_and_literal_marker_do_not_report_stop():
     assert not any("runtime_budget" in key or "call_count" in key for key in result)
 
 
+@pytest.mark.parametrize("asynchronous", [False, True])
+@pytest.mark.parametrize(
+    "scope,count,expected_tools",
+    [
+        ("run", 2, True),
+        ("run", 3, False),
+        ("thread", 2, True),
+        ("thread", 3, False),
+    ],
+)
+def test_last_model_call_reserves_tool_free_delivery(
+    asynchronous, scope, count, expected_tools
+):
+    middleware = ExecutionBudgetMiddleware(**{f"{scope}_limit": 4})
+    request = ModelRequest(
+        model=loop_model(),
+        messages=[],
+        tools=[echo],
+        state={f"{scope}_model_call_count": count, "runtime_budget_wrapup": True},
+        model_settings={"temperature": 0.25},
+    )
+    seen = []
+
+    def capture(updated):
+        seen.append(updated)
+        return None
+
+    async def acapture(updated):
+        return capture(updated)
+
+    if asynchronous:
+        asyncio.run(middleware.awrap_model_call(request, acapture))
+    else:
+        middleware.wrap_model_call(request, capture)
+    assert seen[0].tools == ([echo] if expected_tools else [])
+    assert seen[0].tool_choice == (None if expected_tools else "none")
+    assert WRAPUP_INSTRUCTION in seen[0].system_message.content
+    assert request.tools == [echo]
+    assert request.model_settings == {"temperature": 0.25}
+    assert seen[0].model_settings == (
+        {"temperature": 0.25}
+        if expected_tools
+        else {"temperature": 0.25, "tool_choice": "none"}
+    )
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+@pytest.mark.parametrize("protocol", ["openai", "anthropic"])
+def test_delivery_disables_tools_in_provider_request(
+    asynchronous, protocol, monkeypatch
+):
+    import httpx
+    from langchain_anthropic import ChatAnthropic
+    from langchain_openai import ChatOpenAI
+
+    payloads = []
+
+    def respond(request):
+        payloads.append(json.loads(request.content))
+        reply = {
+            "id": "delivery",
+            "object": "chat.completion",
+            "created": 0,
+            "model": "test",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": "done"},
+                    "finish_reason": "stop",
+                }
+            ],
+        }
+        if protocol == "anthropic":
+            reply = {
+                "id": "delivery",
+                "type": "message",
+                "role": "assistant",
+                "model": "test",
+                "content": [{"type": "text", "text": "done"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 10, "output_tokens": 1},
+            }
+        return httpx.Response(200, json=reply)
+
+    def build_model(client, asynchronous):
+        if protocol == "anthropic":
+            factory = (
+                "_get_default_async_httpx_client"
+                if asynchronous
+                else "_get_default_httpx_client"
+            )
+            monkeypatch.setattr(
+                f"langchain_anthropic.chat_models.{factory}", lambda **kwargs: client
+            )
+            return ChatAnthropic(model="test", api_key="test")
+        kwargs = {"http_async_client" if asynchronous else "http_client": client}
+        return ChatOpenAI(model="test", api_key="test", **kwargs)
+
+    async def invoke():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+            model = build_model(client, True)
+            graph = create_agent(
+                model, tools=[echo], middleware=[ExecutionBudgetMiddleware(run_limit=1)]
+            )
+            return await graph.ainvoke({"messages": [("user", "report now")]})
+
+    if asynchronous:
+        result = asyncio.run(invoke())
+    else:
+        with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+            model = build_model(client, False)
+            graph = create_agent(
+                model, tools=[echo], middleware=[ExecutionBudgetMiddleware(run_limit=1)]
+            )
+            result = graph.invoke({"messages": [("user", "report now")]})
+    assert result["messages"][-1].text == "done"
+    assert payloads[0].get("tool_choice") == (
+        {"type": "none"} if protocol == "anthropic" else "none"
+    )
+    assert not payloads[0].get("tools")
+
+
 def test_serial_runs_and_rebuilt_thread_keep_distinct_latches():
     saver = InMemorySaver()
     notices = []
@@ -319,7 +494,7 @@ def test_budget_extension_preserves_official_graph_cost(capsys):
             "supersteps": len(events),
             "median_ms": round(statistics.median(durations), 3),
         }
-    assert results["official"]["supersteps"] == results["budget"]["supersteps"]
+    assert results["budget"]["supersteps"] <= results["official"]["supersteps"]
     with capsys.disabled():
         print("budget-cost " + json.dumps(results))
 

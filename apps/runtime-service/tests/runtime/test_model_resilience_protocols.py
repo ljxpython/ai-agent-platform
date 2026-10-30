@@ -11,6 +11,7 @@ from langchain_deepseek import ChatDeepSeek
 
 from runtime_service.errors import RuntimeResolutionError
 from runtime_service.middlewares import (
+    ExecutionBudgetMiddleware,
     ModelCallTimeoutMiddleware,
     ModelResilienceMiddleware,
 )
@@ -110,7 +111,9 @@ def config():
     )
 
 
-async def sdk_pair(monkeypatch, primary_protocol, backup_protocol, messages):
+async def sdk_pair(
+    monkeypatch, primary_protocol, backup_protocol, messages, *, delivery=False
+):
     calls = []
 
     def respond(request):
@@ -174,6 +177,7 @@ async def sdk_pair(monkeypatch, primary_protocol, backup_protocol, messages):
             primary,
             tools=[read_reference],
             middleware=[
+                *([ExecutionBudgetMiddleware(run_limit=1)] if delivery else []),
                 ModelResilienceMiddleware(policy, backup, primary_model_id=A),
                 ModelCallTimeoutMiddleware(1),
             ],
@@ -183,6 +187,28 @@ async def sdk_pair(monkeypatch, primary_protocol, backup_protocol, messages):
         except RuntimeResolutionError as exc:
             return calls, exc
         return calls, result
+
+
+@pytest.mark.parametrize(
+    "primary,backup",
+    [
+        ("openai-compatible", "anthropic"),
+        ("anthropic", "openai-compatible"),
+        ("deepseek", "openai-compatible"),
+        ("openai-compatible", "deepseek"),
+    ],
+)
+def test_delivery_tool_choice_survives_protocol_fallback(monkeypatch, primary, backup):
+    calls, result = asyncio.run(
+        sdk_pair(monkeypatch, primary, backup, history(), delivery=True)
+    )
+    assert isinstance(result, dict), result
+    assert [call["model"] for call in calls] == ["primary", "backup"]
+    for call, protocol in zip(calls, [primary, backup], strict=True):
+        assert call["tool_choice"] == (
+            {"type": "none"} if protocol == "anthropic" else "none"
+        )
+        assert not call.get("tools")
 
 
 @pytest.mark.parametrize(

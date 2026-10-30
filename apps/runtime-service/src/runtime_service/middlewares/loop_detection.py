@@ -26,7 +26,9 @@ from runtime_service.middlewares.execution_budget import (
 from runtime_service.observability.diagnostics import log_diagnostic
 from runtime_service.observability.langfuse import record_diagnostic_event
 
-READ_TOOLS = frozenset({"ls", "read_file", "glob", "grep", "read_reference"})
+READ_TOOLS = frozenset(
+    {"ls", "read_file", "glob", "grep", "read_reference", "github_query"}
+)
 WARN_THRESHOLD = 3
 HARD_LIMIT = 5
 MAX_MESSAGES = 64

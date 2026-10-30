@@ -13,6 +13,7 @@ from langchain.agents.middleware import AgentMiddleware
 from langchain.agents.middleware.types import ModelRequest, ModelResponse
 from langchain_core.exceptions import ContextOverflowError
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages.utils import count_tokens_approximately
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import tool
 from langgraph.checkpoint.memory import InMemorySaver
@@ -27,7 +28,14 @@ from runtime_service.middlewares import (
     resolve_tool_output_limit,
 )
 from runtime_service.middlewares import conversation_offloading as module
+from runtime_service.middlewares.tool_output_pruning import ToolOutputPruningMiddleware
+from runtime_service.observability.usage import RuntimeUsageCallback
 from runtime_service.runtime import RuntimeContext, RuntimeResolutionError
+
+
+@pytest.fixture(autouse=True)
+def small_model_headroom(monkeypatch):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
 
 
 class RecordingModel(BindableFakeMessagesChatModel):
@@ -69,6 +77,102 @@ def history():
     ]
 
 
+@pytest.mark.parametrize(
+    "capacity,output,trigger,retained",
+    [
+        (131072, 8192, 57344, 19660),
+        (131072, 16384, 49152, 18350),
+        (1000000, 8192, 800000, 158689),
+    ],
+)
+def test_dsh_window_policy_reserves_output_and_headroom(
+    tmp_path, monkeypatch, capacity, output, trigger, retained
+):
+    for key in (
+        "AGENT_CONTEXT_TRIGGER_POLICY",
+        "AGENT_CONTEXT_KEEP_POLICY",
+        "AGENT_CONTEXT_HEADROOM_TOKENS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    instance = model().model_copy(
+        update={
+            "profile": {"max_input_tokens": capacity, "max_output_tokens": output},
+            "max_tokens": output,
+        }
+    )
+    mw = ConversationOffloadingMiddleware(
+        instance, FilesystemBackend(root_dir=str(tmp_path))
+    )
+    assert mw._lc_helper.trigger == ("tokens", trigger)
+    assert mw._lc_helper.keep == ("tokens", retained)
+    assert not mw._should_summarize([], trigger - 1)
+    assert mw._should_summarize([], trigger)
+
+
+def test_dsh_small_window_requires_explicit_headroom(tmp_path, monkeypatch):
+    for key in (
+        "AGENT_CONTEXT_TRIGGER_POLICY",
+        "AGENT_CONTEXT_KEEP_POLICY",
+        "AGENT_CONTEXT_HEADROOM_TOKENS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    backend = FilesystemBackend(root_dir=str(tmp_path))
+    with pytest.raises(RuntimeResolutionError, match="input_budget_exceeded"):
+        ConversationOffloadingMiddleware(model(), backend)
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
+    mw = ConversationOffloadingMiddleware(model(), backend)
+    assert mw._lc_helper.trigger == ("tokens", 9600)
+    assert mw._lc_helper.keep == ("tokens", 1879)
+
+
+@pytest.mark.parametrize("headroom", ["-1", "NaN", "1.5", "131072", "120000"])
+def test_dsh_invalid_pressure_or_retention_budget_fails_closed(monkeypatch, headroom):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", headroom)
+    monkeypatch.delenv("AGENT_CONTEXT_TRIGGER_POLICY", raising=False)
+    monkeypatch.delenv("AGENT_CONTEXT_KEEP_POLICY", raising=False)
+    with pytest.raises(RuntimeResolutionError, match="input_budget_exceeded"):
+        module.resolve_context_governance_settings(
+            116326, context_window_tokens=131072, output_budget_tokens=8192
+        )
+
+
+def test_dsh_pruning_remeasures_before_summarization(tmp_path, monkeypatch):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "65536")
+    instance = model().model_copy(
+        update={
+            "profile": {"max_input_tokens": 131072, "max_output_tokens": 8192},
+            "max_tokens": 8192,
+        }
+    )
+    mw = ConversationOffloadingMiddleware(
+        instance, FilesystemBackend(root_dir=str(tmp_path))
+    )
+    pruning = ToolOutputPruningMiddleware(
+        enabled=True,
+        keep_recent=1,
+        min_chars=300,
+        trigger_tokens=mw.pruning_trigger_tokens,
+    )
+    mw.tool_output_pruning = pruning
+    messages = [HumanMessage(content="preserve goal")]
+    for i in range(3):
+        messages.extend(
+            [
+                AIMessage(
+                    content="",
+                    tool_calls=[{"name": "read_file", "args": {}, "id": str(i)}],
+                ),
+                ToolMessage(content="evidence " * 20000, tool_call_id=str(i)),
+            ]
+        )
+    raw_tokens = count_tokens_approximately(messages)
+    projected_tokens = mw._count_tokens(messages, None, [])
+    assert raw_tokens >= mw.pruning_trigger_tokens > projected_tokens
+    assert not mw._should_summarize(messages, projected_tokens)
+    assert len(messages[2].content) == len("evidence " * 20000)
+    assert not instance.calls
+
+
 def test_budget_sources_and_boundaries(tmp_path):
     instance = model()
     mw = ConversationOffloadingMiddleware(
@@ -77,7 +181,9 @@ def test_budget_sources_and_boundaries(tmp_path):
     assert mw.input_budget == 12000 - 256 - 1024
     assert "nostream" not in (instance.tags or [])
     assert {"nostream", "langsmith:hidden"} <= set(mw.model.tags)
-    assert mw._truncate_args_trigger == ("tokens", 9112)
+    assert mw.model.metadata["runtime_usage_purpose"] == "summarization"
+    assert not (instance.metadata or {}).get("runtime_usage_purpose")
+    assert mw._truncate_args_trigger == ("tokens", 9600)
     assert mw._truncate_args_keep == ("tokens", 1072)
     assert mw._max_arg_length == 2000
     boundary = mw._lc_helper.trigger[1]
@@ -120,6 +226,112 @@ def test_tool_output_limit_uses_smallest_candidate_input_budget():
         resolve_tool_output_limit((SimpleNamespace(profile={}),), 256)
     huge = SimpleNamespace(profile={"max_input_tokens": 1_000_000})
     assert resolve_tool_output_limit((huge,), 256) == 20_000
+
+
+def test_hidden_summary_is_recorded_as_auxiliary_usage(tmp_path, monkeypatch):
+    async def run():
+        usage = RuntimeUsageCallback({})
+        monkeypatch.setattr(usage, "_write", AsyncMock(return_value=True))
+        instance = model().model_copy(update={"callbacks": [usage]})
+        mw = ConversationOffloadingMiddleware(
+            instance,
+            FilesystemBackend(root_dir=str(tmp_path), virtual_mode=True),
+            trigger=("tokens", 100),
+            keep=("messages", 2),
+        )
+        request = ModelRequest(
+            model=instance,
+            messages=history(),
+            tools=[],
+            state={},
+            runtime=SimpleNamespace(execution_info=None),
+        )
+        await mw.awrap_model_call(
+            request,
+            AsyncMock(return_value=ModelResponse(result=[AIMessage(content="ok")])),
+        )
+        assert len(usage._calls) == 1
+        call = next(iter(usage._calls.values()))
+        assert (call["scope"], call["purpose"]) == ("auxiliary", "summarization")
+        assert call["tokens"]["total_tokens"] == 30
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "pruning,manual", [(True, False), (False, False), (True, True)]
+)
+def test_offloading_counts_pruned_view_but_archives_originals(
+    tmp_path, monkeypatch, pruning, manual
+):
+    async def run():
+        monkeypatch.setenv("AGENT_CONTEXT_TOOL_PRUNING_ENABLED", str(int(pruning)))
+        monkeypatch.setenv("AGENT_CONTEXT_TOOL_PRUNING_KEEP_COUNT", "1")
+        backend = FilesystemBackend(root_dir=str(tmp_path), virtual_mode=True)
+        instance = model()
+        pruning_mw = ToolOutputPruningMiddleware(min_chars=1024)
+        mw = ConversationOffloadingMiddleware(
+            instance,
+            backend,
+            trigger=("tokens", 8000),
+            keep=("messages", 2),
+            tool_output_pruning=pruning_mw,
+        )
+        messages = [HumanMessage(content="Keep evidence with exact source lines.")]
+        for i in range(8):
+            messages.extend(
+                [
+                    AIMessage(
+                        content="",
+                        tool_calls=[{"name": "lookup", "args": {}, "id": str(i)}],
+                    ),
+                    ToolMessage(
+                        content=f"ORIGINAL_SOURCE_{i} " + "evidence " * 1500,
+                        tool_call_id=str(i),
+                        name="lookup",
+                    ),
+                ]
+            )
+        request = ModelRequest(
+            model=instance,
+            messages=messages,
+            tools=[],
+            state={"messages": messages},
+            runtime=SimpleNamespace(execution_info=None),
+        )
+        seen = []
+
+        async def handler(filtered):
+            seen.append(filtered.messages)
+            return ModelResponse(result=[AIMessage(content="continued")])
+
+        mw._acreate_summary = AsyncMock(return_value="Evidence summary")
+
+        async def filtered_handler(filtered):
+            async def prune(candidate):
+                return await pruning_mw.awrap_model_call(candidate, handler)
+
+            return await ContextBudgetMiddleware(mw).awrap_model_call(filtered, prune)
+
+        response = await mw._invoke(request, filtered_handler, manual=manual)
+        if pruning and not manual:
+            mw._acreate_summary.assert_not_awaited()
+            assert not list(tmp_path.rglob("*.md"))
+            assert "omitted middle" in seen[0][2].content
+            assert "ORIGINAL_SOURCE_0" in seen[0][2].content
+        else:
+            mw._acreate_summary.assert_awaited_once()
+            summarized = mw._acreate_summary.call_args.args[0]
+            assert any("ORIGINAL_SOURCE_0" in m.content for m in summarized)
+            event = response.command.update["_summarization_event"]
+            archived = await backend.adownload_files([event["file_path"]])
+            assert "ORIGINAL_SOURCE_0" in archived[0].content.decode()
+            assert "Tool output collapsed" not in archived[0].content.decode()
+        assert request.state["messages"] is messages
+        assert messages[2].content.startswith("ORIGINAL_SOURCE_0")
+        assert len(seen) == 1
+
+    asyncio.run(run())
 
 
 @pytest.mark.parametrize("representation", ["standard", "openai", "anthropic"])
@@ -491,7 +703,9 @@ def test_provider_overflow_uses_exact_code_and_retries_once(
                 result.command.update["conversation_offloading"]["status"]
                 == "completed"
             )
-            assert len(calls[-1]) < len(calls[0])
+            assert mw._count_tokens(calls[-1], None, []) < mw._count_tokens(
+                calls[0], None, []
+            )
 
     asyncio.run(run())
 
@@ -862,21 +1076,25 @@ def test_context_governance_settings_and_keep_policy(tmp_path, monkeypatch):
         resolve_context_governance_settings,
     )
 
-    # 1. Default fallback (40% budget)
-    trig, keep = resolve_context_governance_settings(10000)
-    assert trig == ("tokens", 8500)
-    assert keep == ("tokens", 4000)
+    monkeypatch.delenv("AGENT_CONTEXT_HEADROOM_TOKENS")
+    limits = {"context_window_tokens": 131072, "output_budget_tokens": 8192}
+    trig, keep = resolve_context_governance_settings(116326, **limits)
+    assert trig == ("tokens", 57344)
+    assert keep == ("tokens", 19660)
 
     # 2. Environment override
     monkeypatch.setenv("AGENT_CONTEXT_KEEP_POLICY", "messages:16")
     monkeypatch.setenv("AGENT_CONTEXT_TRIGGER_POLICY", "0.90")
-    trig, keep = resolve_context_governance_settings(10000)
-    assert trig == ("tokens", 9000)
+    trig, keep = resolve_context_governance_settings(116326, **limits)
+    assert trig == ("tokens", 104693)
     assert keep == ("messages", 16)
 
     # 3. Explicit parameter override
     trig, keep = resolve_context_governance_settings(
-        10000, trigger_override=("messages", 50), keep_override=("tokens", 5000)
+        116326,
+        trigger_override=("messages", 50),
+        keep_override=("tokens", 5000),
+        **limits,
     )
     assert trig == ("messages", 50)
     assert keep == ("tokens", 5000)

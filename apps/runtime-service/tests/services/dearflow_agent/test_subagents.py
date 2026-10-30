@@ -1,6 +1,7 @@
 """P3: deterministic models through the real Deep Agents graph and callbacks."""
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 from langchain_core.callbacks import BaseCallbackHandler
@@ -12,6 +13,9 @@ from support import BindableFakeMessagesChatModel, with_run_budget
 from runtime_service.middlewares.timeout_wrapup import TIMEOUT_WRAPUP_INSTRUCTION
 from runtime_service.runtime import runtime_context_hash
 from runtime_service.services.dearflow_agent import agent
+from runtime_service.services.dearflow_agent.middleware.delegation import (
+    DelegationConcurrencyMiddleware,
+)
 from runtime_service.services.dearflow_agent.tools import search
 
 from .test_agent import config
@@ -258,6 +262,56 @@ def test_parallel_children_are_isolated_and_follow_parent_cancel(
                 for segment in dispatch.values()
             )
         assert callbacks and all(parent != "None" for parent, _ in callbacks.values())
+
+    asyncio.run(run())
+
+
+def test_delegation_concurrency_allows_three_and_queues_fourth():
+    async def run():
+        middleware = DelegationConcurrencyMiddleware()
+        active = 0
+        peak = 0
+        started = []
+        releases = [asyncio.Event() for _ in range(4)]
+
+        async def handler(request):
+            nonlocal active, peak
+            name = request.tool_call["args"]["description"]
+            active += 1
+            peak = max(peak, active)
+            started.append(name)
+            await releases[int(name)].wait()
+            active -= 1
+            return name
+
+        requests = [
+            SimpleNamespace(
+                tool_call={"name": "task", "args": {"description": str(index)}}
+            )
+            for index in range(4)
+        ]
+        tasks = [
+            asyncio.create_task(middleware.awrap_tool_call(request, handler))
+            for request in requests
+        ]
+        for _ in range(100):
+            if len(started) == 3:
+                break
+            await asyncio.sleep(0)
+        assert started == ["0", "1", "2"]
+        assert peak == 3
+        assert not tasks[3].done()
+        releases[0].set()
+        for _ in range(100):
+            if len(started) == 4:
+                break
+            await asyncio.sleep(0)
+        assert started == ["0", "1", "2", "3"]
+        assert active == 3 and not tasks[1].done() and not tasks[2].done()
+        for release in releases:
+            release.set()
+        assert await asyncio.gather(*tasks) == ["0", "1", "2", "3"]
+        assert peak == 3
 
     asyncio.run(run())
 

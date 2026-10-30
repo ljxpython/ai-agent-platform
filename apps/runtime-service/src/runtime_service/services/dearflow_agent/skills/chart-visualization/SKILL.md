@@ -38,10 +38,12 @@ Once a chart type is selected, read the corresponding file in the `references/` 
 Extract the data from the user's input and map it to the expected `args` format.
 
 ### 3. Chart Generation
-Call the matching `generate_*` tool with the parameters described in its reference. Do not execute scripts/generate.js: it is preserved as upstream reference, and the sandbox has no network. The tool schema is authoritative where upstream references differ. Raw data is sent to the external AntV service; wait for the official approval before sending it. Never route around rejection through execute or another tool.
+Reading `/skills/chart-visualization/references/<tool_name>.md` makes that matching
+`generate_*` tool available on the next model call. Re-read its reference if history
+compaction removes it. Call the tool with the parameters described in its reference. Do not execute scripts/generate.js: it is preserved as upstream reference, and the sandbox has no network. The tool schema is authoritative where upstream references differ. Raw data is sent to the external AntV service; wait for the official approval before sending it. Never route around rejection through execute or another tool.
 
 ### 4. Result Return
-Return the saved /workspace/charts/ image reference and the exact input specification. A remote URL alone is not a delivered image. Report service errors and missing map prerequisites honestly; never fabricate a chart. All 26 upstream chart types, including spreadsheet, are exposed. Do not claim all external types were verified merely because one chart worked.
+Return the saved /workspace/charts/ image reference and the exact input specification. A remote URL alone is not a delivered image. Report service errors and missing map prerequisites honestly; never fabricate a chart. All 26 upstream chart types, including spreadsheet, are available on demand. Do not claim all external types were verified merely because one chart worked.
 
 ## Reference Material
 Detailed specifications for each chart type are located in the `references/` directory. Consult these files to ensure the `args` passed to the script match the expected schema.

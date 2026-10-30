@@ -19,7 +19,8 @@ from runtime_service.runtime import RuntimeContext
 from runtime_service.services.dearflow_agent.workspace.backend import build_backend
 
 
-def test_two_compactions_survive_connections_and_wrapper_rollback():
+def test_two_compactions_survive_connections_and_wrapper_rollback(monkeypatch):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     dsn = os.getenv("CONTEXT_TEST_CHECKPOINT_DSN")
     if not dsn:
         pytest.skip(

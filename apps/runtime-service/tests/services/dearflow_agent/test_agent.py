@@ -330,6 +330,108 @@ def test_standard_rejects_planning_and_delegation(build, tool_name, args):
     asyncio.run(run())
 
 
+def test_primary_and_children_share_pressure_gated_pruning(monkeypatch, tmp_path):
+    from langchain_core.messages import HumanMessage
+
+    from runtime_service.middlewares.conversation_offloading import (
+        ConversationOffloadingMiddleware,
+    )
+    from runtime_service.middlewares.tool_output_pruning import (
+        ToolOutputPruningMiddleware,
+    )
+
+    async def run():
+        monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
+        monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", "1")
+        model = BindableFakeMessagesChatModel(
+            responses=[AIMessage(content="done")],
+            profile={"max_input_tokens": 131072, "max_output_tokens": 8192},
+        )
+        monkeypatch.setattr(agent, "build_model", lambda *args, **kwargs: model)
+        cfg = config()
+        cfg["context"] = {"execution_mode": "pro", "max_tokens": 4096}
+        cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = (
+            runtime_context_hash(cfg["context"])
+        )
+        captured = {}
+        original = agent.create_deep_agent
+
+        def capture(**kwargs):
+            captured.update(kwargs)
+            return original(**kwargs)
+
+        monkeypatch.setattr(agent, "create_deep_agent", capture)
+        await agent.get_agent(cfg)
+        groups = [
+            captured["middleware"],
+            *(child["middleware"] for child in captured["subagents"]),
+        ]
+        assert len(groups) == 2
+        for middlewares in groups:
+            pruning = next(
+                m for m in middlewares if isinstance(m, ToolOutputPruningMiddleware)
+            )
+            offloading = next(
+                m
+                for m in middlewares
+                if isinstance(m, ConversationOffloadingMiddleware)
+            )
+            assert offloading.tool_output_pruning is pruning
+            assert pruning.trigger_tokens == offloading._lc_helper.trigger[1]
+            messages = [HumanMessage(content="research")]
+            for i in range(6):
+                messages.extend(
+                    [
+                        call("github_query", {}, str(i)),
+                        ToolMessage(content="source " * 100, tool_call_id=str(i)),
+                    ]
+                )
+            assert pruning.filter_messages(messages) is messages
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("denied", [False, True])
+def test_chart_schemas_load_only_after_spec_and_keep_policy(build, monkeypatch, denied):
+    from support import BindableFakeMessagesChatModel
+
+    from runtime_service.services.dearflow_agent.capabilities import CHART_NAMES
+
+    schemas = []
+
+    def bind(model, tools, **kwargs):
+        schemas.append({tool.name for tool in tools})
+        return model
+
+    monkeypatch.setattr(BindableFakeMessagesChatModel, "bind_tools", bind)
+
+    async def run():
+        cfg = config()
+        selected = "generate_bar_chart"
+        path = f"/skills/chart-visualization/references/{selected}.md"
+        if denied:
+            cfg["configurable"]["langgraph_auth_user"]["runtime_policy"][
+                "tool_overrides"
+            ][selected] = False
+        graph, cfg = await build(
+            [
+                call("read_file", {"file_path": path}),
+                AIMessage(content="spec loaded"),
+            ],
+            cfg,
+        )
+        await graph.ainvoke({"messages": [("user", path)]}, cfg, context={})
+        assert not schemas[0] & set(CHART_NAMES)
+        assert schemas[-1] & set(CHART_NAMES) == (set() if denied else {selected})
+        graph, cfg = await build(
+            [AIMessage(content="resumed")], cfg, graph.checkpointer
+        )
+        await graph.ainvoke({"messages": [("user", "continue")]}, cfg, context={})
+        assert schemas[-1] & set(CHART_NAMES) == (set() if denied else {selected})
+
+    asyncio.run(run())
+
+
 def test_consecutive_clarifications_have_distinct_interrupt_ids(build):
     async def run():
         question = {

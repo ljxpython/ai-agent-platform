@@ -1,0 +1,699 @@
+{
+  "group": "v47",
+  "model": "xiaok/kimi-k3",
+  "configured_window": 262144,
+  "max_output": 8192,
+  "provider_deployment_fingerprint": "not_reported",
+  "manifest_sha256": "4a11a4a1a44644b89b7a3db20bf20e45c51f7eea73fcaa629c02c8f7167020d3",
+  "source_environment_auditors_test_drift": false,
+  "pro_restored": true,
+  "all_samples_retained": true,
+  "samples": [
+    {
+      "arm": "delegation",
+      "sample": 1,
+      "raw_sha256": "b0c03b0013381f1ddaae590b4da65439ca31e228c5914a21074659bfc7a334c9",
+      "run_id": "dc7534db-1276-48e8-8787-074b5eba0dcb",
+      "thread_id": "6f775208-1a3c-4dbd-a11f-90ec99d7497f",
+      "status": "success",
+      "primary": {
+        "calls": 3,
+        "input_tokens": 43358,
+        "output_tokens": 2834,
+        "total_tokens": 46192,
+        "cache_read_tokens": 13824,
+        "peak_input_tokens": 18202,
+        "namespaces": [
+          [
+            "model"
+          ]
+        ]
+      },
+      "tokens": {
+        "input_tokens": 286617,
+        "output_tokens": 16169,
+        "total_tokens": 302786,
+        "cache_read_tokens": 207616,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 588
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 26,
+        "pricing_versions": []
+      },
+      "duration_seconds": 353.483414,
+      "coverage": {
+        "observed_call_count": 26,
+        "reported_call_count": 26,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "root_automatic_summaries": 0,
+      "source_environment_drift": [],
+      "review": {
+        "run_id": "dc7534db-1276-48e8-8787-074b5eba0dcb",
+        "thread_id": "6f775208-1a3c-4dbd-a11f-90ec99d7497f",
+        "raw_sha256": "b0c03b0013381f1ddaae590b4da65439ca31e228c5914a21074659bfc7a334c9",
+        "original_five": [
+          {
+            "item": 1,
+            "semantic_pass": true,
+            "evidence": "第1–3行明确packages两组及服务定义/provider/consumer。"
+          },
+          {
+            "item": 2,
+            "semantic_pass": true,
+            "evidence": "第1及5–8行明确基础默认开启、旧历史、/compact和先剪工具。"
+          },
+          {
+            "item": 3,
+            "semantic_pass": true,
+            "evidence": "第5–7行明确pre-step、仅provider-confirmed规范溢出、先剪再摘要及replacement generation推进才重试。"
+          },
+          {
+            "item": 4,
+            "semantic_pass": true,
+            "evidence": "第9行明确loop外可选服务、多provider按名共存。"
+          },
+          {
+            "item": 5,
+            "semantic_pass": true,
+            "evidence": "第3/9行区分fresh与父历史播种进程内、四种进程外后端，并保留运行/存储子代对父可见。"
+          }
+        ],
+        "core_semantic_score": 5,
+        "immutable_source_integrity": true,
+        "overall_quality_pass": true,
+        "primary": {
+          "calls": 3,
+          "input_tokens": 43358,
+          "output_tokens": 2834,
+          "total_tokens": 46192,
+          "cache_read_tokens": 13824,
+          "peak_input_tokens": 18202,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "all_usage_complete": true,
+        "root_automatic_summaries": 0,
+        "limitations": [
+          "Single sample; group stability evaluated only with all registered samples."
+        ],
+        "reviewed_at": "2026-10-29T14:53:51.602701+00:00"
+      }
+    },
+    {
+      "arm": "delegation",
+      "sample": 2,
+      "raw_sha256": "314ff9f110be0c2cdd489badfa090555fded07375048e582d212c12cabc4ffe1",
+      "run_id": "99c663da-3fcb-4b15-935b-af8afc441f60",
+      "thread_id": "f60a5453-917f-4484-80d4-05a5aa2d7ce9",
+      "status": "success",
+      "primary": {
+        "calls": 4,
+        "input_tokens": 65686,
+        "output_tokens": 4278,
+        "total_tokens": 69964,
+        "cache_read_tokens": 27136,
+        "peak_input_tokens": 20510,
+        "namespaces": [
+          [
+            "model"
+          ]
+        ]
+      },
+      "tokens": {
+        "input_tokens": 518809,
+        "output_tokens": 18171,
+        "total_tokens": 536980,
+        "cache_read_tokens": 362240,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 747
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 40,
+        "pricing_versions": []
+      },
+      "duration_seconds": 405.923988,
+      "coverage": {
+        "observed_call_count": 40,
+        "reported_call_count": 40,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "root_automatic_summaries": 0,
+      "source_environment_drift": [],
+      "review": {
+        "run_id": "99c663da-3fcb-4b15-935b-af8afc441f60",
+        "thread_id": "f60a5453-917f-4484-80d4-05a5aa2d7ce9",
+        "raw_sha256": "314ff9f110be0c2cdd489badfa090555fded07375048e582d212c12cabc4ffe1",
+        "original_five": [
+          {
+            "item": 1,
+            "semantic_pass": true,
+            "evidence": "第1/4行明确packages组与服务定义/provider/consumer。"
+          },
+          {
+            "item": 2,
+            "semantic_pass": true,
+            "evidence": "第2行明确压力摘要旧历史、/compact、先裁工具及base默认启用。"
+          },
+          {
+            "item": 3,
+            "semantic_pass": true,
+            "evidence": "主补充行明确pre-step、确认context-overflow、剪枝在range选择之前、replacement generation推进才重试。只按实际语义评分。"
+          },
+          {
+            "item": 4,
+            "semantic_pass": true,
+            "evidence": "第11/14行明确loop外可选、多provider按名共存。"
+          },
+          {
+            "item": 5,
+            "semantic_pass": true,
+            "evidence": "第3行区分fresh/parent-history进程内与ACP/Codex/ClaudeCode/另一Harness进程外，并说明父级发现。"
+          }
+        ],
+        "core_semantic_score": 5,
+        "immutable_source_integrity": false,
+        "overall_quality_pass": false,
+        "primary": {
+          "calls": 4,
+          "input_tokens": 65686,
+          "output_tokens": 4278,
+          "total_tokens": 69964,
+          "cache_read_tokens": 27136,
+          "peak_input_tokens": 20510,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "all_usage_complete": true,
+        "root_automatic_summaries": 0,
+        "limitations": [
+          "Second child performed 26 github_query calls without operation/ref/path; default operation=info returned metadata. Child claim of file/readme/tree+ref contradicts captured tool arguments.",
+          "Two repository-root URLs are not fixed-SHA citations; mutable repository metadata is retained in final report. Group therefore fails immutable evidence requirement despite five core semantics being present.",
+          "Generic file-line parser cannot parse Git tree URIs; supplemental immutable directory audit passes both trees; failures for two mutable root URLs remain."
+        ],
+        "reviewed_at": "2026-10-29T14:53:51.605522+00:00"
+      }
+    },
+    {
+      "arm": "delegation",
+      "sample": 3,
+      "raw_sha256": "44e3357930a7280bfaba5020a5bc780fc832e148e3d678a144a7061992d8009b",
+      "run_id": "7a97e713-54a7-4505-9dfa-e5d823559ed6",
+      "thread_id": "c31678c9-9958-4628-baae-94aa64bc2142",
+      "status": "success",
+      "primary": {
+        "calls": 2,
+        "input_tokens": 30280,
+        "output_tokens": 1587,
+        "total_tokens": 31867,
+        "cache_read_tokens": 13824,
+        "peak_input_tokens": 18131,
+        "namespaces": [
+          [
+            "model"
+          ]
+        ]
+      },
+      "tokens": {
+        "input_tokens": 434556,
+        "output_tokens": 23423,
+        "total_tokens": 457979,
+        "cache_read_tokens": 355840,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 696
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 32,
+        "pricing_versions": []
+      },
+      "duration_seconds": 311.076245,
+      "coverage": {
+        "observed_call_count": 32,
+        "reported_call_count": 32,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "root_automatic_summaries": 0,
+      "source_environment_drift": [],
+      "review": {
+        "run_id": "7a97e713-54a7-4505-9dfa-e5d823559ed6",
+        "thread_id": "c31678c9-9958-4628-baae-94aa64bc2142",
+        "raw_sha256": "44e3357930a7280bfaba5020a5bc780fc832e148e3d678a144a7061992d8009b",
+        "original_five": [
+          {
+            "item": 1,
+            "semantic_pass": true,
+            "evidence": "第1/4/5行说明两包组和服务/provider/工具消费者。"
+          },
+          {
+            "item": 2,
+            "semantic_pass": true,
+            "evidence": "第6/8/10/15行说明默认启用、旧历史、/compact、剪枝优先且可能跳过摘要。"
+          },
+          {
+            "item": 3,
+            "semantic_pass": true,
+            "evidence": "第6–9行说明pre-step、provider-confirmed CONTEXT_WINDOW_EXCEEDED、先剪后摘要、replacement generation推进才重试。"
+          },
+          {
+            "item": 4,
+            "semantic_pass": true,
+            "evidence": "第11/14行说明可选且不在loop内、多provider按名共存。"
+          },
+          {
+            "item": 5,
+            "semantic_pass": true,
+            "evidence": "第15行明确fresh/父历史播种的进程内与四种进程外、所有运行/存储子代对父可见。"
+          }
+        ],
+        "core_semantic_score": 5,
+        "immutable_source_integrity": true,
+        "overall_quality_pass": true,
+        "primary": {
+          "calls": 2,
+          "input_tokens": 30280,
+          "output_tokens": 1587,
+          "total_tokens": 31867,
+          "cache_read_tokens": 13824,
+          "peak_input_tokens": 18131,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "all_usage_complete": true,
+        "root_automatic_summaries": 0,
+        "limitations": [
+          "Initial inventory parentheses incorrectly include shared in-process-driver among registered providers; later explicit row correctly states driver has no ctx key. Retained as additional presentation inconsistency, not added to original five-fact rubric.",
+          "Generic file-line parser rejects tree URLs; supplemental immutable directory audit passes both trees."
+        ],
+        "reviewed_at": "2026-10-29T14:53:51.607447+00:00"
+      }
+    },
+    {
+      "arm": "serial",
+      "sample": 1,
+      "raw_sha256": "6c87f4319ed21bc4a6f8d29ca784e92e71d04d379d6f2c5c88bdd6376ce7cd8a",
+      "run_id": "1f7b0570-1e50-4c26-a82c-2ffa42d29ab5",
+      "thread_id": "4e17e3da-c25a-42f2-b40e-04e76d72ad37",
+      "status": "success",
+      "primary": {
+        "calls": 14,
+        "input_tokens": 308321,
+        "output_tokens": 8992,
+        "total_tokens": 317313,
+        "cache_read_tokens": 229888,
+        "peak_input_tokens": 35312,
+        "namespaces": [
+          [
+            "model"
+          ]
+        ]
+      },
+      "tokens": {
+        "input_tokens": 308321,
+        "output_tokens": 8992,
+        "total_tokens": 317313,
+        "cache_read_tokens": 229888,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 743
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 14,
+        "pricing_versions": []
+      },
+      "duration_seconds": 305.613122,
+      "coverage": {
+        "observed_call_count": 14,
+        "reported_call_count": 14,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "root_automatic_summaries": 0,
+      "source_environment_drift": [],
+      "review": {
+        "run_id": "1f7b0570-1e50-4c26-a82c-2ffa42d29ab5",
+        "thread_id": "4e17e3da-c25a-42f2-b40e-04e76d72ad37",
+        "raw_sha256": "6c87f4319ed21bc4a6f8d29ca784e92e71d04d379d6f2c5c88bdd6376ce7cd8a",
+        "original_five": [
+          {
+            "item": 1,
+            "semantic_pass": true,
+            "evidence": "第1行覆盖包组及服务/provider/consumer分工。"
+          },
+          {
+            "item": 2,
+            "semantic_pass": false,
+            "evidence": "压力/手动/剪枝均有，但没有说明旧历史摘要与shipped base默认启用。"
+          },
+          {
+            "item": 3,
+            "semantic_pass": false,
+            "evidence": "pre-step/剪枝/generation重试有，但没有明确request-error只处理规范上下文溢出，原条件未完整覆盖。"
+          },
+          {
+            "item": 4,
+            "semantic_pass": true,
+            "evidence": "第5行明确loop外可选、多provider按名共存。"
+          },
+          {
+            "item": 5,
+            "semantic_pass": false,
+            "evidence": "fresh、父历史播种与内外进程有，但没有保留子代运行或存储时父可发现。"
+          }
+        ],
+        "core_semantic_score": 2,
+        "overall_quality_pass": false,
+        "primary": {
+          "calls": 14,
+          "input_tokens": 308321,
+          "output_tokens": 8992,
+          "total_tokens": 317313,
+          "cache_read_tokens": 229888,
+          "peak_input_tokens": 35312,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "root_automatic_summaries": 0,
+        "all_usage_complete": true,
+        "limitations": [
+          "13 immutable GitHub file citations were actually observed. Five appended workspace evidence aliases are unsupported by the frozen line/directory parsers; original failures retained, no fabricated parser pass.",
+          "Run success and low context occupancy do not establish original five-fact quality."
+        ],
+        "reviewed_at": "2026-10-29T15:00:29.732498+00:00"
+      }
+    },
+    {
+      "arm": "serial",
+      "sample": 2,
+      "raw_sha256": "b880d86d815c7bf43f8513804eb4d4b2981f94990af40ea1bb00234088937be5",
+      "run_id": "01d46d34-98ec-4255-8ffe-abaacbdd4878",
+      "thread_id": "8b43051a-d65b-46a8-a602-47049554336f",
+      "status": "success",
+      "primary": {
+        "calls": 7,
+        "input_tokens": 132142,
+        "output_tokens": 5117,
+        "total_tokens": 137259,
+        "cache_read_tokens": 104960,
+        "peak_input_tokens": 30369,
+        "namespaces": [
+          [
+            "model"
+          ]
+        ]
+      },
+      "tokens": {
+        "input_tokens": 132142,
+        "output_tokens": 5117,
+        "total_tokens": 137259,
+        "cache_read_tokens": 104960,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 145
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 7,
+        "pricing_versions": []
+      },
+      "duration_seconds": 166.388438,
+      "coverage": {
+        "observed_call_count": 7,
+        "reported_call_count": 7,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "root_automatic_summaries": 0,
+      "source_environment_drift": [],
+      "review": {
+        "run_id": "01d46d34-98ec-4255-8ffe-abaacbdd4878",
+        "thread_id": "8b43051a-d65b-46a8-a602-47049554336f",
+        "raw_sha256": "b880d86d815c7bf43f8513804eb4d4b2981f94990af40ea1bb00234088937be5",
+        "original_five": [
+          {
+            "item": 1,
+            "semantic_pass": true,
+            "evidence": "第1/2行覆盖包组及契约/provider/命令与工具消费者。"
+          },
+          {
+            "item": 2,
+            "semantic_pass": true,
+            "evidence": "第1/3/5/7行说明默认启用、摘要最旧历史、手动/compact与先剪工具。"
+          },
+          {
+            "item": 3,
+            "semantic_pass": true,
+            "evidence": "第3/4/5行明确pre-step、provider-confirmed标准溢出、剪枝先于摘要和replacement generation推进才重试。"
+          },
+          {
+            "item": 4,
+            "semantic_pass": false,
+            "evidence": "没有说明subagent是loop之外的可选能力，也没有说明provider按名共存的注册形态。"
+          },
+          {
+            "item": 5,
+            "semantic_pass": false,
+            "evidence": "结论只列spawn/fork与外部后端名字，没有说明fresh与父历史播种的区别；该区别仅在原文引句，不以引句原文补结论分。父列子级已说明。"
+          }
+        ],
+        "core_semantic_score": 3,
+        "overall_quality_pass": false,
+        "primary": {
+          "calls": 7,
+          "input_tokens": 132142,
+          "output_tokens": 5117,
+          "total_tokens": 137259,
+          "cache_read_tokens": 104960,
+          "peak_input_tokens": 30369,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "root_automatic_summaries": 0,
+        "all_usage_complete": true,
+        "limitations": [
+          "18 final immutable relative-path citations were actually read; source-field audit passes. Source quote content is not used to fill facts missing from conclusion fields."
+        ],
+        "reviewed_at": "2026-10-29T15:03:45.224213+00:00"
+      }
+    },
+    {
+      "arm": "serial",
+      "sample": 3,
+      "raw_sha256": "18f50d7f6f12a7b8de74c9551a6bb2a0f2053bf862ffd58537376041c4b9d70d",
+      "run_id": "1a93ee3a-e9fd-4b1d-9d94-b838fa552c54",
+      "thread_id": "80b3bf7a-3b6d-479f-bacb-30ad934f0f42",
+      "status": "success",
+      "primary": {
+        "calls": 16,
+        "input_tokens": 371576,
+        "output_tokens": 7399,
+        "total_tokens": 378975,
+        "cache_read_tokens": 299008,
+        "peak_input_tokens": 38376,
+        "namespaces": [
+          [
+            "model"
+          ]
+        ]
+      },
+      "tokens": {
+        "input_tokens": 371576,
+        "output_tokens": 7399,
+        "total_tokens": 378975,
+        "cache_read_tokens": 299008,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 362
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 16,
+        "pricing_versions": []
+      },
+      "duration_seconds": 312.052872,
+      "coverage": {
+        "observed_call_count": 16,
+        "reported_call_count": 16,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "root_automatic_summaries": 0,
+      "source_environment_drift": [],
+      "review": {
+        "run_id": "1a93ee3a-e9fd-4b1d-9d94-b838fa552c54",
+        "thread_id": "80b3bf7a-3b6d-479f-bacb-30ad934f0f42",
+        "raw_sha256": "18f50d7f6f12a7b8de74c9551a6bb2a0f2053bf862ffd58537376041c4b9d70d",
+        "original_five": [
+          {
+            "item": 1,
+            "semantic_pass": true,
+            "evidence": "第1/5行覆盖compaction/subagent包族及契约/provider/consumer。"
+          },
+          {
+            "item": 2,
+            "semantic_pass": false,
+            "evidence": "列了pressure和/compact，但没有说明shipped base默认启用、旧历史摘要的完整语义；auto默认true不等于基础发行默认装配。"
+          },
+          {
+            "item": 3,
+            "semantic_pass": false,
+            "evidence": "pre-step与generation重试有，但缺仅provider-confirmed规范溢出才走request-error的限定。"
+          },
+          {
+            "item": 4,
+            "semantic_pass": false,
+            "evidence": "明确可选与按名多provider，但没有说明subagent不属于agent loop；不能用compaction的loop外定位补subagent。"
+          },
+          {
+            "item": 5,
+            "semantic_pass": false,
+            "evidence": "fork播种及后代发现有，但缺fresh与父history进程内/各进程外后端的明确形态区分。"
+          }
+        ],
+        "core_semantic_score": 1,
+        "overall_quality_pass": false,
+        "primary": {
+          "calls": 16,
+          "input_tokens": 371576,
+          "output_tokens": 7399,
+          "total_tokens": 378975,
+          "cache_read_tokens": 299008,
+          "peak_input_tokens": 38376,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "root_automatic_summaries": 0,
+        "all_usage_complete": true,
+        "limitations": [
+          "12 immutable file citations were observed and source-field verification passes. Missing answer semantics are not supplied from cited source text."
+        ],
+        "reviewed_at": "2026-10-29T15:10:21.773838+00:00"
+      }
+    }
+  ],
+  "arms": {
+    "delegation": {
+      "runtime_success": 3,
+      "quality_success": 2,
+      "core_semantic_scores": [
+        5,
+        5,
+        5
+      ],
+      "median_primary_input": 43358,
+      "median_primary_peak": 18202,
+      "median_total_tokens": 457979,
+      "median_duration_seconds": 353.483414
+    },
+    "serial": {
+      "runtime_success": 3,
+      "quality_success": 0,
+      "core_semantic_scores": [
+        2,
+        3,
+        1
+      ],
+      "median_primary_input": 308321,
+      "median_primary_peak": 35312,
+      "median_total_tokens": 317313,
+      "median_duration_seconds": 305.613122
+    }
+  },
+  "result": "failed: delegation quality 2/3; preserve and fix missing operation contract",
+  "same_quality_input_reduction": null,
+  "reason": "Both arms must meet same evidence quality; no percentage asserted."
+}

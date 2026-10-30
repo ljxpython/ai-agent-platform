@@ -1,0 +1,1006 @@
+{
+  "version": "v23",
+  "status": "failed_acceptance",
+  "target_sha": "477b4f420553e8a52c2fbccc464d7561b239c443",
+  "prompt_sha256": "2568adff93f0d58f3b97b90ce59b8be2350fa2bac909983549fc0962ea5314bc",
+  "provider": "xiaok",
+  "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+  "model": "deepseek-v4.1-flash",
+  "configured_context_window": 131072,
+  "max_output_tokens": 8192,
+  "run_token_budget": 1000000,
+  "provider_window_metadata": "not_reported",
+  "deployment_fingerprint": "not_reported",
+  "pricing": "unknown",
+  "manifest_sha256": "e51e88969001896f0c931cdee958aee63e41dd58358ac5b2af3ef240951eec92",
+  "arms": {
+    "delegation": {
+      "samples": [
+        {
+          "thread_id": "e6b6e5a8-b033-4201-829e-eb1a6b56af04",
+          "run_id": "268384cd-1bb3-49d5-89f6-40935dc798b8",
+          "status": "success",
+          "duration_seconds": 548.039667,
+          "tokens": {
+            "input_tokens": 642264,
+            "output_tokens": 33796,
+            "total_tokens": 676060,
+            "cache_read_tokens": 480384,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 13200
+          },
+          "known_tokens": {
+            "input_tokens": 642264,
+            "output_tokens": 33796,
+            "total_tokens": 676060,
+            "cache_read_tokens": 480384,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 13200
+          },
+          "cost": {
+            "status": "unknown",
+            "estimated_cost_usd": null,
+            "known_cost_usd": null,
+            "currency": "USD",
+            "source": null,
+            "unpriced_call_count": 37,
+            "pricing_versions": []
+          },
+          "coverage": {
+            "observed_call_count": 37,
+            "reported_call_count": 37,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "finalized": true,
+          "availability": "available",
+          "scopes": {
+            "primary": {
+              "calls": 11,
+              "input_tokens": 335804,
+              "output_tokens": 13961,
+              "total_tokens": 349765,
+              "cache_read_tokens": 252800,
+              "peak_input_tokens": 47551,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            },
+            "subagent": {
+              "calls": 26,
+              "input_tokens": 306460,
+              "output_tokens": 19835,
+              "total_tokens": 326295,
+              "cache_read_tokens": 227584,
+              "peak_input_tokens": 23946,
+              "namespaces": [
+                [
+                  "tools:2537edf5-65ed-0ea7-c2bc-d55130126c19",
+                  "model"
+                ],
+                [
+                  "tools:6ff8fc66-b0b6-be73-57a4-2d8a24d9c727",
+                  "model"
+                ],
+                [
+                  "tools:f892fdbf-bd8e-a870-3cfe-f947b53d534d",
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final package section states compaction shared Service Definition/basic provider/command consumer and subagent registry plus model-facing tools; direct group README references support these roles."
+            },
+            "2": {
+              "passed": true,
+              "reason": "Across final sections: token pressure, oldest balanced span selected for summary replacement, manual /compact, tool pruning before summary and shipped base enablement are explicit; supported by compaction-basic README L80-L86, subsystem L101 and base bundle references."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final flow states pre-step before request derivation, confirmed overflow recovery, pruning and remeasurement before summary selection and retry only when replacement generation advances; direct subsystem L101 and basic README L80-L82 support it."
+            },
+            "4": {
+              "passed": false,
+              "reason": "Named providers share ctx.subagents in the final package table, but final report never states subagent is an optional capability outside the agent loop. Subsystem source L5 contains that fact; reading/citing the source without stating the conclusion cannot supply the missing report statement."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Final provider table states fresh in-process spawn, fork seeded with completed parent-turn prefix, ACP/Codex/Claude Code/DSH external forms; final visibility row states parent catalog discovery. Direct group/subsystem references support the core comparison."
+            }
+          },
+          "manual_review": {
+            "core_pass_count": 4,
+            "core_count": 5,
+            "basis": "Final-report statements and direct fixed path-line evidence, across rows; no child-only facts or unstated source facts used to fill report omissions.",
+            "limitations": [
+              "The additional image-offload row says image-budget rejection without checking the precise image-related error condition; not independently validated as a full provider error taxonomy.",
+              "Observation of every parsed citation window is not semantic verification of every extra claim.",
+              "Provider deployment fingerprint and prices are not reported; cost remains unknown."
+            ]
+          },
+          "index": 1,
+          "raw_sha256": "98125c08548d4d5f5997054417c5cbff2a9e4871f577004e78df402c27b270d1",
+          "observed_model_identities": [
+            {
+              "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+              "provider": "xiaok",
+              "model_name": "deepseek-v4.1-flash"
+            }
+          ],
+          "usage_page_count": 1,
+          "usage_pagination_complete": true,
+          "ledger_complete": true,
+          "stop_code": null,
+          "reported_primary_peak_tokens": 47551,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.36278533935546875,
+          "root_automatic_offloads": 0,
+          "root_lifecycle": [
+            "running",
+            "completed"
+          ],
+          "task_count": 3,
+          "manual_score": "4/5",
+          "research_report_delivered": true,
+          "core_sample_accepted": false,
+          "source_count": 75,
+          "child_source_count": 49,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": true,
+          "parsed_citation_count": 49,
+          "unresolved_short_citations": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T22:36:41.411052+00:00",
+              "used_memory": 421725904,
+              "maxmemory": 1073741824,
+              "error_replies": 23399,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:45:54.669586+00:00",
+              "used_memory": 301554816,
+              "maxmemory": 1073741824,
+              "error_replies": 23401,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 2,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "thread_id": "f77fd90e-15c4-4e12-a69e-acb48ce1649e",
+          "run_id": "503ccb68-a0f6-4129-89e4-d47202fa27a0",
+          "status": "error",
+          "duration_seconds": 63.63048,
+          "tokens": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "total_tokens": null,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": null,
+            "cache_creation_5m_tokens": null,
+            "cache_creation_1h_tokens": null,
+            "reasoning_tokens": null
+          },
+          "known_tokens": {
+            "input_tokens": 23402,
+            "output_tokens": 2117,
+            "total_tokens": 25519,
+            "cache_read_tokens": 13312,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 0
+          },
+          "cost": {
+            "status": "unknown",
+            "estimated_cost_usd": null,
+            "known_cost_usd": null,
+            "currency": "USD",
+            "source": null,
+            "unpriced_call_count": 7,
+            "pricing_versions": []
+          },
+          "coverage": {
+            "observed_call_count": 7,
+            "reported_call_count": 4,
+            "missing_usage_call_count": 3,
+            "incomplete_call_count": 0,
+            "collection_degraded": true,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "finalized": false,
+          "availability": "partial",
+          "scopes": {
+            "primary": {
+              "calls": 1,
+              "input_tokens": 13496,
+              "output_tokens": 1385,
+              "total_tokens": 14881,
+              "cache_read_tokens": 13312,
+              "peak_input_tokens": 13496,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            },
+            "subagent": {
+              "calls": 6,
+              "input_tokens": null,
+              "output_tokens": null,
+              "total_tokens": null,
+              "cache_read_tokens": null,
+              "peak_input_tokens": 3330,
+              "namespaces": [
+                [
+                  "tools:958c3800-2782-2c68-5821-44f7346571b6",
+                  "model"
+                ],
+                [
+                  "tools:dde7e110-b1e4-a102-8180-6d50fbd012dc",
+                  "model"
+                ],
+                [
+                  "tools:e1136019-b63f-241c-b2ac-02c85ab8282d",
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": false,
+              "reason": "Run terminated after child model streams were interrupted; no completed final research report."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Run terminated after child model streams were interrupted; no completed final research report."
+            },
+            "3": {
+              "passed": false,
+              "reason": "Run terminated after child model streams were interrupted; no completed final research report."
+            },
+            "4": {
+              "passed": false,
+              "reason": "Run terminated after child model streams were interrupted; no completed final research report."
+            },
+            "5": {
+              "passed": false,
+              "reason": "Run terminated after child model streams were interrupted; no completed final research report."
+            }
+          },
+          "manual_review": {
+            "core_pass_count": 0,
+            "core_count": 5,
+            "basis": "No completed final report; usage and partial responses are not substituted for report conclusions.",
+            "limitations": [
+              "Observed calls 7, reported calls 4, missing usage 3; full Token totals remain null.",
+              "Worker recorded runtime.model.stream_interrupted before budget protection stopped new work as token_budget_unverifiable. Original provider/network cause is not determined.",
+              "Raw finalized=false at capture; later refresh, if any, must be recorded separately without replacing this raw."
+            ],
+            "diagnostics": {
+              "file": ".local-stack/delegation-relaxed-v23-2.diagnostics.json",
+              "http": 200,
+              "model_error_types": [
+                "OpenAIConnectionError",
+                "RemoteProtocolError",
+                "TokenBudgetUnverifiableError"
+              ],
+              "original_provider_network_cause": "undetermined"
+            }
+          },
+          "index": 2,
+          "raw_sha256": "62f62c945ded8b18d9fbcbdf5519b73bd4062a2f79e8b28a580701c7bcf2f4e8",
+          "observed_model_identities": [
+            {
+              "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+              "provider": "xiaok",
+              "model_name": "deepseek-v4.1-flash"
+            }
+          ],
+          "usage_page_count": 1,
+          "usage_pagination_complete": true,
+          "ledger_complete": false,
+          "stop_code": "token_budget_unverifiable",
+          "reported_primary_peak_tokens": 13496,
+          "primary_peak_complete": false,
+          "primary_peak_configured_window_ratio": 0.10296630859375,
+          "root_automatic_offloads": 0,
+          "root_lifecycle": [
+            "running",
+            "failed"
+          ],
+          "task_count": 3,
+          "manual_score": "0/5",
+          "research_report_delivered": false,
+          "core_sample_accepted": false,
+          "source_count": 6,
+          "child_source_count": 6,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": false,
+          "parsed_citation_count": 0,
+          "unresolved_short_citations": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T22:50:55.911274+00:00",
+              "used_memory": 301554816,
+              "maxmemory": 1073741824,
+              "error_replies": 23403,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:52:57.047918+00:00",
+              "used_memory": 331973216,
+              "maxmemory": 1073741824,
+              "error_replies": 23404,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "thread_id": "cb4991e2-586c-46e1-9e92-77289ad8e629",
+          "run_id": "df549392-3334-461a-8819-bc5e0d2ee8b8",
+          "status": "success",
+          "duration_seconds": 344.916409,
+          "tokens": {
+            "input_tokens": 481824,
+            "output_tokens": 28107,
+            "total_tokens": 509931,
+            "cache_read_tokens": 317440,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 8289
+          },
+          "known_tokens": {
+            "input_tokens": 481824,
+            "output_tokens": 28107,
+            "total_tokens": 509931,
+            "cache_read_tokens": 317440,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 8289
+          },
+          "cost": {
+            "status": "unknown",
+            "estimated_cost_usd": null,
+            "known_cost_usd": null,
+            "currency": "USD",
+            "source": null,
+            "unpriced_call_count": 32,
+            "pricing_versions": []
+          },
+          "coverage": {
+            "observed_call_count": 32,
+            "reported_call_count": 32,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "finalized": true,
+          "availability": "available",
+          "scopes": {
+            "primary": {
+              "calls": 6,
+              "input_tokens": 149063,
+              "output_tokens": 10616,
+              "total_tokens": 159679,
+              "cache_read_tokens": 102016,
+              "peak_input_tokens": 34269,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            },
+            "subagent": {
+              "calls": 26,
+              "input_tokens": 332761,
+              "output_tokens": 17491,
+              "total_tokens": 350252,
+              "cache_read_tokens": 215424,
+              "peak_input_tokens": 24653,
+              "namespaces": [
+                [
+                  "tools:4d666d33-0e1c-0036-45ae-8b7835b60bca",
+                  "model"
+                ],
+                [
+                  "tools:de1ce8f1-6b92-6ad6-09d8-7107b7d4ade7",
+                  "model"
+                ],
+                [
+                  "tools:e9667891-bbc1-4b61-669c-d0b78ff2f511",
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": true,
+              "reason": "Final package section directly states compaction Service Definition/basic provider/command consumer and subagent provider registry/model-facing delegation tools with immutable package-map lines."
+            },
+            "2": {
+              "passed": true,
+              "reason": "Across final tables: pressure-driven compaction, oldest balanced span replaced by summary, manual /compact, pruning before summary and shipped compaction default enablement are stated with group/basic/pruner/subsystem references."
+            },
+            "3": {
+              "passed": true,
+              "reason": "Final lifecycle rows state pre-step before request derivation, provider-confirmed CONTEXT_WINDOW_EXCEEDED only, pruning before summary/range selection and retry only after replacement generation advances."
+            },
+            "4": {
+              "passed": false,
+              "reason": "Final report states named providers coexist and describes compaction as outside the agent loop, but does not state that subagent itself is an optional capability outside that loop; compaction boundary cannot substitute for subagent boundary."
+            },
+            "5": {
+              "passed": true,
+              "reason": "Across final provider/context rows: in-process spawn/fork, fork uses completed balanced parent-turn prefix, ACP/Codex/Claude Code/DSH external forms. The lifecycle row explicitly exposes the local child id and localAgent to its caller and records its parent; this satisfies parent discovery semantically without requiring a particular catalog label. Group README L12 and subsystem L389/L393/L462 support the statements."
+            }
+          },
+          "manual_review": {
+            "core_pass_count": 4,
+            "core_count": 5,
+            "basis": "Final-report semantic statements and direct immutable line citations across rows; no unstated source or child-only facts used to fill omissions.",
+            "limitations": [
+              "Package count prose says five provider sibling packages while the listed six providers and total ten packages contradict that count.",
+              "Unfound remote HTTP provider is an absence claim without an exhaustive search; not evidence that such a provider cannot exist.",
+              "Parent discovery is conveyed through returned child id/localAgent for local one-shot children; persistent catalog discoverability is not fully described.",
+              "Parsed citation observation is not full semantic validation of all extra assertions."
+            ]
+          },
+          "index": 3,
+          "raw_sha256": "2c110186cc4c96bf57e819214ce6b6802d91580a83482d61973a0713432d5111",
+          "observed_model_identities": [
+            {
+              "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+              "provider": "xiaok",
+              "model_name": "deepseek-v4.1-flash"
+            }
+          ],
+          "usage_page_count": 1,
+          "usage_pagination_complete": true,
+          "ledger_complete": true,
+          "stop_code": null,
+          "reported_primary_peak_tokens": 34269,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.26145172119140625,
+          "root_automatic_offloads": 0,
+          "root_lifecycle": [
+            "running",
+            "completed"
+          ],
+          "task_count": 3,
+          "manual_score": "4/5",
+          "research_report_delivered": true,
+          "core_sample_accepted": false,
+          "source_count": 66,
+          "child_source_count": 51,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": true,
+          "parsed_citation_count": 46,
+          "unresolved_short_citations": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T22:52:57.746527+00:00",
+              "used_memory": 331973216,
+              "maxmemory": 1073741824,
+              "error_replies": 23405,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T22:59:08.910912+00:00",
+              "used_memory": 359169056,
+              "maxmemory": 1073741824,
+              "error_replies": 23406,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        }
+      ],
+      "quality_pass_count": 0,
+      "terminal_report_count": 2,
+      "complete_ledger_count": 2,
+      "median_primary_input_tokens": null,
+      "median_total_tokens": null,
+      "median_duration_seconds": 344.916409
+    },
+    "serial": {
+      "samples": [
+        {
+          "thread_id": "53f0cf01-f5eb-42c5-82ff-7b7bc1055192",
+          "run_id": "6e00135a-739f-48f1-9816-d824270f0ab5",
+          "status": "success",
+          "duration_seconds": 454.286772,
+          "tokens": {
+            "input_tokens": 942096,
+            "output_tokens": 16553,
+            "total_tokens": 958649,
+            "cache_read_tokens": 731264,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 3959
+          },
+          "known_tokens": {
+            "input_tokens": 942096,
+            "output_tokens": 16553,
+            "total_tokens": 958649,
+            "cache_read_tokens": 731264,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 3959
+          },
+          "cost": {
+            "status": "unknown",
+            "estimated_cost_usd": null,
+            "known_cost_usd": null,
+            "currency": "USD",
+            "source": null,
+            "unpriced_call_count": 31,
+            "pricing_versions": []
+          },
+          "coverage": {
+            "observed_call_count": 31,
+            "reported_call_count": 31,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "finalized": true,
+          "availability": "available",
+          "scopes": {
+            "primary": {
+              "calls": 31,
+              "input_tokens": 942096,
+              "output_tokens": 16553,
+              "total_tokens": 958649,
+              "cache_read_tokens": 731264,
+              "peak_input_tokens": 50735,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": false,
+              "reason": "Final response is a Token-budget stop notice and explicitly states research was not completed; no final research report or cited conclusions."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final response is a Token-budget stop notice and explicitly states research was not completed; no final research report or cited conclusions."
+            },
+            "3": {
+              "passed": false,
+              "reason": "Final response is a Token-budget stop notice and explicitly states research was not completed; no final research report or cited conclusions."
+            },
+            "4": {
+              "passed": false,
+              "reason": "Final response is a Token-budget stop notice and explicitly states research was not completed; no final research report or cited conclusions."
+            },
+            "5": {
+              "passed": false,
+              "reason": "Final response is a Token-budget stop notice and explicitly states research was not completed; no final research report or cited conclusions."
+            }
+          },
+          "manual_review": {
+            "core_pass_count": 0,
+            "core_count": 5,
+            "basis": "Review of final report only; intermediate tool evidence does not substitute for a completed research answer.",
+            "limitations": [
+              "Run status success means safe termination, not research success.",
+              "Observed budget stop at 958649 used tokens with 41351 remaining is admission rejection of the next request; not exact exhaustion of one million tokens.",
+              "No report citations; citation-window completeness is not applicable."
+            ]
+          },
+          "index": 1,
+          "raw_sha256": "624fb09c7d64acfca02cca05e8e6a734254ca5d2a6237773017c34e64837a2d2",
+          "observed_model_identities": [
+            {
+              "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+              "provider": "xiaok",
+              "model_name": "deepseek-v4.1-flash"
+            }
+          ],
+          "usage_page_count": 1,
+          "usage_pagination_complete": true,
+          "ledger_complete": true,
+          "stop_code": "token_budget_exhausted",
+          "reported_primary_peak_tokens": 50735,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.38707733154296875,
+          "root_automatic_offloads": 0,
+          "root_lifecycle": [
+            "running",
+            "completed"
+          ],
+          "task_count": 0,
+          "manual_score": "0/5",
+          "research_report_delivered": false,
+          "core_sample_accepted": false,
+          "source_count": 75,
+          "child_source_count": 0,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": false,
+          "parsed_citation_count": 0,
+          "unresolved_short_citations": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T23:01:21.157669+00:00",
+              "used_memory": 361403728,
+              "maxmemory": 1073741824,
+              "error_replies": 23415,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T23:08:59.863032+00:00",
+              "used_memory": 451715776,
+              "maxmemory": 1073741824,
+              "error_replies": 23416,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "thread_id": "0b6bc623-2939-4215-8112-63596d3d43eb",
+          "run_id": "418a92b9-08f5-4c24-8484-9612942eeab4",
+          "status": "success",
+          "duration_seconds": 508.763844,
+          "tokens": {
+            "input_tokens": 961399,
+            "output_tokens": 11404,
+            "total_tokens": 972803,
+            "cache_read_tokens": 790528,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 1600
+          },
+          "known_tokens": {
+            "input_tokens": 961399,
+            "output_tokens": 11404,
+            "total_tokens": 972803,
+            "cache_read_tokens": 790528,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 1600
+          },
+          "cost": {
+            "status": "unknown",
+            "estimated_cost_usd": null,
+            "known_cost_usd": null,
+            "currency": "USD",
+            "source": null,
+            "unpriced_call_count": 33,
+            "pricing_versions": []
+          },
+          "coverage": {
+            "observed_call_count": 33,
+            "reported_call_count": 33,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "finalized": true,
+          "availability": "available",
+          "scopes": {
+            "primary": {
+              "calls": 33,
+              "input_tokens": 961399,
+              "output_tokens": 11404,
+              "total_tokens": 972803,
+              "cache_read_tokens": 790528,
+              "peak_input_tokens": 49717,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": false,
+              "reason": "Final response is the admission-budget stop notice, with no research answer or cited conclusions."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final response is the admission-budget stop notice, with no research answer or cited conclusions."
+            },
+            "3": {
+              "passed": false,
+              "reason": "Final response is the admission-budget stop notice, with no research answer or cited conclusions."
+            },
+            "4": {
+              "passed": false,
+              "reason": "Final response is the admission-budget stop notice, with no research answer or cited conclusions."
+            },
+            "5": {
+              "passed": false,
+              "reason": "Final response is the admission-budget stop notice, with no research answer or cited conclusions."
+            }
+          },
+          "manual_review": {
+            "core_pass_count": 0,
+            "core_count": 5,
+            "basis": "Final response explicitly says the research is unfinished; intermediate observations are not substituted for a delivered answer.",
+            "limitations": [
+              "Safe status=success is not research success.",
+              "972803 known tokens, 27197 remaining: the next reserved request was refused; not exact exhaustion.",
+              "No report citations; citation-window completeness is not applicable."
+            ]
+          },
+          "index": 2,
+          "raw_sha256": "75826916fc5abf8ceaf1bfb986d2c40d7df825e8b32c1dc2f7d23757749c2ffa",
+          "observed_model_identities": [
+            {
+              "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+              "provider": "xiaok",
+              "model_name": "deepseek-v4.1-flash"
+            }
+          ],
+          "usage_page_count": 1,
+          "usage_pagination_complete": true,
+          "ledger_complete": true,
+          "stop_code": "token_budget_exhausted",
+          "reported_primary_peak_tokens": 49717,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.37931060791015625,
+          "root_automatic_offloads": 0,
+          "root_lifecycle": [
+            "running",
+            "completed"
+          ],
+          "task_count": 0,
+          "manual_score": "0/5",
+          "research_report_delivered": false,
+          "core_sample_accepted": false,
+          "source_count": 59,
+          "child_source_count": 0,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": false,
+          "parsed_citation_count": 0,
+          "unresolved_short_citations": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T23:09:00.574434+00:00",
+              "used_memory": 451715776,
+              "maxmemory": 1073741824,
+              "error_replies": 23417,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T23:17:54.222487+00:00",
+              "used_memory": 714170592,
+              "maxmemory": 1073741824,
+              "error_replies": 23419,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 2,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        },
+        {
+          "thread_id": "1b85c791-5e8d-4046-adf4-20a5049d224f",
+          "run_id": "634cf56d-6ae2-463d-b332-6b4365231e57",
+          "status": "success",
+          "duration_seconds": 431.380113,
+          "tokens": {
+            "input_tokens": 952409,
+            "output_tokens": 12864,
+            "total_tokens": 965273,
+            "cache_read_tokens": 769280,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 2555
+          },
+          "known_tokens": {
+            "input_tokens": 952409,
+            "output_tokens": 12864,
+            "total_tokens": 965273,
+            "cache_read_tokens": 769280,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": 2555
+          },
+          "cost": {
+            "status": "unknown",
+            "estimated_cost_usd": null,
+            "known_cost_usd": null,
+            "currency": "USD",
+            "source": null,
+            "unpriced_call_count": 31,
+            "pricing_versions": []
+          },
+          "coverage": {
+            "observed_call_count": 31,
+            "reported_call_count": 31,
+            "missing_usage_call_count": 0,
+            "incomplete_call_count": 0,
+            "collection_degraded": false,
+            "excluded_operations": [
+              "suggestions",
+              "title",
+              "non_llm_provider_fees"
+            ]
+          },
+          "finalized": true,
+          "availability": "available",
+          "scopes": {
+            "primary": {
+              "calls": 31,
+              "input_tokens": 952409,
+              "output_tokens": 12864,
+              "total_tokens": 965273,
+              "cache_read_tokens": 769280,
+              "peak_input_tokens": 52393,
+              "namespaces": [
+                [
+                  "model"
+                ]
+              ]
+            }
+          },
+          "fact_scores": {
+            "1": {
+              "passed": false,
+              "reason": "Final response contains only the Token-budget admission stop notice and explicitly says the task is unfinished; no delivered research conclusions."
+            },
+            "2": {
+              "passed": false,
+              "reason": "Final response contains only the Token-budget admission stop notice and explicitly says the task is unfinished; no delivered research conclusions."
+            },
+            "3": {
+              "passed": false,
+              "reason": "Final response contains only the Token-budget admission stop notice and explicitly says the task is unfinished; no delivered research conclusions."
+            },
+            "4": {
+              "passed": false,
+              "reason": "Final response contains only the Token-budget admission stop notice and explicitly says the task is unfinished; no delivered research conclusions."
+            },
+            "5": {
+              "passed": false,
+              "reason": "Final response contains only the Token-budget admission stop notice and explicitly says the task is unfinished; no delivered research conclusions."
+            }
+          },
+          "manual_review": {
+            "core_pass_count": 0,
+            "core_count": 5,
+            "basis": "Final research response only; intermediate evidence cannot fill an absent report.",
+            "limitations": [
+              "Safe status=success is not research success.",
+              "965273 known tokens, 34727 remaining: next-request admission was refused; not exact exhaustion.",
+              "No report citations; citation-window completeness is not applicable."
+            ]
+          },
+          "index": 3,
+          "raw_sha256": "39554e64942c315766395a25d2db9da5d891c5774a731258a042145cc2a12d2a",
+          "observed_model_identities": [
+            {
+              "model_id": "070cced3-350b-42ec-b678-994dd07b7078",
+              "provider": "xiaok",
+              "model_name": "deepseek-v4.1-flash"
+            }
+          ],
+          "usage_page_count": 1,
+          "usage_pagination_complete": true,
+          "ledger_complete": true,
+          "stop_code": "token_budget_exhausted",
+          "reported_primary_peak_tokens": 52393,
+          "primary_peak_complete": true,
+          "primary_peak_configured_window_ratio": 0.39972686767578125,
+          "root_automatic_offloads": 0,
+          "root_lifecycle": [
+            "running",
+            "completed"
+          ],
+          "task_count": 0,
+          "manual_score": "0/5",
+          "research_report_delivered": false,
+          "core_sample_accepted": false,
+          "source_count": 61,
+          "child_source_count": 0,
+          "all_content_sources_ref_verified": true,
+          "all_source_hashes_match": true,
+          "all_file_git_objects_match": true,
+          "citations_mechanically_observed": false,
+          "parsed_citation_count": 0,
+          "unresolved_short_citations": [],
+          "infrastructure": {
+            "before": {
+              "at": "2026-10-28T23:17:54.795609+00:00",
+              "used_memory": 714170592,
+              "maxmemory": 1073741824,
+              "error_replies": 23420,
+              "oom_errors": 17039
+            },
+            "after": {
+              "at": "2026-10-28T23:25:32.281172+00:00",
+              "used_memory": 1000927696,
+              "maxmemory": 1073741824,
+              "error_replies": 23421,
+              "oom_errors": 17039
+            },
+            "new_redis_errors": 1,
+            "new_redis_oom_errors": 0,
+            "common_source_drift": []
+          }
+        }
+      ],
+      "quality_pass_count": 0,
+      "terminal_report_count": 0,
+      "complete_ledger_count": 3,
+      "median_primary_input_tokens": 952409,
+      "median_total_tokens": 965273,
+      "median_duration_seconds": 454.286772
+    }
+  },
+  "same_quality_comparison_allowed": false,
+  "primary_input_reduction": null,
+  "conclusion": "All six frozen DeepSeek terminal runs retained; incomplete usage remains null. Current core-quality acceptance failed. No same-quality input reduction claim; no pooling with Kimi or previous configurations."
+}

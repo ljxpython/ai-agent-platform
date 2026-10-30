@@ -9,6 +9,16 @@ Multi-round research combining GitHub API, search_web, fetch_page to produce com
 
 ## Research Workflow
 
+For focused source questions, skip repository statistics and broad web discovery.
+Read the relevant directory and documentation first, batch independent file reads,
+and answer as soon as the requested facts have evidence. `tree` reads only the
+directory in `path`; use `page`/`next_page` for its entries. `file` returns numbered
+lines and `next_line`; pass that value as `start_line` for the next window. A
+`line_truncated=true` line is incomplete evidence and must be labelled as such.
+Content operations (`file`, `readme`, `tree`) require an explicit `ref`; never omit
+it or silently switch the user's commit to the default branch. For long files,
+use a literal `query` to locate the relevant passage before paging further.
+
 - Round 1: GitHub API
 - Round 2: Discovery
 - Round 3: Deep Investigation
@@ -40,8 +50,8 @@ Round 4: "{topic} issues", "{topic} roadmap", "site:github.com {topic}"
 Call the authorized `github_query` tool. The bundled `scripts/github_api.py` is retained as upstream reference, not executed in the sandbox:
 ```text
 github_query(owner="<owner>", repo="<repo>", operation="summary")
-github_query(owner="<owner>", repo="<repo>", operation="readme")
-github_query(owner="<owner>", repo="<repo>", operation="tree")
+github_query(owner="<owner>", repo="<repo>", operation="readme", ref="<commit-sha-or-explicit-ref>")
+github_query(owner="<owner>", repo="<repo>", operation="tree", ref="<commit-sha-or-explicit-ref>")
 ```
 
 **Available operations:**
@@ -56,7 +66,7 @@ github_query(owner="<owner>", repo="<repo>", operation="tree")
 - prs
 - releases
 
-Also use `file` with `path` to read source files, or `tags`. Lists accept `page` and `per_page`; follow `next_page` until null within the tool limits. `truncated=true` means the sample is not exhaustive. Contributor observations are not a total count. Only public repositories are supported; never request tokens from the user or run the bundled script to bypass a denied operation. Read the returned evidence path when a preview is truncated.
+Also use `file` with `path` to read source files, or `tags`. Lists accept `page` and `per_page`; follow `next_page` until null within the tool limits. `truncated=true` means the sample is not exhaustive. Contributor observations are not a total count. Only public repositories are supported; never request tokens from the user or run the bundled script to bypass a denied operation. Treat the returned evidence path as an audit pointer only; do not pass it to `read_file` or `execute`. For source claims, call `file` with the exact immutable commit in `ref`, then cite the returned GitHub URL and line range.
 
 **Round 2 - Discovery (3-5 search_web)**
 - Get overview and identify key terms

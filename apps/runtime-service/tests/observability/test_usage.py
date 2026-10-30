@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -17,6 +18,98 @@ from runtime_service.observability.usage import (
 )
 
 
+def test_request_profile_counts_components_without_exporting_content():
+    from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+
+    from runtime_service.observability.usage import _request_profile
+
+    messages = [
+        [
+            SystemMessage(content="private-system"),
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": "中文秘密"},
+                    {"type": "image_url", "image_url": {"url": "private-image"}},
+                ]
+            ),
+            AIMessage(content="private-answer"),
+            ToolMessage(content="private-result", tool_call_id="call-1"),
+        ]
+    ]
+    tools = [
+        {
+            "type": "function",
+            "function": {"name": "read", "description": "private-schema"},
+        }
+    ]
+    before = repr((messages, tools))
+    profile = _request_profile(messages, tools)
+    assert profile["components"]["system"]["text_chars"] == 14
+    assert profile["components"]["user"]["text_bytes"] == 12
+    assert profile["components"]["user"]["nontext_blocks"] == 1
+    assert profile["components"]["tool"]["messages"] == 1
+    assert profile["tool_schema_count"] == 1
+    assert profile["estimated_input_tokens"] > 0
+    assert profile["injection_provenance"] == "unavailable"
+    encoded = json.dumps(profile)
+    assert not any(s in encoded for s in ("private", "秘密", "call-1"))
+    assert repr((messages, tools)) == before
+
+
+def test_response_schema_is_measured_and_reserved_without_exporting_it():
+    from runtime_service.observability.usage import (
+        _estimate_input_tokens,
+        _request_profile,
+    )
+
+    messages = [[AIMessage(content="hello")]]
+    schema = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "private-report",
+            "schema": {"description": "private-schema" * 100},
+        },
+    }
+    profile = _request_profile(messages, [], schema)
+    assert profile["response_schema_chars"] > 1000
+    assert len(profile["response_schema_sha256"]) == 64
+    assert (
+        _estimate_input_tokens(messages, [], schema)
+        > _estimate_input_tokens(messages, []) + 250
+    )
+    assert "private-" not in json.dumps(profile)
+
+
+def test_usage_callback_logs_profile_once_without_public_payload_change(monkeypatch):
+    from runtime_service.observability import usage as module
+
+    events = []
+    monkeypatch.setattr(module, "log_context_metric", events.append)
+
+    async def write(*args):
+        return True
+
+    async def run():
+        handler = RuntimeUsageCallback({"run_id": str(uuid4())})
+        monkeypatch.setattr(handler, "_write", write)
+        call_id = uuid4()
+        for _ in range(2):
+            await handler.on_chat_model_start(
+                {},
+                [[AIMessage(content="do-not-export")]],
+                run_id=call_id,
+                invocation_params={"tools": []},
+                metadata={"langgraph_checkpoint_ns": "tools:child|model:step"},
+            )
+        assert len(events) == 1
+        assert events[0]["scope"] == "subagent"
+        assert events[0]["model_call_id"] == str(call_id)
+        assert "do-not-export" not in json.dumps(events)
+        assert "request_profile" not in handler._calls[call_id]
+
+    asyncio.run(run())
+
+
 def price(**updates):
     return {
         "currency": "USD",
@@ -32,6 +125,38 @@ def price(**updates):
         "cache_write_1h": "4",
         **updates,
     }
+
+
+def test_namespace_preserves_child_identity_and_normalizes_model_step(monkeypatch):
+    async def write(*args):
+        return True
+
+    async def run():
+        handler = RuntimeUsageCallback({})
+        monkeypatch.setattr(handler, "_write", write)
+        for namespace in (
+            "model:root",
+            "tools:child-a|model:step-1",
+            "tools:child-a|model:step-2",
+            "tools:child-b|model:step-3",
+        ):
+            await handler.on_chat_model_start(
+                {}, [], run_id=uuid4(), metadata={"langgraph_checkpoint_ns": namespace}
+            )
+        calls = list(handler._calls.values())
+        assert calls[0]["namespace"] == ["model"]
+        assert (
+            calls[1]["namespace"] == calls[2]["namespace"] == ["tools:child-a", "model"]
+        )
+        assert calls[3]["namespace"] == ["tools:child-b", "model"]
+        assert [call["scope"] for call in calls] == [
+            "primary",
+            "subagent",
+            "subagent",
+            "subagent",
+        ]
+
+    asyncio.run(run())
 
 
 def response(usage, **metadata):
@@ -337,7 +462,8 @@ def test_hidden_memory_model_inherits_usage_without_exporter(monkeypatch):
     )
 
     async def extract(state):
-        await memory.MemoryContextMiddleware(model).aafter_agent(
+        middleware = memory.MemoryContextMiddleware(model)
+        await middleware.aafter_agent(
             {
                 "dear_memory_source": {
                     "id": "human",
@@ -350,6 +476,7 @@ def test_hidden_memory_model_inherits_usage_without_exporter(monkeypatch):
                 execution_info=SimpleNamespace(thread_id="thread", run_id="run")
             ),
         )
+        await middleware.drain_tasks()
         return {}
 
     builder = StateGraph(dict)

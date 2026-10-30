@@ -118,6 +118,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 有界调研委派与模型输入治理 | 当前简化实现已完成人工验收（2026-10-30）：复用官方task+只读general-purpose，撤除自研报告/合成/原文校验，保留预算/PII/Usage/取消/并发，修复子额度异常穿透。扩大回归560通过/13跳过/1项local后端复验通过；正式烟测主峰31.1%、root自动整理观测值0、28/28 Usage完整。原五项明确语义覆盖3/5，不宣称稳定质量或统计收益，未发布 | [项目](projects/20261028-subagent-fanout-and-prefix-caching/README.md) |
 | Agent 代码库剖析收敛准则与高优先级预算收尾感知 | 已完成：SYSTEM_PROMPT 确立代码资产剖析 Top-Down 自顶向下原则、单轮 5~8 次探索硬约束、严禁写脚本正则遍历海量文件树；将 WRAPUP_INSTRUCTION 升级为中英双语最高优先级强制收尾指令，warning_calls 提早至 5 轮；76 项自动化单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/02-agent-convergence-and-wrapup-governance.md) |
 | 智能体上下文防爆治理与工业级工具截断/视口虚拟折叠全栈闭环 | 已完成：实装单工具输出驱逐落盘（AGENT_TOOL_TOKEN_LIMIT_BEFORE_EVICT=1200 Tokens）、全工具物理 Head+Tail 截断（AGENT_TOOL_OUTPUT_MAX_CHARS=4800）、以及 ToolOutputPruningMiddleware 视口动态虚拟折叠（保留最近 4 次）；在生产大长会话真实回放测算中，Token 消耗暴降 58% ~ 82%，压缩触发归零；全量 300 项中间件单测 100% 绿灯 | [项目概览](projects/20261028-context-governance-and-tool-resilience/README.md) · [验证记录](projects/20261028-context-governance-and-tool-resilience/verification.md) |
 | 智能体联网调研预算约束（Research Budget）与边际收敛刹车治理 | 已完成：彻底根治深度调研中由于技能煽动无限递归搜索导致单会话调用 250+ 次工具、耗时 34 分钟超时死循环的过犹不及缺陷；重构 deep-research 技能与全局 SYSTEM_PROMPT，确立 3~5 轮搜索与 2~4 篇精读预算、边际效用递减及摘要优先法则，28 项技能单测全部通过 | [变更记录](../apps/runtime-service/docs/changes/20261027-bounded-research-budget-and-convergence.md) |
@@ -194,7 +195,7 @@
 | 非 Docker 新机开发环境交接 | 文档已收口：通用模板与私有账号映射分开，建库/SCRAM/反向验收连续步骤，补齐运维回执；目标机实际部署待执行 | [部署手册](quickstart/deployment-guide.md) · [运维交接](quickstart/operator-handoff.md) · [收口记录](changes/20260921-native-deployment-operator-handoff.md) |
 | 本地 PostgreSQL 密码认证 | 本地已完成：SCRAM、18 项认证检查、9 项兼容检查、重连和回退通过；云端交接更新因 SSH 超时待补 | [认证记录](projects/20260920-local-postgres-password/README.md) |
 | 本地项目清理 | 已支持：按 UUID 保留项目；显式历史清理先备份，支持失效令牌、会话/审计及指定测试库；测试退出回收项目 | [运维规范](guides/database-operations.md#本地项目清理) |
-| 本地栈进程启停 | 已优化：进程/端口归属隔离；Runtime 单服务重启在停进程前预检，恢复 audience 配置后真实审批通过 | [重启预检修复](changes/20260922-local-stack-runtime-preflight.md) · `docs/changes/20260913-local-stack-real-process-management.md` |
+| 本地栈进程启停 | 已优化：进程/端口归属隔离；Runtime 单服务重启在停进程前预检，恢复 audience 配置后真实审批通过；隔离Worktree新增Redis旧数据加载的有界等待并通过3项探针及真实启动 | [Redis加载等待](changes/20261029-local-stack-redis-loading-probe.md) · [重启预检修复](changes/20260922-local-stack-runtime-preflight.md) · `docs/changes/20260913-local-stack-real-process-management.md` |
 | 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成；整单任务持续推进至 done 或需用户行动的 blocked，阶段进度写入任务文档且不作为最终交付 | [Harness 完成与汇报规则](changes/20260926-harness-completion-reporting.md) |
 | 文档一致性检查（`scripts/check_docs.py`） | 已完成 | `scripts/check_docs.py` |
 

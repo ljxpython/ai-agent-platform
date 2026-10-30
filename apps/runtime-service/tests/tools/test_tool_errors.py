@@ -8,6 +8,8 @@ import httpx
 import pytest
 from langchain.agents import create_agent
 from langchain.agents.middleware import ToolErrorMiddleware
+from langchain.agents.middleware.model_call_limit import ModelCallLimitExceededError
+from langchain.agents.middleware.tool_call_limit import ToolCallLimitExceededError
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import ToolException, tool
 from langgraph.errors import GraphBubbleUp
@@ -15,6 +17,8 @@ from support import BindableFakeMessagesChatModel
 
 from runtime_service.errors import (
     RuntimeAuthError,
+    RuntimeExecutionError,
+    RuntimePrivacyError,
     RuntimeResolutionError,
     RuntimeWorkspaceError,
 )
@@ -31,6 +35,100 @@ from runtime_service.tools.images import (
     build_image_tools,
 )
 from runtime_service.workspace.documents import DocumentError
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "research_not_found_or_private",
+        "github_file_unavailable",
+        "github_directory_unavailable",
+    ],
+)
+def test_github_missing_public_source_has_safe_correction_hint(code):
+    error = ToolException(code)
+    error.__cause__ = ValueError("SECRET_CANARY token=private https://provider.invalid")
+    payload = json.loads(tool_error_content(error, "github_query"))
+    assert payload["code"] == "tool.upstream_unavailable"
+    assert payload["outcome"] == "failed"
+    assert all(field in payload["error"] for field in ("owner", "repo", "ref", "path"))
+    assert "原样重试" in payload["error"]
+    assert "CANARY" not in json.dumps(payload)
+    assert "provider.invalid" not in json.dumps(payload)
+    assert len(json.dumps(payload).encode()) < 2048
+
+
+@pytest.mark.parametrize(
+    "name,role,allowed",
+    [
+        ("task", "general-purpose", True),
+        ("task", "writer", False),
+        ("task", None, False),
+        ("github_query", "general-purpose", False),
+    ],
+)
+@pytest.mark.parametrize(
+    "error,code",
+    [
+        (ModelCallLimitExceededError(2, 2, 2, 2), "tool.upstream_unavailable"),
+        (ToolCallLimitExceededError(2, 2, 2, 2), "tool.upstream_unavailable"),
+        (
+            RuntimeResolutionError("runtime.model.stream_interrupted"),
+            "tool.upstream_unavailable",
+        ),
+        (RuntimeExecutionError("runtime.loop.detected"), "tool.operation_failed"),
+    ],
+)
+def test_only_approved_readonly_child_failures_are_recoverable(
+    name, role, allowed, error, code
+):
+    error.__cause__ = ValueError("SECRET_CANARY")
+    request = SimpleNamespace(tool_call={"name": name, "args": {"subagent_type": role}})
+    assert on_tool_error(error, request) is None
+    result = on_tool_error(error, request, readonly_roles={"general-purpose"})
+    if allowed:
+        payload = json.loads(result)
+        assert payload["code"] == code
+        assert payload["outcome"] == "failed"
+        assert "do not repeat" in payload["error"]
+        assert "CANARY" not in result
+        if type(error) is RuntimeExecutionError:
+            assert payload["recovery"] == "do_not_repeat"
+    else:
+        assert result is None
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeAuthError("runtime.model.stream_interrupted"),
+        RuntimeAuthError("runtime.loop.detected"),
+        RuntimeResolutionError("runtime.loop.detected"),
+        RuntimeResolutionError("runtime.model.provider_rejected"),
+        RuntimeResolutionError("runtime.token.budget_exceeded"),
+        RuntimeExecutionError("runtime.token_budget.exhausted"),
+        RuntimeExecutionError("prefix runtime.loop.detected"),
+        RuntimePrivacyError("runtime.loop.detected"),
+        RuntimeWorkspaceError("runtime.workspace.unavailable"),
+        asyncio.CancelledError(),
+        RuntimeError("defect"),
+    ],
+)
+def test_readonly_stream_failure_isolation_preserves_other_controls(error):
+    request = SimpleNamespace(
+        tool_call={"name": "task", "args": {"subagent_type": "general-purpose"}}
+    )
+    assert on_tool_error(error, request, readonly_roles={"general-purpose"}) is None
+
+
+def test_missing_github_ref_has_safe_correction_hint():
+    error = ToolException("invalid_github_ref")
+    error.__cause__ = ValueError("SECRET_CANARY")
+    payload = json.loads(tool_error_content(error, "github_query"))
+    assert payload["code"] == "tool.invalid_input"
+    assert payload["outcome"] == "not_started"
+    assert "ref" in payload["error"] and "SHA" in payload["error"]
+    assert "CANARY" not in json.dumps(payload)
 
 
 @pytest.mark.parametrize(

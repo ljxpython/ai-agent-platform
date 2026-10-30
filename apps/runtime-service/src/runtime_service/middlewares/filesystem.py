@@ -5,10 +5,14 @@ from __future__ import annotations
 import os
 from collections.abc import Awaitable, Callable
 from copy import copy
+from dataclasses import replace
 from hashlib import sha256
 
 from deepagents.backends.protocol import BackendProtocol
-from deepagents.middleware._message_eviction import _extract_text_from_message
+from deepagents.middleware._message_eviction import (
+    _build_evicted_content,
+    _extract_text_from_message,
+)
 from deepagents.middleware.filesystem import (
     NUM_CHARS_PER_TOKEN,
     TOOLS_EXCLUDED_FROM_EVICTION,
@@ -18,7 +22,25 @@ from langchain_core.messages import ToolMessage
 from langgraph.prebuilt.tool_node import ToolCallRequest
 from langgraph.types import Command
 
+from runtime_service.observability.logging import log_context_metric
 from runtime_service.tools.knowledge import KNOWLEDGE_TOOL, fit_knowledge_message
+
+
+def _record_view(message, result, *, stage, archived=False):
+    try:
+        log_context_metric(
+            {
+                "event": "runtime.tool_output.view",
+                "tool_call_id": str(message.tool_call_id)[:128],
+                "tool_name": str(message.name or "tool")[:80],
+                "stage": stage,
+                "input_chars": len(_extract_text_from_message(message)),
+                "visible_chars": len(_extract_text_from_message(result)),
+                "archived": archived,
+            }
+        )
+    except Exception:
+        pass  # Diagnostics must never replace a tool result.
 
 
 def truncate_tool_output_text(
@@ -30,18 +52,19 @@ def truncate_tool_output_text(
     tool_name: str = "",
 ) -> str:
     """Perform Head+Tail truncation on oversized tool outputs to prevent context blowup."""
+    if max_chars <= 0:
+        raise ValueError("max_chars must be positive")
     if len(content) <= max_chars:
         return content
 
     lines = content.splitlines(keepends=True)
     tool_desc = f"工具 '{tool_name}' " if tool_name else "工具"
     if len(lines) <= head_lines + tail_lines:
-        half = max_chars // 2
-        return (
-            content[:half]
-            + f"\n\n[... ⚠️ {tool_desc}输出单行超限 ({len(content)} 字符)，已自动截断中间部分 ...]\n\n"
-            + content[-half:]
-        )
+        notice = f"\n\n[... ⚠️ {tool_desc}输出单行超限 ({len(content)} 字符)，已自动截断中间部分 ...]\n\n"
+        if len(notice) >= max_chars:
+            return notice[:max_chars]
+        half = (max_chars - len(notice)) // 2
+        return content[:half] + notice + (content[-half:] if half else "")
 
     head = "".join(lines[:head_lines])
     tail = "".join(lines[-tail_lines:]) if tail_lines > 0 else ""
@@ -56,8 +79,14 @@ def truncate_tool_output_text(
     tool_desc = f"工具 '{tool_name}' " if tool_name else "工具"
     notice = (
         f"\n\n[... ⚠️ {tool_desc}输出过长 ({len(content)} 字符)。已自动截断中间 {truncated_lines} 行 ({truncated_chars} 字符) ...\n"
-        f"提示：完整结果已安全受限保护。若需阅读特定区域，请{hint}。]\n\n"
+        f"提示：此处并非完整结果。若需阅读特定区域，请{hint}。]\n\n"
     )
+    if len(notice) >= max_chars:
+        return notice[:max_chars]
+    if len(head) + len(notice) + len(tail) > max_chars:
+        budget = max_chars - len(notice)
+        head = head[: budget // 2]
+        tail = tail[-(budget - len(head)) :] if tail else ""
     return head + notice + tail
 
 
@@ -88,10 +117,6 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
         if not content:
             return message
 
-        # If already evicted by parent FilesystemMiddleware, keep as-is.
-        if "saved in the filesystem at" in content:
-            return message
-
         limit_tokens = self._tool_token_limit_before_evict or 4000
         env_max = os.getenv("AGENT_TOOL_OUTPUT_MAX_CHARS")
         if env_max:
@@ -119,7 +144,14 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
                 max_chars=threshold,
                 tool_name=actual_name,
             )
-            return message.model_copy(update={"content": truncated})
+            guarded = message.model_copy(
+                update={
+                    "content": _build_evicted_content(message, truncated),
+                }
+            )
+            _record_view(message, guarded, stage="display_cap")
+            return guarded
+        _record_view(message, message, stage="display")
         return message
 
     def wrap_tool_call(
@@ -133,9 +165,9 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
             if isinstance(request.tool_call, dict)
             else ""
         )
-        if isinstance(result, ToolMessage):
-            return self._guard_message(result, tool_name)
-        return result
+        if tool_name in TOOLS_EXCLUDED_FROM_EVICTION and tool_name != "read_file":
+            result = self._intercept_large_tool_result(result)
+        return self._guard_result(result, tool_name)
 
     async def awrap_tool_call(
         self,
@@ -148,8 +180,28 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
             if isinstance(request.tool_call, dict)
             else ""
         )
+        if tool_name in TOOLS_EXCLUDED_FROM_EVICTION and tool_name != "read_file":
+            result = await self._aintercept_large_tool_result(result)
+        return self._guard_result(result, tool_name)
+
+    def _guard_result(self, result, tool_name):
         if isinstance(result, ToolMessage):
             return self._guard_message(result, tool_name)
+        if isinstance(result, Command) and result.update is not None:
+            messages, wrapped = self._unwrap_command_messages(result.update)
+            guarded = [
+                self._guard_message(message, tool_name)
+                if isinstance(message, ToolMessage)
+                else message
+                for message in messages
+            ]
+            return replace(
+                result,
+                update={
+                    **result.update,
+                    "messages": self._rewrap_command_messages(guarded, wrapped=wrapped),
+                },
+            )
         return result
 
     def _process_large_message(
@@ -159,9 +211,11 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
             return fit_knowledge_message(
                 message, NUM_CHARS_PER_TOKEN * self._tool_token_limit_before_evict
             ), False
-        return FilesystemMiddleware._process_large_message(
+        result, archived = FilesystemMiddleware._process_large_message(
             self._scoped(message), message, resolved_backend
         )
+        _record_view(message, result, stage="spill", archived=archived)
+        return result, archived
 
     async def _aprocess_large_message(
         self, message: ToolMessage, resolved_backend: BackendProtocol
@@ -170,6 +224,8 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
             return fit_knowledge_message(
                 message, NUM_CHARS_PER_TOKEN * self._tool_token_limit_before_evict
             ), False
-        return await FilesystemMiddleware._aprocess_large_message(
+        result, archived = await FilesystemMiddleware._aprocess_large_message(
             self._scoped(message), message, resolved_backend
         )
+        _record_view(message, result, stage="spill", archived=archived)
+        return result, archived

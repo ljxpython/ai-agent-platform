@@ -75,6 +75,25 @@ def test_restored_calls_do_not_double_count_and_new_run_is_independent():
     assert RunTokenBudget(TokenBudgetPolicy(100, 80)).used_tokens == 0
 
 
+def test_reservations_are_atomic_and_replaced_by_reported_usage():
+    budget = RunTokenBudget(TokenBudgetPolicy(100, 80))
+    assert budget.reserve_call("one", 60)
+    assert budget.reserve_call("two", 40)
+    assert budget.check() == "exhausted"
+    assert not budget.reserve_call("three", 1)
+    assert budget.public_snapshot()["remaining_tokens"] == 100
+
+    budget.release_call("one")
+    assert budget.check() == "ok"
+    assert budget.reserve_call("three", 60)
+    budget.record_call("two", total_tokens=20, quality="reported")
+    assert budget.reserved_tokens == 60
+    assert budget.check() == "approaching"
+    budget.record_call("three", total_tokens=30, quality="reported")
+    assert budget.reserved_tokens == 0
+    assert budget.used_tokens == 50
+
+
 def test_concurrent_calls_and_notice_claims_are_idempotent():
     budget = RunTokenBudget(TokenBudgetPolicy(100, 80))
     with ThreadPoolExecutor(max_workers=8) as pool:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 from langchain_core.messages import AIMessageChunk
 
@@ -142,6 +144,31 @@ def test_build_deepseek_without_prefix_uses_proxy_settings(
     assert calls["temperature"] == 0.0
 
 
+def test_budgeted_model_sets_an_explicit_output_limit(monkeypatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_constructor(**kwargs: object) -> object:
+        calls.update(kwargs)
+        return object()
+
+    monkeypatch.setenv("RUNTIME_USAGE_ENABLED", "true")
+    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_ENABLED", "true")
+    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_MAX_TOKENS", "100000")
+    monkeypatch.setattr(modeling, "ChatDeepSeek", fake_constructor)
+    config = replace(_resolved("deepseek:deepseek-chat"), max_tokens=None)
+
+    modeling.build_model(
+        config,
+        env={
+            "DEEPSEEK_PROXY_API_KEY": "key",
+            "DEEPSEEK_PROXY_URL": "https://deepseek.test/v1",
+        },
+    )
+
+    assert calls["max_tokens"] == 8192
+    assert calls["metadata"]["runtime_usage_model"]["max_output_tokens"] == 8192
+
+
 def test_build_openai_uses_gpt_proxy_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
@@ -190,6 +217,7 @@ def test_token_budget_disables_unobservable_sdk_retries(monkeypatch):
         "ChatOpenAIWithReasoning",
         lambda **kwargs: calls.update(kwargs) or object(),
     )
+    monkeypatch.setenv("RUNTIME_USAGE_ENABLED", "true")
     monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_ENABLED", "true")
     modeling.build_model(
         _resolved("openai:test"),

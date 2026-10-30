@@ -1,0 +1,951 @@
+{
+  "at": "2026-10-29T07:18:14.068250+00:00",
+  "manifest_sha256": "92b2330ad44ba11c17a29516d8e8a41365474039253af8660237deffbfd495f8",
+  "manifest_common_files": 1129,
+  "common_source_drift_after_all_six": [],
+  "window": 131072,
+  "output": 8192,
+  "budget": null,
+  "samples": [
+    {
+      "arm": "delegation",
+      "sample": 1,
+      "run_id": "eaf84920-9c68-4101-95da-8c353e2a2735",
+      "thread_id": "6510b01d-d047-4d37-b9f5-4c7668e361ac",
+      "status": "success",
+      "raw_sha256": "8b5558afbc9e70ed0493128d024f909431ac75d51063c01a7a9afbd5612e2797",
+      "file": ".local-stack/delegation-relaxed-v30-1.json",
+      "fact_scores": [
+        {
+          "item": 1,
+          "passed": true,
+          "reason": "compaction definition/provider/consumer and subagent registry/model tools stated"
+        },
+        {
+          "item": 2,
+          "passed": true,
+          "reason": "oldest-history summarization, token pressure, /compact, optional pruning and shipped default all present across rows"
+        },
+        {
+          "item": 3,
+          "passed": true,
+          "reason": "pre-step, normalized overflow, prune before summary and replacement-generation retry stated"
+        },
+        {
+          "item": 4,
+          "passed": false,
+          "reason": "multiple named providers stated, subagent outside agent-loop omitted; compaction optional role cannot substitute"
+        },
+        {
+          "item": 5,
+          "passed": false,
+          "reason": "fork completed history and external providers present; fresh in-process spawn behavior not stated explicitly"
+        }
+      ],
+      "core_score": 3,
+      "usage_complete": true,
+      "coverage": {
+        "observed_call_count": 8,
+        "reported_call_count": 8,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "tokens": {
+        "input_tokens": 201874,
+        "output_tokens": 8149,
+        "total_tokens": 210023,
+        "cache_read_tokens": 114048,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 2567
+      },
+      "known_tokens": {
+        "input_tokens": 201874,
+        "output_tokens": 8149,
+        "total_tokens": 210023,
+        "cache_read_tokens": 114048,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 2567
+      },
+      "scopes": {
+        "primary": {
+          "calls": 8,
+          "input_tokens": 201874,
+          "output_tokens": 8149,
+          "total_tokens": 210023,
+          "cache_read_tokens": 114048,
+          "peak_input_tokens": 44851,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        }
+      },
+      "known_primary_peak_input_tokens": 44851,
+      "primary_peak_complete": true,
+      "known_primary_peak_window_percent": 34.218597412109375,
+      "actual_provider_outcomes": [
+        {
+          "provider": "xiaok",
+          "model": "deepseek-v4.1-flash",
+          "outcome": "completed",
+          "calls": 8
+        }
+      ],
+      "duration_seconds": 149.472251,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 8,
+        "pricing_versions": []
+      },
+      "root_automatic_summaries": 0,
+      "child_namespaces": [],
+      "successful_child_reports": 0,
+      "source_count": 16,
+      "explicit_source_coordinates": true,
+      "citation_window_audit": true,
+      "source_coordinate_review_file": null,
+      "profile_calls": 8,
+      "ledger_calls": 8,
+      "final_stream_matches_checkpoint": true,
+      "infrastructure": {
+        "before": {
+          "at": "2026-10-29T06:32:57.080091+00:00",
+          "used_memory": 234797136,
+          "maxmemory": 1073741824,
+          "error_replies": 113,
+          "oom_errors": 0
+        },
+        "after": {
+          "at": "2026-10-29T06:35:56.957900+00:00",
+          "used_memory": 311432000,
+          "maxmemory": 1073741824,
+          "error_replies": 114,
+          "oom_errors": 0
+        },
+        "common_source_drift": [],
+        "new_redis_errors": 1,
+        "new_redis_oom_errors": 0
+      },
+      "passed_all_gates": false
+    },
+    {
+      "arm": "delegation",
+      "sample": 2,
+      "run_id": "fe55dff9-9c90-4f44-92c3-d479395a3451",
+      "thread_id": "38785b88-c85c-4d77-8ba4-889d8e972788",
+      "status": "success",
+      "raw_sha256": "855c3aa39dd3a5a029d17969053e2c24af396daa862ab4eaa0301643d433133a",
+      "file": ".local-stack/delegation-relaxed-v30-2.json",
+      "fact_scores": [
+        {
+          "item": 1,
+          "passed": true,
+          "reason": "package groups and definition/provider/model consumers stated"
+        },
+        {
+          "item": 2,
+          "passed": true,
+          "reason": "oldest-history summary, pressure, manual /compact, pruning, shipped default stated"
+        },
+        {
+          "item": 3,
+          "passed": true,
+          "reason": "pre-step/normalized overflow/prune-before-summary/generation-progress retry all stated"
+        },
+        {
+          "item": 4,
+          "passed": true,
+          "reason": "both optional and outside agent-loop plus multiple named providers explicitly stated"
+        },
+        {
+          "item": 5,
+          "passed": false,
+          "reason": "fresh in-process/fork parent history/external providers/discovery present, but fork inherits only completed parent history qualifier omitted"
+        }
+      ],
+      "core_score": 4,
+      "usage_complete": true,
+      "coverage": {
+        "observed_call_count": 39,
+        "reported_call_count": 39,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "tokens": {
+        "input_tokens": 844836,
+        "output_tokens": 34208,
+        "total_tokens": 879044,
+        "cache_read_tokens": 579328,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 10380
+      },
+      "known_tokens": {
+        "input_tokens": 844836,
+        "output_tokens": 34208,
+        "total_tokens": 879044,
+        "cache_read_tokens": 579328,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 10380
+      },
+      "scopes": {
+        "primary": {
+          "calls": 4,
+          "input_tokens": 84410,
+          "output_tokens": 6118,
+          "total_tokens": 90528,
+          "cache_read_tokens": 55424,
+          "peak_input_tokens": 29525,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "subagent": {
+          "calls": 35,
+          "input_tokens": 760426,
+          "output_tokens": 28090,
+          "total_tokens": 788516,
+          "cache_read_tokens": 523904,
+          "peak_input_tokens": 41717,
+          "namespaces": [
+            [
+              "tools:0ba79b26-d2a5-1fbb-a68c-0b534a643866",
+              "model"
+            ],
+            [
+              "tools:0d270ca3-433d-34be-2ea0-11e5fdafde8b",
+              "model"
+            ],
+            [
+              "tools:7534f285-c3c4-6d32-1016-9be78e7b3620",
+              "model"
+            ]
+          ]
+        }
+      },
+      "known_primary_peak_input_tokens": 29525,
+      "primary_peak_complete": true,
+      "known_primary_peak_window_percent": 22.525787353515625,
+      "actual_provider_outcomes": [
+        {
+          "provider": "xiaok",
+          "model": "deepseek-v4.1-flash",
+          "outcome": "completed",
+          "calls": 39
+        }
+      ],
+      "duration_seconds": 458.037999,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 39,
+        "pricing_versions": []
+      },
+      "root_automatic_summaries": 0,
+      "child_namespaces": [
+        {
+          "namespace": "tools:7534f285-c3c4-6d32-1016-9be78e7b3620",
+          "status": 200,
+          "message_count": 0,
+          "agent_name": "code_explorer",
+          "run_id": "fe55dff9-9c90-4f44-92c3-d479395a3451"
+        },
+        {
+          "namespace": "tools:0ba79b26-d2a5-1fbb-a68c-0b534a643866",
+          "status": 200,
+          "message_count": 0,
+          "agent_name": "code_explorer",
+          "run_id": "fe55dff9-9c90-4f44-92c3-d479395a3451"
+        },
+        {
+          "namespace": "tools:0d270ca3-433d-34be-2ea0-11e5fdafde8b",
+          "status": 200,
+          "message_count": 0,
+          "agent_name": "code_explorer",
+          "run_id": "fe55dff9-9c90-4f44-92c3-d479395a3451"
+        }
+      ],
+      "successful_child_reports": 2,
+      "source_count": 61,
+      "explicit_source_coordinates": true,
+      "citation_window_audit": true,
+      "source_coordinate_review_file": null,
+      "profile_calls": 39,
+      "ledger_calls": 39,
+      "final_stream_matches_checkpoint": true,
+      "infrastructure": {
+        "before": {
+          "at": "2026-10-29T06:35:57.807177+00:00",
+          "used_memory": 311432000,
+          "maxmemory": 1073741824,
+          "error_replies": 115,
+          "oom_errors": 0
+        },
+        "after": {
+          "at": "2026-10-29T06:44:08.074413+00:00",
+          "used_memory": 337372288,
+          "maxmemory": 1073741824,
+          "error_replies": 116,
+          "oom_errors": 0
+        },
+        "common_source_drift": [],
+        "new_redis_errors": 1,
+        "new_redis_oom_errors": 0
+      },
+      "passed_all_gates": false
+    },
+    {
+      "arm": "delegation",
+      "sample": 3,
+      "run_id": "254e8a9e-1c78-4c7e-9058-3b0e4ea9cf8a",
+      "thread_id": "15fcc606-dafd-4ad5-890b-70f101124573",
+      "status": "success",
+      "raw_sha256": "496c431bcd66825a29e4987ad5d1897d28fae135f6281a451ba4c3087cdd54a0",
+      "file": ".local-stack/delegation-relaxed-v30-3.json",
+      "fact_scores": [
+        {
+          "item": 1,
+          "passed": true,
+          "reason": "Service Definition/Provider/Consumer at architecture L131 with compaction family role rows and subagent registry/model-tool consumers; fixed source ranges verified."
+        },
+        {
+          "item": 2,
+          "passed": true,
+          "reason": "Older-history summary under token pressure, /compact, optional tool pruning and shipped-base default explicitly present in compaction overview."
+        },
+        {
+          "item": 3,
+          "passed": true,
+          "reason": "Pre-step before request derivation, normalized CONTEXT_WINDOW_EXCEEDED, pruning before summary and generation-progress-only retry explicitly stated."
+        },
+        {
+          "item": 4,
+          "passed": true,
+          "reason": "Subagent overview explicitly optional/outside agent loop and multiple named providers in one context."
+        },
+        {
+          "item": 5,
+          "passed": true,
+          "reason": "In-process spawn/fork classified in overview; fresh scope plus spawn inheritsParentContext=false distinguishes fresh spawn, fork conditions explicitly balanced completed-turn parent prefix; external ACP/Codex/Claude Code/DSH SDK and parent listChildren/listDescendants discovery present. Supported cumulatively by packages/subagent/README.md L25-L36 and subsystem L457-L462; exact phrasing not required."
+        }
+      ],
+      "core_score": 5,
+      "usage_complete": false,
+      "coverage": {
+        "observed_call_count": 41,
+        "reported_call_count": 39,
+        "missing_usage_call_count": 2,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": 800429,
+        "output_tokens": 39406,
+        "total_tokens": 839835,
+        "cache_read_tokens": 547072,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 15296
+      },
+      "scopes": {
+        "primary": {
+          "calls": 10,
+          "input_tokens": null,
+          "output_tokens": null,
+          "total_tokens": null,
+          "cache_read_tokens": null,
+          "peak_input_tokens": 35542,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        },
+        "subagent": {
+          "calls": 31,
+          "input_tokens": 601920,
+          "output_tokens": 31745,
+          "total_tokens": 633665,
+          "cache_read_tokens": 421504,
+          "peak_input_tokens": 43614,
+          "namespaces": [
+            [
+              "tools:84ce41cb-01a0-748f-a1a7-4be44743c9c7",
+              "model"
+            ],
+            [
+              "tools:8e31f8be-e9cc-9c36-5858-695c51ed4fd0",
+              "model"
+            ],
+            [
+              "tools:d024096e-94da-3afb-19a1-e2508b60cd08",
+              "model"
+            ]
+          ]
+        }
+      },
+      "known_primary_peak_input_tokens": 35542,
+      "primary_peak_complete": false,
+      "known_primary_peak_window_percent": 27.11639404296875,
+      "actual_provider_outcomes": [
+        {
+          "provider": "maomaoai",
+          "model": "deepseek-v4-flash",
+          "outcome": "failed",
+          "calls": 1
+        },
+        {
+          "provider": "xiaok",
+          "model": "deepseek-v4.1-flash",
+          "outcome": "completed",
+          "calls": 39
+        },
+        {
+          "provider": "xiaok",
+          "model": "deepseek-v4.1-flash",
+          "outcome": "failed",
+          "calls": 1
+        }
+      ],
+      "duration_seconds": 514.767148,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 41,
+        "pricing_versions": [
+          "c9d31038-f47b-44ba-a1ff-d5baa2c117b3"
+        ]
+      },
+      "root_automatic_summaries": 0,
+      "child_namespaces": [
+        {
+          "namespace": "tools:d024096e-94da-3afb-19a1-e2508b60cd08",
+          "status": 200,
+          "message_count": 0,
+          "agent_name": "code_explorer",
+          "run_id": "254e8a9e-1c78-4c7e-9058-3b0e4ea9cf8a"
+        },
+        {
+          "namespace": "tools:84ce41cb-01a0-748f-a1a7-4be44743c9c7",
+          "status": 200,
+          "message_count": 0,
+          "agent_name": "code_explorer",
+          "run_id": "254e8a9e-1c78-4c7e-9058-3b0e4ea9cf8a"
+        },
+        {
+          "namespace": "tools:8e31f8be-e9cc-9c36-5858-695c51ed4fd0",
+          "status": 200,
+          "message_count": 0,
+          "agent_name": "code_explorer",
+          "run_id": "254e8a9e-1c78-4c7e-9058-3b0e4ea9cf8a"
+        }
+      ],
+      "successful_child_reports": 3,
+      "source_count": 58,
+      "explicit_source_coordinates": true,
+      "citation_window_audit": false,
+      "source_coordinate_review_file": null,
+      "profile_calls": 41,
+      "ledger_calls": 41,
+      "final_stream_matches_checkpoint": true,
+      "infrastructure": {
+        "before": {
+          "at": "2026-10-29T06:44:10.421480+00:00",
+          "used_memory": 337372288,
+          "maxmemory": 1073741824,
+          "error_replies": 117,
+          "oom_errors": 0
+        },
+        "after": {
+          "at": "2026-10-29T06:53:10.601205+00:00",
+          "used_memory": 459519408,
+          "maxmemory": 1073741824,
+          "error_replies": 118,
+          "oom_errors": 0
+        },
+        "common_source_drift": [],
+        "new_redis_errors": 1,
+        "new_redis_oom_errors": 0
+      },
+      "passed_all_gates": false
+    },
+    {
+      "arm": "serial",
+      "sample": 1,
+      "run_id": "5b7d01e7-9172-4d54-bd49-de8e75066b07",
+      "thread_id": "a5d28462-9c38-47c6-84e4-6f3e4df37f26",
+      "status": "success",
+      "raw_sha256": "8c58bb44197e7b130cb9c1506f250d0bb9d65fde86a3aac3519c5a15d69b6750",
+      "file": ".local-stack/serial-relaxed-v30-1.json",
+      "fact_scores": [
+        {
+          "item": 1,
+          "passed": true,
+          "reason": "Compaction contract/provider/command-consumer roles and subagent registry/model-facing consumers stated in family rows."
+        },
+        {
+          "item": 2,
+          "passed": false,
+          "reason": "Pressure, summary, /compact and optional pruning stated; backend auto=true is not a statement that shipped dsh base enables the feature by default. The shipped-base qualifier is omitted."
+        },
+        {
+          "item": 3,
+          "passed": true,
+          "reason": "Pre-step before derivation, normalized overflow, optional pruning before summary and generation-progress retry stated."
+        },
+        {
+          "item": 4,
+          "passed": false,
+          "reason": "Multiple named providers stated; subagent itself being optional and outside the agent loop omitted. Compaction optional-role statement cannot substitute."
+        },
+        {
+          "item": 5,
+          "passed": false,
+          "reason": "Fresh in-process spawn, completed-parent-history fork and external provider forms stated; list_agents is named without explaining parent discovery/listing of its children. A tool name alone does not establish the required caller-visible capability."
+        }
+      ],
+      "core_score": 2,
+      "usage_complete": true,
+      "coverage": {
+        "observed_call_count": 11,
+        "reported_call_count": 11,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "tokens": {
+        "input_tokens": 347352,
+        "output_tokens": 9070,
+        "total_tokens": 356422,
+        "cache_read_tokens": 244608,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 2874
+      },
+      "known_tokens": {
+        "input_tokens": 347352,
+        "output_tokens": 9070,
+        "total_tokens": 356422,
+        "cache_read_tokens": 244608,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 2874
+      },
+      "scopes": {
+        "primary": {
+          "calls": 11,
+          "input_tokens": 347352,
+          "output_tokens": 9070,
+          "total_tokens": 356422,
+          "cache_read_tokens": 244608,
+          "peak_input_tokens": 54903,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        }
+      },
+      "known_primary_peak_input_tokens": 54903,
+      "primary_peak_complete": true,
+      "known_primary_peak_window_percent": 41.887664794921875,
+      "actual_provider_outcomes": [
+        {
+          "provider": "xiaok",
+          "model": "deepseek-v4.1-flash",
+          "outcome": "completed",
+          "calls": 11
+        }
+      ],
+      "duration_seconds": 209.692148,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 11,
+        "pricing_versions": []
+      },
+      "root_automatic_summaries": 0,
+      "child_namespaces": [],
+      "successful_child_reports": 0,
+      "source_count": 20,
+      "explicit_source_coordinates": true,
+      "citation_window_audit": true,
+      "source_coordinate_review_file": null,
+      "profile_calls": 11,
+      "ledger_calls": 11,
+      "final_stream_matches_checkpoint": true,
+      "infrastructure": {
+        "before": {
+          "at": "2026-10-29T06:58:20.785007+00:00",
+          "used_memory": 459496320,
+          "maxmemory": 1073741824,
+          "error_replies": 126,
+          "oom_errors": 0
+        },
+        "after": {
+          "at": "2026-10-29T07:02:28.233247+00:00",
+          "used_memory": 554930624,
+          "maxmemory": 1073741824,
+          "error_replies": 128,
+          "oom_errors": 0
+        },
+        "common_source_drift": [],
+        "new_redis_errors": 2,
+        "new_redis_oom_errors": 0
+      },
+      "passed_all_gates": false
+    },
+    {
+      "arm": "serial",
+      "sample": 2,
+      "run_id": "35be1f5c-cde1-49f2-879a-9236c5c1a3c1",
+      "thread_id": "b66308cf-709d-4e7a-b4b2-68463e732d17",
+      "status": "success",
+      "raw_sha256": "3c1f57319c3cc360f7c5a81c2eb23e3839db79b2ad1cf00d2e3c49b67a293164",
+      "file": ".local-stack/serial-relaxed-v30-2.json",
+      "fact_scores": [
+        {
+          "item": 1,
+          "passed": true,
+          "reason": "Compaction definition/provider/command roles and subagent registry plus model tools stated. Extra provider-count arithmetic error retained separately."
+        },
+        {
+          "item": 2,
+          "passed": false,
+          "reason": "Shipped default, pressure, manual command and optional pruning stated; summary of older dialogue history under pressure is not stated. Keeping a recent tail and overflow head-reduction details do not explicitly answer the normal pressure behavior."
+        },
+        {
+          "item": 3,
+          "passed": true,
+          "reason": "Pre-step before request derivation, normalized overflow, optional pruning before summary and generation-progress-only retry stated."
+        },
+        {
+          "item": 4,
+          "passed": false,
+          "reason": "Multiple named providers stated; subagent optional status and architectural position outside the agent loop omitted."
+        },
+        {
+          "item": 5,
+          "passed": false,
+          "reason": "Fresh in-process spawn, completed-history fork and external forms stated; parent discovery of its children is not explained. Vague catalog-discovery wording and control tool names do not state that caller-visible behavior."
+        }
+      ],
+      "core_score": 2,
+      "usage_complete": true,
+      "coverage": {
+        "observed_call_count": 12,
+        "reported_call_count": 12,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "tokens": {
+        "input_tokens": 382412,
+        "output_tokens": 15085,
+        "total_tokens": 397497,
+        "cache_read_tokens": 300800,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 5292
+      },
+      "known_tokens": {
+        "input_tokens": 382412,
+        "output_tokens": 15085,
+        "total_tokens": 397497,
+        "cache_read_tokens": 300800,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 5292
+      },
+      "scopes": {
+        "primary": {
+          "calls": 12,
+          "input_tokens": 382412,
+          "output_tokens": 15085,
+          "total_tokens": 397497,
+          "cache_read_tokens": 300800,
+          "peak_input_tokens": 54934,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        }
+      },
+      "known_primary_peak_input_tokens": 54934,
+      "primary_peak_complete": true,
+      "known_primary_peak_window_percent": 41.91131591796875,
+      "actual_provider_outcomes": [
+        {
+          "provider": "xiaok",
+          "model": "deepseek-v4.1-flash",
+          "outcome": "completed",
+          "calls": 12
+        }
+      ],
+      "duration_seconds": 222.828482,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 12,
+        "pricing_versions": []
+      },
+      "root_automatic_summaries": 0,
+      "child_namespaces": [],
+      "successful_child_reports": 0,
+      "source_count": 22,
+      "explicit_source_coordinates": false,
+      "citation_window_audit": true,
+      "source_coordinate_review_file": ".local-stack/serial-relaxed-v30-2.json.source-prefix-review.json",
+      "profile_calls": 12,
+      "ledger_calls": 12,
+      "final_stream_matches_checkpoint": true,
+      "infrastructure": {
+        "before": {
+          "at": "2026-10-29T07:02:29.584182+00:00",
+          "used_memory": 554930624,
+          "maxmemory": 1073741824,
+          "error_replies": 129,
+          "oom_errors": 0
+        },
+        "after": {
+          "at": "2026-10-29T07:06:45.678446+00:00",
+          "used_memory": 704067744,
+          "maxmemory": 1073741824,
+          "error_replies": 130,
+          "oom_errors": 0
+        },
+        "common_source_drift": [],
+        "new_redis_errors": 1,
+        "new_redis_oom_errors": 0
+      },
+      "passed_all_gates": false
+    },
+    {
+      "arm": "serial",
+      "sample": 3,
+      "run_id": "a97b5cf1-5ad5-44b8-bc34-f4799dbdeb43",
+      "thread_id": "9ab4b1ce-8d6e-426a-9aad-cfa758d25521",
+      "status": "success",
+      "raw_sha256": "9f77f676a76ed7547ae9ba4921fa4eb58d268397e52effa2a61082b7c161fde9",
+      "file": ".local-stack/serial-relaxed-v30-3.json",
+      "fact_scores": [
+        {
+          "item": 1,
+          "passed": true,
+          "reason": "Compaction definition/provider/command roles and subagent named registry/model tools stated with the correct capability family structure."
+        },
+        {
+          "item": 2,
+          "passed": false,
+          "reason": "The report states old-history pressure summary, /compact, optional pruning and shipped-base default; however, the cited compaction group L27-L33 and subsystem L5-L7 do not support shipped-base default. That fact is at group L12, which was read but is not cited in this report. Backend auto=true does not support a shipped-profile claim."
+        },
+        {
+          "item": 3,
+          "passed": true,
+          "reason": "Pre-step before request derivation, normalized overflow, pruning before summary and replacement-generation retry all stated and supported."
+        },
+        {
+          "item": 4,
+          "passed": false,
+          "reason": "Multiple named providers stated; subagent optional status/outside agent loop omitted from conclusions despite reading/citing subsystem L5-L9."
+        },
+        {
+          "item": 5,
+          "passed": false,
+          "reason": "Fresh in-process spawn, completed-history fork and external forms stated; parent discovery of children omitted. Merely naming list_agents is insufficient to explain this capability."
+        }
+      ],
+      "core_score": 2,
+      "usage_complete": true,
+      "coverage": {
+        "observed_call_count": 9,
+        "reported_call_count": 9,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "tokens": {
+        "input_tokens": 265921,
+        "output_tokens": 12909,
+        "total_tokens": 278830,
+        "cache_read_tokens": 198656,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 3693
+      },
+      "known_tokens": {
+        "input_tokens": 265921,
+        "output_tokens": 12909,
+        "total_tokens": 278830,
+        "cache_read_tokens": 198656,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 3693
+      },
+      "scopes": {
+        "primary": {
+          "calls": 9,
+          "input_tokens": 265921,
+          "output_tokens": 12909,
+          "total_tokens": 278830,
+          "cache_read_tokens": 198656,
+          "peak_input_tokens": 45911,
+          "namespaces": [
+            [
+              "model"
+            ]
+          ]
+        }
+      },
+      "known_primary_peak_input_tokens": 45911,
+      "primary_peak_complete": true,
+      "known_primary_peak_window_percent": 35.027313232421875,
+      "actual_provider_outcomes": [
+        {
+          "provider": "xiaok",
+          "model": "deepseek-v4.1-flash",
+          "outcome": "completed",
+          "calls": 9
+        }
+      ],
+      "duration_seconds": 166.773138,
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 9,
+        "pricing_versions": []
+      },
+      "root_automatic_summaries": 0,
+      "child_namespaces": [],
+      "successful_child_reports": 0,
+      "source_count": 17,
+      "explicit_source_coordinates": true,
+      "citation_window_audit": true,
+      "source_coordinate_review_file": null,
+      "profile_calls": 9,
+      "ledger_calls": 9,
+      "final_stream_matches_checkpoint": true,
+      "infrastructure": {
+        "before": {
+          "at": "2026-10-29T07:06:46.773623+00:00",
+          "used_memory": 704067744,
+          "maxmemory": 1073741824,
+          "error_replies": 131,
+          "oom_errors": 0
+        },
+        "after": {
+          "at": "2026-10-29T07:10:02.446305+00:00",
+          "used_memory": 806709968,
+          "maxmemory": 1073741824,
+          "error_replies": 132,
+          "oom_errors": 0
+        },
+        "common_source_drift": [],
+        "new_redis_errors": 1,
+        "new_redis_oom_errors": 0
+      },
+      "passed_all_gates": false
+    }
+  ],
+  "group": {
+    "delegation_core_scores": [
+      3,
+      4,
+      5
+    ],
+    "serial_core_scores": [
+      2,
+      2,
+      2
+    ],
+    "delegation_all_gate_completions": 0,
+    "serial_all_gate_completions": 0,
+    "delegation_complete_usage": 2,
+    "serial_complete_usage": 3,
+    "delegation_total_tokens_median": null,
+    "delegation_primary_input_median": null,
+    "serial_total_tokens_median": 356422,
+    "serial_primary_input_median": 347352,
+    "same_quality_reduction_percent": null,
+    "reason": "Formal group failed original quality/actual-delegation/complete-usage gates; one sample attempted a failed alternate provider. Preserve all six; no replacement or same-quality savings claim."
+  }
+}

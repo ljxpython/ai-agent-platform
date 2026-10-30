@@ -36,7 +36,8 @@ from runtime_service.services.dearflow_agent.modes import apply_reasoning, resol
 from runtime_service.services.dearflow_agent.workspace.backend import build_backend
 
 
-def test_real_model_reads_offloaded_middle_evidence():
+def test_real_model_reads_offloaded_middle_evidence(monkeypatch):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     dsn = os.getenv("CONTEXT_TEST_CHECKPOINT_DSN")
     env_file = os.getenv("CONTEXT_MODEL_ENV_FILE")
     if not dsn or not env_file:
@@ -152,7 +153,8 @@ def test_real_model_reads_offloaded_middle_evidence():
     asyncio.run(run())
 
 
-def test_ten_real_summaries_keep_fixed_quality_anchors(caplog):
+def test_ten_real_summaries_keep_fixed_quality_anchors(caplog, monkeypatch):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     dsn = os.getenv("CONTEXT_TEST_CHECKPOINT_DSN")
     env_file = os.getenv("CONTEXT_MODEL_ENV_FILE")
     if not dsn or not env_file:
@@ -298,6 +300,7 @@ def test_ten_real_summaries_keep_fixed_quality_anchors(caplog):
 
 
 def test_sdk_context_error_recovers_with_real_summary_and_answer(monkeypatch):
+    monkeypatch.setenv("AGENT_CONTEXT_HEADROOM_TOKENS", "1024")
     dsn = os.getenv("CONTEXT_TEST_CHECKPOINT_DSN")
     env_file = os.getenv("CONTEXT_MODEL_ENV_FILE")
     if not dsn or not env_file:

@@ -44,11 +44,23 @@ Office 异步读取固定 Docker reader，要求组合根绑定现有 workspace 
 
 ## 上下文窗口管理
 
+GitHub 调研工具的 `operation` 必须显式提供；缺失、空值或非法操作在 HTTP 前由 SDK 参数校验返回可纠正错误，不默认查询仓库概况。显式 `info`/`summary` 仍用于元数据；`file`/`readme`/`tree` 继续要求显式 `ref`，元数据不能替代指定版本的源码证据。
+
+受管上下文默认按DSH窗口策略：W为受信总窗口，O为单次输出预留，触发 `floor(min(0.8*W, W-O-B))`，保留最近原文 `floor(0.16*(W-O))`。B由 `AGENT_CONTEXT_HEADROOM_TOKENS` 配置，默认65,536；小窗口须显式减小，压力预算非正或保留量不小于触发点时拒绝。既有显式trigger/keep覆盖仍以安全输入预算解释比例。DearFlow主子图剪枝与自动整理使用同一压力水位，先对折叠视图重测，仍超水位才摘要；最终完整请求guard、手动和溢出恢复继续保留。此策略不限制跨多次调用的累计Token，详见[预算对齐](../../../../docs/projects/20261028-subagent-fanout-and-prefix-caching/plan.md)。
+
 DearFlow/Showcase 根图与声明式子图在 agent.py 显式替换官方摘要，公共能力位于 `middlewares/conversation_offloading.py`。使用受信模型容量/输出预算；摘要副本 nostream，最终模型请求 guard 计入动态 system/tools。大批历史裁剪保留初始目标或上一轮摘要，归档继续由 checkpoint/StateBackend 保存。
 
 schema-only 与执行图必须声明相同 OffloadingState，保留 DeepAgentState 的 DeltaChannel；整理状态使用 PrivateStateAttr 防父子复制/合并，API 再按白名单公开，不以此注解替代网关脱敏。手动维护只运行根摘要，通过 before hook/end 结束；不得准备执行 MCP/Workspace、claim 队列或执行 Memory/Skills 后处理。
 
-开启受管上下文治理时，历史 write/edit 大参数复用官方 request-only 压缩（输入预算85%触发、保留最近10% token、字符串上限2000）；不按后续成功覆盖判定删除历史。现有 Filesystem 使用 `resolve_tool_output_limit`，取主/备最小输入预算B并设 `max(1,min(20000,B//16))`，实际外置门槛为4T字符，仍由完整请求guard兜底。`ResultFilesystemMiddleware` 以官方同名替换，只为新外置路径增加正文SHA256，避免父子/并行同call ID覆盖原文；保留官方文件工具、预览、失败处理与旧路径读取。正文仍在checkpoint files，不承诺PG/HTTP体积减少；超长单行的行分页仍可能无法取到中部。薄扩展依赖锁版本内部方法，升级需重验。见[F04](../../../../docs/projects/20260913-dearflow-agent/15-tool-output-budget-review.md)。
+开启受管上下文治理时，历史 write/edit 大参数复用官方 request-only 压缩（共享解析后的触发水位、保留安全输入预算最近10% token、字符串上限2000）；不按后续成功覆盖判定删除历史。现有 Filesystem 使用 `resolve_tool_output_limit`，取主/备最小输入预算B并设 `max(1,min(20000,B//16))`，实际外置门槛为4T字符，仍由完整请求guard兜底。`ResultFilesystemMiddleware` 以官方同名替换，为新外置路径增加正文SHA256，避免父子/并行同call ID覆盖原文；grep/glob/ls等结果也可保存，read_file不再次外置。展示提示计入字符上限，默认最多24000字符，保留非文本块与Command状态；旧大结果仅压力时剪枝，默认8192字符起保留最多5120字符实质首尾和回读引用，无归档须明确原文缺失。DearFlow 使用 DeepAgents 官方 `task` 与一个只读 `general-purpose` 子 Agent；子任务用普通文本返回发现，父级按原问题整理。工具权限、预算、PII、Usage、取消和并发由现有 Runtime 装配与中间件负责，不增加自研报告 Schema、来源摘录校验或父级合成状态。GitHub 正文读取仍须使用固定 ref、分页与有界结果；原始工具输出可在既有来源工作区按 namespace 保存。正文仍在 checkpoint files，不承诺 PG/HTTP 体积减少；超长单行的行分页仍可能无法取到中部。请求组成私有诊断只记长度/估算/哈希，不能替代供应商 Token 账单，来源不可辨识时保持未知。见[F04](../../../../docs/projects/20260913-dearflow-agent/15-tool-output-budget-review.md)。
+
+
+只读 `general-purpose` 子任务装配 `ls/read_file/glob/grep/search_web/fetch_page/github_query`，工具实例、RuntimeConfig 和子级 PlanMode 白名单一致，项目授权继续生效；不提供写入、执行、发布或嵌套 task。父级依据子任务结论与来源整合，仅对缺口、冲突或关键条件不清的部分定向复核，保留限定和未知项，证据充分即停止读取。
+
+仅对已配置只读 task 角色的官方 `ModelCallLimitExceededError` / `ToolCallLimitExceededError`、`RuntimeResolutionError("runtime.model.stream_interrupted")` 及精确类型/码 `RuntimeExecutionError("runtime.loop.detected")`，现有 ToolErrorMiddleware 回传任务未完成且不可重发的失败回执，保留兄弟结果供父级披露缺口；子级额度和循环保护照常停止该子任务，主级仍以原生 error 停止。精确类型检查排除隐私异常等子类；不重试、不冒充成功，不扩大到其他角色、鉴权/权限、隐私、取消、全局预算或未知异常。
+
+GitHub文件内字面定位命中Markdown的深处时，在同一次读取中附带`document_intro`，最多前20完整行/2000字符，与命中正文共用原12000字符预算；首行放不下则不附。开头与命中按独立行范围校验，未读中段不能当作已读，嵌套字段不能改变根来源的仓库/提交/路径。无query、非Markdown与近头命中保持原分页。此能力不扩大跨上下文原文交接范围；真实研究覆盖率仍需原题与泛化验收。
+
 
 `AGENT_CONTEXT_MANAGEMENT_ENABLED` 默认 0，目录容量、输出预算、迁移和双端 Context（当前 v6）就绪后才能开启。关闭时沿用官方摘要并保留历史/私有事件，不清数据。reference/其他教学图未接入，不宣称支持。依赖升级需复跑隐藏流、预算、归档、父子隔离、真实 PG/Worker 恢复测试，证据见 [上下文专项](../../../../docs/projects/20261006-agent-context-window-governance/verification.md)。
 
@@ -83,7 +95,7 @@ Agent invocation 起算。通知沿现有 custom writer，不接 Slack 或新事
 
 ## Run Token 额度保护
 
-`RUNTIME_TOKEN_BUDGET_ENABLED` 默认 false；启用要求 `RUNTIME_USAGE_ENABLED=true`、Runtime 应用迁移 `0003_token_budget` 和完整受信 native Run 身份。`RUNTIME_TOKEN_BUDGET_MAX_TOKENS` 默认 100000，范围为正 JS safe integer；固定 80% 向后续模型追加已有 system 收尾指令。API/Worker 使用一致部署配置，客户端 Context 不能指定或提升此额度，schema/probe 不访问账本。
+`RUNTIME_TOKEN_BUDGET_ENABLED` 默认 false，是可选累计费用保护，不是上下文窗口水位；普通DSH式调研保持关闭，Usage可独立开启。切换开关前须排空运行；本次隔离切换只创建新Run，不接续旧Run或修改历史冻结策略。启用要求 `RUNTIME_USAGE_ENABLED=true`、Runtime 应用迁移 `0003_token_budget` 和完整受信 native Run 身份。`RUNTIME_TOKEN_BUDGET_MAX_TOKENS` 默认 100000，范围为正 JS safe integer；固定 80% 向后续模型追加已有 system 收尾指令。API/Worker 使用一致部署配置，客户端 Context 不能指定或提升此额度，schema/probe 不访问账本。
 
 复用唯一 `RuntimeUsageCallback` 与 `runtime_usage_calls`，按 model_call_id 增量去重；`RunTokenBudget` 是 Run 绑定、可恢复投影，不扫描 Thread 消息、不新增全局缓存。策略在 `runtime_usage_runs` 首写冻结，Worker 接管同 Run 时恢复消耗与停止原因，旧 attempt 未确认 started 或持久化故障按不可验证处理。四图主子、Workflow 内层及可信摘要/vision/memory 共享额度。同步派发守卫只检查，不另采集或计价；启用时 SDK max_retries=0，防止单次 callback 内发生隐藏物理重试。
 

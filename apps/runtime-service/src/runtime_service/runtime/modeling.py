@@ -288,12 +288,36 @@ def build_model(
         model_name = connection.get("model", model_name)
         protocol = str(connection.get("protocol", "")).strip().lower()
 
-    from runtime_service.runtime.token_budget import token_budget_enabled
+    from runtime_service.runtime.token_budget import resolve_token_budget_policy
 
     # SDK retries run inside one callback and cannot report separate usage facts.
-    kwargs = _generation_kwargs(
-        config, max_retries=0 if token_budget_enabled() else max_retries
-    )
+    budget_policy = resolve_token_budget_policy()
+    kwargs = _generation_kwargs(config, max_retries=0 if budget_policy else max_retries)
+    if budget_policy:
+        connection_capacity = (
+            connection.get("context_window_tokens") if connection else None
+        )
+        connection_max_output = (
+            connection.get("max_output_tokens") if connection else None
+        )
+        output_limit = resolve_model_max_output_tokens(
+            model_name=model_name,
+            provider=provider,
+            capacity=(
+                connection_capacity if type(connection_capacity) is int else None
+            ),
+            explicit_max_output=(
+                connection_max_output if type(connection_max_output) is int else None
+            ),
+        )
+        requested_max_output = kwargs.get("max_tokens")
+        kwargs["max_tokens"] = min(
+            requested_max_output
+            if type(requested_max_output) is int and requested_max_output > 0
+            else output_limit,
+            output_limit,
+            budget_policy.max_tokens,
+        )
     from runtime_service.observability.usage import safe_pricing
 
     kwargs["metadata"] = {
@@ -302,6 +326,7 @@ def build_model(
             "provider": provider,
             "protocol": protocol,
             "model_name": model_name,
+            "max_output_tokens": kwargs.get("max_tokens"),
             "pricing": safe_pricing(connection.get("pricing")) if connection else None,
         }
     }

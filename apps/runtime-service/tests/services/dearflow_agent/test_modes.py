@@ -47,4 +47,4 @@ def test_reasoning_configuration_does_not_mutate_model():
     updated, info = apply_reasoning(configured, resolve_mode("pro"))
     assert updated.extra_body["private_extension"] == "not-for-tracing"
     assert "private_extension" not in info["reasoning"]
-    assert resolve_mode("ultra").delegation and not resolve_mode("pro").delegation
+    assert resolve_mode("ultra").delegation and resolve_mode("pro").delegation

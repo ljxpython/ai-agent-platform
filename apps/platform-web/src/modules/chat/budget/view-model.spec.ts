@@ -7,6 +7,24 @@ import {
 
 describe("budget/view-model.ts", () => {
   describe("safeExtractBudgetNotice", () => {
+    it("accepts a token admission refusal before observed usage reaches the limit", () => {
+      const notice = safeExtractBudgetNotice({
+        version: 1,
+        type: "runtime_budget_notice",
+        notice_id: "budget:admission",
+        run_id: "run-1",
+        scope: "primary",
+        budget_scope: "run",
+        code: "token_budget_exhausted",
+        limit: 100000,
+        used: 27338,
+        remaining: 72662,
+        unit: "tokens_total",
+      });
+      expect(notice?.code).toBe("token_budget_exhausted");
+      expect(notice?.remaining).toBe(72662);
+    });
+
     it("extracts notice from v3 protocol raw event structure", () => {
       const rawEvent = {
         method: "custom",
