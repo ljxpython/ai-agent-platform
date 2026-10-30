@@ -1,17 +1,17 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-31（会话保留治理done；补充迁移回退与混合单测环境隔离经验；GraphHarbor post48已锁定，专属栈与浏览器验收通过；本次未提交Git或部署现役。）
+> **最后更新：** 2026-10-31（会话保留治理已验收并合并main；GraphHarbor post48已锁定，专属栈与浏览器验收通过；服务停止、专属资源清理完成，生产服务未部署。）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-30
+**最后更新：** 2026-10-31
 
 ## 最近改动
 
-2026-10-30 | **会话与运行时数据保留治理**：平台定义闲置30天、查看/发送续期；GraphHarbor执行通用TTL/持久删除；Runtime核实资源释放后随会话回收Workspace，失联/未结事项持久重试。正式双包post48已发布/冷安装/锁定，环境`wt_5642ffa8be9a`三服务13项、浏览器真实模型5项通过；源码、静态和相关回归证据见[项目验证](projects/20261030-session-and-runtime-retention-governance/verification.md)。done，8/8任务、8条Phase与Final核验通过；默认report维护及systemd模板已交付但未安装，旧post45不能接管014，匹配版本恢复已验。本次仅修改专属Worktree，未提交Git或部署现役。
+2026-10-31 | **会话与运行时数据保留治理收尾**：平台定义闲置30天、查看/发送续期；GraphHarbor执行通用TTL/持久删除；Runtime核实资源释放后随会话回收Workspace，失联/未结事项持久重试。正式双包post48已发布/冷安装/锁定，专属环境`wt_5642ffa8be9a`三服务13项、浏览器真实模型5项通过；8/8任务、8条Phase与Final核验通过。提交`5635e621`已推送功能分支并快进合并`main`；服务、数据库/角色、Redis、Workspace、登记和Worktree已清理，默认report维护及systemd模板尚未部署，旧post45不能接管014。
 
 ## 本月归并
 
@@ -30,7 +30,7 @@
 
 ## 活跃项目
 
-- [智能体会话与运行时数据生命周期治理](projects/20261030-session-and-runtime-retention-governance/README.md)：`done`（8/8任务、8条Phase与Final核验通过）；30天闲置/查看发送续期、正式post48通用TTL、Workspace随会话回收、关联事实分级保留及有界维护均已实现；三服务13项/真实浏览器5项通过，未提交Git或部署现役。systemd仅静态核验，远端失联为受控fixture。
+- [智能体会话与运行时数据生命周期治理](projects/20261030-session-and-runtime-retention-governance/README.md)：`done`（8/8任务、8条Phase与Final核验通过）；30天闲置/查看发送续期、正式post48通用TTL、Workspace随会话回收、关联事实分级保留及有界维护均已实现；提交`5635e621`已推送并快进合并`main`，专属服务和测试资源已清理，生产服务未部署。systemd仅静态核验，远端失联为受控fixture。
 - [有界调研委派与子智能体上下文隔离](projects/20261028-subagent-fanout-and-prefix-caching/README.md)：`done`，2026-10-30用户人工验收通过；功能分支已推送并快进合并main，服务停止、所属Worktree/测试库已清理。收尾记录随main推送，历史失败与质量/费用局限保留；未部署共享服务。
 - [修复运行异常重投与 Agent 代码剖析死循环收敛治理](projects/20261028-run-resubmission-and-agent-convergence/README.md)：`done`；彻底修复前端在回合失败时私自调用 submitQueuedMessage 自动重投 Prompt 的 Bug；在 SYSTEM_PROMPT 确立代码库/本地架构剖析自顶向下原则、单轮 5~8 次探索硬约束、禁止遍历脚本正则扫描；将 ExecutionBudgetMiddleware 预警阈值提升至 warning_calls=5 并强化中文化最高优先级收尾指令；前端 58 项单测、后端 76 项测试全绿。
 - [智能体上下文防爆治理与工业级工具截断/子任务架构升级](projects/20261028-context-governance-and-tool-resilience/README.md)：`done`；对标 Antigravity / Cursor / Manus 工业级架构，从源头解决灵巧手调研与全库代码剖析等重度长任务中工具无脑倾倒巨量输出（单次 188KB/6.4万 Token）、单上下文硬抗 60+ 次工具调用导致的上下文反复爆炸与 6 次恶性循环压缩问题。实装溢出落盘（Spill-to-Disk）与历史工具视口虚拟折叠（Ephemeral Pruning），生产真实大长会话回放 Token 暴降 58% ~ 82%，压缩触发归零，300 项中间件单测 100% 绿灯。
@@ -85,13 +85,13 @@
 - [LangGraph v3 默认消费与 DeltaChannel 评估](projects/20261004-langgraph-v3-delta-evaluation/README.md)：partial；后端默认 v3、前端交接、离线 Spike 和本地 PostgreSQL 体积测量已完成，回滚门禁和前端浏览器验收待执行；节点 timeout/error_handler/RunControl 暂不实施。
 - [Chat 会话状态机加固与流式体验优化](projects/20261004-chat-session-state-and-stream-hardening/README.md)：done；彻底解决切屏失焦权限刷新误踢、空队列误弹排队 0 黄条、中断等待澄清时底部悬挂正在处理矛盾提示、以及 DeepSeek 思维链首轮流式卡顿假死四大顽疾；前端 22 项单测全绿、静态类型检查与生产打包全绿。
 
-## 当前各服务状态（本次专属 Worktree）
+## 当前各服务状态（主工作区）
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-30 | 本环境已锁定正式GraphHarbor post48并重启API/Worker；hook持久交接、未结事项保护、可信Workspace回收、terminal owner迁移0010和有界应用维护完成，相关119passed/11skipped及真实栈通过。旧post45不能接管014；未部署现役。 |
-| platform-api | 2026-10-30 | 闲置30天、主动活动、存量精确委托登记及迁移0010、HMAC删除回调/ACL清理、详情30天/去重90天及充分终态快照维护完成；PG35passed、最终委托5passed/67subtests和真实栈通过。未部署现役。 |
-| platform-web | 2026-10-30 | 两聊天入口实际打开/KeepAlive返回上报活动，后台读取不续期；相关8passed、lint/type/build和真实模型浏览器5检查通过。仅本环境验收，未部署现役。 |
+| runtime-service | 2026-10-31 | 会话生命周期、hook持久交接、未结事项保护、可信Workspace回收、terminal owner迁移0010和有界应用维护已合并main；119passed/11skipped及真实栈通过。专属API/Worker已停止，测试资源已清理，生产未部署。 |
+| platform-api | 2026-10-31 | 闲置30天、主动活动、存量精确委托登记及迁移0010、HMAC删除回调/ACL清理、详情30天/去重90天及充分终态快照维护已合并main；PG35passed、最终委托5passed/67subtests和真实栈通过。专属API已停止，测试资源已清理，生产未部署。 |
+| platform-web | 2026-10-31 | 两聊天入口实际打开/KeepAlive返回上报活动，后台读取不续期；相关8passed、lint/type/build和真实模型浏览器5检查通过。专属Web已停止，Worktree已清理，生产未部署。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

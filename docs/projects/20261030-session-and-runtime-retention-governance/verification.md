@@ -2,7 +2,7 @@
 
 状态：已完成（done，8/8 任务）。验证日期：2026-10-30。未运行的检查不写通过，skip不计通过，重叠套件不加总。
 
-环境：专属Worktree `feat/session-and-runtime-retention-governance`，登记 `wt_5642ffa8be9a`；平台/运行库均为本登记同名role的隔离数据库。GraphHarbor双包正式 `0.13.0.post48`，所属API/Worker已重启。未操作主工作区或现役数据。
+环境：验收阶段使用专属Worktree `feat/session-and-runtime-retention-governance`，登记 `wt_5642ffa8be9a`；平台/运行库均为本登记同名role的隔离数据库。GraphHarbor双包正式 `0.13.0.post48`，所属API/Worker已重启。验收完成后服务停止，数据库/角色、Redis、Workspace、登记和Worktree均已清理。
 
 ## 验证计划
 
@@ -15,7 +15,7 @@
 ## Phase 验证记录
 
 ### P01 2026-10-30
-用户人工批准方案边界。已核实锁定 GraphHarbor post45 的 TTL 扫描为空实现；仅配置官方 checkpointer.ttl 无法生效。现有 GraphHarbor 工作目录包含历史未提交改动，本次保留并建立源码基线摘要。
+用户人工批准方案边界。已核实锁定 GraphHarbor post45 的 TTL 扫描为空实现；仅配置官方 checkpointer.ttl 无法生效。GraphHarbor 工作目录的既有历史改动按基线保留，本次平台改动单独记录。
 
 ### P02 2026-10-30
 
@@ -72,7 +72,7 @@ RUN_RETENTION_STACK_TEST=1 pnpm --dir apps/platform-web test:e2e e2e/session-ret
 
 - 任务卡、逐项Phase、实现记录、方案/功能/变更、发布/维护手册及CONTEXT已按当前范围对齐；Final另执行状态、链接、差异和产物核验。
 - `delegation-jwt.md`更新38操作及两个精确retention例外、last_verified；原专项独立门禁尚未解除，继续draft。GraphHarbor REST契约既有active状态/日期同步，不将其他专项冒充本次验收完成。
-- 不新增无关功能或写入lessons；经验沉淀建议随最终交付提出，用户确认后才落笔。未执行Git提交、推送、生产部署或既有业务数据销毁。
+- 不新增无关功能；经验沉淀已按用户确认写入对应经验库。验收后已执行Git提交、功能分支推送、main快进合并及专属资源销毁；未生产部署或销毁既有用户数据。
 
 ## Final 验证记录
 
@@ -104,4 +104,4 @@ RUN_RETENTION_STACK_TEST=1 pnpm --dir apps/platform-web test:e2e e2e/session-ret
 
 **done**：本次已批准的平台业务策略、GraphHarbor通用TTL/可靠删除、Runtime资源与Workspace回收、关联数据保留维护、本地正式发布及专属栈验收均完成，无当前范围内未完成任务。
 
-未执行Git提交/推送、生产部署、Linux systemd安装启停或生产容量压测。远端失联/恢复仅受控fixture；不宣称真实离线节点验收。旧post45不能接管014，已删除数据和文件不承诺可恢复；暂停平台timer本身不能关闭GraphHarbor Worker TTL。
+已执行Git提交、功能分支推送和main快进合并：`5635e621`；已停止服务并清理专属数据库/角色、Redis、Workspace、登记和Worktree。未生产部署、Linux systemd安装启停或生产容量压测。远端失联/恢复仅受控fixture；不宣称真实离线节点验收。旧post45不能接管014，已删除数据和文件不承诺可恢复；暂停平台timer本身不能关闭GraphHarbor Worker TTL。
