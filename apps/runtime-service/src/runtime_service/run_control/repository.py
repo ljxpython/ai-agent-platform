@@ -173,6 +173,10 @@ def run_stop_pending(thread_id, run_id):
 
 
 def inbox_blocked(connection, thread_id, run_id):
+    from runtime_service.thread_lifecycle import deletion_pending
+
+    if deletion_pending(connection, thread_id):
+        return True
     return (
         connection.execute(
             """SELECT 1 FROM runtime_stop_requests WHERE thread_id=%s AND phase!='rejected'

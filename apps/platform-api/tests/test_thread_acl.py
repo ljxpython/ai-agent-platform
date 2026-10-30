@@ -100,6 +100,7 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
                 }
             ),
             search_threads=AsyncMock(return_value=[]),
+            touch_thread=AsyncMock(return_value={"last_activity_at": "server-time"}),
         )
         self.service = RuntimeGatewayService(
             session_factory=self.factory, upstream=self.upstream
@@ -108,6 +109,90 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
     def tearDown(self):
         self.engine.dispose()
         self.temp.cleanup()
+
+    async def test_activity_requires_current_read_permission_and_reads_do_not_touch(
+        self,
+    ):
+        for actor in (self.peer, self.admin):
+            with self.assertRaises(ForbiddenError):
+                await self.service.record_thread_activity(
+                    actor=actor, project_id=self.project, thread_id="private"
+                )
+        await self.service.get_thread(
+            actor=self.owner, project_id=self.project, thread_id="private"
+        )
+        self.upstream.touch_thread.assert_not_awaited()
+        await self.service.record_thread_activity(
+            actor=self.owner, project_id=self.project, thread_id="private"
+        )
+        self.upstream.touch_thread.assert_awaited_once_with("private")
+
+    def test_legacy_registration_is_read_only_by_default_and_does_not_replace_policy(
+        self,
+    ):
+        import httpx
+
+        from platform_api.modules.runtime_gateway.application import retention
+
+        thread = str(uuid4())
+        acl.register(
+            self.factory, thread_id=thread, project_id=self.project, actor=self.owner
+        )
+        acl.mark_provisioned(self.factory, thread)
+        settings = SimpleNamespace(langgraph_upstream_url="http://runtime.test")
+        with (
+            patch.object(retention.httpx, "Client") as client,
+            patch.object(
+                retention,
+                "create_runtime_delegation_token",
+                return_value="maintenance-token",
+            ) as token,
+        ):
+            api = client.return_value.__enter__.return_value
+            api.get.return_value = httpx.Response(
+                200,
+                json={"policy": None},
+                request=httpx.Request("GET", "http://runtime.test"),
+            )
+            api.patch.return_value = httpx.Response(
+                200, request=httpx.Request("PATCH", "http://runtime.test")
+            )
+            self.assertEqual(
+                retention.register_missing(self.factory, settings)["candidates"], 1
+            )
+            client.assert_not_called()
+            self.assertEqual(
+                retention.register_missing(self.factory, settings, apply=True)[
+                    "configured"
+                ],
+                1,
+            )
+            self.assertEqual(
+                api.patch.call_args.kwargs["json"], {"policy": retention.POLICY}
+            )
+            self.assertEqual(
+                token.call_args.kwargs["scope"]["operation"], "thread-retention"
+            )
+            self.assertEqual(token.call_args.kwargs["scope"]["thread_id"], thread)
+            self.assertEqual(
+                retention.register_missing(self.factory, settings)["candidates"], 0
+            )
+            with self.factory.begin() as session:
+                row = session.get(ThreadAccessRecord, thread)
+                row.retention_configured_at = None
+            api.patch.reset_mock()
+            api.get.return_value = httpx.Response(
+                200,
+                json={"policy": {"mode": "fixed", "ttl_minutes": 1}},
+                request=httpx.Request("GET", "http://runtime.test"),
+            )
+            self.assertEqual(
+                retention.register_missing(self.factory, settings, apply=True)[
+                    "configured"
+                ],
+                1,
+            )
+            api.patch.assert_not_called()
 
     async def test_private_read_and_full_access_require_owner(self):
         for actor in (self.peer, self.admin, self.superadmin):
@@ -397,6 +482,8 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(result["metadata"]["owner_user_id"], self.owner.user_id)
         sent = self.upstream.create_thread.call_args.args[0]
+        self.assertEqual(sent["retention"], {"mode": "idle", "ttl_minutes": 43200})
+        self.assertEqual(sent["metadata"]["tenant_id"], self.service._tenant_id)
         self.assertFalse(set(sent["metadata"]) & acl.ACL_KEYS)
         self.assertNotIn("sandbox_id", sent["metadata"])
         await self.service.update_thread(

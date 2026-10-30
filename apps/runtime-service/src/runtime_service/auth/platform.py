@@ -138,6 +138,33 @@ async def deny_image_scope_on_server_resources(
 
     if is_completion_cleanup(ctx.user):
         return await authorize_completion_cleanup(ctx, value)
+    if isinstance(scope, dict) and scope.get("operation") == "thread-retention":
+        if (
+            _user_value(ctx.user, "identity") != "platform-retention-maintenance"
+            or _user_value(ctx.user, "role") != "platform_maintenance"
+            or str(ctx.resource) != "threads"
+            or str(ctx.action) not in {"read", "update"}
+            or not scope.get("thread_id")
+            or str(value.get("thread_id")) != scope["thread_id"]
+            or (
+                str(ctx.action) == "read"
+                and (
+                    set(value) != {"thread_id", "retention"}
+                    or value.get("retention") is not True
+                )
+            )
+            or (
+                str(ctx.action) == "update"
+                and (
+                    set(value) != {"thread_id", "policy"}
+                    or value["policy"] != {"mode": "idle", "ttl_minutes": 43200}
+                )
+            )
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Retention maintenance scope mismatch"
+            )
+        return {"project_id": scope["project_id"]}
     if isinstance(scope, dict) and scope.get("operation") == "run-acceptance-read":
         grant = _user_value(ctx.user, "run_acceptance")
         if (
@@ -207,6 +234,7 @@ async def deny_image_scope_on_server_resources(
         "thread-create",
         "thread-reconcile",
         "thread-edit",
+        "thread-touch",
         "thread-delete",
         "run-cancel",
         "run-delete",
@@ -357,6 +385,7 @@ async def deny_image_scope_on_server_resources(
             "read": {"read", "search"},
             "run-create": {"create_run"},
             "thread-edit": {"update"},
+            "thread-touch": {"update"},
             "thread-delete": {"delete"},
             "run-cancel": {"update"},
             "run-delete": {"delete"},
@@ -396,6 +425,12 @@ async def deny_image_scope_on_server_resources(
             "delete": "delete",
             "approve": "approve",
         }.get(action)
+        if scope["operation"] == "thread-touch":
+            if value.get("touch") is not True or set(value) != {"thread_id", "touch"}:
+                raise Auth.exceptions.HTTPException(
+                    status_code=403, detail="Thread activity scope mismatch"
+                )
+            acl_action = "read"
         if acl_action is None:
             raise Auth.exceptions.HTTPException(
                 status_code=403, detail="Unsupported thread operation"

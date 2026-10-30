@@ -25,6 +25,7 @@ PORT_KEYS = (
     "LOCAL_STACK_REDIS_PORT",
 )
 CALLBACKS = {
+    "GRAPHHARBOR_TERMINAL_WEBHOOK_URL": "run-completion",
     "PLATFORM_THREAD_AUTHORIZATION_URL": "thread-authorization",
     "PLATFORM_RUNTIME_MODEL_CONFIG_URL": "model-config",
     "PLATFORM_RUNTIME_MESSAGE_AUTH_URL": "message-authorization",
@@ -285,6 +286,8 @@ def expected_values(root: Path, entry: dict) -> tuple[dict[str, str], dict[str, 
         "RUNTIME_BACKEND": "local",
     }
     platform = {
+        "PLATFORM_API_RUNTIME_COMPLETION_ENABLED": "true",
+        "PLATFORM_API_RUNTIME_COMPLETION_VERIFICATION_KEYS": "{}",
         "PLATFORM_API_LANGGRAPH_UPSTREAM_URL": runtime["RUNTIME_SELF_URL"],
         "PLATFORM_API_PLATFORM_DB_ENABLED": "true",
         "PLATFORM_API_PLATFORM_DB_AUTO_CREATE": "false",
@@ -314,6 +317,29 @@ def configs(root: Path, entry: dict) -> tuple[dict[str, str], dict[str, str]]:
     runtime = read_env(root / ".local-stack/runtime.env")
     platform = read_env(root / ".local-stack/platform.env")
     expected_runtime, expected_platform = expected_values(root, entry)
+    completion_url = expected_runtime["GRAPHHARBOR_TERMINAL_WEBHOOK_URL"]
+    if (
+        runtime.get("GRAPHHARBOR_TERMINAL_WEBHOOK_URL", completion_url)
+        != completion_url
+    ):
+        raise ValueError("Worktree completion callback points outside this environment")
+    if not runtime.get("GRAPHHARBOR_TERMINAL_WEBHOOK_SECRET") and not platform.get(
+        "PLATFORM_API_RUNTIME_COMPLETION_SECRET"
+    ):
+        configure_completion(runtime, platform, entry)
+        runtime["GRAPHHARBOR_TERMINAL_WEBHOOK_URL"] = completion_url
+        write_env(root / ".local-stack/runtime.env", runtime)
+        write_env(root / ".local-stack/platform.env", platform)
+    if (
+        len(runtime.get("GRAPHHARBOR_TERMINAL_WEBHOOK_SECRET", "")) < 32
+        or runtime.get("GRAPHHARBOR_TERMINAL_WEBHOOK_SECRET")
+        != platform.get("PLATFORM_API_RUNTIME_COMPLETION_SECRET")
+        or runtime.get("GRAPHHARBOR_TERMINAL_WEBHOOK_KEY_ID") != entry["id"]
+        or platform.get("PLATFORM_API_RUNTIME_COMPLETION_KEY_ID") != entry["id"]
+    ):
+        raise ValueError(
+            "Worktree completion signing keys do not match this environment"
+        )
     # Older initialized stacks derive the new callback from their own registered API.
     if not runtime.get("PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"):
         runtime["PLATFORM_KNOWLEDGE_AUTHORIZATION_URL"] = expected_runtime[
@@ -377,6 +403,16 @@ def configs(root: Path, entry: dict) -> tuple[dict[str, str], dict[str, str]]:
     return runtime, platform
 
 
+def configure_completion(runtime: dict, platform: dict, entry: dict) -> None:
+    secret = secrets.token_urlsafe(48)
+    runtime["GRAPHHARBOR_TERMINAL_WEBHOOK_SECRET"] = secret
+    runtime["GRAPHHARBOR_TERMINAL_WEBHOOK_KEY_ID"] = entry["id"]
+    platform["PLATFORM_API_RUNTIME_COMPLETION_SECRET"] = secret
+    platform["PLATFORM_API_RUNTIME_COMPLETION_KEY_ID"] = entry["id"]
+    platform["PLATFORM_API_RUNTIME_COMPLETION_ENABLED"] = "true"
+    platform["PLATFORM_API_RUNTIME_COMPLETION_VERIFICATION_KEYS"] = "{}"
+
+
 def check_install_directories(root: Path) -> None:
     if (root / ".local-stack").is_symlink():
         raise ValueError("Use an independent .local-stack directory in this Worktree")
@@ -436,6 +472,7 @@ def initialize(root: Path, common: Path, primary: Path) -> None:
         runtime["RUNTIME_EXECUTION_HOST_ID"] = entry["id"]
         runtime["RUNTIME_BACKGROUND_LOG_ROOT"] = str(state / "background-logs")
         platform = {**baseline_platform, **platform_overrides}
+        configure_completion(runtime, platform, entry)
         delegation = secrets.token_urlsafe(48)
         runtime["PLATFORM_RUNTIME_DELEGATION_SECRET"] = delegation
         runtime["GRAPHHARBOR_RUNTIME_CONTEXT_SECRET"] = secrets.token_urlsafe(48)

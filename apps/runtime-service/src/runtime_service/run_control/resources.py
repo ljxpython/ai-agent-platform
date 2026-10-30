@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import subprocess
 from dataclasses import asdict
 from uuid import uuid4
 
@@ -14,9 +15,23 @@ from runtime_service.db import connect
 logger = logging.getLogger(__name__)
 
 
-def _register(kind, thread, run, node_id=None, operation_id=None, workspace=None):
+def _register(
+    kind,
+    thread,
+    run,
+    node_id=None,
+    operation_id=None,
+    workspace=None,
+    *,
+    local_binding=None,
+):
+    from runtime_service.errors import RuntimeWorkspaceError
+    from runtime_service.thread_lifecycle import deletion_pending
+
     resource = uuid4()
     with connect() as connection:
+        if deletion_pending(connection, thread):
+            raise RuntimeWorkspaceError("runtime.workspace.unavailable")
         connection.execute(
             "INSERT INTO runtime_run_resources(resource_id,thread_id,run_id,kind) VALUES(%s,%s,%s,%s)",
             (resource, str(thread), str(run), kind),
@@ -31,7 +46,79 @@ def _register(kind, thread, run, node_id=None, operation_id=None, workspace=None
                     resource,
                 ),
             )
+        if local_binding:
+            connection.execute(
+                "UPDATE runtime_run_resources SET local_binding=%s WHERE resource_id=%s",
+                (Jsonb(local_binding), resource),
+            )
     return resource
+
+
+def process_started(pid):
+    result = subprocess.run(
+        ["ps", "-p", str(pid), "-o", "lstart="],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    if result.returncode not in {0, 1} or result.stderr.strip():
+        raise OSError("terminal_owner_unconfirmed")
+    return result.stdout.strip()
+
+
+def reconcile_terminal_resources(thread_id=None, *, limit=100):
+    """An absent owner and no remaining workspace handles prove local cleanup."""
+    from pathlib import Path
+
+    from runtime_service.thread_lifecycle import workspace_unused
+
+    host = os.getenv("RUNTIME_EXECUTION_HOST_ID")
+    if not host:
+        return
+    with connect() as db:
+        rows = db.execute(
+            """SELECT * FROM runtime_run_resources WHERE kind='terminal'
+            AND status<>'cleanup_confirmed' AND local_binding->>'execution_host'=%s
+            AND (%s::text IS NULL OR thread_id=%s) ORDER BY updated_at LIMIT %s""",
+            (host, thread_id, thread_id, limit),
+        ).fetchall()
+    for row in rows:
+        try:
+            binding = row["local_binding"]
+            if process_started(binding["owner_pid"]) == binding["owner_started"]:
+                continue
+            root = Path(binding["root"])
+            container = binding["container"]
+            if container:
+                if not container.startswith("runtime-terminal-"):
+                    raise ValueError("terminal_container_invalid")
+                result = subprocess.run(
+                    ["docker", "container", "ls", "--all", "--format", "{{.Names}}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    check=True,
+                )
+                if container in result.stdout.splitlines():
+                    subprocess.run(
+                        ["docker", "rm", "-f", container],
+                        capture_output=True,
+                        timeout=10,
+                        check=True,
+                    )
+            workspace_unused(root)
+            _finish(row["resource_id"], "cleanup_confirmed")
+        except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+            logger.warning(
+                "Terminal cleanup still unconfirmed resource_id=%s", row["resource_id"]
+            )
+        finally:
+            with connect() as db:
+                db.execute(
+                    "UPDATE runtime_run_resources SET updated_at=now() WHERE resource_id=%s AND status<>'cleanup_confirmed'",
+                    (row["resource_id"],),
+                )
 
 
 def _finish(resource, status):
@@ -109,7 +196,7 @@ def resource_state(thread_id, targets):
     return "confirmed" if rows else "not_required"
 
 
-def reconcile_remote_resources(thread_id=None, targets=None, *, cancel=False):
+def reconcile_remote_resources(thread_id=None, targets=None, *, cancel=False, limit=2):
     """Recover cleanup facts by the original ID, without replaying commands."""
     from runtime_service.errors import RuntimeWorkspaceError
     from runtime_service.workspace.documents import DocumentError
@@ -126,8 +213,8 @@ def reconcile_remote_resources(thread_id=None, targets=None, *, cancel=False):
                 AND r.sandbox_binding->>'execution_host'=%s
                 AND (%s::text IS NULL OR r.thread_id=%s)
                 AND (%s::text[] IS NULL OR r.run_id=ANY(%s))
-            ORDER BY r.updated_at LIMIT 2""",
-            (host, thread_id, thread_id, targets, targets),
+            ORDER BY r.updated_at LIMIT %s""",
+            (host, thread_id, thread_id, targets, targets, limit),
         ).fetchall()
     for row in rows:
         binding = row["sandbox_binding"]

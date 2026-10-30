@@ -16,8 +16,8 @@ from runtime_service.auth.platform import (
     authenticate,
     deny_image_scope_on_server_resources,
 )
+from runtime_service.errors import RuntimeAuthError
 from runtime_service.runtime.auth import verify_delegation_claims
-from runtime_service.runtime.errors import RuntimeAuthError
 
 
 async def _custom_endpoint(case: dict, token: str) -> dict:

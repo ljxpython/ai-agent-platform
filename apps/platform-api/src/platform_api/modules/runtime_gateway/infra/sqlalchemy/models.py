@@ -24,6 +24,13 @@ class ThreadAccessRecord(Base):
     """Authoritative Platform ACL; no business role policy is stored in Runtime."""
 
     __tablename__ = "thread_access"
+    __table_args__ = (
+        Index(
+            "ix_thread_retention_pending",
+            "retention_configured_at",
+            "retention_attempted_at",
+        ),
+    )
     thread_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     owner_user_id: Mapped[str | None] = mapped_column(
@@ -39,6 +46,12 @@ class ThreadAccessRecord(Base):
         String(16), nullable=False, default="ready"
     )
     reserved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    retention_configured_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    retention_attempted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
@@ -78,6 +91,9 @@ class RunRequestRecord(Base):
     upstream_auth_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     context_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     config_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    snapshots_cleared_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     context_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     run_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     origin_ref: Mapped[str | None] = mapped_column(
@@ -157,6 +173,10 @@ class RunCompletionEventRecord(Base):
             "accepted_at",
             "event_id",
         ),
+        Index(
+            "ix_completion_details_pending", "details_cleared_at", "detail_expires_at"
+        ),
+        Index("ix_completion_dedup_expiry", "dedup_expires_at"),
     )
     event_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True)
     runtime_id: Mapped[str] = mapped_column(
@@ -177,6 +197,9 @@ class RunCompletionEventRecord(Base):
     suppressed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     detail_expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
+    )
+    details_cleared_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
     dedup_expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False

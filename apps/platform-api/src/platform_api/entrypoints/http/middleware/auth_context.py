@@ -65,6 +65,7 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
         "/api/runtime/internal/scheduled-authorization",
         "/api/runtime/internal/stop-authorization",
         "/api/runtime/internal/run-completion",
+        "/api/runtime/internal/thread-deletion",
         "/api/runtime/internal/background-task-delivery",
         "/api/runtime/internal/background-task-authorization",
         "/api/runtime/internal/knowledge/authorize",

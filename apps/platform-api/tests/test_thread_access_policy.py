@@ -80,8 +80,14 @@ class ThreadAccessPolicyTest(unittest.IsolatedAsyncioTestCase):
         )
         sent = upstream.create_thread.call_args.args[0]
         self.assertEqual(
-            sent["metadata"], {"project_id": "p", "access_policy": "full_access"}
+            sent["metadata"],
+            {
+                "project_id": "p",
+                "tenant_id": "__default",
+                "access_policy": "full_access",
+            },
         )
+        self.assertEqual(sent["retention"], {"mode": "idle", "ttl_minutes": 43200})
         self.assertEqual(
             thread_access.get(self.factory, sent["thread_id"])["owner_user_id"],
             self.actor.user_id,

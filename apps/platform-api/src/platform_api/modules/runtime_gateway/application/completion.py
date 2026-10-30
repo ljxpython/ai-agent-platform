@@ -201,6 +201,9 @@ def _fresh_thread(session, origin, terminal, factory):
 
 
 def _accept(session, factory, terminal, digest, runtime_id):
+    # The signed occurrence time bounds replay after the 90-day dedup window.
+    if terminal.occurred_at < datetime.now(UTC) - timedelta(days=90):
+        return CompletionAck(event_id=terminal.event_id, duplicate=True)
     repo.serialize_thread(session, str(terminal.thread_id))
     # Lock the precommitted origin before checking duplicates so early callbacks serialize with dispatch binding.
     origin = repo.get_origin(session, terminal.origin_ref)

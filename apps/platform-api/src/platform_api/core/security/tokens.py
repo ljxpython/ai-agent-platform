@@ -200,6 +200,8 @@ def create_runtime_delegation_token(
         "run-create",
         "run-acceptance-read",
         "thread-edit",
+        "thread-touch",
+        "thread-retention",
         "thread-delete",
         "run-cancel",
         "run-delete",
@@ -231,6 +233,8 @@ def create_runtime_delegation_token(
     }:
         raise ValueError("runtime delegation scope operation is unsupported")
     if operation in {
+        "thread-touch",
+        "thread-retention",
         "title-generate",
         "diagnostics-read",
         "usage-read",
@@ -249,6 +253,8 @@ def create_runtime_delegation_token(
         "thread-create",
         "thread-reconcile",
         "thread-edit",
+        "thread-touch",
+        "thread-retention",
         "thread-delete",
     } and not normalized_scope.get("assistant_id"):
         raise ValueError("runtime delegation execution requires assistant_id")

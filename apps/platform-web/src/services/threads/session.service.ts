@@ -244,6 +244,14 @@ export function createSessionService(
     },
     get: (threadId: string) =>
       client.threads.get(assertValidThreadId(threadId)),
+    activity: (threadId: string) =>
+      read(
+        `/threads/${encodeURIComponent(assertValidThreadId(threadId))}/activity`,
+        {
+          method: "POST",
+          body: "{}",
+        },
+      ),
     // The gateway exposes checkpoint_id on GET state, not the SDK's extra checkpoint route.
     state: (threadId: string, checkpoint?: Checkpoint) => {
       const validId = assertValidThreadId(threadId);

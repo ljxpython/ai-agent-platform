@@ -296,22 +296,35 @@ class MessageInbox:
             for i, (key, value) in enumerate(zip(keys, row, strict=True))
         }
 
-    def prune_deleted_threads(self) -> int:
+    def prune_deleted_threads(self, *, apply=False, limit=100) -> int:
         """Keep live-thread idempotency forever; purge deleted scopes after 24h.
 
         This is an explicit Runtime maintenance operation against its configured
         GraphHarbor PG database. A missing engine schema fails closed.
         """
+        if not 1 <= limit <= 1000:
+            raise ValueError("invalid inbox maintenance limit")
         with connect(self.dsn, row_factory=tuple_row) as connection:
-            return connection.execute(
-                """DELETE FROM runtime_message_inbox AS inbox
-                WHERE inbox.updated_at < now() - interval '24 hours'
+            connection.execute("SET LOCAL lock_timeout='500ms'")
+            connection.execute("SET LOCAL statement_timeout='5s'")
+            query = """SELECT inbox.message_id FROM runtime_message_inbox AS inbox
+                JOIN thread_deletions d ON d.thread_id::text=inbox.thread_id
+                WHERE d.state='completed' AND d.completed_at < now() - interval '24 hours'
+                AND inbox.status IN ('consumed','not_consumed','rejected','cancelled')
                 AND NOT EXISTS (SELECT 1 FROM threads
                     WHERE threads.thread_id::text = inbox.thread_id)
                 AND NOT EXISTS (SELECT 1 FROM runs
                     WHERE runs.thread_id::text = inbox.thread_id
-                    AND runs.status IN ('pending', 'running'))"""
-            ).rowcount
+                    AND runs.status IN ('pending', 'running'))
+                ORDER BY d.completed_at,inbox.message_id LIMIT %s"""
+            if apply:
+                query += " FOR UPDATE OF inbox SKIP LOCKED"
+            ids = [row[0] for row in connection.execute(query, (limit,)).fetchall()]
+            if apply and ids:
+                connection.execute(
+                    "DELETE FROM runtime_message_inbox WHERE message_id=ANY(%s)", (ids,)
+                )
+            return len(ids)
 
     def pending_runs(self, *, thread_id: str, sender_id: str) -> list[str]:
         with connect(self.dsn, row_factory=tuple_row) as connection:

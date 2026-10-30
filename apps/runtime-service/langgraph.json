@@ -27,6 +27,11 @@
     }
   },
   "env": ".env",
+  "thread_lifecycle": {
+    "before_delete": "./src/runtime_service/thread_lifecycle.py:before_delete",
+    "after_delete": "./src/runtime_service/thread_lifecycle.py:after_delete",
+    "tombstone_metadata_keys": ["project_id", "tenant_id"]
+  },
   "webhooks": {
     "terminal": {
       "projector": "./src/runtime_service/run_completion/projector.py:project_terminal_outcome"

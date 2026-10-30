@@ -1205,6 +1205,7 @@ class RuntimeGatewayService:
             self._runtime_model_config_secret,
             algorithm="HS256",
         )
+        await self._touch_thread(project_id, thread)
         return await upstream.enqueue_thread_message(
             thread_id,
             {
@@ -2581,6 +2582,12 @@ class RuntimeGatewayService:
                 RunRequestsRepository(session).mark(record.id, status, run_id)
 
         try:
+            if (
+                scheduled_config is None
+                and completion_config is None
+                and not maintenance
+            ):
+                await self._touch_thread(project_id, thread)
             if acceptance_mode:
                 from platform_api.modules.runtime_gateway.application.run_acceptance import (
                     validate_receipt,
@@ -2850,9 +2857,12 @@ class RuntimeGatewayService:
             self._prepare_project_scope, actor=actor, project_id=project_id, write=True
         )
         next_payload = self._inject_project_metadata(project_id=project_id, payload=raw)
+        next_payload.pop("ttl", None)
+        next_payload["retention"] = {"mode": "idle", "ttl_minutes": 30 * 24 * 60}
         metadata = thread_access.initial_metadata(
             actor, dict(ensure_dict(next_payload.get("metadata")))
         )
+        metadata["tenant_id"] = self._tenant_id
         if (
             opt_in
             and self._automatic_titles_enabled()
@@ -3272,14 +3282,31 @@ class RuntimeGatewayService:
             project_id=project_id, thread=thread, operation="thread-delete"
         )
         result = await upstream.delete_thread(thread_id)
-        await run_in_threadpool(
-            thread_access.remove,
-            self._require_session_factory(),
-            actor=actor,
-            project_id=project_id,
-            thread_id=thread_id,
-        )
+        if (
+            not result
+            or not isinstance(result, dict)
+            or result.get("state") == "completed"
+        ):
+            await run_in_threadpool(
+                thread_access.remove,
+                self._require_session_factory(),
+                actor=actor,
+                project_id=project_id,
+                thread_id=thread_id,
+            )
         return result
+
+    async def record_thread_activity(self, *, actor, project_id, thread_id):
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
+        return await self._touch_thread(project_id, thread)
+
+    async def _touch_thread(self, project_id, thread):
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="thread-touch"
+        )
+        return await upstream.touch_thread(thread["thread_id"])
 
     async def fork_thread(
         self,

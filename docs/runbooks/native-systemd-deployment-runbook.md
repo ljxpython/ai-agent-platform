@@ -1,8 +1,10 @@
 # Native Systemd 生产部署与运维 Runbook
 
 文档类型：`Current Runbook`
-最后更新：2026-10-16
+最后更新：2026-10-30
 适用环境：Linux 生产 / 灰度宿主机原生进程模式（非 Docker 部署）
+
+会话与运行记录维护见 [生命周期维护手册](session-retention-maintenance.md)。仓库 `deploy/systemd/` 提供沿用本手册账号和目录布局的维护 timer 模板；本次仅交付模板，未在现役安装或启用。
 
 ---
 

@@ -849,7 +849,10 @@ def test_deleted_thread_retention_never_purges_live_or_retryable_receipts(inbox)
     with psycopg.connect(inbox.dsn) as c:
         c.execute("CREATE TABLE threads(thread_id uuid PRIMARY KEY)")
         c.execute("CREATE TABLE runs(thread_id uuid, status text)")
-    scopes = [str(uuid4()) for _ in range(4)]
+        c.execute(
+            "CREATE TABLE thread_deletions(thread_id uuid PRIMARY KEY,state text,completed_at timestamptz)"
+        )
+    scopes = [str(uuid4()) for _ in range(9)]
     for thread in scopes:
         inbox.enqueue(
             thread_id=thread,
@@ -862,18 +865,43 @@ def test_deleted_thread_retention_never_purges_live_or_retryable_receipts(inbox)
     with psycopg.connect(inbox.dsn) as c:
         c.execute("INSERT INTO threads VALUES (%s)", (scopes[0],))
         c.execute("INSERT INTO runs VALUES (%s, 'running')", (scopes[1],))
+        for thread in scopes[:-1]:
+            c.execute(
+                "INSERT INTO thread_deletions VALUES (%s,'completed',now()-interval '25 hours')",
+                (thread,),
+            )
         c.execute(
-            "UPDATE runtime_message_inbox SET updated_at=now()-interval '25 hours' WHERE thread_id != %s",
+            "UPDATE thread_deletions SET completed_at=now()-interval '23 hours' WHERE thread_id=%s",
             (scopes[2],),
         )
-    assert inbox.prune_deleted_threads() == 1
+        c.execute(
+            "UPDATE thread_deletions SET state='after_delete' WHERE thread_id=%s",
+            (scopes[6],),
+        )
+        c.execute(
+            "UPDATE runtime_message_inbox SET status='consumed' WHERE thread_id<>ALL(%s)",
+            ([scopes[4], scopes[5]],),
+        )
+        c.execute(
+            "UPDATE runtime_message_inbox SET status='claimed' WHERE thread_id=%s",
+            (scopes[5],),
+        )
+    assert inbox.prune_deleted_threads() == 2
+    assert all(inbox.list(thread_id=thread, sender_id="u") for thread in scopes)
+    assert inbox.prune_deleted_threads(apply=True, limit=1) == 1
+    assert inbox.prune_deleted_threads(apply=True) == 1
     assert [bool(inbox.list(thread_id=thread, sender_id="u")) for thread in scopes] == [
         True,
         True,
         True,
         False,
+        True,
+        True,
+        True,
+        False,
+        True,
     ]
-    assert inbox.prune_deleted_threads() == 0
+    assert inbox.prune_deleted_threads(apply=True) == 0
 
 
 def test_two_child_agents_do_not_claim_root_inbox(inbox, monkeypatch):

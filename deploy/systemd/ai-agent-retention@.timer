@@ -1,0 +1,11 @@
+[Unit]
+Description=Hourly %i retention maintenance
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=300
+Persistent=true
+Unit=ai-agent-%i-retention.service
+
+[Install]
+WantedBy=timers.target

@@ -89,6 +89,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 会话与运行数据生命周期管理及自动清理治理 | 已实现并完成隔离栈验收：GraphHarbor post48 执行 TTL/可靠删除；平台定义闲置 30 天、查看/发送续期；Workspace 随会话删除、未确认资源保留重试；详情 30 天/去重 90 天；维护默认预览、100 条/批、上限 1000，未部署现役 | [项目概览](projects/20261030-session-and-runtime-retention-governance/README.md) · [运维手册](runbooks/session-retention-maintenance.md) |
 | 分布式全链路追踪与 Loki 轻量日志代理网关 | 已完成：生成与透传 W3C traceparent 协议（00-{trace_id}-{span_id}-01）、统一结构化日志打标、实现自研 Loki 轻量代理检索 API（过滤自回声日志并提取各步耗时）、免密白名单放行；单元测试全绿 | [项目概览](projects/20261022-trace-to-logs-distributed-observability/README.md) · [验证记录](projects/20261022-trace-to-logs-distributed-observability/verification.md) |
 | 长期记忆契约透传与健康状态（stats）模型下发 | 已完成：定义 MemoryStatsView，扩展 MemoryDocumentView 与 MemoryView 支持 stats 可选透传，7 项契约单测全绿 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
 | 平台/项目用量分析 API | 已完成：三GET、数字权限、名称/Thread ACL、cursor、审计和整链路并发预算已验；公开百万容量两轮通过、B01解除；前端全栈联合复验通过 | [接口/任务](projects/20261011-token-usage-dashboard/03-platform-api-and-security.md) · [验证](projects/20261011-token-usage-dashboard/05-delivery-and-verification.md) |

@@ -55,6 +55,8 @@ class TerminalSession:
         self.process = None
         self.fd = None
         self.container = None
+        self.resource_id = None
+        self.cleanup_confirmed = False
         self.node_cleanup = node.get("cleanup") if node else None
         self.rows, self.cols = rows, cols
         tenant, project, thread, graph, _ = owner
@@ -154,8 +156,32 @@ class TerminalSession:
             env["DOCKER_CONFIG"] = env.get(
                 "DOCKER_CONFIG", str(Path.home() / ".docker")
             )
-        master, slave = pty.openpty()
+        if (
+            not node
+            and os.getenv("DATABASE_URI")
+            and os.getenv("RUNTIME_EXECUTION_HOST_ID")
+        ):
+            from runtime_service.run_control.resources import _register, process_started
+
+            started = process_started(os.getpid())
+            if not started:
+                raise DocumentError("terminal_owner_unconfirmed", 503)
+            self.resource_id = _register(
+                "terminal",
+                thread,
+                identifier,
+                local_binding={
+                    "execution_host": os.environ["RUNTIME_EXECUTION_HOST_ID"],
+                    "owner_pid": os.getpid(),
+                    "owner_started": started,
+                    "root": str(self.root.absolute()),
+                    "container": self.container,
+                },
+            )
+        master = slave = None
         try:
+            master, slave = pty.openpty()
+            self.fd = master
             fcntl.ioctl(
                 slave, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0)
             )
@@ -175,15 +201,26 @@ class TerminalSession:
             )
             os.set_blocking(master, False)
             self.fd = master
-        except (OSError, ValueError) as exc:
-            os.close(master)
-            raise DocumentError("terminal_start_failed", 503) from exc
+            self.reader = threading.Thread(
+                target=self._read, name="terminal-reader", daemon=True
+            )
+            self.reader.start()
+        except BaseException as exc:
+            if self.process is not None:
+                self.close("start_failed")
+            else:
+                if master is not None:
+                    os.close(master)
+                if self.resource_id:
+                    from runtime_service.run_control.resources import _finish
+
+                    _finish(self.resource_id, "cleanup_confirmed")
+            if isinstance(exc, (OSError, ValueError)):
+                raise DocumentError("terminal_start_failed", 503) from exc
+            raise
         finally:
-            os.close(slave)
-        self.reader = threading.Thread(
-            target=self._read, name="terminal-reader", daemon=True
-        )
-        self.reader.start()
+            if slave is not None:
+                os.close(slave)
 
     def describe(self):
         with self.lock:
@@ -325,7 +362,7 @@ class TerminalSession:
 
     def close(self, reason="closed"):
         with self.lock:
-            if self.finished is not None:
+            if self.finished is not None and self.cleanup_confirmed:
                 return self.describe()
             self.finished, self.reason = time.monotonic(), reason
             fd, self.fd = self.fd, None
@@ -351,33 +388,44 @@ class TerminalSession:
                 self.process.wait(timeout=2)
             except subprocess.TimeoutExpired:
                 pass
+            confirmed = self.process.poll() is not None
             if self.container:
                 try:
                     if self.node_cleanup:
                         self.node_cleanup()
-                        return self.describe()
-                    result = subprocess.run(
-                        [
-                            *self.docker_command,
-                            "rm",
-                            "-f",
-                            self.container,
-                        ],
-                        stdout=subprocess.DEVNULL,
-                        env=self.docker_environment,
-                        stderr=subprocess.DEVNULL,
-                        timeout=10,
-                        check=False,
-                    )
-                    if result.returncode:
+                        result = None
+                    else:
+                        result = subprocess.run(
+                            [
+                                *self.docker_command,
+                                "rm",
+                                "-f",
+                                self.container,
+                            ],
+                            stdout=subprocess.DEVNULL,
+                            env=self.docker_environment,
+                            stderr=subprocess.DEVNULL,
+                            timeout=10,
+                            check=False,
+                        )
+                    if result is not None and result.returncode:
                         raise OSError("docker cleanup failed")
                 except (OSError, subprocess.TimeoutExpired):
+                    confirmed = False
                     # Container timeout remains the hard upper bound if Docker is unreachable.
                     import logging
 
                     logging.getLogger(__name__).warning(
                         "terminal container cleanup unavailable: %s", self.container
                     )
+            self.cleanup_confirmed = confirmed
+            if self.resource_id:
+                from runtime_service.run_control.resources import _finish
+
+                _finish(
+                    self.resource_id,
+                    "cleanup_confirmed" if confirmed else "cleanup_unconfirmed",
+                )
             return self.describe()
 
 
@@ -478,6 +526,18 @@ class TerminalManager:
         with self.lock:
             sessions = list(self.sessions.values())
         for session in sessions:
+            if type(self) is TerminalManager and session.resource_id:
+                from runtime_service.db import connect
+                from runtime_service.thread_lifecycle import deletion_pending
+
+                with connect() as db:
+                    deleting = deletion_pending(db, session.owner[2])
+                if (
+                    deleting
+                    or session.finished is not None
+                    and not session.cleanup_confirmed
+                ):
+                    session.close("thread_deleted" if deleting else session.reason)
             if session.finished is None:
                 if not terminal_enabled():
                     session.close("disabled")
@@ -485,7 +545,7 @@ class TerminalManager:
                     session.close("lifetime_expired")
                 elif now - session.last_input >= IDLE_SECONDS:
                     session.close("idle_expired")
-            elif now - session.finished >= RETAIN_SECONDS:
+            elif session.cleanup_confirmed and now - session.finished >= RETAIN_SECONDS:
                 with self.lock:
                     self.sessions.pop(session.id, None)
 

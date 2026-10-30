@@ -408,14 +408,14 @@ def confirm_delivery_cancel(row):
         )
 
 
-def logs_to_expire(host, *, capacity=False):
+def logs_to_expire(host, *, capacity=False, limit=100):
     with connect() as connection:
         return connection.execute(
             """SELECT * FROM runtime_background_tasks WHERE execution_host_id=%s AND log_reserved
           AND cleanup_state IN ('confirmed','not_required') AND (created_at<now()-interval '7 days' OR %s)
           AND status IN ('succeeded','failed','timed_out','cancelled')
-          ORDER BY created_at LIMIT 100""",
-            (host, capacity),
+          ORDER BY created_at LIMIT %s""",
+            (host, capacity, limit),
         ).fetchall()
 
 

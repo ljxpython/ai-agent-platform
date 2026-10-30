@@ -26,6 +26,10 @@ def bind(scope, graph, local_root):
     workspace_id = thread_scope_hash(*scope)
     if os.getenv("DATABASE_URI") and host:
         with connect() as db:
+            from runtime_service.thread_lifecycle import deletion_pending
+
+            if deletion_pending(db, scope[2]):
+                raise RuntimeWorkspaceError("runtime.workspace.unavailable")
             db.execute(
                 "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))",
                 (host + ":" + workspace_id + ":" + graph,),

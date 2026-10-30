@@ -149,6 +149,8 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "run-create",
         "run-acceptance-read",
         "thread-edit",
+        "thread-touch",
+        "thread-retention",
         "thread-delete",
         "run-cancel",
         "run-delete",
@@ -284,6 +286,8 @@ def verify_delegation_claims(
     if (
         scope.operation
         in {
+            "thread-touch",
+            "thread-retention",
             "title-generate",
             "diagnostics-read",
             "usage-read",
@@ -306,6 +310,8 @@ def verify_delegation_claims(
             "thread-create",
             "thread-reconcile",
             "thread-edit",
+            "thread-touch",
+            "thread-retention",
             "thread-delete",
         }
         and not scope.assistant_id

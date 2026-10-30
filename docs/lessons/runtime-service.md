@@ -48,6 +48,13 @@
 - **正确：** 先受控 drain，再使用包含当前迁移链的回退构建，保留数据库 head、调用事实、回执及额度，验证启动和旧读取能力；只有 schema 确实不兼容且有经批准的可逆方案时才另行回退数据库，不用 stamp 绕过检查。
 - **日期：** 2026-10-09；2026-10-11 修订，保留 head 启动/旧额度读取证据见[Token 看板回退记录](../projects/20261011-token-usage-dashboard/05-delivery-and-verification.md#发布与回退建议)。
 
+## [坑] 混合单测不得整体注入运行时环境
+
+- **场景：** Runtime 同时运行固定 scope/path 的单元测试和需要专属 Worktree 数据库的 PostgreSQL 测试。
+- **错误：** 将完整 `runtime.env` 注入整个测试进程，导致固定 Workspace 绑定误连真实路径或测试库，掩盖了生产防错绑校验。
+- **正确：** 仅向明确需要数据库的 fixture 注入隔离 DSN（如 `RUNTIME_MESSAGE_TEST_DSN`），移除通用 `DATABASE_URI`，保留真实 Workspace/owner 绑定守卫。
+- **日期：** 2026-10-31；证据见 `docs/projects/20261030-session-and-runtime-retention-governance/verification.md`。
+
 ---
 
 ## [坑] Docker local 日志盘占用不能依赖 `inspect.LogPath`

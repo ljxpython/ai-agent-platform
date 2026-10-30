@@ -1,9 +1,9 @@
 ---
 status: draft
-last_verified: 2026-10-11
+last_verified: 2026-10-30
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
-note: 当前operation枚举为36项；后台元数据/日志/取消与run-acceptance-read精确委托已同步；F07增加精确title-generate全栈闭环；B01解除；消息内部Run现役链路等独立门禁仍保留，整体保持draft
+note: 当前operation枚举为38项；新增thread-touch和thread-retention精确委托；既有消息内部Run现役链路等独立门禁仍保留，整体保持draft
 ---
 
 # Delegation JWT Schema（draft）
@@ -54,7 +54,7 @@ note: 当前operation枚举为36项；后台元数据/日志/取消与run-accept
     "project_id": "<必须与顶层一致>",
     "assistant_id": "<string 或 null>",
     "thread_id": "<string 或 null>",
-    "operation": "<35 项枚举之一>"
+    "operation": "<38 项枚举之一>"
   },
 
   "context_hash": "sha256:<64位十六进制>",
@@ -87,7 +87,7 @@ note: 当前operation枚举为36项；后台元数据/日志/取消与run-accept
 
 来源不是查询权限或回调凭据；terminal 不重新验证启动 JWT 的有效期，API 接收回调使用独立正文 HMAC，查询/feed/read 仍按当前项目/Thread ACL。无新增 webhook scope。正式 post44、双端契约与隔离 Worker 证据见 [完成通知专项](../projects/20261009-agent-production-capability-extension/verification.md)。本补充不将其他待验收的 JWT 项目自动升为 active。
 
-## scope.operation 枚举（36 项）
+## scope.operation 枚举（38 项）
 
 ```
 read                    thread-create           thread-reconcile
@@ -102,12 +102,13 @@ cron-write              suggestions-generate    diagnostics-read
 usage-read              thread-stop             thread-stop-read
 run-cancellation-read   title-generate          run-acceptance-read
 background-task-read    background-task-log-read background-task-cancel
+thread-touch            thread-retention
 ```
 
 **原生资源通用白名单（10 项）：**
 `read` / `thread-create` / `thread-reconcile` / `thread-edit` / `thread-delete` / `run-create` / `run-cancel` / `run-delete` / `cron-read` / `cron-write`
 
-另有 `run-cancellation-read` / `run-acceptance-read` 的精确原生回执例外，规则如下；其余 24 项自定义 token 不能访问原生资源。`suggestions-generate` 只能访问
+另有 `run-cancellation-read` / `run-acceptance-read` 的精确原生回执例外，以及 `thread-touch` / `thread-retention` 的生命周期例外；除此之外的自定义 token 不能访问原生资源。`suggestions-generate` 只能访问
 `/internal/threads/{thread_id}/suggestions`，不能访问原生 Thread、Run、workspace、工具或 MCP 资源。
 
 `diagnostics-read` 必须绑定非空 Thread，且只允许
@@ -159,6 +160,19 @@ API 读取使用 `read`，受管模型引用沿 `thread_action=comment`，落库
 - Runtime 核对签名、期限、tenant/project/subject/credential、Thread 与 hash；原生授权事件必须是 Thread read 且 `run_acceptance_receipt=true`，key/digest 与 grant 完全匹配。只能读这一接受回执，不能读 state/Run/Thread、创建、取消、访问模型/MCP/Workspace。
 - 接受后撤权仍允许受信固定只读对账；浏览器公开 ACL 不扩大，完成执行仍在 factory 前按当前权限和持久 Stop 拒绝。服务账号保留原 credential_id，callback_context 也可同时保留，不相互替代。
 - `accepted` 仅证明创建接受；`unknown`、no_receipt/receipt_expired、GET 超时/畸形响应/旧路由 404/405 均不能判为未执行或触发新 POST。只有持久 `definitively_not_accepted` 才是拒绝事实。
+
+## 会话保留精确委托（2026-10-30 用户批准）
+
+`thread-touch` 必须绑定非空 Thread，只允许原生 `threads:update` 且授权值严格为 `{thread_id, touch: true}`。Platform 先按当前 Thread read ACL 校验主动查看，再签发这一用途；Runtime 绑定 tenant/project/Thread，不能凭此修改 metadata、策略或创建 Run。发送消息在当前发送权限通过后显式 touch；自动调度、后台完成续接和维护不续期。
+
+`thread-retention` 是存量登记专用委托，固定 `sub=platform-retention-maintenance`、`role=platform_maintenance`、`permissions=[]`、`allowed_model_ids=["maintenance"]`，必须绑定 Thread。只允许以下两种原生授权值：
+
+- `threads:read`：严格 `{thread_id, retention: true}`，仅查询保留状态。
+- `threads:update`：严格 `{thread_id, policy: {mode: "idle", ttl_minutes: 43200}}`，仅登记平台的 30 天闲置策略。
+
+Runtime 同时校验固定身份、scope 和上述 payload，返回 project metadata 过滤条件；不授予 Thread 内容、state、Run、模型、MCP 或其他资源访问权。登记器仅对缺少策略的 Thread 设置策略，保留已有策略和真实活动时间；404 不作为删除 ACL 的证据。公开客户端不得指定维护身份或覆盖平台 TTL。
+
+双端 operation 集合已核对为 38 项且完全一致；契约回归 5 passed / 67 subtests、真实三服务跨项目/未签名回调拒绝见 [生命周期治理验证](../projects/20261030-session-and-runtime-retention-governance/verification.md)。正式 GraphHarbor 双包为 `0.13.0.post48`；本次增量不解除 JWT 原专项剩余门禁，状态保持 draft。
 
 ## 生命周期规则
 

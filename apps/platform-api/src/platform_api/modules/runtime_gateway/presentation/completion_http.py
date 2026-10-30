@@ -1,6 +1,7 @@
 """Completion endpoints retain the existing session and runtime gateway boundaries."""
 
 import hashlib
+import json
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Query, Request, Response
@@ -15,7 +16,7 @@ from platform_api.core.errors import (
     ServiceUnavailableError,
 )
 from platform_api.entrypoints.http.dependencies import get_actor_context
-from platform_api.modules.runtime_gateway.application import completion
+from platform_api.modules.runtime_gateway.application import completion, thread_access
 from platform_api.modules.runtime_gateway.domain.completion import (
     CompletionAck,
     ReadBody,
@@ -89,6 +90,44 @@ async def _body(request):
             )
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+@router.post("/api/runtime/internal/thread-deletion")
+async def receive_thread_deletion(request: Request):
+    _query(request, set())
+    raw = await _body(request)
+    completion.verify_signature(
+        request.app.state.settings,
+        raw,
+        request.headers,
+        method=request.method,
+        path=request.url.path,
+    )
+    try:
+        body = json.loads(raw)
+        if not isinstance(body, dict) or set(body) != {
+            "task_id",
+            "thread_id",
+            "project_id",
+        }:
+            raise ValueError
+        for key in body:
+            if str(UUID(body[key])) != body[key]:
+                raise ValueError
+        if request.headers.get("x-run-completion-event-id") != body["task_id"]:
+            raise ValueError
+    except (ValueError, TypeError, AttributeError):
+        raise BadRequestError(
+            code="invalid_thread_deletion", message="Invalid Thread deletion callback"
+        ) from None
+    await run_in_threadpool(
+        thread_access.remove,
+        _factory(request),
+        actor=ActorContext(principal_type="service", subject="runtime-retention"),
+        project_id=body["project_id"],
+        thread_id=body["thread_id"],
+    )
+    return {"task_id": body["task_id"], "accepted": True}
 
 
 @router.post("/api/runtime/internal/run-completion", response_model=CompletionAck)

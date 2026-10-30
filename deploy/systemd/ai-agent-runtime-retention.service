@@ -1,0 +1,15 @@
+[Unit]
+Description=Runtime application resource and payload retention
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=aiplatform
+Group=aiplatform
+WorkingDirectory=/opt/ai-agent-platform/apps/runtime-service
+EnvironmentFile=/opt/ai-agent-platform/apps/runtime-service/.env
+ExecStart=/opt/ai-agent-platform/apps/runtime-service/.venv/bin/python -m runtime_service.maintenance --apply --limit 100 --budget-seconds 30
+TimeoutStartSec=120
+NoNewPrivileges=true
+UMask=0077

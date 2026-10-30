@@ -563,6 +563,7 @@ def get_runtime_gateway_service(
             not in {
                 "thread-create",
                 "thread-reconcile",
+                "thread-touch",
                 "suggestions-generate",
                 "title-generate",
                 "diagnostics-read",
@@ -816,6 +817,19 @@ async def get_thread(
     )
 
 
+@router.post("/threads/{thread_id}/activity")
+async def record_thread_activity(
+    request: Request,
+    thread_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    _validate_thread_id(thread_id)
+    return await service.record_thread_activity(
+        actor=actor, project_id=_require_project_id(request), thread_id=thread_id
+    )
+
+
 @router.post("/threads/{thread_id}/reconcile")
 async def reconcile_pending_thread(
     request: Request,
@@ -847,6 +861,8 @@ async def delete_thread(
         project_id=project_id,
         thread_id=thread_id,
     )
+    if isinstance(result, dict) and result.get("state") not in {None, "completed"}:
+        return JSONResponse(result, status_code=202)
     return _normalize_ack(result)
 
 

@@ -335,7 +335,7 @@ class LangGraphRuntimeGatewayUpstream:
         return await self._graphs.count(payload)
 
     async def create_thread(self, payload: dict[str, Any] | None = None) -> Any:
-        return await self._threads.create(payload)
+        return await self._http.require_json("POST", "/threads", payload=payload)
 
     async def search_threads(self, payload: dict[str, Any] | None = None) -> Any:
         return await self._threads.search(payload)
@@ -371,7 +371,17 @@ class LangGraphRuntimeGatewayUpstream:
         )
 
     async def delete_thread(self, thread_id: str) -> Any:
-        return await self._threads.delete(thread_id)
+        return await self._http.request_json("DELETE", f"/threads/{thread_id}")
+
+    async def touch_thread(self, thread_id: str) -> Any:
+        return await self._http.require_json(
+            "POST", f"/threads/{thread_id}/touch", payload={}
+        )
+
+    async def set_thread_retention(self, thread_id: str, policy: dict) -> Any:
+        return await self._http.require_json(
+            "PATCH", f"/threads/{thread_id}/retention", payload={"policy": policy}
+        )
 
     async def update_thread(self, thread_id: str, payload: dict[str, Any]) -> Any:
         return await self._threads.update(thread_id, payload)

@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-30（委派简化需求经用户人工验收通过，分支已推送并快进合并main；所属服务停止、Worktree和两个专属测试数据库/角色已清理。收尾文档随main推送，未部署共享服务；原模型质量/费用局限保留。）
+> **最后更新：** 2026-10-31（会话保留治理done；补充迁移回退与混合单测环境隔离经验；GraphHarbor post48已锁定，专属栈与浏览器验收通过；本次未提交Git或部署现役。）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -11,11 +11,11 @@
 
 ## 最近改动
 
-2026-10-30 | **委派交接架构简化验收收尾**：用户确认需求验收通过。功能提交`e40742baa14082c7dcab8765b152325b16305e90`已推送`feat/subagent-open-swe-simplification`并快进合并main；合并逐项核对原主目录61份代码/测试/配置，除AST等价格式化外内容保留。所属五服务已停，Worktree及`wt_bf33bcf838fd`两个专属数据库/同名角色、Redis/Workspace和登记已清理，其他57个数据库定义不变。3877份验证证据已另存Worktree外私有归档。当前代码与需求完成，历史语义3/5和费用未知仍保留，不因人工验收改写统计结论；收尾文档随main提交推送，未部署共享服务。
+2026-10-30 | **会话与运行时数据保留治理**：平台定义闲置30天、查看/发送续期；GraphHarbor执行通用TTL/持久删除；Runtime核实资源释放后随会话回收Workspace，失联/未结事项持久重试。正式双包post48已发布/冷安装/锁定，环境`wt_5642ffa8be9a`三服务13项、浏览器真实模型5项通过；源码、静态和相关回归证据见[项目验证](projects/20261030-session-and-runtime-retention-governance/verification.md)。done，8/8任务、8条Phase与Final核验通过；默认report维护及systemd模板已交付但未安装，旧post45不能接管014，匹配版本恢复已验。本次仅修改专属Worktree，未提交Git或部署现役。
 
 ## 本月归并
 
-2026-10 | 运行重投收敛、工具输出治理与代码剖析预算规则更新
+2026-10 | 委派简化验收合并与隔离资源清理；运行重投、工具输出和代码剖析预算治理
 
 2026-10-27 | **Markdown 渲染器放行 blob: 安全协议白名单与图表紧凑卡片排版治理**：彻底根治用户在产物库中预览深度调研报告时，由于 `markdown.ts` 中 `sanitizeUrl` 协议白名单过严导致 `WorkspacePreview.vue` 转换的 `blob:http://...` 动态 Object URL 被暴力清洗重写为 `#`（`<img src="#">` 表现为全屏破图图标）的致命缺陷；同时重构 Markdown 图像展示规范，彻底消除 2280px 超采样图表无约束膨胀导致的“广告牌”视觉灾难，建立 680px 宽度/460px 高度上限、居中对齐、微圆角轻阴影卡片边框与深浅模式自适应标准。Vitest 单测 6/6 全绿，vue-tsc 0 报错，Playwright 真实浏览器端到端高清截图验证通过。
 2026-10-27 | **智能体联网调研预算约束（Research Budget）与边际收敛刹车治理**：彻底根治深度调研场景下由于技能煽动无限递归搜索导致单会话调用 250+ 次工具、耗时 34 分钟超时死循环的过犹不及缺陷。重构 `deep-research` 技能与全局系统提示词，确立严格调研预算（常规 3~5 次搜索、2~4 篇精读全文）、边际效用递减（前 3~5 轮已覆盖 80% 核心事实）及摘要优先评估原则，彻底废除顺藤摸瓜无限追溯与全量全文泛览反模式。全量 30 项技能单测全部跑绿。
@@ -30,6 +30,7 @@
 
 ## 活跃项目
 
+- [智能体会话与运行时数据生命周期治理](projects/20261030-session-and-runtime-retention-governance/README.md)：`done`（8/8任务、8条Phase与Final核验通过）；30天闲置/查看发送续期、正式post48通用TTL、Workspace随会话回收、关联事实分级保留及有界维护均已实现；三服务13项/真实浏览器5项通过，未提交Git或部署现役。systemd仅静态核验，远端失联为受控fixture。
 - [有界调研委派与子智能体上下文隔离](projects/20261028-subagent-fanout-and-prefix-caching/README.md)：`done`，2026-10-30用户人工验收通过；功能分支已推送并快进合并main，服务停止、所属Worktree/测试库已清理。收尾记录随main推送，历史失败与质量/费用局限保留；未部署共享服务。
 - [修复运行异常重投与 Agent 代码剖析死循环收敛治理](projects/20261028-run-resubmission-and-agent-convergence/README.md)：`done`；彻底修复前端在回合失败时私自调用 submitQueuedMessage 自动重投 Prompt 的 Bug；在 SYSTEM_PROMPT 确立代码库/本地架构剖析自顶向下原则、单轮 5~8 次探索硬约束、禁止遍历脚本正则扫描；将 ExecutionBudgetMiddleware 预警阈值提升至 warning_calls=5 并强化中文化最高优先级收尾指令；前端 58 项单测、后端 76 项测试全绿。
 - [智能体上下文防爆治理与工业级工具截断/子任务架构升级](projects/20261028-context-governance-and-tool-resilience/README.md)：`done`；对标 Antigravity / Cursor / Manus 工业级架构，从源头解决灵巧手调研与全库代码剖析等重度长任务中工具无脑倾倒巨量输出（单次 188KB/6.4万 Token）、单上下文硬抗 60+ 次工具调用导致的上下文反复爆炸与 6 次恶性循环压缩问题。实装溢出落盘（Spill-to-Disk）与历史工具视口虚拟折叠（Ephemeral Pruning），生产真实大长会话回放 Token 暴降 58% ~ 82%，压缩触发归零，300 项中间件单测 100% 绿灯。
@@ -84,13 +85,13 @@
 - [LangGraph v3 默认消费与 DeltaChannel 评估](projects/20261004-langgraph-v3-delta-evaluation/README.md)：partial；后端默认 v3、前端交接、离线 Spike 和本地 PostgreSQL 体积测量已完成，回滚门禁和前端浏览器验收待执行；节点 timeout/error_handler/RunControl 暂不实施。
 - [Chat 会话状态机加固与流式体验优化](projects/20261004-chat-session-state-and-stream-hardening/README.md)：done；彻底解决切屏失焦权限刷新误踢、空队列误弹排队 0 黄条、中断等待澄清时底部悬挂正在处理矛盾提示、以及 DeepSeek 思维链首轮流式卡顿假死四大顽疾；前端 22 项单测全绿、静态类型检查与生产打包全绿。
 
-## 当前各服务状态（与主干最新对齐）
+## 当前各服务状态（本次专属 Worktree）
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-30 | 官方task+只读general-purpose简化及子额度错误隔离已完成人工验收，功能提交e40742ba已推送并快进合并main；所属Runtime API/Worker及其余隔离服务全部停止，Worktree与专属测试库已清理。未部署共享服务，历史质量局限见项目Final。 |
-| platform-api | 2026-10-30 | 既有预算准入Usage投影修复随e40742ba保留并合并main；T4真实Usage200/finalized/complete、token_budget=null，既有证据不改写。所属隔离服务已停、测试库已清理，未部署共享服务。 |
-| platform-web | 2026-10-30 | 既有预算通知与Pro入口修复随e40742ba保留并合并main；用户完成当前简化版验收，所属Web服务已停止、Worktree已清理，未部署共享服务。 |
+| runtime-service | 2026-10-30 | 本环境已锁定正式GraphHarbor post48并重启API/Worker；hook持久交接、未结事项保护、可信Workspace回收、terminal owner迁移0010和有界应用维护完成，相关119passed/11skipped及真实栈通过。旧post45不能接管014；未部署现役。 |
+| platform-api | 2026-10-30 | 闲置30天、主动活动、存量精确委托登记及迁移0010、HMAC删除回调/ACL清理、详情30天/去重90天及充分终态快照维护完成；PG35passed、最终委托5passed/67subtests和真实栈通过。未部署现役。 |
+| platform-web | 2026-10-30 | 两聊天入口实际打开/KeepAlive返回上报活动，后台读取不续期；相关8passed、lint/type/build和真实模型浏览器5检查通过。仅本环境验收，未部署现役。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

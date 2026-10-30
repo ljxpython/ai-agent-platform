@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from types import SimpleNamespace
 
 import jwt
 import pytest
@@ -9,6 +10,59 @@ from langgraph_sdk import Auth
 
 from runtime_service.auth.platform import authenticate
 from runtime_service.runtime.resolver import runtime_context_hash
+
+
+@pytest.mark.parametrize(
+    "action,value,permitted",
+    [
+        ("read", {"thread_id": "thread-a", "retention": True}, True),
+        (
+            "update",
+            {"thread_id": "thread-a", "policy": {"mode": "idle", "ttl_minutes": 43200}},
+            True,
+        ),
+        ("read", {"thread_id": "thread-a"}, False),
+        ("read", {"thread_id": "thread-a", "retention": True, "state": True}, False),
+        ("read", {"thread_id": "thread-b", "retention": True}, False),
+        ("update", {"thread_id": "thread-a", "policy": None}, False),
+        (
+            "update",
+            {"thread_id": "thread-a", "policy": {"mode": "fixed", "ttl_minutes": 1}},
+            False,
+        ),
+        ("update", {"thread_id": "thread-a", "activity": True}, False),
+        ("delete", {"thread_id": "thread-a"}, False),
+        ("search", {}, False),
+        ("create", {"thread_id": "thread-a"}, False),
+    ],
+)
+def test_retention_maintenance_cannot_read_content_or_change_business_policy(
+    action, value, permitted
+):
+    from runtime_service.auth.platform import deny_image_scope_on_server_resources
+
+    ctx = SimpleNamespace(
+        resource="threads",
+        action=action,
+        user={
+            "identity": "platform-retention-maintenance",
+            "role": "platform_maintenance",
+            "runtime_scope": {
+                "operation": "thread-retention",
+                "thread_id": "thread-a",
+                "project_id": "project-a",
+            },
+        },
+    )
+    if permitted:
+        assert asyncio.run(deny_image_scope_on_server_resources(ctx, value)) == {
+            "project_id": "project-a"
+        }
+    else:
+        with pytest.raises(Auth.exceptions.HTTPException) as denied:
+            asyncio.run(deny_image_scope_on_server_resources(ctx, value))
+        assert denied.value.status_code == 403
+
 
 SECRET = "r1-test-secret-with-at-least-32-bytes"
 

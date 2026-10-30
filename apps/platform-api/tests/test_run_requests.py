@@ -226,6 +226,7 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         )
         run_start = AsyncMock(return_value={"run_id": "run-1"})
         self.upstream = SimpleNamespace(
+            touch_thread=AsyncMock(return_value={}),
             create_thread_run=run_start,
             send_thread_command=run_start,
             get_thread_run=AsyncMock(
@@ -314,7 +315,7 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         self.service = RuntimeGatewayService(
             session_factory=self._session_factory, upstream=self.upstream
         )
-        self.service._load_thread = AsyncMock(return_value={})
+        self.service._load_thread = AsyncMock(return_value={"thread_id": "thread-1"})
         self.service._project_default_model_id = Mock(return_value=None)
         self.service._assert_runtime_options_allowed = Mock()
         self.service._assert_runtime_target_allowed = Mock()
@@ -554,7 +555,12 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         expected, _ = _runtime_context_snapshot(
             {"params": {"context": sent["context"]}}
         )
-        self.assertEqual(captured[-1]["context_hash"], expected)
+        delegation = next(
+            item
+            for item in captured
+            if item.get("operation", "run-create") == "run-create"
+        )
+        self.assertEqual(delegation["context_hash"], expected)
         self.assertTrue(sent["context"]["plan_execution_id"])
         self.assertFalse(sent["context"]["plan_mode"])
         self.assertFalse(sent["context"]["offload_conversation"])
@@ -608,9 +614,15 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         )
         self.upstream.with_forwarded_headers = lambda headers: self.upstream
         await self.start()
-        self.assertEqual(captured[-1]["context_hash"], self.records()[0].context_hash)
-        self.assertEqual(captured[-1]["agent_key"], "agent-1")
-        self.assertEqual(captured[-1]["thread_id"], "thread-1")
+        delegation = next(
+            item
+            for item in captured
+            if item.get("operation", "run-create") == "run-create"
+        )
+        self.assertEqual(delegation["context_hash"], self.records()[0].context_hash)
+        self.assertEqual(delegation["agent_key"], "agent-1")
+        self.assertEqual(delegation["thread_id"], "thread-1")
+        self.assertIn("thread-touch", [item.get("operation") for item in captured])
         sent = self.upstream.create_thread_run.call_args.args[1]
         self.assertEqual(sent["multitask_strategy"], "reject")
         self.assertTrue(sent["idempotency_key"].startswith("platform:"))

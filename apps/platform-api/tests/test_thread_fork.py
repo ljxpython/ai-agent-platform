@@ -62,6 +62,7 @@ class ThreadForkTest(unittest.IsolatedAsyncioTestCase):
             {
                 "metadata": {
                     "project_id": "p",
+                    "tenant_id": "__default",
                     "graph_id": "showcase_demo",
                     "access_policy": "workspace_write",
                     "forked_from": {
@@ -72,6 +73,7 @@ class ThreadForkTest(unittest.IsolatedAsyncioTestCase):
                     "title": "Branch",
                 },
                 "graph_id": "showcase_demo",
+                "retention": {"mode": "idle", "ttl_minutes": 43200},
                 "thread_id": "target",
                 "if_exists": "raise",
             }

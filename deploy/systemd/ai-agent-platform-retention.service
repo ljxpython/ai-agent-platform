@@ -1,0 +1,15 @@
+[Unit]
+Description=Platform record retention and missing thread policy registration
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=aiplatform
+Group=aiplatform
+WorkingDirectory=/opt/ai-agent-platform/apps/platform-api
+EnvironmentFile=/opt/ai-agent-platform/apps/platform-api/.env
+ExecStart=/opt/ai-agent-platform/apps/platform-api/.venv/bin/python scripts/maintain_run_completions.py --register-retention --apply --limit 100 --budget-seconds 30
+TimeoutStartSec=120
+NoNewPrivileges=true
+UMask=0077

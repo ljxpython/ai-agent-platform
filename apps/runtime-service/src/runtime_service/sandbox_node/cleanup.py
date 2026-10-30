@@ -66,6 +66,8 @@ def handle_cleanup(node, request):
     grace = int(os.environ.get("RUNTIME_WORKSPACE_TTL_SECONDS", "604800"))
     if grace < 1:
         raise DocumentError("workspace_cleanup_policy_invalid")
+    if row["evidence"] and json.loads(row["evidence"])["kind"] == "deleted_thread":
+        grace = 0
     eligible = (
         row["status"] == "deleting"
         and time.time() - row["deletion_at"] >= grace

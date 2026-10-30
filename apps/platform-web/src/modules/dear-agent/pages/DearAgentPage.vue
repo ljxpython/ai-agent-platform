@@ -13,6 +13,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
 import { useAuthorization } from "@/composables/useAuthorization";
 import { useAuthStore } from "@/stores/auth";
+import { useThreadActivity } from "@/modules/chat/composables/useThreadActivity";
 import { getAgent, listAgents } from "@/services/agents/agents.service";
 import type { Agent, AgentContext } from "@/services/agents/types";
 import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
@@ -343,6 +344,14 @@ const textParam = (value: unknown) =>
   typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : undefined;
+useThreadActivity(
+  () => activeProjectId.value,
+  () =>
+    route.name === "workspace-dear-agent"
+      ? textParam(route.params.threadId)
+      : undefined,
+  () => service.value!,
+);
 const selectedTarget = computed(() => target.value?.agentId ?? "");
 
 const totalThreads = ref<number | undefined>(undefined);

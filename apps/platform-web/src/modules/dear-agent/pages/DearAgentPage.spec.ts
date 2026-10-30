@@ -53,6 +53,7 @@ vi.mock("@/services/threads/session.service", async (importOriginal) => ({
     typeof import("@/services/threads/session.service")
   >()),
   createSessionService: () => ({
+    activity: vi.fn().mockResolvedValue({}),
     list: mockList,
     count: vi.fn().mockResolvedValue(2),
     remove: vi.fn().mockResolvedValue({}),

@@ -29,6 +29,9 @@ from platform_api.core.errors import (
     register_exception_handlers,
 )
 from platform_api.entrypoints.http.dependencies import get_actor_context
+from platform_api.entrypoints.http.middleware.auth_context import (
+    register_auth_context_middleware,
+)
 from platform_api.entrypoints.http.middleware.request_context import (
     register_request_context_middleware,
 )
@@ -171,11 +174,17 @@ def terminal(fixture, *, status="error", origin_ref=None, run_id=None, **changes
     return TerminalCompletion.model_validate_json(raw), raw
 
 
-def signed(f, body, event_id, *, stamp=None, kid="runtime-v1"):
+def signed(
+    f,
+    body,
+    event_id,
+    *,
+    stamp=None,
+    kid="runtime-v1",
+    path="/api/runtime/internal/run-completion",
+):
     stamp = str(stamp if stamp is not None else int(time.time()))
-    canonical = (
-        f"{kid}\n{stamp}\nPOST\n/api/runtime/internal/run-completion\n".encode() + body
-    )
+    canonical = f"{kid}\n{stamp}\nPOST\n{path}\n".encode() + body
     return {
         "content-type": "application/json",
         "x-run-completion-key-id": kid,
@@ -825,3 +834,171 @@ def test_retention_preview_preserves_dedup_and_pending(fixture):
         ) == (availability, None)
     with fixture.factory() as session:
         assert session.get(Origin, str(pending.origin_ref)).state == "active"
+
+
+def test_signed_deletion_is_idempotent_and_late_completion_cannot_recreate_acl(fixture):
+    from sqlalchemy import func, select
+
+    from platform_api.modules.audit.models import AuditLogRecord
+
+    app = FastAPI()
+    app.state.settings, app.state.db_session_factory = fixture.settings, fixture.factory
+    register_exception_handlers(app)
+    register_auth_context_middleware(app, fixture.settings)
+    register_request_context_middleware(app)
+    app.include_router(router)
+    t, raw = terminal(fixture)
+    task = str(uuid4())
+    body = json.dumps(
+        {"task_id": task, "thread_id": fixture.thread, "project_id": fixture.project}
+    ).encode()
+    path = "/api/runtime/internal/thread-deletion"
+    with TestClient(app) as client:
+        assert (
+            client.post(
+                path, content=body, headers={"content-type": "application/json"}
+            ).status_code
+            == 403
+        )
+        forged = signed(fixture, body, task, path=path)
+        forged["x-run-completion-signature"] = "sha256=" + "0" * 64
+        assert client.post(path, content=body, headers=forged).status_code == 403
+        assert (
+            client.post(
+                path, content=body, headers=signed(fixture, body, task)
+            ).status_code
+            == 403
+        )
+        headers = signed(fixture, body, task, path=path)
+        assert client.post(path, content=body, headers=headers).status_code == 200
+        assert client.post(path, content=body, headers=headers).status_code == 200
+    assert not accept(fixture, t, raw).duplicate
+    with fixture.factory() as session:
+        assert session.get(ThreadAccessRecord, fixture.thread) is None
+        assert session.get(Event, t.event_id).suppressed
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(AuditLogRecord)
+                .where(AuditLogRecord.action == "thread.deleted")
+            )
+            == 1
+        )
+
+
+def test_callback_older_than_dedup_window_does_not_require_or_recreate_origin(fixture):
+    from sqlalchemy import delete
+
+    t, raw = terminal(
+        fixture, occurred_at=(datetime.now(UTC) - timedelta(days=91)).isoformat()
+    )
+    with fixture.factory.begin() as session:
+        session.execute(delete(Origin))
+    assert accept(fixture, t, raw).duplicate
+    with fixture.factory() as session:
+        assert session.get(Origin, str(t.origin_ref)) is None
+        assert session.get(Event, t.event_id) is None
+
+
+def test_retention_clears_only_proven_terminal_snapshots_and_preserves_idempotency(
+    fixture,
+):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "snapshot_retention",
+        Path(__file__).resolve().parents[1] / "scripts/maintain_run_completions.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    requests = []
+    for status in ("success", "interrupted", None):
+        t, raw = terminal(fixture, status=status or "error")
+        if status:
+            accept(fixture, t, raw)
+        request_id = uuid4()
+        requests.append(request_id)
+        with fixture.factory.begin() as session:
+            session.add(
+                RunRequestRecord(
+                    id=request_id,
+                    origin_ref=str(t.origin_ref),
+                    project_id=fixture.project,
+                    thread_id=fixture.thread,
+                    agent_key="probe",
+                    requested_by=fixture.user,
+                    idempotency_key=str(request_id),
+                    request_digest="d" * 64,
+                    context_snapshot={"secret": "context"},
+                    config_snapshot={"secret": "config"},
+                    context_hash="hash",
+                    upstream_body=b"private prompt",
+                    upstream_auth_snapshot={"secret": "auth"},
+                    run_id=str(t.run_id),
+                    created_at=datetime.now(UTC) - timedelta(days=100),
+                )
+            )
+            if status:
+                event = session.get(Event, t.event_id)
+                event.accepted_at = datetime.now(UTC) - timedelta(days=31)
+                event.dedup_expires_at = datetime.now(UTC) - timedelta(days=1)
+                if status == "success":
+                    event.reason = None
+    assert module.maintain(fixture.factory)["expired_snapshots"] == 1
+    with fixture.factory() as session:
+        assert (
+            session.get(RunRequestRecord, requests[0]).upstream_body
+            == b"private prompt"
+        )
+    assert (
+        module.maintain(fixture.factory, apply=True, limit=1)["expired_snapshots"] == 1
+    )
+    assert module.maintain(fixture.factory, apply=True)["expired_snapshots"] == 0
+    with fixture.factory() as session:
+        first, *protected = [session.get(RunRequestRecord, id) for id in requests]
+        assert (
+            first.snapshots_cleared_at
+            and first.upstream_body is None
+            and first.upstream_auth_snapshot is None
+        )
+        assert (
+            first.context_snapshot == {}
+            and first.config_snapshot == {}
+            and first.request_digest == "d" * 64
+        )
+        assert all(
+            item.upstream_body == b"private prompt"
+            and item.snapshots_cleared_at is None
+            for item in protected
+        )
+
+
+def test_maintenance_bounds_budget_and_postgres_exclusion(fixture, monkeypatch):
+    import importlib.util
+
+    from platform_api.modules.runtime_gateway.application.retention import (
+        maintenance_lock,
+    )
+
+    spec = importlib.util.spec_from_file_location(
+        "bounded_retention",
+        Path(__file__).resolve().parents[1] / "scripts/maintain_run_completions.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for limit, budget in ((0, 30), (1001, 30), (100, 0), (100, 301)):
+        with pytest.raises(ValueError, match="bounds"):
+            module.maintain(fixture.factory, limit=limit, budget_seconds=budget)
+    with fixture.factory() as session:
+        postgres = session.get_bind().dialect.name == "postgresql"
+    if postgres:
+        with maintenance_lock(fixture.factory, 74013002) as acquired:
+            assert acquired
+            assert (
+                module.maintain(fixture.factory, apply=True)["skipped"]
+                == "maintenance_busy"
+            )
+    ticks = iter((0, 31))
+    monkeypatch.setattr(module, "time", SimpleNamespace(monotonic=lambda: next(ticks)))
+    report = module.maintain(fixture.factory, apply=True)
+    assert report["budget_exhausted"] and report["expired_snapshots"] == 0
