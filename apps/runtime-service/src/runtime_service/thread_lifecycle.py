@@ -25,7 +25,7 @@ from runtime_service.workspace.target import (
 
 
 def deletion_pending(db, thread_id):
-    """Share the engine thread lock with deletion admission and resource creation."""
+    """Check whether a thread is marked for deletion without taking exclusive locks."""
     with db.cursor(row_factory=dict_row) as cursor:
         return _deletion_pending(cursor, thread_id)
 
@@ -34,7 +34,7 @@ def _deletion_pending(db, thread_id):
     # Standalone application-schema fixtures have no engine tables.
     if db.execute("SELECT to_regclass('threads') AS name").fetchone()["name"]:
         row = db.execute(
-            "SELECT * FROM threads WHERE thread_id::text=%s FOR UPDATE",
+            "SELECT deletion_requested_at FROM threads WHERE thread_id::text=%s",
             (str(thread_id),),
         ).fetchone()
         if row and row.get("deletion_requested_at"):
@@ -59,7 +59,7 @@ def _pending(db, thread_id):
         OR EXISTS(SELECT 1 FROM runtime_stop_requests WHERE thread_id=%(id)s
           AND (phase NOT IN ('stopped','no_active_run','rejected') OR audit_pending<>'[]'::jsonb))
         OR EXISTS(SELECT 1 FROM dear_external_tasks WHERE thread_id=%(id)s
-          AND (status IN ('intent','unknown') OR lease_until>now()))) AS pending""",
+          AND (status = 'intent' OR lease_until > now() OR (status = 'unknown' AND error_code IS NULL AND deadline_at > now())))) AS pending""",
         {"id": str(thread_id)},
     ).fetchone()["pending"]
 

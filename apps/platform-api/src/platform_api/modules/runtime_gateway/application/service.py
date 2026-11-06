@@ -3282,18 +3282,13 @@ class RuntimeGatewayService:
             project_id=project_id, thread=thread, operation="thread-delete"
         )
         result = await upstream.delete_thread(thread_id)
-        if (
-            not result
-            or not isinstance(result, dict)
-            or result.get("state") == "completed"
-        ):
-            await run_in_threadpool(
-                thread_access.remove,
-                self._require_session_factory(),
-                actor=actor,
-                project_id=project_id,
-                thread_id=thread_id,
-            )
+        await run_in_threadpool(
+            thread_access.remove,
+            self._require_session_factory(),
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+        )
         return result
 
     async def record_thread_activity(self, *, actor, project_id, thread_id):
