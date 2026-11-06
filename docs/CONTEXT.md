@@ -92,7 +92,7 @@
 |---|---|---|
 | runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。 |
 | platform-api | 2026-11-06 | 升级部署至 `05dd20eb`；Alembic 0010 迁移落地，uv sync 依赖同步完成。生产 2 Workers 运行正常，端口 2142 探针通过。 |
-| platform-web | 2026-11-06 | 前端产物原子覆盖至 `/www/wwwroot/agent-platform`（基于 `05dd20eb` 构建），Nginx 端口 80 反代及静态资源访问正常。 |
+| platform-web | 2026-11-06 | 前端产物原子覆盖至 `/www/wwwroot/agent-platform`（基于 `ea7773c5` 构建，支持 artifact 下载与空闲流断开防误报），Nginx 端口 80 反代及静态资源访问正常。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。
