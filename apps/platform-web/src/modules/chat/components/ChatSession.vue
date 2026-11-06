@@ -431,7 +431,13 @@ const streamError = computed(() => {
   } else {
     raw = String(errVal);
   }
-  if (raw.includes("409 Conflict") || raw.includes("pending or running run")) {
+  if (
+    raw.includes("409 Conflict") ||
+    raw.includes("pending or running run") ||
+    raw.includes("Event stream closed") ||
+    raw.includes("Protocol event stream closed") ||
+    raw.includes("Event stream ended before the connection closed")
+  ) {
     return "";
   }
   if (

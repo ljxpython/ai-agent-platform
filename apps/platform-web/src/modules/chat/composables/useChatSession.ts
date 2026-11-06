@@ -443,7 +443,10 @@ export function useChatSession(options: {
       raw.includes("already in flight") ||
       raw.includes("Upstream stream ended before terminal chunk") ||
       raw.includes("AbortError") ||
-      raw.includes("BodyStreamBuffer")
+      raw.includes("BodyStreamBuffer") ||
+      raw.includes("Event stream closed") ||
+      raw.includes("Protocol event stream closed") ||
+      raw.includes("Event stream ended before the connection closed")
     );
   };
   watch(
@@ -1653,7 +1656,11 @@ export function useChatSession(options: {
           else if (loading) void verify(false);
         }
       } else if (eventsParked.value) {
-        void reconnectStream().catch(fail);
+        void reconnectStream().catch((err) => {
+          if (active(run.value) && !isNonFatalStreamError(err)) {
+            fail(err);
+          }
+        });
       }
     },
     { flush: "post" },

@@ -2821,4 +2821,52 @@ describe("F05 Agent 模型上下文 PII 脱敏错误消费与界面回归", () =
       scope.stop();
     });
   });
+
+  describe("空闲流重连断开与 Event stream closed 异常过滤", () => {
+    it("stream.error 为 Event stream closed 时自动静默且不作为致命错误", async () => {
+      const streamErrorRef = ref<unknown>(null);
+      mocks.stream.mockReturnValue({
+        isLoading: ref(false),
+        error: streamErrorRef,
+        interrupts: ref([]),
+        hydrationPromise: ref(Promise.resolve()),
+        messages: ref([]),
+        values: ref({ messages: [] }),
+        disconnect: vi.fn(),
+        getThread: () => ({
+          getConnectionState: () => ({ state: "connected", streams: [] }),
+          onConnectionChange: vi.fn().mockReturnValue(vi.fn()),
+          suspendEvents: vi.fn(),
+          reconnectEvents: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+      mocks.runs.mockResolvedValue([]);
+      mocks.list.mockResolvedValue([]);
+      mocks.state.mockResolvedValue({ values: { messages: [] } });
+
+      const scope = effectScope();
+      const session = scope.run(() =>
+        useChatSession({
+          projectId: "p-test",
+          graphId: "showcase_demo",
+          threadId: "t-idle-stream",
+          context: ref({}),
+          canWrite: ref(true),
+          onThread: vi.fn(),
+          onRefresh: vi.fn(),
+          onReconnect: vi.fn(),
+        }),
+      )!;
+
+      await session.verify();
+      await flushPromises();
+
+      streamErrorRef.value = new Error("Event stream closed.");
+      await flushPromises();
+
+      expect(session.error.value).toBe("");
+      expect(session.canSend.value).toBe(true);
+      scope.stop();
+    });
+  });
 });

@@ -21,6 +21,17 @@ describe("renderMarkdown", () => {
     expect(html).toContain('alt="趋势图表"');
   });
 
+  it("应当放行 artifact: 协议并注入 data-artifact-id 属性且不加 target=_blank", () => {
+    const artifactId =
+      "5382da7fee127023503035bf2d0401c8ab147e8a3e27cb4564e66490bd191723";
+    const md = `[下载 PPTX](artifact://${artifactId})`;
+    const html = renderMarkdown(md);
+    expect(html).toContain(`href="artifact://${artifactId}"`);
+    expect(html).toContain(`data-artifact-id="${artifactId}"`);
+    expect(html).toContain('class="pw-artifact-link');
+    expect(html).not.toContain('target="_blank"');
+  });
+
   it("应当保留站内相对路径与锚点", () => {
     const md = "[回到顶部](#top) ![内部图片](/workspace/charts/demo.png)";
     const html = renderMarkdown(md);

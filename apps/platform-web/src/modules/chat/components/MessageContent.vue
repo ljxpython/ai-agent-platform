@@ -5,6 +5,8 @@ import BaseIcon from "@/components/base/BaseIcon.vue";
 import ThreadImage from "./ThreadImage.vue";
 import ThreadFile from "./ThreadFile.vue";
 import type { ContentItem } from "../transcript";
+import { downloadArtifactById } from "@/services/threads/workspace.service";
+import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
 
 const props = defineProps<{
   blocks: ContentItem[];
@@ -13,6 +15,42 @@ const props = defineProps<{
   threadId?: string;
 }>();
 const expanded = ref<Record<string, boolean>>({});
+
+const { activeProjectId } = useWorkspaceProjectContext();
+const resolvedProjectId = computed(
+  () => props.projectId || activeProjectId.value || "",
+);
+const downloadingArtifact = ref<string | null>(null);
+const downloadError = ref<string>("");
+
+async function handleArtifactClick(artifactId: string) {
+  if (!resolvedProjectId.value || !props.threadId) {
+    console.warn("无法下载成果：缺少 projectId 或 threadId", {
+      projectId: resolvedProjectId.value,
+      threadId: props.threadId,
+    });
+    return;
+  }
+  if (downloadingArtifact.value) return;
+  downloadingArtifact.value = artifactId;
+  downloadError.value = "";
+  try {
+    await downloadArtifactById(
+      resolvedProjectId.value,
+      props.threadId,
+      artifactId,
+    );
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("下载成果文件失败:", msg);
+    downloadError.value = `下载成果失败: ${msg}`;
+    window.setTimeout(() => {
+      if (downloadError.value) downloadError.value = "";
+    }, 4000);
+  } finally {
+    downloadingArtifact.value = null;
+  }
+}
 
 const hasTextOutput = computed(() =>
   props.blocks.some((b) => b.kind === "text" && b.text.trim().length > 0),
@@ -45,23 +83,36 @@ function toggleReasoning(key: string) {
         class="flex items-center gap-2 text-xs text-primary-600 dark:text-primary-400 py-1 font-medium"
       >
         <span class="relative flex h-2 w-2">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
-          <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500" />
+          <span
+            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"
+          />
+          <span
+            class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"
+          />
         </span>
         <span>Agent 正在组织答复...</span>
       </div>
-      <div
-        v-else-if="block.kind === 'text'"
-        class="relative leading-relaxed"
-      >
+      <div v-else-if="block.kind === 'text'" class="relative leading-relaxed">
         <MarkdownContent
-          :content="block.text.length > 12000 && !expanded[block.key] ? block.text.slice(0, 12000) : block.text"
+          :content="
+            block.text.length > 12000 && !expanded[block.key]
+              ? block.text.slice(0, 12000)
+              : block.text
+          "
+          @artifact-click="handleArtifactClick"
         />
         <span
           v-if="isStreaming"
           class="inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-primary-600 dark:bg-primary-400 ml-0.5 align-middle rounded-xs"
           aria-hidden="true"
         />
+        <div
+          v-if="downloadError"
+          class="mt-1 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1"
+        >
+          <BaseIcon name="alert" size="xs" />
+          <span>{{ downloadError }}</span>
+        </div>
       </div>
       <details
         v-else-if="block.kind === 'reasoning'"
@@ -76,27 +127,32 @@ function toggleReasoning(key: string) {
             v-if="isReasoningActivelyStreaming()"
             class="relative flex h-2 w-2 mr-0.5"
           >
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+            <span
+              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"
+            />
+            <span
+              class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"
+            />
+          </span>
+          <span v-else class="text-[13px] opacity-70"> ⚛ </span>
+          <span class="font-medium text-gray-600 dark:text-dark-300">
+            {{ isReasoningActivelyStreaming() ? "正在思考..." : "Think" }}
           </span>
           <span
-            v-else
-            class="text-[13px] opacity-70"
+            class="text-gray-400 dark:text-dark-500 group-open/reasoning:hidden"
+            >·</span
           >
-            ⚛
-          </span>
-          <span class="font-medium text-gray-600 dark:text-dark-300">
-            {{ isReasoningActivelyStreaming() ? '正在思考...' : 'Think' }}
-          </span>
-          <span class="text-gray-400 dark:text-dark-500 group-open/reasoning:hidden">·</span>
-          <span class="truncate font-mono text-[11px] text-gray-400 dark:text-dark-400 max-w-[500px] group-open/reasoning:hidden">
+          <span
+            class="truncate font-mono text-[11px] text-gray-400 dark:text-dark-400 max-w-[500px] group-open/reasoning:hidden"
+          >
             {{ block.text }}
           </span>
         </summary>
         <div
           class="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-xs text-gray-600 dark:border-dark-800 dark:bg-dark-900/40 dark:text-dark-300 leading-relaxed font-mono select-text transition-colors duration-200"
         >
-          <span>{{ block.text }}</span><span
+          <span>{{ block.text }}</span
+          ><span
             v-if="isReasoningActivelyStreaming()"
             class="inline-block h-3.5 w-1 translate-y-0.5 animate-pulse bg-blue-500 dark:bg-blue-400 ml-0.5 align-middle rounded-xs"
             aria-hidden="true"
@@ -110,18 +166,14 @@ function toggleReasoning(key: string) {
           expanded[block.key] = ($event.target as HTMLDetailsElement).open
         "
       >
-        <summary class="cursor-pointer text-xs text-gray-500">
-          其他内容
-        </summary>
+        <summary class="cursor-pointer text-xs text-gray-500">其他内容</summary>
         <pre
           v-if="expanded[block.key]"
           class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs font-mono"
-        >{{ block.text }}</pre>
+          >{{ block.text }}</pre
+        >
       </details>
-      <div
-        v-else-if="block.kind === 'image' && block.imageRef"
-        class="my-1"
-      >
+      <div v-else-if="block.kind === 'image' && block.imageRef" class="my-1">
         <ThreadImage
           :project-id="projectId || ''"
           :thread-id="threadId || ''"
@@ -139,12 +191,9 @@ function toggleReasoning(key: string) {
           loading="lazy"
           referrerpolicy="no-referrer"
           class="max-h-96 w-full object-contain bg-gray-50 dark:bg-dark-900"
-        >
+        />
       </div>
-      <div
-        v-else-if="block.kind === 'file' && block.fileRef"
-        class="my-1"
-      >
+      <div v-else-if="block.kind === 'file' && block.fileRef" class="my-1">
         <ThreadFile
           :project-id="projectId || ''"
           :thread-id="threadId || ''"
@@ -159,16 +208,10 @@ function toggleReasoning(key: string) {
         rel="noopener noreferrer"
         class="inline-flex items-center gap-1.5 rounded-lg border border-primary-200/80 bg-primary-50/60 px-3 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-100/80 transition-colors dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-300"
       >
-        <BaseIcon
-          name="file"
-          size="xs"
-        />
+        <BaseIcon name="file" size="xs" />
         <span>{{ block.text }}</span>
       </a>
-      <p
-        v-else
-        class="text-xs text-gray-500"
-      >
+      <p v-else class="text-xs text-gray-500">
         {{ block.text }} · 没有可安全打开的资源地址
       </p>
       <button
@@ -177,7 +220,11 @@ function toggleReasoning(key: string) {
         :aria-expanded="!!expanded[block.key]"
         @click="expanded[block.key] = !expanded[block.key]"
       >
-        {{ expanded[block.key] ? '收起长内容' : '内容较长，展开全文（复制保留全文）' }}
+        {{
+          expanded[block.key]
+            ? "收起长内容"
+            : "内容较长，展开全文（复制保留全文）"
+        }}
       </button>
     </template>
   </div>

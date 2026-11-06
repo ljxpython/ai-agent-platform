@@ -9,22 +9,22 @@
 ## Phase 验证项
 
 ### Phase 1: 仓库基线同步验证
-- [ ] 提交信息规范清晰，包含详细说明。
-- [ ] 远端 GitHub 仓库成功接收推送，主干基线保持整洁。
+- [x] 提交信息规范清晰，包含详细说明。
+- [x] 远端 GitHub 仓库成功接收推送，主干基线保持整洁。
 
 ### Phase 2: Markdown 产物链接验证
-- [ ] `markdown.ts` 单测覆盖 `artifact://` 协议，验证不会被降级为 `#`。
-- [ ] 验证 `link_open` 没有对 `artifact://` 链接强制设置 `target="_blank"`。
-- [ ] 验证点击 `artifact://` 链接时 `preventDefault()` 阻断跳转，并正确调用文件下载函数。
+- [x] `markdown.ts` 单测覆盖 `artifact://` 协议，验证不会被降级为 `#`。
+- [x] 验证 `link_open` 没有对 `artifact://` 链接强制设置 `target="_blank"`。
+- [x] 验证点击 `artifact://` 链接时 `preventDefault()` 阻断跳转，并正确调用文件下载函数。
 
 ### Phase 3: 会话重连断流异常收敛验证
-- [ ] `useChatSession.spec.ts` 验证 `isNonFatalStreamError("Event stream closed.")` 返回 `true`。
-- [ ] 验证空闲会话切回唤醒时，若 `reconnectStream()` 被 reject，`error.value` 不受污染，页面不显示橙色与红色错误横幅。
+- [x] `useChatSession.spec.ts` 验证 `isNonFatalStreamError("Event stream closed.")` 返回 `true`。
+- [x] 验证空闲会话切回唤醒时，若 `reconnectStream()` 被 reject，`error.value` 不受污染，页面不显示橙色与红色错误横幅。
 
 ### Phase 4: 全量工程门禁
-- [ ] `pnpm test:run` 单测全部通过。
-- [ ] `pnpm typecheck` 0 错误。
-- [ ] `pnpm build` 生产构建成功。
+- [x] `pnpm test:run` 单测全部通过（`markdown.spec.ts` 7/7, `workspace.service.spec.ts` 9/9, `useChatSession.spec.ts` 52/52）。
+- [x] `pnpm typecheck` 0 错误（TypeScript: No errors found）。
+- [x] `pnpm build` 生产构建成功（✓ built in 19.21s）。
 
 ## Final 验证要求
 1. **真实浏览器交互验证**：

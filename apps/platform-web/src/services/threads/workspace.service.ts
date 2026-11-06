@@ -1,8 +1,8 @@
-import { platformHttpClient } from '@/services/http/client';
+import { platformHttpClient } from "@/services/http/client";
 import {
   unwrapPlatformHttpError,
   type PlatformUnwrappedHttpError,
-} from '@/utils/http-error';
+} from "@/utils/http-error";
 import type {
   ArtifactRef,
   PreviewKind,
@@ -10,7 +10,7 @@ import type {
   WorkspaceCapabilities,
   WorkspaceEntry,
   WorkspacePage,
-} from '@/types/workspace';
+} from "@/types/workspace";
 
 export interface WorkspacePreviewResult {
   kind: PreviewKind;
@@ -22,8 +22,10 @@ export interface WorkspacePreviewResult {
 
 export type WorkspaceServiceError = PlatformUnwrappedHttpError;
 
-export async function unwrapWorkspaceError(err: unknown): Promise<WorkspaceServiceError> {
-  return unwrapPlatformHttpError(err, '请求失败');
+export async function unwrapWorkspaceError(
+  err: unknown,
+): Promise<WorkspaceServiceError> {
+  return unwrapPlatformHttpError(err, "请求失败");
 }
 
 export async function getWorkspaceCapabilities(
@@ -35,7 +37,7 @@ export async function getWorkspaceCapabilities(
     const res = await platformHttpClient.get<WorkspaceCapabilities>(
       `/api/langgraph/threads/${encodeURIComponent(threadId)}/capabilities`,
       {
-        headers: { 'x-project-id': projectId },
+        headers: { "x-project-id": projectId },
         signal,
       },
     );
@@ -56,11 +58,11 @@ export async function getWorkspaceTree(
       `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/tree`,
       {
         params: {
-          path: params.path || '/workspace',
+          path: params.path || "/workspace",
           ...(params.limit ? { limit: params.limit } : {}),
           ...(params.cursor ? { cursor: params.cursor } : {}),
         },
-        headers: { 'x-project-id': projectId },
+        headers: { "x-project-id": projectId },
         signal,
       },
     );
@@ -84,7 +86,7 @@ export async function getArtifacts(
           ...(params.limit ? { limit: params.limit } : {}),
           ...(params.cursor ? { cursor: params.cursor } : {}),
         },
-        headers: { 'x-project-id': projectId },
+        headers: { "x-project-id": projectId },
         signal,
       },
     );
@@ -106,8 +108,8 @@ export async function getWorkspacePreview(
       `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/preview`,
       {
         params: { path },
-        headers: { 'x-project-id': projectId },
-        responseType: 'blob',
+        headers: { "x-project-id": projectId },
+        responseType: "blob",
         signal,
       },
     );
@@ -115,15 +117,15 @@ export async function getWorkspacePreview(
     throw await unwrapWorkspaceError(err);
   }
 
-  const contentType = (res.headers['content-type'] as string) || '';
+  const contentType = (res.headers["content-type"] as string) || "";
 
   const blobToText = async (data: unknown): Promise<string> => {
-    if (typeof data === 'string') return data;
-    if (typeof data === 'object' && data !== null && !(data instanceof Blob)) {
+    if (typeof data === "string") return data;
+    if (typeof data === "object" && data !== null && !(data instanceof Blob)) {
       return JSON.stringify(data);
     }
     const blob = data as Blob;
-    if (typeof blob.text === 'function') {
+    if (typeof blob.text === "function") {
       return await blob.text();
     }
     return new Promise<string>((resolve, reject) => {
@@ -134,7 +136,7 @@ export async function getWorkspacePreview(
     });
   };
 
-  if (contentType.includes('application/json')) {
+  if (contentType.includes("application/json")) {
     const textData = await blobToText(res.data);
     const parsed = JSON.parse(textData) as TextPreview;
     return {
@@ -143,23 +145,23 @@ export async function getWorkspacePreview(
     };
   }
 
-  if (contentType.includes('text/html')) {
+  if (contentType.includes("text/html")) {
     const htmlText = await blobToText(res.data);
     return {
-      kind: 'html-sandbox',
+      kind: "html-sandbox",
       htmlContent: htmlText,
     };
   }
 
-  if (contentType.startsWith('image/')) {
+  if (contentType.startsWith("image/")) {
     return {
-      kind: 'image',
+      kind: "image",
       imageBlob: res.data as Blob,
     };
   }
 
   return {
-    kind: 'download',
+    kind: "download",
     downloadOnly: true,
   };
 }
@@ -176,8 +178,8 @@ export async function getWorkspaceContentBlob(
       `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/content`,
       {
         params: { path },
-        headers: { 'x-project-id': projectId },
-        responseType: 'blob',
+        headers: { "x-project-id": projectId },
+        responseType: "blob",
         signal,
       },
     );
@@ -185,10 +187,12 @@ export async function getWorkspaceContentBlob(
     throw await unwrapWorkspaceError(err);
   }
 
-  let fileName = path.split('/').filter(Boolean).pop() || 'file';
-  const disposition = res.headers['content-disposition'];
-  if (typeof disposition === 'string') {
-    const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+  let fileName = path.split("/").filter(Boolean).pop() || "file";
+  const disposition = res.headers["content-disposition"];
+  if (typeof disposition === "string") {
+    const match = disposition.match(
+      /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i,
+    );
     if (match?.[1]) {
       try {
         fileName = decodeURIComponent(match[1]);
@@ -206,7 +210,7 @@ export async function getWorkspaceContentBlob(
 
 export function triggerBlobDownload(blob: Blob, fileName: string): void {
   const objectUrl = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
+  const anchor = document.createElement("a");
   anchor.href = objectUrl;
   anchor.download = fileName;
   document.body.appendChild(anchor);
@@ -227,8 +231,8 @@ export async function downloadWorkspaceZip(
     res = await platformHttpClient.get(
       `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/zip`,
       {
-        headers: { 'x-project-id': projectId },
-        responseType: 'blob',
+        headers: { "x-project-id": projectId },
+        responseType: "blob",
         signal,
       },
     );
@@ -237,9 +241,11 @@ export async function downloadWorkspaceZip(
   }
 
   let fileName = `workspace-${threadId.slice(0, 8)}.zip`;
-  const disposition = res.headers['content-disposition'];
-  if (typeof disposition === 'string') {
-    const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+  const disposition = res.headers["content-disposition"];
+  if (typeof disposition === "string") {
+    const match = disposition.match(
+      /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i,
+    );
     if (match?.[1]) {
       try {
         fileName = decodeURIComponent(match[1]);
@@ -250,4 +256,24 @@ export async function downloadWorkspaceZip(
   }
 
   triggerBlobDownload(res.data as Blob, fileName);
+}
+
+export async function downloadArtifactById(
+  projectId: string,
+  threadId: string,
+  artifactId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const page = await getArtifacts(projectId, threadId, { limit: 100 }, signal);
+  const found = page.items.find((item) => item.artifact_id === artifactId);
+  if (!found) {
+    throw new Error("未找到对应的成果文件，可能已被清理或过期");
+  }
+  const { blob, fileName } = await getWorkspaceContentBlob(
+    projectId,
+    threadId,
+    found.path,
+    signal,
+  );
+  triggerBlobDownload(blob, fileName || found.file_name);
 }

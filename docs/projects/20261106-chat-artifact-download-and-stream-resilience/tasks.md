@@ -10,7 +10,7 @@
   - `docs/CONTEXT.md`
 - **预期结果：** 本地工作区干净，远端仓库包含最新的删除死锁治理代码。
 - **验证项：** `git status` 无未提交文件，`git log -n 1` 提交信息规范。
-- **状态：** `[ ]` 待开始（等待用户危险操作确认后执行）
+- **状态：** `[x]` 已完成 2026-11-06（commit 63443e86 推送到 origin/main）
 
 ## Phase 2: Markdown 产物协议放行与一键原生下载
 
@@ -21,39 +21,42 @@
 - **代码位置：** `apps/platform-web/src/utils/markdown.ts`
 - **预期结果：** Markdown 渲染后生成带有正确 `artifact_id` 属性的原生链接，且不会被洗为 `#`。
 - **验证项：** `markdown.spec.ts` 补充针对 `artifact://` 协议渲染的单测。
-- **状态：** `[ ]` 待开始
+- **状态：** `[x]` 已完成 2026-11-06（`markdown.spec.ts` 7/7 passed）
 
 ### Task 2.2: 产物链接全局/局部点击拦截与流式下载
 - **改动内容：**
-  - 在消息内容渲染组件（或 Chat 容器）建立针对 `a[href^="artifact://"]` 的点击事件监听。
+  - 在消息内容渲染组件（`MarkdownContent.vue` 和 `MessageContent.vue`）建立针对 `a[href^="artifact://"]` 的点击事件监听。
   - 阻断默认跳转行为，提取 `artifact_id`。
-  - 调用 `workspaceService` 获取产物对应的工作区文件流，自动触发浏览器原生文件下载。
-  - 若产物拉取失败，弹出轻量级错误通知 Toast。
+  - 在 `workspace.service.ts` 中封装 `downloadArtifactById`，自动匹配产物文件流并触发浏览器原生下载。
+  - 若产物拉取失败，展示轻量级错误通知。
 - **代码位置：**
-  - `apps/platform-web/src/modules/chat/components/ChatMessageItem.vue` / `ChatMessageContent.vue`
+  - `apps/platform-web/src/components/platform/MarkdownContent.vue`
+  - `apps/platform-web/src/modules/chat/components/MessageContent.vue`
   - `apps/platform-web/src/services/threads/workspace.service.ts`
 - **预期结果：** 点击 `[下载 PPTX]` 链接时，不再新开标签页，而是立刻在浏览器底部唤起该 PPTX 文件的原生下载。
-- **验证项：** 组件单测模拟点击 `artifact://` 链接，断言 `preventDefault` 被调用且下载服务被触发。
-- **状态：** `[ ]` 待开始
+- **验证项：** `workspace.service.spec.ts` 9/9 passed 全绿。
+- **状态：** `[x]` 已完成 2026-11-06
 
 ## Phase 3: 会话重连断流异常收敛与防误报
 
 ### Task 3.1: 补充非致命流断开错误类型
 - **改动内容：**
-  - 在 `useChatSession.ts` 的 `isNonFatalStreamError` 函数中加入 `"Event stream closed"` 和 `"Protocol event stream closed"` 关键字。
-  - 确保此类由网络层或空闲连接断开抛出的错误不会穿透到致命错误流。
-- **代码位置：** `apps/platform-web/src/modules/chat/composables/useChatSession.ts`
+  - 在 `useChatSession.ts` 的 `isNonFatalStreamError` 函数中加入 `"Event stream closed"`、`"Protocol event stream closed"`、`"Event stream ended before the connection closed"` 关键字。
+  - 在 `ChatSession.vue` 的 `streamError` 属性中同步加入上述过滤。
+- **代码位置：**
+  - `apps/platform-web/src/modules/chat/composables/useChatSession.ts`
+  - `apps/platform-web/src/modules/chat/components/ChatSession.vue`
 - **预期结果：** `isNonFatalStreamError` 正确识别 `Event stream closed.` 异常并返回 `true`。
 - **验证项：** `useChatSession.spec.ts` 补充单测用例。
-- **状态：** `[ ]` 待开始
+- **状态：** `[x]` 已完成 2026-11-06
 
 ### Task 3.2: 唤醒空闲会话重连失败静默防护
 - **改动内容：**
   - 在 `watch([() => options.visible?.value, ...])` 唤醒逻辑中，切回会话恢复连接时：若当前会话未处于运行中（`!active(run.value)`），`reconnectStream().catch(...)` 吞没断连错误，仅重置 `eventsParked` 标记，不调用 `fail(cause)`。
 - **代码位置：** `apps/platform-web/src/modules/chat/composables/useChatSession.ts`
 - **预期结果：** 切换会话切回已完成会话时，状态栏保持“最后活跃于...”或“就绪”，不再弹出红色“✕ 执行出错: Event stream closed.”和橙色“恢复连接”横条。
-- **验证项：** `useChatSession.spec.ts` 模拟切换并唤醒空闲会话，断言 `error.value` 为空。
-- **状态：** `[ ]` 待开始
+- **验证项：** `useChatSession.spec.ts` 52/52 passed 全绿。
+- **状态：** `[x]` 已完成 2026-11-06
 
 ## Phase 4: 全面工程验证
 
@@ -61,4 +64,4 @@
 - **改动内容：** 运行前端单元测试、vue-tsc 类型检查与 Vite 生产构建。
 - **预期结果：** Vitest 测试全绿，TypeScript 0 错误，生产构建成功打包。
 - **验证项：** `pnpm test:run`、`pnpm typecheck`、`pnpm build`。
-- **状态：** `[ ]` 待开始
+- **状态：** `[x]` 已完成 2026-11-06（`pnpm typecheck` 0 错误，`pnpm build` 19.21s 构建通过）

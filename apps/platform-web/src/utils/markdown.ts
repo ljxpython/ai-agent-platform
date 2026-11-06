@@ -11,7 +11,13 @@ const markdownRenderer = new MarkdownIt({
 // 允许所有链接进入解析器，统一由 link_open 规则按白名单清洗 href
 markdownRenderer.validateLink = () => true;
 
-const SAFE_PROTOCOLS = new Set(["http:", "https:", "mailto:", "blob:"]);
+const SAFE_PROTOCOLS = new Set([
+  "http:",
+  "https:",
+  "mailto:",
+  "blob:",
+  "artifact:",
+]);
 
 function sanitizeUrl(rawUrl: string): string {
   if (!rawUrl) return "";
@@ -48,13 +54,29 @@ markdownRenderer.renderer.rules.link_open = (
 ) => {
   const token = tokens[index];
   const hrefIndex = token.attrIndex("href");
+  let isArtifact = false;
+  let artifactId = "";
   if (hrefIndex >= 0 && token.attrs) {
     const rawHref = token.attrs[hrefIndex][1];
-    token.attrs[hrefIndex][1] = sanitizeUrl(rawHref);
+    const sanitized = sanitizeUrl(rawHref);
+    token.attrs[hrefIndex][1] = sanitized;
+    if (sanitized.startsWith("artifact://")) {
+      isArtifact = true;
+      artifactId = sanitized.replace(/^artifact:\/\//, "").split(/[?#]/)[0];
+    }
   }
 
-  token.attrSet("target", "_blank");
-  token.attrSet("rel", "noreferrer noopener");
+  if (isArtifact) {
+    token.attrSet("data-artifact-id", artifactId);
+    token.attrSet(
+      "class",
+      "pw-artifact-link cursor-pointer font-medium underline text-primary-600 hover:text-primary-700 dark:text-primary-400",
+    );
+    token.attrSet("role", "button");
+  } else {
+    token.attrSet("target", "_blank");
+    token.attrSet("rel", "noreferrer noopener");
+  }
 
   return defaultLinkOpen(tokens, index, options, env, self);
 };

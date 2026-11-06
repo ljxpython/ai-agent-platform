@@ -13,6 +13,7 @@ vi.mock("@/services/http/client", () => ({
 }));
 
 import {
+  downloadArtifactById,
   downloadWorkspaceZip,
   getArtifacts,
   getWorkspaceCapabilities,
@@ -222,5 +223,66 @@ describe("workspace.service", () => {
       requestId: "req-400-abc",
       status: 400,
     });
+  });
+
+  it("downloadArtifactById finds artifact and triggers download", async () => {
+    const createObjectURLMock = vi.fn().mockReturnValue("blob:mock-url");
+    const revokeObjectURLMock = vi.fn();
+    (globalThis as any).URL.createObjectURL = createObjectURLMock;
+    (globalThis as any).URL.revokeObjectURL = revokeObjectURLMock;
+
+    platformHttpClientMock.get
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              version: 1,
+              artifact_id: "art-pptx-123",
+              path: "/workspace/presentation.pptx",
+              file_name: "presentation.pptx",
+              mime_type:
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+              size_bytes: 1024,
+              sha256: "hash123",
+              kind: "presentation",
+              preview_kind: "download",
+            },
+          ],
+          next_cursor: null,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: new Blob(["ppt-data"]),
+        headers: {
+          "content-disposition": 'attachment; filename="presentation.pptx"',
+        },
+      });
+
+    await downloadArtifactById("proj-1", "thread-1", "art-pptx-123");
+
+    expect(platformHttpClientMock.get).toHaveBeenNthCalledWith(
+      1,
+      "/api/langgraph/threads/thread-1/artifacts",
+      expect.objectContaining({ headers: { "x-project-id": "proj-1" } }),
+    );
+    expect(platformHttpClientMock.get).toHaveBeenNthCalledWith(
+      2,
+      "/api/langgraph/threads/thread-1/workspace/content",
+      expect.objectContaining({
+        params: { path: "/workspace/presentation.pptx" },
+        headers: { "x-project-id": "proj-1" },
+      }),
+    );
+    expect(createObjectURLMock).toHaveBeenCalled();
+  });
+
+  it("downloadArtifactById throws when artifact is missing", async () => {
+    platformHttpClientMock.get.mockResolvedValueOnce({
+      data: { items: [], next_cursor: null },
+    });
+
+    await expect(
+      downloadArtifactById("proj-1", "thread-1", "missing-id"),
+    ).rejects.toThrow("未找到对应的成果文件");
   });
 });
