@@ -188,28 +188,10 @@ export function useTranscriptMessages(
           )
         ) {
           if (Array.isArray(value?.messages)) {
-            const nextRaw = value.messages as Array<{
-              id?: string;
-              tool_calls?: unknown[];
-            }>;
-            const prev = scopedSnapshot.value;
-            // 防洪机制：在流式生成中，如果消息总数未变、首尾 ID 相同且末尾 tool_calls 数量一致，跳过高频全量深拷贝
-            const isUnchangedDuringStream =
-              stream.isLoading.value &&
-              prev.length === nextRaw.length &&
-              prev.length > 0 &&
-              prev[0]?.id === nextRaw[0]?.id &&
-              prev[prev.length - 1]?.id === nextRaw[nextRaw.length - 1]?.id &&
-              (prev[prev.length - 1] as unknown as { tool_calls?: unknown[] })
-                ?.tool_calls?.length ===
-                nextRaw[nextRaw.length - 1]?.tool_calls?.length;
-
-            if (!isUnchangedDuringStream) {
-              scopedSnapshot.value = coerce(value.messages);
-              if (!stream.isLoading.value) {
-                liveReasonings.clear();
-                activeMessageId = undefined;
-              }
+            scopedSnapshot.value = coerce(value.messages);
+            if (!stream.isLoading.value) {
+              liveReasonings.clear();
+              activeMessageId = undefined;
             }
           }
         }

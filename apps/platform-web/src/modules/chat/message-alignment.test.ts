@@ -8,6 +8,23 @@ import {
 } from "./message-alignment";
 
 describe("message-alignment", () => {
+  it("never restores a longer cached answer or a removed branch over controller messages", () => {
+    const current = [new AIMessage({ id: "answer", content: "correct" })];
+    const cached = [
+      new AIMessage({ id: "answer", content: "obsolete and much longer" }),
+      new AIMessage({ id: "old-branch", content: "removed branch" }),
+    ];
+    expect(
+      resolveDisplayedMessages({
+        baseMessages: current,
+        snapshotMessages: null,
+        fallbackMessages: cached,
+        optimisticUserMessage: null,
+        optimisticBaseCount: 0,
+        isSessionRunning: false,
+      }),
+    ).toEqual(current);
+  });
   describe("extractMessageText and isHumanMessage", () => {
     it("extracts text from string content", () => {
       expect(extractMessageText("hello world")).toBe("hello world");

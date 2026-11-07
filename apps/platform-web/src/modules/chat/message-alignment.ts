@@ -75,87 +75,8 @@ export function resolveDisplayedMessages(
     ];
   }
 
-  if (!snapshotMessages && fallbackMessages.length > 0) {
-    if (base.length === 0) {
-      base = fallbackMessages;
-    } else {
-      const committedById = new Map<string, BaseMessage>();
-      for (const fm of fallbackMessages) {
-        if (fm.id) committedById.set(fm.id, fm);
-      }
-
-      let stabilized = false;
-      const nextBase = base.map((m) => {
-        if (!m.id) return m;
-        const committed = committedById.get(m.id);
-        if (!committed) return m;
-        const streamText =
-          typeof m.content === "string"
-            ? m.content
-            : JSON.stringify(m.content ?? "");
-        const committedText =
-          typeof committed.content === "string"
-            ? committed.content
-            : JSON.stringify(committed.content ?? "");
-        if (streamText.length < committedText.length) {
-          stabilized = true;
-          return committed;
-        }
-        return m;
-      });
-      if (stabilized) {
-        base = nextBase;
-      }
-
-      const baseIds = new Set(base.map((m) => m.id).filter(Boolean));
-      const firstOverlapIdx = fallbackMessages.findIndex((m) =>
-        Boolean(m.id && baseIds.has(m.id)),
-      );
-
-      if (firstOverlapIdx === -1) {
-        const missingPrefix = fallbackMessages.filter((m) =>
-          Boolean(m.id && !baseIds.has(m.id)),
-        );
-        if (missingPrefix.length > 0) {
-          base = [...missingPrefix, ...base];
-        }
-      } else {
-        const missingPrefix = fallbackMessages
-          .slice(0, firstOverlapIdx)
-          .filter((m) => Boolean(m.id && !baseIds.has(m.id)));
-        let lastOverlapIdx = firstOverlapIdx;
-        for (let i = fallbackMessages.length - 1; i > firstOverlapIdx; i--) {
-          const id = fallbackMessages[i]?.id;
-          if (id && baseIds.has(id)) {
-            lastOverlapIdx = i;
-            break;
-          }
-        }
-        const lastBaseMsg = base[base.length - 1];
-        const lastBaseIsAi =
-          lastBaseMsg &&
-          (lastBaseMsg.type === "ai" ||
-            (
-              lastBaseMsg as unknown as { _getType?: () => string }
-            )._getType?.() === "ai");
-        const lastBaseEmpty =
-          lastBaseIsAi && !extractMessageText(lastBaseMsg.content);
-        const missingSuffix =
-          !isSessionRunning || lastBaseEmpty
-            ? fallbackMessages
-                .slice(lastOverlapIdx + 1)
-                .filter((m) => Boolean(m.id && !baseIds.has(m.id)))
-            : [];
-        if (missingPrefix.length > 0 || missingSuffix.length > 0) {
-          if (lastBaseEmpty && missingSuffix.length > 0) {
-            base = [...missingPrefix, ...base.slice(0, -1), ...missingSuffix];
-          } else {
-            base = [...missingPrefix, ...base, ...missingSuffix];
-          }
-        }
-      }
-    }
-  }
+  // Cached content is only a placeholder until the controller has messages.
+  if (!snapshotMessages && base.length === 0) base = fallbackMessages;
 
   if (!optimisticUserMessage) return base;
   if (hasOptimisticEchoed(base, optimisticUserMessage)) {

@@ -283,8 +283,21 @@ export function useServerPromptQueue(options: {
 
   let timer: ReturnType<typeof setInterval> | null = null;
   if (typeof window !== "undefined") {
+    let idleTicks = 0;
     timer = setInterval(() => {
-      if (!document.hidden) void refresh();
+      if (document.hidden) return;
+      const isBusy = Boolean(pending.value || queue.value.length > 0);
+      if (isBusy) {
+        idleTicks = 0;
+        void refresh();
+      } else {
+        // 空闲状态降频至约 14-16 秒轮询一次，避免静默会话中每 2 秒死循环请求
+        idleTicks++;
+        if (idleTicks >= 7) {
+          idleTicks = 0;
+          void refresh();
+        }
+      }
     }, 2000);
   }
 

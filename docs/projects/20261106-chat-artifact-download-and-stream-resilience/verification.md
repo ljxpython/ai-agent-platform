@@ -26,9 +26,16 @@
 - [x] `pnpm typecheck` 0 错误（TypeScript: No errors found）。
 - [x] `pnpm build` 生产构建成功（✓ built in 19.21s）。
 
+### Phase 5: 页面刷新历史消息加载与单测环境隔离验证
+- [x] `ChatSession.vue` 移除 `drawerOpen` 限制后，页面初次水合与切换无条件触发 `loadHistory(true, 10)`，测试覆盖通过。
+- [x] `MessageContent.vue` 引入 `getActivePinia()` 安全判断，`ChatMessageList.spec.ts` 与 `ToolResult.spec.ts` 恢复绿色通过。
+- [x] 全量 Vitest 单测：158 passed | 1 skipped (共 932 passed)。
+- [x] 生产构建 `pnpm build` 通过，最新产物已通过 rsync 同步部署到生产机器 `/www/wwwroot/agent-platform`。
+
 ## Final 验证要求
 1. **真实浏览器交互验证**：
    - 在会话 `cb4f8571-83ca-442e-aed8-d3d3d26d9e30` 中，点击正文的 `[下载 PPTX]`，浏览器应立即弹出或开始下载 `.pptx` 文件，当前页面不发生跳转，不新开空白标签页。
    - 在左侧侧边栏中连续在多个已完成的会话（包括 `ccefa211` 和 `cb4f8571`）之间反复点击切换，页面顶端不再出现橙色条 `Event stream closed.`，底部状态栏不再出现红色框 `✕ 执行出错: Event stream closed.`。
+   - 在会话 `cb4f8571-83ca-442e-aed8-d3d3d26d9e30` 中刷新网页，页面不再回退到“第 6 步中间态”，而是直接拉取并展示 45 条完整历史以及最后的 PPTX 答复。
 2. **四态判定记录**：
-   - 最终验证完成后记录完成度四态（`done` / `partial` / `blocked` / `deferred`）。
+   - 最终判定：`done`（已全量通过代码审查、单元测试、构建与部署）。

@@ -26,6 +26,7 @@ from runtime_service.middlewares import (
     ConversationOffloadingMiddleware,
     DocumentToolsMiddleware,
     ExecutionBudgetMiddleware,
+    ImageReferenceFilesystemMiddleware,
     LoopDetectionMiddleware,
     MaintenanceSafeToolCallsMiddleware,
     MessageQueueMiddleware,
@@ -377,9 +378,13 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         else {}
     )
     filesystem_cls = (
-        ResultFilesystemMiddleware
-        if tool_output_limit is not None
-        else FilesystemMiddleware
+        ImageReferenceFilesystemMiddleware
+        if workspace is not None
+        else (
+            ResultFilesystemMiddleware
+            if tool_output_limit is not None
+            else FilesystemMiddleware
+        )
     )
 
     filesystem = filesystem_cls(
@@ -387,12 +392,22 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         tools=list(WORK_TOOLS),
         _permissions=PERMISSIONS,
         max_execute_timeout=60,
+        **(
+            {"image_workspace": ImageWorkspace(workspace.root)}
+            if workspace is not None
+            else {}
+        ),
         **filesystem_kwargs,
     )
     child_filesystem = filesystem_cls(
         backend=backend,
         tools=["ls", "read_file", "glob", "grep"],
         _permissions=PERMISSIONS,
+        **(
+            {"image_workspace": ImageWorkspace(workspace.root)}
+            if workspace is not None
+            else {}
+        ),
         **filesystem_kwargs,
     )
     todos = TodoListMiddleware()

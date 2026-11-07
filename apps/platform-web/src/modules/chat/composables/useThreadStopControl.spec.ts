@@ -225,4 +225,27 @@ describe("useThreadStopControl", () => {
     await vi.advanceTimersByTimeAsync(5000);
     expect(getStopRequestMock.mock.calls.length).toBe(countBefore);
   });
+
+  it.each([true, false])(
+    "clears unknown feedback when a confirmed receipt is recovered (known id: %s)",
+    async (knownId) => {
+      const onStopConfirmed = vi.fn();
+      const control = useThreadStopControl({
+        projectId: ref("p"),
+        threadId: ref(mockReceipt.thread_id),
+        service: {
+          stopThread: vi.fn().mockRejectedValue(new Error("connection lost")),
+          getStopRequest: vi.fn().mockResolvedValue(mockReceipt),
+          listStopRequests: vi.fn().mockResolvedValue({ items: [mockReceipt] }),
+        } as any,
+        onStopConfirmed,
+      });
+      await control.stop();
+      control.currentStopId.value = knownId ? mockReceipt.stop_id : null;
+      await control.verifyLatest();
+      expect(control.phase.value).toBe("stopped");
+      expect(control.stopError.value).toBe("");
+      expect(onStopConfirmed).toHaveBeenCalledWith(mockReceipt);
+    },
+  );
 });

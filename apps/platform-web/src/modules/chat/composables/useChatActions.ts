@@ -121,36 +121,27 @@ export function useChatActions(options: UseChatActionsOptions) {
 
   function findParentCheckpointForMessage(
     messageId: string,
-    content: string,
   ): Checkpoint | null {
     const states = history.value;
     if (states.length === 0) return null;
 
     const matchMsg = (msg: unknown) => {
       const obj = asObject(msg);
-      return (
-        obj.id === messageId ||
-        obj.key === messageId ||
-        ((obj.type === "human" || obj.role === "user") &&
-          typeof obj.content === "string" &&
-          content &&
-          obj.content.trim() === content.trim())
-      );
+      return obj.id === messageId || obj.key === messageId;
     };
 
-    const firstSeenIndex = states.findIndex((state) =>
-      (state.values.messages ?? []).some(matchMsg),
+    // History is newest-first; follow parents so sibling branches cannot win.
+    const byId = new Map(
+      states.map((state) => [state.checkpoint.checkpoint_id, state]),
     );
-
-    if (firstSeenIndex > 0) {
-      return states[firstSeenIndex - 1].checkpoint;
-    }
-
-    if (firstSeenIndex === 0) {
-      const firstState = states[0];
-      if (firstState.parent_checkpoint?.checkpoint_id) {
-        return firstState.parent_checkpoint;
-      }
+    let current = states[0];
+    for (let depth = 0; depth < states.length; depth++) {
+      if (!(current.values.messages ?? []).some(matchMsg)) return null;
+      const parent = byId.get(current.parent_checkpoint?.checkpoint_id);
+      if (!parent) return null;
+      if (!(parent.values.messages ?? []).some(matchMsg))
+        return parent.checkpoint;
+      current = parent;
     }
 
     return null;
@@ -279,7 +270,7 @@ export function useChatActions(options: UseChatActionsOptions) {
     editDraft.value = text;
     editCheckpoint.value = null;
 
-    let targetCheckpoint = findParentCheckpointForMessage(messageId, text);
+    let targetCheckpoint = findParentCheckpointForMessage(messageId);
     if (targetCheckpoint) {
       editCheckpoint.value = targetCheckpoint;
       return;
@@ -295,7 +286,7 @@ export function useChatActions(options: UseChatActionsOptions) {
       if (disposed) return;
       if (rows && rows.length > 0) {
         history.value = rows;
-        targetCheckpoint = findParentCheckpointForMessage(messageId, text);
+        targetCheckpoint = findParentCheckpointForMessage(messageId);
         if (targetCheckpoint) {
           editCheckpoint.value = targetCheckpoint;
           return;
@@ -306,14 +297,7 @@ export function useChatActions(options: UseChatActionsOptions) {
       const contains = (state: ChatCheckpoint) =>
         (state.values.messages ?? []).some((m) => {
           const obj = asObject(m);
-          return (
-            obj.id === messageId ||
-            obj.key === messageId ||
-            ((obj.type === "human" || obj.role === "user") &&
-              typeof obj.content === "string" &&
-              text &&
-              obj.content.trim() === text.trim())
-          );
+          return obj.id === messageId || obj.key === messageId;
         });
       for (let depth = 0; depth < 10 && !disposed; depth++) {
         if (!contains(current) || !current.parent_checkpoint) break;
@@ -345,13 +329,10 @@ export function useChatActions(options: UseChatActionsOptions) {
   }
 
   async function submitEditedBranch() {
-    if (!editDraft.value.trim()) return;
+    if (editLoading.value || !editDraft.value.trim()) return;
     let checkpoint = editCheckpoint.value;
     if (!checkpoint && editingMessageId.value) {
-      checkpoint = findParentCheckpointForMessage(
-        editingMessageId.value,
-        editDraft.value,
-      );
+      checkpoint = findParentCheckpointForMessage(editingMessageId.value);
       if (checkpoint) editCheckpoint.value = checkpoint;
     }
     if (!checkpoint) {

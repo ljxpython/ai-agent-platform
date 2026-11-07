@@ -1,0 +1,32 @@
+{
+  "threadId": "092f48fb-968d-409d-a60e-844004bca457",
+  "projectId": "5a5b7239-43e3-40e6-bba3-e64d96057607",
+  "modelId": "436fc301-446c-4c39-94d1-51f43831c953",
+  "model": "deepseek-v4.1-flash",
+  "providerHost": "xiaok.lol",
+  "status": "success",
+  "toolReference": {
+    "version": 1,
+    "path": "/workspace/generated/6a75e8385a968d4aa6dd146276eecc13.png",
+    "mime_type": "image/png",
+    "size_bytes": 3540,
+    "sha256": "6a75e8385a968d4aa6dd146276eecc1307b18fc876235b1d00b2088c192cd76e"
+  },
+  "stateBytes": 16467,
+  "finalAnswer": [
+    {
+      "type": "text",
+      "text": "我已读取图片 `/workspace/uploads/6a75e8385a968d4aa6dd146276eecc1307b18fc876235b1d00b2088c192cd76e.png`。\n\n图片中央的英文单词是 **BLUE**（白色大写字母，蓝色背景，居中排列）。",
+      "index": 0
+    }
+  ],
+  "followupAnswer": [
+    {
+      "type": "text",
+      "text": "BLUE",
+      "index": 0
+    }
+  ],
+  "mediaHashVerified": true,
+  "historyInlineMedia": false
+}

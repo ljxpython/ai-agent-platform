@@ -20,6 +20,36 @@ vi.mock("@langchain/vue", () => ({
 }));
 import { useTranscriptMessages } from "./useTranscriptMessages";
 
+it("accepts changed values with identical IDs and message counts during a run", () => {
+  const stream = {
+    messages: shallowRef([]),
+    values: shallowRef({ messages: [] }),
+    isLoading: shallowRef(true),
+    subgraphs: shallowRef(new Map()),
+    subagents: shallowRef(new Map()),
+  };
+  const scope = effectScope();
+  try {
+    const messages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
+    for (const content of ["partial", "complete answer", "edited shorter"]) {
+      hooks.onEvent({
+        method: "values",
+        params: {
+          namespace: [],
+          data: {
+            messages: [{ type: "ai", id: "same", content }],
+          },
+        },
+      });
+      expect(messages.value.map((m) => m.content)).toEqual([content]);
+    }
+  } finally {
+    scope.stop();
+  }
+});
+
 it("shows child results explicitly promoted to root values, without leaking other child messages", () => {
   const human = new HumanMessage({ id: "u", content: "question" });
   const stream = {

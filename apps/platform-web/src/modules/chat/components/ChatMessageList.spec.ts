@@ -41,6 +41,9 @@ it("binds the original message toolbar to current message IDs and copies only th
     ]);
     await button("提交重发").trigger("click");
     expect(wrapper.emitted("submit-edit")).toHaveLength(1);
+    await wrapper.setProps({ editLoading: true });
+    expect(button("提交重发").attributes("disabled")).toBeDefined();
+    await wrapper.setProps({ editLoading: false });
 
     // Fork button tests: visible for completed agent messages
     const forkBtn = wrapper

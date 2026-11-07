@@ -143,6 +143,7 @@ export function useThreadStopControl(options: UseThreadStopControlOptions) {
     clearTimer();
 
     if (receipt.phase === "stopped" || receipt.phase === "no_active_run") {
+      stopError.value = "";
       options.onStopConfirmed?.(receipt);
     } else if (receipt.phase === "rejected") {
       stopError.value = receipt.reason_code ?? "停止请求已被拒绝";
@@ -365,9 +366,7 @@ export function useThreadStopControl(options: UseThreadStopControlOptions) {
         latestReceipt.value = res;
         phase.value = res.phase;
         if (res.phase === "stopped" || res.phase === "no_active_run") {
-          clearPersistedRecord(tid);
-          clearTimer();
-          options.onStopConfirmed?.(res);
+          handleTerminalReceipt(res, generation);
         }
         return res;
       }
@@ -380,6 +379,9 @@ export function useThreadStopControl(options: UseThreadStopControlOptions) {
           latestReceipt.value = item;
           currentStopId.value = item.stop_id;
           phase.value = item.phase;
+          if (item.phase === "stopped" || item.phase === "no_active_run") {
+            handleTerminalReceipt(item, generation);
+          }
           return item;
         }
       }

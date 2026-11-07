@@ -65,3 +65,22 @@
 - **预期结果：** Vitest 测试全绿，TypeScript 0 错误，生产构建成功打包。
 - **验证项：** `pnpm test:run`、`pnpm typecheck`、`pnpm build`。
 - **状态：** `[x]` 已完成 2026-11-06（`pnpm typecheck` 0 错误，`pnpm build` 19.21s 构建通过）
+
+## Phase 5: 页面刷新历史消息加载与单测环境隔离治理
+
+### Task 5.1: 修复 ChatSession 刷新时阻断 loadHistory 的缺陷
+- **改动内容：**
+  - 在 `ChatSession.vue` 中 `watch([session.threadId, busy, checking])` 侦听器中，移除 `if (drawerOpen.value)` 前置限制。
+  - 无论抽屉是否打开，初始化/切换到 `threadId` 时均无条件调用 `loadHistory(true, drawerOpen.value ? 20 : 10)`，确保从 `/history` 接口拉取最新 head checkpoint 并填充 `latestHistoryMessages`。
+- **代码位置：** `apps/platform-web/src/modules/chat/components/ChatSession.vue`
+- **预期结果：** 用户在已完成对话中刷新（F5）页面后，前端瞬间拉取完整 45 条历史消息与最终成果答复，彻底告别“仅显示 6 步中间态”的假未完成现象。
+- **验证项：** `ChatSession.spec.ts` 与 `useChatSession.spec.ts` 单测通过。
+- **状态：** `[x]` 已完成 2026-11-07
+
+### Task 5.2: 隔离 MessageContent 顶层 Pinia 依赖
+- **改动内容：**
+  - 在 `MessageContent.vue` 中为 `useWorkspaceProjectContext` 增加 `getActivePinia()` 安全守卫，避免在纯组件单测环境中因缺失 Pinia 实例抛出异常。
+- **代码位置：** `apps/platform-web/src/modules/chat/components/MessageContent.vue`
+- **预期结果：** `ChatMessageList.spec.ts` 与 `ToolResult.spec.ts` 纯单测顺利通过。
+- **验证项：** `pnpm test:run` 全量 158 套测试文件、932 个用例全部通过。
+- **状态：** `[x]` 已完成 2026-11-07

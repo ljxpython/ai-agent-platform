@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import base64
 import os
 from collections.abc import Awaitable, Callable
 from copy import copy
@@ -19,11 +21,19 @@ from deepagents.middleware.filesystem import (
     FilesystemMiddleware,
 )
 from langchain_core.messages import ToolMessage
-from langgraph.prebuilt.tool_node import ToolCallRequest
+from langchain_core.tools import StructuredTool
+from langgraph.prebuilt.tool_node import ToolCallRequest, ToolRuntime
 from langgraph.types import Command
 
 from runtime_service.observability.logging import log_context_metric
 from runtime_service.tools.knowledge import KNOWLEDGE_TOOL, fit_knowledge_message
+from runtime_service.workspace.documents import DocumentWorkspace
+from runtime_service.workspace.file_refs import MIME_EXT, validate_file_ref
+from runtime_service.workspace.image_io import ImageWorkspace, image_type
+from runtime_service.workspace.image_refs import (
+    build_image_reference_block,
+    parse_image_reference_block,
+)
 
 
 def _record_view(message, result, *, stage, archived=False):
@@ -229,3 +239,149 @@ class ResultFilesystemMiddleware(FilesystemMiddleware):
         )
         _record_view(message, result, stage="spill", archived=archived)
         return result, archived
+
+
+class ImageReferenceFilesystemMiddleware(ResultFilesystemMiddleware):
+    """Store read_file media before public events; expand only model requests."""
+
+    def __init__(self, *args, image_workspace: ImageWorkspace, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.image_workspace = image_workspace
+        self.document_workspace = DocumentWorkspace(image_workspace.root)
+        original = next(tool for tool in self.tools if tool.name == "read_file")
+
+        def sync_read_file(
+            file_path: str,
+            runtime: ToolRuntime,
+            offset: int = 0,
+            limit: int = 100,
+        ):
+            return self._externalize_blocks(
+                original.func(
+                    file_path=file_path, runtime=runtime, offset=offset, limit=limit
+                )
+            )
+
+        async def read_file(
+            file_path: str,
+            runtime: ToolRuntime,
+            offset: int = 0,
+            limit: int = 100,
+        ):
+            result = await original.coroutine(
+                file_path=file_path,
+                runtime=runtime,
+                offset=offset,
+                limit=limit,
+            )
+            return await asyncio.to_thread(self._externalize_blocks, result)
+
+        self.tools = [
+            StructuredTool.from_function(
+                name=original.name,
+                description=original.description,
+                func=sync_read_file,
+                coroutine=read_file,
+                infer_schema=False,
+                args_schema=original.args_schema,
+            )
+            if tool.name == "read_file"
+            else tool
+            for tool in self.tools
+        ]
+
+    def _externalize_blocks(self, result):
+        if not isinstance(result, ToolMessage) or not isinstance(result.content, list):
+            return result
+        blocks = []
+        changed = False
+        for block in result.content:
+            if not isinstance(block, dict) or not isinstance(block.get("base64"), str):
+                blocks.append(block)
+                continue
+            try:
+                data = base64.b64decode(block["base64"], validate=True)
+                if block.get("type") == "image":
+                    if image_type(data)[1] != block["mime_type"]:
+                        raise ValueError("Image MIME does not match stored content")
+                    ref = self.image_workspace.save_asset(data, "generated")
+                    replacement = build_image_reference_block(ref)
+                elif block.get("type") == "file" and block.get("mime_type") in MIME_EXT:
+                    ref = self.document_workspace.put(
+                        data, sha256(data).hexdigest(), block["mime_type"]
+                    )
+                    replacement = {
+                        "type": "text",
+                        "text": f"[文件附件] {ref['file_name']}\n{ref['path']}",
+                        "extras": {"runtime_file": ref},
+                    }
+                else:
+                    raise ValueError("Unsupported read_file binary media type")
+            except Exception as exc:
+                raise ValueError("Unable to externalize read_file media") from exc
+            blocks.append(replacement)
+            changed = True
+        return result.model_copy(update={"content": blocks}) if changed else result
+
+    def _expand_messages(self, messages):
+        expanded = []
+        for message in messages:
+            if not isinstance(message.content, list):
+                expanded.append(message)
+                continue
+            blocks = []
+            for block in message.content:
+                extras = block.get("extras") if isinstance(block, dict) else None
+                if (
+                    isinstance(message, ToolMessage)
+                    and isinstance(extras, dict)
+                    and "runtime_file" in extras
+                ):
+                    ref = validate_file_ref(extras["runtime_file"])
+                    data, actual = self.document_workspace.read(ref["path"])
+                    if any(
+                        actual[key] != ref[key]
+                        for key in ("path", "mime_type", "size_bytes", "sha256")
+                    ):
+                        raise ValueError("Stored file no longer matches its reference")
+                    blocks.extend(
+                        [
+                            {"type": "text", "text": block["text"]},
+                            {
+                                "type": "file",
+                                "mime_type": ref["mime_type"],
+                                "base64": base64.b64encode(data).decode(),
+                            },
+                        ]
+                    )
+                    continue
+                ref = parse_image_reference_block(block)
+                if ref is None:
+                    blocks.append(block)
+                    continue
+                data, actual = self.image_workspace.read_asset(ref["path"])
+                if actual != ref:
+                    raise ValueError("Stored image no longer matches its reference")
+                # Keep the attachment name/path in the model view as well as its pixels.
+                blocks.extend(
+                    [
+                        {"type": "text", "text": block["text"]},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{ref['mime_type']};base64,{base64.b64encode(data).decode()}"
+                            },
+                        },
+                    ]
+                )
+            expanded.append(message.model_copy(update={"content": blocks}))
+        return expanded
+
+    async def awrap_model_call(self, request, handler):
+        messages = await asyncio.to_thread(self._expand_messages, request.messages)
+        return await handler(request.override(messages=messages))
+
+    def wrap_model_call(self, request, handler):
+        return handler(
+            request.override(messages=self._expand_messages(request.messages))
+        )

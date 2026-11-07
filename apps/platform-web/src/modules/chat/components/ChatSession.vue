@@ -501,7 +501,7 @@ const drawerTab = ref<"overview" | "tasks" | "files" | "history">("overview");
 function openDrawer() {
   drawerOpen.value = true;
   drawerTab.value = "overview";
-  void loadHistory(true);
+  void loadHistory(true, 20);
 }
 const showStopReportDrawer = ref(false);
 function openStopReportDrawer() {
@@ -524,6 +524,7 @@ const {
   latestHistoryMessages,
   editDraft,
   editingMessageId,
+  editLoading,
   forkingCheckpointId,
   cancelEdit,
   loadHistory,
@@ -595,10 +596,7 @@ const isMessageRunning = computed(() => {
 });
 
 const displayedMessages = computed(() => {
-  const fallbackMessages =
-    latestHistoryMessages.value.length >= cachedDisplayMessages.value.length
-      ? latestHistoryMessages.value
-      : cachedDisplayMessages.value;
+  const fallbackMessages = cachedDisplayMessages.value;
 
   return resolveDisplayedMessages({
     baseMessages: messages.value,
@@ -882,10 +880,7 @@ watch(
     }
     const activeThreadId = session.threadId.value || props.threadId;
     if (activeThreadId && !snapshotMessages.value) {
-      const latestCommitted =
-        currentMessages.length >= historyMsgs.length
-          ? currentMessages
-          : historyMsgs;
+      const latestCommitted = currentMessages;
       if (latestCommitted.length > 0) {
         cachedDisplayMessages.value = [...latestCommitted];
         chatSessionStore.setSessionMessages(props.projectId, activeThreadId, [
@@ -1450,8 +1445,8 @@ watch(
         ) {
           session.reconnectStream();
         } else {
-          // 当前 Run 已经结束：主动拉取最新轻量历史，水合断流导致的空白或半截消息
-          await loadHistory(true, 10);
+          // 历史抽屉按需读取；当前消息由 SDK state snapshot 提供。
+          if (drawerOpen.value) await loadHistory(true, 20);
           await promptQueue.refresh();
         }
       });
@@ -1547,9 +1542,7 @@ watch(
       const cached = chatSessionStore.getSession(props.projectId, id);
       history.value = cached?.history ?? [];
       cachedDisplayMessages.value = cached?.messages ?? [];
-      if (drawerOpen.value) {
-        void loadHistory(true);
-      }
+      if (drawerOpen.value) void loadHistory(true, 20);
       return;
     }
     if (
@@ -1558,7 +1551,7 @@ watch(
       !verifying &&
       (prevRunning || history.value.length === 0)
     ) {
-      void loadHistory(true, drawerOpen.value ? 20 : 5);
+      if (drawerOpen.value) void loadHistory(true, 20);
     }
   },
   { immediate: true },
@@ -1789,7 +1782,7 @@ defineExpose({
       <div
         class="flex min-h-8 items-center justify-between gap-2 overflow-x-auto no-scrollbar"
       >
-        <div class="flex min-w-0 shrink items-center gap-1.5 sm:gap-2">
+        <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <slot name="target" />
           <button
             v-if="session.threadId.value"
@@ -2143,6 +2136,7 @@ defineExpose({
               :target-name="targetName"
               :models="models"
               :editing-message-id="editingMessageId"
+              :edit-loading="editLoading"
               :editing-message-value="editDraft"
               :forking-checkpoint-id="forkingCheckpointId"
               :follow-up-suggestions="followUp.suggestions.value"

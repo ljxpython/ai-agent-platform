@@ -10,7 +10,10 @@ from runtime_service.middlewares.conversation_offloading import (
 )
 from runtime_service.middlewares.documents import DocumentToolsMiddleware
 from runtime_service.middlewares.execution_budget import ExecutionBudgetMiddleware
-from runtime_service.middlewares.filesystem import ResultFilesystemMiddleware
+from runtime_service.middlewares.filesystem import (
+    ImageReferenceFilesystemMiddleware,
+    ResultFilesystemMiddleware,
+)
 from runtime_service.middlewares.loop_detection import (
     LoopDetectionMiddleware,
     loop_detection_enabled,
@@ -71,6 +74,7 @@ __all__ = [
     "is_conversation_maintenance",
     "resolve_tool_output_limit",
     "ResultFilesystemMiddleware",
+    "ImageReferenceFilesystemMiddleware",
     "ToolOutputPruningMiddleware",
     "prune_messages_for_model",
 ]

@@ -3916,10 +3916,10 @@ class RuntimeGatewayService:
             raise BadRequestError(
                 code="invalid_runtime_payload", message=str(exc)
             ) from exc
-        upstream = await self._thread_upstream(
-            project_id=project_id, thread=thread, operation="thread-edit"
+        reader = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="read"
         )
-        state = await upstream.get_thread_state(thread_id, {})
+        state = await reader.get_thread_state(thread_id, {})
         if any(
             isinstance(item, dict) and item.get("type") == "agent_plan_review"
             for item in interrupt_entries(ensure_dict(state)).values()
@@ -3938,6 +3938,9 @@ class RuntimeGatewayService:
                 code="plan_state_update_denied",
                 message="State edits are unavailable while planning is active",
             )
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="thread-edit"
+        )
         return await upstream.update_thread_state(
             thread_id, _normalize_payload(payload)
         )

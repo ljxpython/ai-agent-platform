@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 新会话快照优先展示与媒体按需加载 | 本地功能已完成：首屏依赖 SDK 权威快照，历史抽屉按需读取；真实刷新恢复通过；性能/竞态治理证据待补 | [项目概览](projects/20261107-session-hydration-and-artifact-offloading/README.md) |
 | 运行异常重投拦截与草稿防丢回填 | 已完成：彻底移除回合失败时前端私自调用 `submitQueuedMessage` 导致原 Prompt 被静默包装为排队消息拉起死循环的严重 Bug，规范为草稿安全回填用户输入框并撤销乐观气泡；58 项 Vitest 单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/01-frontend-resubmission-fix.md) |
 | Markdown 渲染器 blob: 协议放行与工作区产物图表紧凑卡片渲染治理 | 已完成：放行 blob: 安全协议白名单，根治产物库与 Markdown 内部引用的图表由于安全清洗降级为 '#' 导致的破损；重构 Markdown 图像排版规格，建立 680px 宽度/460px 高度上限、居中、微圆角卡片边框与深浅模式自适应，彻底终结广告牌级巨型图表问题；补齐 6 项 Vitest 单测与 Playwright 自动化 E2E 验证 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-markdown-blob-image-rendering.md) |
 | 前端历史会话回放防误触（Replay Immunity）与上下文整理状态机收敛 | 已完成：根治进入已完成历史会话时底层 SSE 协议全量回放导致“正在整理上下文...”浮条误闪烁与永久悬挂漏洞；落实终态与活跃 Run 严格双重校验；单测 51/51 项与 Playwright 双会话端到端全绿 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-offload-replay-immunity.md) |
@@ -89,6 +90,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 新会话媒体引用投影与授权读取 | 本地功能已完成：复用 State/History/Workspace 与 Thread 权限，图片按引用鉴权预览；真实 state、预览和刷新恢复通过 | [项目方案](projects/20261107-session-hydration-and-artifact-offloading/plan.md) |
 | 会话与运行数据生命周期管理及自动清理治理 | 已实现并完成隔离栈验收，已提交 `5635e621` 并合并 `main`：GraphHarbor post48 执行 TTL/可靠删除；平台定义闲置 30 天、查看/发送续期；Workspace 随会话删除、未确认资源保留重试；详情 30 天/去重 90 天；维护默认预览、100 条/批、上限 1000；专属服务和测试资源已清理，未部署现役 | [项目概览](projects/20261030-session-and-runtime-retention-governance/README.md) · [运维手册](runbooks/session-retention-maintenance.md) |
 | 分布式全链路追踪与 Loki 轻量日志代理网关 | 已完成：生成与透传 W3C traceparent 协议（00-{trace_id}-{span_id}-01）、统一结构化日志打标、实现自研 Loki 轻量代理检索 API（过滤自回声日志并提取各步耗时）、免密白名单放行；单元测试全绿 | [项目概览](projects/20261022-trace-to-logs-distributed-observability/README.md) · [验证记录](projects/20261022-trace-to-logs-distributed-observability/verification.md) |
 | 长期记忆契约透传与健康状态（stats）模型下发 | 已完成：定义 MemoryStatsView，扩展 MemoryDocumentView 与 MemoryView 支持 stats 可选透传，7 项契约单测全绿 | [记忆系统架构升级](projects/20261015-agent-memory-system-upgrade/README.md) |
@@ -119,6 +121,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 新工具结果媒体外置与模型临时解析 | 本地功能已完成：平台 Runtime 在工具结果发出前引用化，模型调用时临时解析；同步/异步 read_file、真实 xiaok DeepSeek 和公开 state 无 Base64 均通过；GraphHarbor 不承担媒体业务 | [任务与验证](projects/20261107-session-hydration-and-artifact-offloading/tasks.md) |
 | 有界调研委派与模型输入治理 | 已完成并经用户人工验收（2026-10-30），已快进合并main、停止服务并清理所属Worktree/测试库：复用官方task+只读general-purpose，撤除自研报告/合成/原文校验，保留预算/PII/Usage/取消/并发，修复子额度异常穿透。扩大回归560通过/13跳过/1项local后端复验通过；正式烟测主峰31.1%、root自动整理观测值0、28/28 Usage完整。原五项明确语义覆盖3/5，不宣称稳定质量或统计收益，未发布 | [项目](projects/20261028-subagent-fanout-and-prefix-caching/README.md) |
 | Agent 代码库剖析收敛准则与高优先级预算收尾感知 | 已完成：SYSTEM_PROMPT 确立代码资产剖析 Top-Down 自顶向下原则、单轮 5~8 次探索硬约束、严禁写脚本正则遍历海量文件树；将 WRAPUP_INSTRUCTION 升级为中英双语最高优先级强制收尾指令，warning_calls 提早至 5 轮；76 项自动化单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/02-agent-convergence-and-wrapup-governance.md) |
 | 智能体上下文防爆治理与工业级工具截断/视口虚拟折叠全栈闭环 | 已完成：实装单工具输出驱逐落盘（AGENT_TOOL_TOKEN_LIMIT_BEFORE_EVICT=1200 Tokens）、全工具物理 Head+Tail 截断（AGENT_TOOL_OUTPUT_MAX_CHARS=4800）、以及 ToolOutputPruningMiddleware 视口动态虚拟折叠（保留最近 4 次）；在生产大长会话真实回放测算中，Token 消耗暴降 58% ~ 82%，压缩触发归零；全量 300 项中间件单测 100% 绿灯 | [项目概览](projects/20261028-context-governance-and-tool-resilience/README.md) · [验证记录](projects/20261028-context-governance-and-tool-resilience/verification.md) |

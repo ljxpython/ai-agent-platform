@@ -12,8 +12,114 @@ const mockUseStream = vi.fn((_opts: { threadId: { value: string | null } }) => {
   return {
     getThread: () => thread,
     isLoading: ref(false),
+    values: shallowRef({}),
     disconnect: vi.fn(),
   };
+});
+
+describe("snapshot recovery handoff", () => {
+  let scope: ReturnType<typeof effectScope>;
+  afterEach(() => scope.stop());
+  function setup() {
+    scope = effectScope();
+    let epoch = 0;
+    const threadId = ref<string | null>("recover-thread");
+    const run = shallowRef<any>({ run_id: "run-1", status: "running" });
+    const access = {
+      thread_id: threadId.value,
+      metadata: { allowed_actions: ["read", "comment"] },
+    };
+    const service = {
+      client: {},
+      get: vi.fn().mockResolvedValue(access),
+      state: vi.fn(),
+      history: vi.fn(),
+    };
+    const onVerify = vi.fn().mockResolvedValue(true);
+    const onFail = vi.fn();
+    const connection = scope.run(() =>
+      useSessionConnection({
+        projectId: "p",
+        graphId: "g",
+        threadId,
+        canWrite: ref(true),
+        run,
+        busy: computed(() => true),
+        checking: ref(false),
+        hydrated: ref(true),
+        hasPendingReviews: computed(() => false),
+        service: service as never,
+        actions: { fetch: vi.fn() } as never,
+        initialThread: access as never,
+        getCheckEpoch: () => epoch,
+        onVerify,
+        onFail,
+      }),
+    )!;
+    return {
+      connection,
+      service,
+      threadId,
+      run,
+      onVerify,
+      onFail,
+      advance: () => ++epoch,
+    };
+  }
+
+  it.each(["epoch", "run", "thread"])(
+    "discards a late snapshot after %s changes",
+    async (change) => {
+      const item = setup();
+      let resolve!: (value: unknown) => void;
+      item.service.state.mockReturnValue(
+        new Promise((r) => {
+          resolve = r;
+        }),
+      );
+      const pending = item.connection.recoverExpiredStream();
+      await vi.waitFor(() => expect(item.service.state).toHaveBeenCalledOnce());
+      if (change === "epoch") item.advance();
+      if (change === "run")
+        item.run.value = { run_id: "run-2", status: "pending" };
+      if (change === "thread") item.threadId.value = "other-thread";
+      resolve({ values: { messages: [{ id: "old", content: "stale" }] } });
+      await pending;
+      expect(item.connection.recoverySnapshot.value).toBeNull();
+      expect(item.service.history).not.toHaveBeenCalled();
+      expect(item.onFail).not.toHaveBeenCalled();
+    },
+  );
+
+  it("coalesces cursor recovery and releases it when controller values arrive", async () => {
+    const item = setup();
+    item.service.state.mockResolvedValue({
+      values: { messages: [{ id: "answer", content: "complete" }] },
+    });
+    await Promise.all([
+      item.connection.recoverExpiredStream(),
+      item.connection.recoverExpiredStream(),
+    ]);
+    expect(item.service.state).toHaveBeenCalledOnce();
+    expect(item.service.history).not.toHaveBeenCalled();
+    expect(item.connection.recoverySnapshot.value?.messages).toHaveLength(1);
+    item.connection.stream.values.value = { messages: [] } as never;
+    expect(item.connection.recoverySnapshot.value).toBeNull();
+  });
+
+  it("does not fetch or reconnect content after read access is revoked", async () => {
+    const item = setup();
+    item.service.get.mockResolvedValue({
+      thread_id: "recover-thread",
+      metadata: { allowed_actions: [] },
+    });
+    await item.connection.recoverExpiredStream();
+    expect(item.connection.accessDenied.value).toBe(true);
+    expect(item.service.state).not.toHaveBeenCalled();
+    expect(
+      item.connection.stream.getThread()!.reconnectEvents,
+    ).not.toHaveBeenCalled();
+  });
 });
 
 vi.mock("@langchain/vue", () => ({
@@ -126,6 +232,7 @@ describe("scoped access refresh", () => {
       metadata: { allowed_actions: ["read", "comment"] },
     });
     const revoked = vi.fn();
+    const onVerify = vi.fn();
     const scope = effectScope();
     scopes.push(scope);
     const connection = scope.run(() =>
@@ -143,12 +250,12 @@ describe("scoped access refresh", () => {
         hasPendingReviews: computed(() => false),
         hydrated: ref(true),
         getCheckEpoch: () => 0,
-        onVerify: vi.fn(),
+        onVerify,
         onFail: vi.fn(),
         onAccessRevoked: revoked,
       }),
     )!;
-    return { connection, get, revoked };
+    return { connection, get, revoked, onVerify };
   }
   it("refreshes only visible sessions on focus and only the rejected thread on a scoped event", async () => {
     const active = session("active");
@@ -219,5 +326,6 @@ describe("scoped access refresh", () => {
     await nextTick();
     await vi.advanceTimersByTimeAsync(0);
     expect(item.get).toHaveBeenCalledOnce();
+    expect(item.onVerify).toHaveBeenCalledWith(false);
   });
 });

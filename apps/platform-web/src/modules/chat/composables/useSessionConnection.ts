@@ -55,7 +55,7 @@ export interface UseSessionConnectionOptions {
   hydrated: Ref<boolean>;
   error?: Ref<string>;
   getCheckEpoch: () => number;
-  onVerify: (silent?: boolean) => Promise<unknown>;
+  onVerify: (waitForTerminal?: boolean) => Promise<unknown>;
   onFail: (err: unknown) => void;
   onAccessRevoked?: () => void;
   onClearReceipts?: () => void;
@@ -81,7 +81,14 @@ export function useSessionConnection(options: UseSessionConnectionOptions) {
       options.visible?.value !== false &&
       (!lastAccessRefresh || Date.now() - lastAccessRefresh >= 10_000)
     ) {
-      void refreshAccessPolicy();
+      void refreshAccessPolicy()
+        .then(async () => {
+          if (!disposed && canRead.value && !accessUncertain.value) {
+            await options.onVerify(false);
+            await reconnectStream();
+          }
+        })
+        .catch(options.onFail);
     }
   };
 
@@ -341,19 +348,31 @@ export function useSessionConnection(options: UseSessionConnectionOptions) {
   const connectionState = ref("connecting");
   const eventsParked = ref(false);
   const recoverySnapshot = shallowRef<ChatState | null>(null);
+  // A recovery snapshot is temporary: controller updates or a new run supersede it.
+  watch(
+    [
+      normalizedThreadId,
+      () => options.run.value?.run_id,
+      () => stream?.values?.value,
+    ],
+    () => {
+      recoverySnapshot.value = null;
+    },
+    { flush: "sync" },
+  );
   let connectionUnsubscribe: (() => void) | undefined;
   let subscribedThread: ReturnType<typeof stream.getThread>;
   let recoveryPromise: Promise<void> | undefined;
 
   function parkEvents() {
-    const thread = stream.getThread?.();
+    const thread = stream?.getThread?.();
     if (!thread || typeof thread.suspendEvents !== "function") return;
     eventsParked.value = true;
     thread.suspendEvents();
   }
 
   function bindConnectionState() {
-    const thread = stream.getThread?.();
+    const thread = stream?.getThread?.();
     if (!thread || thread === subscribedThread) return;
     if (typeof thread.onConnectionChange !== "function") return;
     connectionUnsubscribe?.();
@@ -440,23 +459,6 @@ export function useSessionConnection(options: UseSessionConnectionOptions) {
           options.error.value =
             "历史流已过期，已刷新当前状态；部分过程无法恢复";
         }
-        void options.service
-          .history(id)
-          .then((history) => {
-            if (!disposed && normalizedThreadId.value === id && history) {
-              chatSessionStore.setSessionHistory(
-                options.projectId,
-                id,
-                history,
-              );
-            }
-          })
-          .catch((historyErr) => {
-            console.warn(
-              `[recoverExpiredStream] Non-blocking history preheat failed for thread ${id}:`,
-              historyErr,
-            );
-          });
         await thread.reconnectEvents();
       })
       .catch((cause) => {
@@ -498,7 +500,11 @@ export function useSessionConnection(options: UseSessionConnectionOptions) {
   }
 
   watch(
-    [normalizedThreadId, stream.isLoading, options.hydrated],
+    [
+      normalizedThreadId,
+      () => stream?.isLoading?.value ?? stream?.isLoading,
+      options.hydrated,
+    ],
     bindConnectionState,
     { immediate: true },
   );

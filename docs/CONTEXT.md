@@ -1,19 +1,21 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-06（彻底根治会话删除死锁与前端反复回显缺陷：1. 在 runtime-service thread_lifecycle.py 的 _pending 钩子中放行已产生 error_code 的终态外部任务，根除 application deletion precondition pending 死锁；2. 在 platform-api service.py 中实行乐观会话可见性注销，一旦 upstream 接受删除立即从 thread_access 移除，绝不反复回显；3. 远端与本地双端已同步，死锁会话已彻底销毁，三大系统服务 active 且探针正常。）
+> **最后更新：** 2026-11-07（会话快照水合与媒体外置治理已完成本地新会话功能闭环：Runtime 工具返回前图片外置、模型请求副本临时展开、Web 首屏快照优先/历史按需读取；真实 xiaok DeepSeek + Playwright Chromium 刷新恢复通过。性能、远端 Workspace 和完整竞态证据待补，GraphHarbor 未修改。）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-11-06
+**最后更新：** 2026-11-07
 
 ## 最近改动
 
-2026-11-06 | **会话删除前置条件死锁与前端列表回显缺陷根治闭环**：彻底解决用户在前端点击叉号删除会话后、该会话依然驻留侧边栏的致命问题。1) **根除前置清理死锁**：在 `runtime_service/thread_lifecycle.py` 的 `_pending` 函数中，重构 `dear_external_tasks` 判定规则，仅拦截真正处于运行租约内（`lease_until > now()`）、排队准备中（`intent`）或无错误且未超时的任务；放行已终态报错（`error_code IS NOT NULL`）的任务，彻底解除 `application deletion precondition pending` 循环重试死锁；2) **前端乐观删除与访问解绑**：在 `platform_api` 的 `delete_thread` 方法中，只要 upstream 成功接受删除请求（无论是 204 还是 202），平台层立即从 `thread_access` 访问权限表中注销会话可见性，前端刷新时不再拉取到已删除会话，杜绝幽灵会话回显；3) **死锁数据清理与服务恢复**：清理历史残存死锁任务与软删除会话，双端代码无缝同步，单测全绿，平台 API (2142)、Runtime API (8123) 与 Worker (active) 平滑重启就绪。
+2026-11-07 | **前端产物原生下载、空闲会话断流误报防范与页面刷新历史还原三联缺陷治理闭环**：1) **Markdown 产物协议放行与一键原生流式下载**：在 `markdown.ts` 中将 `artifact:` 协议纳入安全白名单并标记 `data-artifact-id`，在 `MarkdownContent.vue` 和 `MessageContent.vue` 中委托拦截点击，阻止浏览器默认打开空白页面，调用 `downloadArtifactById` 直接触发浏览器原生文件下载；2) **空闲会话重连断流异常收敛（Reconnection Resilience）**：在 `useChatSession.ts` 中扩充 `isNonFatalStreamError` 识别 `Event stream closed` 等流断开异常；多会话池切换唤醒空闲已完成会话时，静默吞没重连拒接，不再误弹红色“执行出错”与橙色恢复条；3) **页面刷新历史全量水合还原**：彻底根除 `ChatSession.vue` 在会话初次水合（F5 刷新）时因抽屉未开提前 return 导致不调 `loadHistory` 的 Bug，无条件发起最新 10~20 条 checkpoint 检索，解决已完成会话刷新后卡在“前 6 步中间态”的假未完成缺陷；修复 `MessageContent.vue` 的 Pinia 依赖隔离，全量 158 套单测（932 个用例）全部跑绿，生产环境已同步打包部署生效。
 
 ## 本月归并
+
+2026-11-06 | **会话删除前置条件死锁与前端列表回显缺陷根治闭环**：在 `thread_lifecycle.py` 中放行终态报错任务解除删除死锁；在 `platform_api` 实行乐观注销权限，杜绝幽灵会话回显。
 
 2026-10 | 会话保留收尾；委派简化验收合并与隔离资源清理；运行重投、工具输出和代码剖析预算治理
 
@@ -30,7 +32,8 @@
 
 ## 活跃项目
 
-- [前端 Markdown 产物链接拦截下载与空闲会话长连接断开误报治理](projects/20261106-chat-artifact-download-and-stream-resilience/README.md)：规划中；针对 Agent 生成产物链接被 Markdown 误洗为 `#` 导致新开空白标签页、以及会话池切换切回已完成会话时空闲 SSE 流重连被拒导致 `Event stream closed.` 误报两大缺陷立项治理。
+- [会话快照水合与媒体外置治理](projects/20261107-session-hydration-and-artifact-offloading/README.md)：`partial`；仅覆盖新会话及其刷新/重连，不做存量或旧逻辑兼容；Runtime 图片引用化、模型临时展开、Web 首屏快照优先和按需预览已完成。真实 xiaok DeepSeek + Playwright Chromium 通过；GraphHarbor 保持通用边界且未修改。30 样本性能、远端 Workspace 和完整竞态/故障注入待补。
+- [前端 Markdown 产物链接拦截下载与空闲会话长连接断开误报治理](projects/20261106-chat-artifact-download-and-stream-resilience/README.md)：`done`（已全量通过代码审查、单元测试、构建与部署）；针对 Agent 生成产物链接被 Markdown 误洗为 `#` 导致新开空白标签页、以及会话池切换切回已完成会话时空闲 SSE 流重连被拒导致 `Event stream closed.` 误报两大缺陷立项治理。
 - [智能体会话与运行时数据生命周期治理](projects/20261030-session-and-runtime-retention-governance/README.md)：`done`（8/8任务、8条Phase与Final核验通过）；30天闲置/查看发送续期、正式post48通用TTL、Workspace随会话回收、关联事实分级保留及有界维护均已实现；提交`5635e621`已推送并快进合并`main`，专属服务和测试资源已清理，生产服务未部署。systemd仅静态核验，远端失联为受控fixture。
 - [有界调研委派与子智能体上下文隔离](projects/20261028-subagent-fanout-and-prefix-caching/README.md)：`done`，2026-10-30用户人工验收通过；功能分支已推送并快进合并main，服务停止、所属Worktree/测试库已清理。收尾记录随main推送，历史失败与质量/费用局限保留；未部署共享服务。
 - [修复运行异常重投与 Agent 代码剖析死循环收敛治理](projects/20261028-run-resubmission-and-agent-convergence/README.md)：`done`；彻底修复前端在回合失败时私自调用 submitQueuedMessage 自动重投 Prompt 的 Bug；在 SYSTEM_PROMPT 确立代码库/本地架构剖析自顶向下原则、单轮 5~8 次探索硬约束、禁止遍历脚本正则扫描；将 ExecutionBudgetMiddleware 预警阈值提升至 warning_calls=5 并强化中文化最高优先级收尾指令；前端 58 项单测、后端 76 项测试全绿。

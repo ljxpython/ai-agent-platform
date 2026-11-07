@@ -1,6 +1,7 @@
 import {
   computed,
   onScopeDispose,
+  readonly,
   ref,
   shallowRef,
   unref,
@@ -12,6 +13,7 @@ import type { Checkpoint, Run } from "@langchain/langgraph-sdk";
 import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 import {
   createSessionService,
+  type ChatState,
   type ChatThread,
 } from "@/services/threads/session.service";
 import { updateThreadAccessPolicy } from "@/services/threads/access-policy.service";
@@ -191,6 +193,7 @@ export function useChatSession(options: {
   const hydrated = ref(!threadId.value);
   const streamInFlight = ref(false);
   const pendingDiscoveredRunIds = ref<string[]>([]);
+  const terminalSnapshot = shallowRef<ChatState | null>(null);
 
   const connection = useSessionConnection({
     projectId: options.projectId,
@@ -205,17 +208,17 @@ export function useChatSession(options: {
     run,
     busy: computed(
       () =>
-        stream.isLoading.value ||
         streamInFlight.value ||
         active(run.value) ||
-        actions.current.value?.status === "submitting",
+        actions.current.value?.status === "submitting" ||
+        (stream.isLoading.value && (!run.value || active(run.value))),
     ),
     checking,
     hasPendingReviews: computed(() => reviews.value.length > 0),
     hydrated,
     error,
     getCheckEpoch: () => checkEpoch,
-    onVerify: (silent) => verify(silent),
+    onVerify: (waitForTerminal) => verify(waitForTerminal),
     onFail: (cause) => fail(cause),
     onAccessRevoked: options.onAccessRevoked,
     onClearReceipts: () => {
@@ -249,6 +252,10 @@ export function useChatSession(options: {
     reconnectStream,
     bindConnectionState,
   } = connection;
+
+  const effectiveRecoverySnapshot = computed<ChatState | null>(() => {
+    return terminalSnapshot.value ?? recoverySnapshot.value;
+  });
 
   const offloadState = ref<OffloadDisplayState | null>(null);
   let offloadDismissTimer: ReturnType<typeof setTimeout> | undefined;
@@ -342,6 +349,7 @@ export function useChatSession(options: {
         threadId.value = next;
         unconfirmedStopRunId.value = null;
         hydrated.value = false;
+        terminalSnapshot.value = null;
         const seeded = unref(options.initialThread);
         if (hasResolvedAccess(seeded, next)) {
           applyAccessThread(seeded);
@@ -351,6 +359,7 @@ export function useChatSession(options: {
           accessLoading.value = true;
           void refreshAccessPolicy();
         }
+        void verify(false);
       } else if (next && !accessThread.value) {
         const seeded = unref(options.initialThread);
         if (hasResolvedAccess(seeded, next)) {
@@ -413,7 +422,7 @@ export function useChatSession(options: {
       (!stream.isLoading.value ||
         (actions.current.value?.runId &&
           run.value.run_id === actions.current.value.runId) ||
-        ["timeout", "error", "cancelled", "canceled"].includes(
+        ["success", "timeout", "error", "cancelled", "canceled"].includes(
           String(run.value.status),
         )),
     );
@@ -652,8 +661,8 @@ export function useChatSession(options: {
           if (eventsParked.value) {
             const snapshot = await service.state(targetThreadId);
             if (disposed || threadId.value !== targetThreadId) return;
-            recoverySnapshot.value = snapshot.values;
             run.value = nextLatest;
+            recoverySnapshot.value = snapshot.values;
             await stream.disconnect();
             streamInFlight.value = false;
           }
@@ -784,6 +793,24 @@ export function useChatSession(options: {
             }
             if (offloadState.value?.status === "started") {
               clearOffloadState();
+            }
+            // 核心性能优化：仅当该会话存在已完成的 run 且尚未提取快照时，拉取权威快照实现秒级水合
+            if (run.value && !active(run.value) && !terminalSnapshot.value) {
+              try {
+                const stateSnapshot = await service.state(id);
+                if (
+                  !disposed &&
+                  epoch === checkEpoch &&
+                  stateSnapshot?.values
+                ) {
+                  terminalSnapshot.value = stateSnapshot.values as ChatState;
+                  if (!hydrated.value) {
+                    hydrated.value = true;
+                  }
+                }
+              } catch {
+                /* ignore state fetch error */
+              }
             }
           }
           if (waitForTerminal) {
@@ -1194,6 +1221,10 @@ export function useChatSession(options: {
           if (run.value && !active(run.value)) {
             run.value = null;
           }
+          terminalSnapshot.value = null;
+          if (eventsParked.value) {
+            await reconnectStream();
+          }
           const runtimeConfig = sendOptions?.planMode
             ? { ...context, plan_mode: true }
             : context;
@@ -1320,13 +1351,7 @@ export function useChatSession(options: {
     )
       return;
 
-    let stopControlPromise: Promise<void> | undefined;
-    if (typeof (service as any).stopThread === "function") {
-      stopControlPromise = stopControl
-        .stop()
-        .then(() => {})
-        .catch(() => {});
-    }
+    const stopControlPromise = stopControl.stop();
 
     const knownRunId =
       actions.current.value?.runId ??
@@ -1354,7 +1379,16 @@ export function useChatSession(options: {
 
     stopState.value = "stopping";
     try {
-      await performCancel(threadId.value, targetRunId);
+      const receipt = await stopControlPromise;
+      if (
+        !receipt ||
+        receipt.phase === "confirmation_unavailable" ||
+        receipt.phase === "rejected"
+      ) {
+        stopState.value = "unconfirmed";
+        unconfirmedStopRunId.value = targetRunId;
+        return;
+      }
       unconfirmedStopRunId.value = null;
       await verify(true);
       if (!disposed) {
@@ -1364,9 +1398,6 @@ export function useChatSession(options: {
           stopState.value = "unconfirmed";
           unconfirmedStopRunId.value = targetRunId;
         }
-      }
-      if (stopControlPromise) {
-        await stopControlPromise;
       }
     } catch (cause) {
       if (!disposed) {
@@ -1782,6 +1813,9 @@ export function useChatSession(options: {
       if (!disposed) hydrated.value = true;
       fail(cause);
     });
+  if (threadId.value) {
+    void verify(false);
+  }
   onScopeDispose(() => {
     disposed = true;
     ++checkEpoch;
@@ -1818,7 +1852,8 @@ export function useChatSession(options: {
     queueMessage,
     stream,
     connectionState,
-    recoverySnapshot,
+    recoverySnapshot: effectiveRecoverySnapshot,
+    hydrated: readonly(hydrated),
     reconnectStream,
     service,
     actions,

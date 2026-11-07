@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { getActivePinia } from "pinia";
 import MarkdownContent from "@/components/platform/MarkdownContent.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import ThreadImage from "./ThreadImage.vue";
@@ -16,10 +17,18 @@ const props = defineProps<{
 }>();
 const expanded = ref<Record<string, boolean>>({});
 
-const { activeProjectId } = useWorkspaceProjectContext();
-const resolvedProjectId = computed(
-  () => props.projectId || activeProjectId.value || "",
-);
+const resolvedProjectId = computed(() => {
+  if (props.projectId) return props.projectId;
+  if (getActivePinia()) {
+    try {
+      const { activeProjectId } = useWorkspaceProjectContext();
+      return activeProjectId.value || "";
+    } catch {
+      return "";
+    }
+  }
+  return "";
+});
 const downloadingArtifact = ref<string | null>(null);
 const downloadError = ref<string>("");
 

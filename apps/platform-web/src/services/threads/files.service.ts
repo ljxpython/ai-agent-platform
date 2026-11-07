@@ -1,4 +1,5 @@
 import { platformHttpClient } from "@/services/http/client";
+import { safeSha256 } from "@/utils/crypto";
 
 export interface RuntimeFileRef {
   version: 1;
@@ -131,9 +132,7 @@ export function isValidFileRef(val: unknown): val is RuntimeFileRef {
 
 export async function calculateFileSha256(file: Blob): Promise<string> {
   const buffer = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", buffer);
-  const array = Array.from(new Uint8Array(digest));
-  return array.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return safeSha256(buffer);
 }
 
 export async function uploadThreadFile(

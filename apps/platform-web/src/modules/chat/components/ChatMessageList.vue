@@ -26,6 +26,7 @@ const props = defineProps<{
   canEdit?: boolean;
   metadata?: Record<string, ChatMessageMetadata>;
   editingMessageId?: string;
+  editLoading?: boolean;
   editingMessageValue?: string;
   stream?: AnyStream;
   targetName?: string;
@@ -568,7 +569,9 @@ function getFallbackModelName(modelId?: string): string {
             <button
               type="button"
               class="pw-btn-primary inline-flex h-7 items-center justify-center rounded-lg px-3 text-xs font-medium shadow-xs disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="!canEdit || !editingMessageValue?.trim()"
+              :disabled="
+                !canEdit || editLoading || !editingMessageValue?.trim()
+              "
               @click="emit('submit-edit')"
             >
               提交重发

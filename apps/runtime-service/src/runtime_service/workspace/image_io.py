@@ -130,17 +130,43 @@ class ImageWorkspace:
         if folder not in {"generated", "charts"}:
             raise ToolException("Invalid image destination.")
         directory = self._directory((folder,), create=True)
-        name = f"{uuid4().hex}.{extension}"
+        # Keep the existing 32-hex path contract; verify the full digest on reuse.
+        digest = hashlib.sha256(data).hexdigest()
+        name = f"{digest[:32]}.{extension}"
+        tmp_name = f".tmp_{uuid4().hex}"
         try:
             descriptor = os.open(
-                name,
+                tmp_name,
                 os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
                 0o600,
                 dir_fd=directory,
             )
             with os.fdopen(descriptor, "wb") as target:
                 target.write(data)
+                target.flush()
+                os.fsync(target.fileno())
+            try:
+                os.link(
+                    tmp_name,
+                    name,
+                    src_dir_fd=directory,
+                    dst_dir_fd=directory,
+                    follow_symlinks=False,
+                )
+            except FileExistsError:
+                existing = self.read(f"/workspace/{folder}/{name}")
+                if hashlib.sha256(existing).hexdigest() != digest:
+                    raise ImageWorkspaceError(
+                        "image_content_conflict",
+                        "Existing image differs from digest",
+                        409,
+                    ) from None
+            os.fsync(directory)
         finally:
+            try:
+                os.unlink(tmp_name, dir_fd=directory)
+            except FileNotFoundError:
+                pass
             os.close(directory)
         return f"/workspace/{folder}/{name}"
 

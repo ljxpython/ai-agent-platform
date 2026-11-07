@@ -726,6 +726,7 @@ it("keeps the stream after cancel ACK until the server confirms a terminal Run",
     const stopping = session.stop();
     await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledTimes(2));
     expect(mocks.stopThread).toHaveBeenCalledTimes(1);
+    expect(mocks.cancel).not.toHaveBeenCalled();
     expect(session.run.value?.status).toBe("running");
     expect(disconnect).not.toHaveBeenCalled();
     finish({ run_id: "run-1", status: "cancelled" });
@@ -2069,7 +2070,9 @@ it("when cancel fails or times out, records unconfirmedStopRunId and allows retr
   // 首次运行中
   mocks.runs.mockResolvedValue([{ run_id: "run-stuck", status: "running" }]);
   // 取消时抛出超时未确认异常
-  mocks.cancel.mockRejectedValueOnce(new Error("停止尚未确认，请核实或重试"));
+  mocks.stopThread.mockRejectedValueOnce(
+    new Error("停止尚未确认，请核实或重试"),
+  );
 
   const scope = effectScope();
   const session = scope.run(() =>
@@ -2095,10 +2098,13 @@ it("when cancel fails or times out, records unconfirmedStopRunId and allows retr
     await session.stop();
     await flushPromises();
 
-    expect(mocks.cancel).toHaveBeenCalledTimes(1);
-    expect(mocks.cancel).toHaveBeenCalledWith("t-cancel-test", "run-stuck");
+    expect(mocks.stopThread).toHaveBeenCalledTimes(1);
+    expect(mocks.stopThread).toHaveBeenCalledWith(
+      "t-cancel-test",
+      expect.any(String),
+    );
     expect(session.unconfirmedStopRunId.value).toBe("run-stuck");
-    expect(session.status.value).toBe("停止尚未确认");
+    expect(session.status.value).toBe("停止结果待确认");
 
     // 此时模拟后台同步，run 变成了 interrupted（导致 active(run) === false）
     mocks.runs.mockResolvedValue([
@@ -2112,12 +2118,14 @@ it("when cancel fails or times out, records unconfirmedStopRunId and allows retr
     expect(session.unconfirmedStopRunId.value).toBe("run-stuck");
 
     // 第二次点击停止（重试停止），此时由于解耦机制，即使 !active(run) 也能正常发起重试调用
-    mocks.cancel.mockResolvedValueOnce(undefined);
     await session.stop();
     await flushPromises();
 
-    expect(mocks.cancel).toHaveBeenCalledTimes(2);
-    expect(mocks.cancel).toHaveBeenLastCalledWith("t-cancel-test", "run-stuck");
+    expect(mocks.stopThread).toHaveBeenCalledTimes(2);
+    expect(mocks.stopThread).toHaveBeenLastCalledWith(
+      "t-cancel-test",
+      expect.any(String),
+    );
     // 确认成功后清除未确认标识
     expect(session.unconfirmedStopRunId.value).toBeNull();
   } finally {
@@ -2136,8 +2144,8 @@ it("maps runtime.model.retry_exhausted and whitelist error codes to safe user-fr
     disconnect: vi.fn(),
   });
   mocks.runs.mockResolvedValue([{ run_id: "run-1", status: "running" }]);
-  // 模拟 cancel 遇到白名单错误
-  mocks.cancel.mockRejectedValueOnce({
+  // 模拟 Run 核实遇到白名单错误
+  mocks.run.mockRejectedValueOnce({
     type: "RuntimeResolutionError",
     message: "runtime.model.retry_exhausted",
   });
@@ -2160,13 +2168,13 @@ it("maps runtime.model.retry_exhausted and whitelist error codes to safe user-fr
     await session.verify();
     await flushPromises();
 
-    await session.stop();
+    await session.verifyStop();
     await flushPromises();
 
     expect(session.error.value).toBe("模型服务暂不可用，本次运行未完成。");
   } finally {
     scope.stop();
-    mocks.cancel.mockReset();
+    mocks.run.mockReset();
     mocks.runs.mockReset();
   }
 });
@@ -2191,7 +2199,7 @@ it("transitions to stop_unconfirmed on cancel failure and auto-heals via verifyS
   });
   mocks.runs.mockResolvedValue([{ run_id: "run-1", status: "running" }]);
   mocks.run.mockResolvedValue({ run_id: "run-1", status: "running" });
-  mocks.cancel.mockRejectedValueOnce(new Error("504 Gateway Timeout"));
+  mocks.stopThread.mockRejectedValueOnce(new Error("504 Gateway Timeout"));
 
   const session = scope.run(() =>
     useChatSession({
@@ -2234,6 +2242,10 @@ it("transitions to stop_unconfirmed on cancel failure and auto-heals via verifyS
       },
     ]);
 
+    mocks.listStopRequests.mockResolvedValue({
+      items: [await mocks.getStopRequest("t-stop", "recovered-stop")],
+      next_cursor: null,
+    });
     const healed = await session.verifyStop();
     await flushPromises();
 
@@ -2459,14 +2471,14 @@ describe("F05 Agent 模型上下文 PII 脱敏错误消费与界面回归", () =
         await session.verify();
         await flushPromises();
 
-        // 模拟 cancel 遇到隐私阻断错误对象
-        mocks.cancel.mockRejectedValueOnce({
+        // 模拟 Run 核实遇到隐私阻断错误对象
+        mocks.run.mockRejectedValueOnce({
           type: "RuntimePrivacyError",
           code: "runtime.privacy.redaction_failed",
           message: "隐私保护处理失败，本次模型请求未发送。",
         });
 
-        await session.stop();
+        await session.verifyStop();
         await flushPromises();
 
         expect(session.error.value).toBe(
@@ -2475,7 +2487,7 @@ describe("F05 Agent 模型上下文 PII 脱敏错误消费与界面回归", () =
         expect(session.turnState.value).toBe("stop_unconfirmed");
       } finally {
         scope.stop();
-        mocks.cancel.mockReset();
+        mocks.run.mockReset();
         mocks.runs.mockReset();
       }
     });
@@ -2597,10 +2609,10 @@ describe("F05 Agent 模型上下文 PII 脱敏错误消费与界面回归", () =
       await session1.verify();
       await flushPromises();
 
-      mocks.cancel.mockRejectedValueOnce({
+      mocks.run.mockRejectedValueOnce({
         code: "runtime.privacy.redaction_failed",
       });
-      await session1.stop();
+      await session1.verifyStop();
       await flushPromises();
       expect(session1.error.value).toBe(
         "隐私保护处理失败，本次模型请求未发送。",
@@ -2628,7 +2640,7 @@ describe("F05 Agent 模型上下文 PII 脱敏错误消费与界面回归", () =
 
       scope1.stop();
       scope2.stop();
-      mocks.cancel.mockReset();
+      mocks.run.mockReset();
       mocks.runs.mockReset();
     });
   });
@@ -2866,6 +2878,60 @@ describe("F05 Agent 模型上下文 PII 脱敏错误消费与界面回归", () =
 
       expect(session.error.value).toBe("");
       expect(session.canSend.value).toBe(true);
+      scope.stop();
+    });
+
+    it("hydrates terminal session instantly from authoritative state snapshot and exposes recoverySnapshot", async () => {
+      mocks.stream.mockReturnValue({
+        isLoading: ref(false),
+        error: ref(null),
+        interrupts: ref([]),
+        hydrationPromise: ref(Promise.resolve()),
+        messages: ref([]),
+        values: ref({ messages: [] }),
+        disconnect: vi.fn(),
+        getThread: () => ({
+          getConnectionState: () => ({ state: "connected", streams: [] }),
+          onConnectionChange: vi.fn().mockReturnValue(vi.fn()),
+          suspendEvents: vi.fn(),
+          reconnectEvents: vi.fn().mockResolvedValue(undefined),
+        }),
+      });
+      mocks.getThread.mockResolvedValue({
+        thread_id: "t-terminal-hydration",
+        metadata: { allowed_actions: ["read", "comment"] },
+      });
+      mocks.runs.mockResolvedValue([
+        { run_id: "run-terminal-1", status: "success" },
+      ]);
+      mocks.state.mockResolvedValue({
+        values: {
+          messages: [
+            { id: "msg-user-1", type: "human", content: "Surprise me" },
+            { id: "msg-ai-1", type: "ai", content: "Here is your gift" },
+          ],
+        },
+      });
+
+      const scope = effectScope();
+      const session = scope.run(() =>
+        useChatSession({
+          projectId: "p-test",
+          graphId: "showcase_demo",
+          threadId: "t-terminal-hydration",
+          context: ref({}),
+          canWrite: ref(true),
+          onThread: vi.fn(),
+          onRefresh: vi.fn(),
+          onReconnect: vi.fn(),
+        }),
+      )!;
+
+      await flushPromises();
+
+      expect(mocks.state).toHaveBeenCalledWith("t-terminal-hydration");
+      expect(session.recoverySnapshot.value?.messages).toHaveLength(2);
+      expect(session.hydrated.value).toBe(true);
       scope.stop();
     });
   });

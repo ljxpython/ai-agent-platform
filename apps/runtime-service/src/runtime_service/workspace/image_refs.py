@@ -75,7 +75,9 @@ def validate_image_path(path: str) -> tuple[str, str]:
             raise ImageRefValidationError(f"{folder} filename must be 64-hex SHA-256")
     elif folder in {"generated", "charts"}:
         if not _HEX32_RE.match(name_stem):
-            raise ImageRefValidationError(f"{folder} filename must be 32-hex UUID")
+            raise ImageRefValidationError(
+                f"{folder} filename must be a 32-hex content key"
+            )
 
     return folder, filename
 
