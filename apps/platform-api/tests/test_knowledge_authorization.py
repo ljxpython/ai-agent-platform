@@ -347,3 +347,39 @@ class KnowledgeAuthorizationTest(unittest.TestCase):
             grant["values"]["knowledge_base_id"], f"kb_{UUID(self.project).hex}"
         )
         self.assertEqual(grant["values"]["resource_id"], dynamic_res)
+
+    def test_knowledge_document_page_schema_accepts_doc_prefix_and_failed_status(self):
+        from platform_api.modules.knowledge.schemas import KnowledgeDocumentPage
+
+        payload = {
+            "items": [
+                {
+                    "document_id": "doc-6cd007d62737e5a12b005b4414d7b899",
+                    "file_name": "release.md",
+                    "mime_type": "text/markdown",
+                    "size_bytes": 297,
+                    "status": "ready",
+                    "searchable": True,
+                    "published_at": "2026-10-17T09:39:00.339553+00:00",
+                },
+                {
+                    "document_id": "doc-1cc88c80c3112691d61a4c8afb16bbe1",
+                    "file_name": "slides.pptx",
+                    "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    "size_bytes": 1024,
+                    "status": "failed",
+                    "searchable": False,
+                    "published_at": "2026-10-17T09:35:29.750763+00:00",
+                },
+            ],
+            "total": 2,
+            "limit": 20,
+            "offset": 0,
+        }
+        page = KnowledgeDocumentPage.model_validate(payload)
+        self.assertEqual(len(page.items), 2)
+        self.assertEqual(
+            page.items[0].document_id, "doc-6cd007d62737e5a12b005b4414d7b899"
+        )
+        self.assertEqual(page.items[1].status, "failed")
+        self.assertFalse(page.items[1].searchable)

@@ -8,6 +8,7 @@ import type {
   UsageMetrics,
 } from "../types";
 import { formatTokenNumber, formatDashboardCost } from "../view-model";
+import BaseIcon from "@/components/base/BaseIcon.vue";
 
 const props = defineProps<{
   breakdown: Breakdown;
@@ -63,53 +64,70 @@ function handleItemClick(item: UsageGroup) {
     class="pw-breakdown-card rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900 shadow-sm"
     data-testid="usage-breakdown-panel"
   >
-    <!-- 头部维度与指标切换 -->
+    <!-- 头部维度与指标切换 (自适应两端对齐，防 MacBook 视口掉行悬空) -->
     <div
-      class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4 dark:border-dark-800"
+      class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4 dark:border-dark-800"
     >
-      <div>
+      <div class="min-w-0 flex-1 mr-2">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
           用量分解与排行
         </h3>
-        <p class="text-xs text-gray-500 dark:text-dark-400 mt-0.5">
-          点击具体分类可快速反填筛选栏下钻深入分析
+        <p
+          class="text-xs text-gray-500 dark:text-dark-400 mt-0.5 truncate"
+          title="点击具体分类可快速反填筛选栏下钻深入分析"
+        >
+          点击具体分类可快速反填筛选栏下钻
         </p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <!-- 分组维度下拉 -->
-        <select
-          :value="breakdown.group_by"
-          class="h-7.5 rounded-lg border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          @change="
-            emit(
-              'update:group_by',
-              ($event.target as HTMLSelectElement).value as GroupBy,
-            )
-          "
-        >
-          <option value="model">按模型分解</option>
-          <option value="agent">按 Agent 分解</option>
-          <option v-if="isPlatformScope" value="project">按项目分解</option>
-          <option value="purpose">按业务用途分解</option>
-          <option value="scope">按调用层级分解</option>
-        </select>
+      <div class="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+        <!-- 分组维度下拉 (统一外观与精准右对齐箭头) -->
+        <div class="relative inline-flex items-center">
+          <select
+            :value="breakdown.group_by"
+            class="h-8 appearance-none rounded-lg border border-gray-200 bg-white pl-2.5 pr-7 text-xs font-medium text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-500 shadow-sm cursor-pointer"
+            @change="
+              emit(
+                'update:group_by',
+                ($event.target as HTMLSelectElement).value as GroupBy,
+              )
+            "
+          >
+            <option value="model">按模型分解</option>
+            <option value="agent">按 Agent 分解</option>
+            <option v-if="isPlatformScope" value="project">按项目分解</option>
+            <option value="purpose">按业务用途分解</option>
+            <option value="scope">按调用层级分解</option>
+          </select>
+          <BaseIcon
+            name="chevron-down"
+            size="xs"
+            class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-400"
+          />
+        </div>
 
-        <!-- 排行依据下拉 -->
-        <select
-          :value="breakdown.rank_by"
-          class="h-7.5 rounded-lg border border-gray-200 bg-white px-2.5 text-xs font-medium text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-500"
-          @change="
-            emit(
-              'update:rank_by',
-              ($event.target as HTMLSelectElement).value as RankBy,
-            )
-          "
-        >
-          <option value="known_total_tokens">按 Token 总量</option>
-          <option value="known_cost_usd">按估算成本 (USD)</option>
-          <option value="observed_call_count">按调用次数</option>
-        </select>
+        <!-- 排行依据下拉 (统一外观与精准右对齐箭头) -->
+        <div class="relative inline-flex items-center">
+          <select
+            :value="breakdown.rank_by"
+            class="h-8 appearance-none rounded-lg border border-gray-200 bg-white pl-2.5 pr-7 text-xs font-medium text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-500 shadow-sm cursor-pointer"
+            @change="
+              emit(
+                'update:rank_by',
+                ($event.target as HTMLSelectElement).value as RankBy,
+              )
+            "
+          >
+            <option value="known_total_tokens">按 Token 总量</option>
+            <option value="known_cost_usd">按估算成本 (USD)</option>
+            <option value="observed_call_count">按调用次数</option>
+          </select>
+          <BaseIcon
+            name="chevron-down"
+            size="xs"
+            class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-dark-400"
+          />
+        </div>
       </div>
     </div>
 

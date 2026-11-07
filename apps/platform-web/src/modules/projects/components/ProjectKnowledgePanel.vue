@@ -491,6 +491,14 @@ onUnmounted(() => {
                 </td>
                 <td class="py-3 px-4">
                   <span
+                    v-if="doc.status === 'failed'"
+                    class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-medium text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
+                  >
+                    <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                    处理失败
+                  </span>
+                  <span
+                    v-else
                     class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
                   >
                     <span

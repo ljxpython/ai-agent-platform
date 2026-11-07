@@ -695,8 +695,16 @@ watch(
                   </span>
                 </template>
 
-                <template #cell-status>
-                  <StatusPill tone="success"> 已就绪 (ready) </StatusPill>
+                <template #cell-status="{ row }">
+                  <StatusPill :tone="getJobStatusTone(docFromRow(row).status)">
+                    {{
+                      docFromRow(row).status === "ready"
+                        ? "已就绪 (ready)"
+                        : docFromRow(row).status === "failed"
+                          ? "失败 (failed)"
+                          : docFromRow(row).status
+                    }}
+                  </StatusPill>
                 </template>
 
                 <template #cell-published_at="{ row }">
