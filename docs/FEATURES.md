@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 会话侧边栏三段式工业级重构与批量删除、顶栏 Tooltip 交互优化 | 已完成：落实方案 A 三段式纯净排版（标头聚合操作、全宽搜索、单行永不断行分类胶囊），实装并发度 3 纯前端批量删除队列与进度响应，顶栏毛玻璃 Tooltip 接入并根治压缩撞车重合；全仓单测 159 套件 945 项 100% 绿灯，线上部署验证通过 | [变更记录](../apps/platform-web/docs/changes/20261107-chat-sidebar-redesign-and-batch-delete.md) |
 | 新会话快照优先展示与媒体按需加载 | 本地功能已完成：首屏依赖 SDK 权威快照，历史抽屉按需读取；真实刷新恢复通过；性能/竞态治理证据待补 | [项目概览](projects/20261107-session-hydration-and-artifact-offloading/README.md) |
 | 运行异常重投拦截与草稿防丢回填 | 已完成：彻底移除回合失败时前端私自调用 `submitQueuedMessage` 导致原 Prompt 被静默包装为排队消息拉起死循环的严重 Bug，规范为草稿安全回填用户输入框并撤销乐观气泡；58 项 Vitest 单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/01-frontend-resubmission-fix.md) |
 | Markdown 渲染器 blob: 协议放行与工作区产物图表紧凑卡片渲染治理 | 已完成：放行 blob: 安全协议白名单，根治产物库与 Markdown 内部引用的图表由于安全清洗降级为 '#' 导致的破损；重构 Markdown 图像排版规格，建立 680px 宽度/460px 高度上限、居中、微圆角卡片边框与深浅模式自适应，彻底终结广告牌级巨型图表问题；补齐 6 项 Vitest 单测与 Playwright 自动化 E2E 验证 | [变更记录](../apps/platform-web/docs/changes/20261027-fix-markdown-blob-image-rendering.md) |

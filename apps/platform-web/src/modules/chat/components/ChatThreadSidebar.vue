@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
-import BaseInput from "@/components/base/BaseInput.vue";
 import type {
   ChatThreadStatusFilter,
   ChatThreadSummaryGroup,
@@ -43,6 +42,7 @@ const emit = defineEmits<{
   "start-new-thread": [];
   "select-thread": [threadId: string];
   "delete-thread": [threadId: string];
+  "batch-delete": [threadIds: string[]];
   "rename-thread": [threadId: string, newTitle: string];
   "ai-summarize-title": [threadId: string];
   collapse: [];
@@ -52,6 +52,56 @@ const emit = defineEmits<{
 
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref("");
+const isBatchMode = ref(false);
+const selectedThreadIds = ref<string[]>([]);
+
+const deletableThreadIds = computed(() => {
+  return props.groups
+    .flatMap((g) => g.items.map((i) => i.id))
+    .filter((id) => (props.canDeleteThread ? props.canDeleteThread(id) : true));
+});
+
+const isAllSelected = computed(() => {
+  if (deletableThreadIds.value.length === 0) return false;
+  return deletableThreadIds.value.every((id) =>
+    selectedThreadIds.value.includes(id),
+  );
+});
+
+function toggleBatchMode() {
+  isBatchMode.value = !isBatchMode.value;
+  selectedThreadIds.value = [];
+}
+
+function toggleSelectThread(threadId: string) {
+  if (props.canDeleteThread && !props.canDeleteThread(threadId)) return;
+  const index = selectedThreadIds.value.indexOf(threadId);
+  if (index >= 0) {
+    selectedThreadIds.value.splice(index, 1);
+  } else {
+    selectedThreadIds.value.push(threadId);
+  }
+}
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedThreadIds.value = [];
+  } else {
+    selectedThreadIds.value = [...deletableThreadIds.value];
+  }
+}
+
+function handleRequestBatchDelete() {
+  if (selectedThreadIds.value.length === 0) return;
+  emit("batch-delete", [...selectedThreadIds.value]);
+}
+
+defineExpose({
+  exitBatchMode: () => {
+    isBatchMode.value = false;
+    selectedThreadIds.value = [];
+  },
+});
 
 function startRename(item: { id: string; title: string }) {
   editingThreadId.value = item.id;
@@ -106,43 +156,97 @@ function jumpToPage() {
     aria-label="对话列表"
     class="w-72 lg:w-80 border-r border-gray-200 dark:border-dark-800 bg-white dark:bg-dark-900 flex flex-col h-full shrink-0"
   >
-    <!-- Header: Search and New Thread -->
-    <div class="p-4 border-b border-gray-200 dark:border-dark-800 shrink-0">
-      <div class="flex items-center gap-2 mb-3">
-        <BaseInput
+    <!-- Header: Search and New Thread (方案A: 工业级三段式布局) -->
+    <div
+      class="px-3 py-2.5 border-b border-gray-200 dark:border-dark-800 shrink-0 space-y-2"
+    >
+      <!-- Row 1: 业务标头与工具组 -->
+      <div class="flex items-center justify-between h-7">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span
+            class="text-xs font-semibold text-gray-800 dark:text-gray-200 tracking-tight"
+            >历史会话</span
+          >
+          <span
+            v-if="totalCount !== undefined || threadCount !== undefined"
+            class="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-800 dark:text-dark-400"
+          >
+            {{ totalCount ?? threadCount }}
+          </span>
+        </div>
+        <div class="flex items-center gap-0.5 shrink-0">
+          <!-- 批量模式切换按钮 -->
+          <button
+            type="button"
+            class="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium transition-colors"
+            :class="
+              isBatchMode
+                ? 'bg-primary-50 text-primary-600 dark:bg-primary-950/60 dark:text-primary-300 font-semibold ring-1 ring-primary-500/20'
+                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white'
+            "
+            :title="isBatchMode ? '退出批量管理' : '批量管理会话'"
+            @click="toggleBatchMode"
+          >
+            <BaseIcon :name="isBatchMode ? 'check' : 'folder'" size="xs" />
+            <span>{{ isBatchMode ? "退出" : "批量" }}</span>
+          </button>
+          <!-- 新建会话按钮 -->
+          <button
+            type="button"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800 disabled:opacity-40 disabled:cursor-not-allowed dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white transition-colors"
+            :disabled="!canStartThread"
+            title="新建会话"
+            @click="emit('start-new-thread')"
+          >
+            <BaseIcon name="chat" size="xs" />
+          </button>
+          <!-- 收起按钮 -->
+          <button
+            type="button"
+            class="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-white transition-colors"
+            title="收起历史会话"
+            @click="emit('collapse')"
+          >
+            <BaseIcon name="chevron-left" size="xs" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 2: 全宽紧凑搜索栏 -->
+      <div class="relative w-full flex items-center">
+        <BaseIcon
+          name="search"
+          size="xs"
+          class="pointer-events-none absolute left-2.5 text-gray-400 dark:text-dark-400"
+        />
+        <input
           v-model="searchModel"
+          type="text"
           placeholder="搜索会话..."
-          class="flex-1"
+          class="h-8 w-full rounded-lg border border-gray-200/90 bg-gray-50/70 pl-8 pr-7 text-xs text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-primary-500/30 dark:border-dark-700/80 dark:bg-dark-800/60 dark:text-gray-100 dark:placeholder:text-dark-400 dark:focus:border-primary-400 dark:focus:bg-dark-900 transition-colors"
         />
         <button
+          v-if="searchModel"
           type="button"
-          class="pw-topbar-action h-9 px-2.5 shrink-0"
-          :disabled="!canStartThread"
-          title="新建会话"
-          @click="emit('start-new-thread')"
+          class="absolute right-2 flex h-4 w-4 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-dark-700 dark:hover:text-gray-200 transition-colors"
+          title="清空搜索"
+          @click="searchModel = ''"
         >
-          <BaseIcon name="chat" size="sm" />
-        </button>
-        <button
-          type="button"
-          class="pw-topbar-action h-9 px-2.5 shrink-0 text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white"
-          title="收起历史会话"
-          @click="emit('collapse')"
-        >
-          <BaseIcon name="chevron-left" size="sm" />
+          <BaseIcon name="x" size="xs" />
         </button>
       </div>
 
-      <div class="flex flex-wrap gap-2">
+      <!-- Row 3: 单行滑动状态分段胶囊（永不断行，整齐划一） -->
+      <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
         <button
           v-for="filter in filters"
           :key="filter.value"
           type="button"
-          class="pw-table-tool-button text-[11px] px-2 py-1"
+          class="shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors"
           :class="
             statusFilter === filter.value
-              ? 'bg-gray-100 dark:bg-dark-800 text-gray-900 dark:text-white font-medium'
-              : ''
+              ? 'bg-primary-50 text-primary-700 font-semibold ring-1 ring-primary-500/20 dark:bg-primary-950/50 dark:text-primary-300 dark:ring-primary-400/20'
+              : 'text-gray-500 hover:bg-gray-100/80 hover:text-gray-800 dark:text-dark-400 dark:hover:bg-dark-800/80 dark:hover:text-gray-200'
           "
           @click="emit('update:statusFilter', filter.value)"
         >
@@ -224,56 +328,80 @@ function jumpToPage() {
 
               <!-- 常规展示模式 -->
               <template v-else>
-                <button
-                  type="button"
-                  class="w-full rounded-lg px-2.5 py-2 text-left transition-colors flex flex-col gap-0.5 pr-14"
-                  :class="
-                    item.id === activeThreadId
-                      ? 'bg-primary-50/80 dark:bg-primary-950/40 border border-primary-100/80 dark:border-primary-900/50'
-                      : 'border border-transparent hover:bg-gray-100/80 dark:hover:bg-dark-800/60'
-                  "
-                  :aria-label="item.title"
+                <div
+                  class="w-full rounded-lg px-2.5 py-2 text-left transition-colors flex items-center gap-2 cursor-pointer"
+                  :class="[
+                    isBatchMode && selectedThreadIds.includes(item.id)
+                      ? 'bg-primary-50/90 dark:bg-primary-950/50 border border-primary-300 dark:border-primary-700'
+                      : item.id === activeThreadId
+                        ? 'bg-primary-50/80 dark:bg-primary-950/40 border border-primary-100/80 dark:border-primary-900/50'
+                        : 'border border-transparent hover:bg-gray-100/80 dark:hover:bg-dark-800/60',
+                    isBatchMode ? 'pr-2' : 'pr-14',
+                  ]"
                   :data-thread-id="item.id"
-                  @click="emit('select-thread', item.id)"
+                  @click="
+                    isBatchMode
+                      ? toggleSelectThread(item.id)
+                      : emit('select-thread', item.id)
+                  "
                 >
-                  <div class="flex items-start justify-between gap-2">
-                    <div
-                      class="truncate text-xs font-medium"
-                      :class="
-                        item.id === activeThreadId
-                          ? 'text-primary-900 dark:text-primary-100 font-semibold'
-                          : 'text-gray-800 dark:text-gray-200'
+                  <!-- 批量模式下的复选框 -->
+                  <div
+                    v-if="isBatchMode"
+                    class="flex items-center justify-center shrink-0"
+                    @click.stop="toggleSelectThread(item.id)"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="selectedThreadIds.includes(item.id)"
+                      :disabled="
+                        canDeleteThread ? !canDeleteThread(item.id) : false
                       "
-                    >
-                      {{ item.title }}
-                    </div>
+                      class="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                    />
                   </div>
 
-                  <div
-                    class="flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-500 mt-1"
-                  >
-                    <span>{{ item.time }}</span>
-                    <div class="flex items-center gap-1">
-                      <span
-                        v-if="item.status === 'interrupted'"
-                        class="w-1.5 h-1.5 rounded-full bg-amber-500"
-                        title="等待确认"
-                      />
-                      <span
-                        v-else-if="item.status === 'error'"
-                        class="w-1.5 h-1.5 rounded-full bg-red-500"
-                        title="错误"
-                      />
-                      <span
-                        v-else-if="item.status === 'busy'"
-                        class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
-                        title="运行中"
-                      />
+                  <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+                    <div class="flex items-start justify-between gap-2">
+                      <div
+                        class="truncate text-xs font-medium"
+                        :class="
+                          item.id === activeThreadId
+                            ? 'text-primary-900 dark:text-primary-100 font-semibold'
+                            : 'text-gray-800 dark:text-gray-200'
+                        "
+                      >
+                        {{ item.title }}
+                      </div>
+                    </div>
+
+                    <div
+                      class="flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-500 mt-1"
+                    >
+                      <span>{{ item.time }}</span>
+                      <div class="flex items-center gap-1">
+                        <span
+                          v-if="item.status === 'interrupted'"
+                          class="w-1.5 h-1.5 rounded-full bg-amber-500"
+                          title="等待确认"
+                        />
+                        <span
+                          v-else-if="item.status === 'error'"
+                          class="w-1.5 h-1.5 rounded-full bg-red-500"
+                          title="错误"
+                        />
+                        <span
+                          v-else-if="item.status === 'busy'"
+                          class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
+                          title="运行中"
+                        />
+                      </div>
                     </div>
                   </div>
-                </button>
+                </div>
 
                 <div
+                  v-if="!isBatchMode"
                   class="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition"
                   :class="summarizingThreadId === item.id ? '!opacity-100' : ''"
                 >
@@ -346,6 +474,42 @@ function jumpToPage() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- 批量管理底部悬浮操作条 -->
+    <div
+      v-if="isBatchMode"
+      class="border-t border-gray-200 dark:border-dark-800 bg-white/95 dark:bg-dark-900/95 px-3 py-2 flex items-center justify-between shrink-0 shadow-md backdrop-blur-xs transition-all z-20"
+    >
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+          @click="toggleSelectAll"
+        >
+          {{ isAllSelected ? "取消全选" : "全选" }}
+        </button>
+        <span class="text-[11px] text-gray-500 dark:text-dark-400">
+          已选 {{ selectedThreadIds.length }} 项
+        </span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <button
+          type="button"
+          class="px-2 py-1 text-xs rounded border border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-dark-700 dark:text-dark-300 dark:hover:bg-dark-800 transition-colors"
+          @click="toggleBatchMode"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          class="px-2.5 py-1 text-xs rounded bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-colors"
+          :disabled="selectedThreadIds.length === 0"
+          @click="handleRequestBatchDelete"
+        >
+          删除 ({{ selectedThreadIds.length }})
+        </button>
       </div>
     </div>
 

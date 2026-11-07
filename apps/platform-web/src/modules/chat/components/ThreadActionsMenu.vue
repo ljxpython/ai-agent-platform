@@ -75,7 +75,7 @@ function handleAction(
           ? 'bg-gray-100 dark:bg-dark-800 text-gray-800 dark:text-white'
           : ''
       "
-      title="更多操作"
+      data-tooltip="更多操作"
       aria-label="更多操作"
       @click="toggle"
     >

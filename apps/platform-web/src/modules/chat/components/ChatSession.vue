@@ -1037,6 +1037,44 @@ async function copyThreadId() {
   }
 }
 
+const headerTooltip = ref<{
+  text: string;
+  top: number;
+  left: number;
+  visible: boolean;
+}>({
+  text: "",
+  top: 0,
+  left: 0,
+  visible: false,
+});
+
+function handleHeaderMouseOver(event: MouseEvent) {
+  const target = (event.target as HTMLElement | null)?.closest(
+    "[data-tooltip]",
+  ) as HTMLElement | null;
+  if (!target) {
+    headerTooltip.value.visible = false;
+    return;
+  }
+  const text = target.getAttribute("data-tooltip");
+  if (!text) {
+    headerTooltip.value.visible = false;
+    return;
+  }
+  const rect = target.getBoundingClientRect();
+  headerTooltip.value = {
+    text,
+    top: rect.bottom + 6,
+    left: rect.left + rect.width / 2,
+    visible: true,
+  };
+}
+
+function handleHeaderMouseLeave() {
+  headerTooltip.value.visible = false;
+}
+
 const quickPrompts = [
   {
     icon: "sparkle",
@@ -1778,9 +1816,15 @@ defineExpose({
   </div>
   <div v-else-if="props.visible === false" class="hidden" aria-hidden="true" />
   <div v-else class="pw-chat-workspace min-w-0">
-    <header v-if="!focusMode" class="pw-chat-workspace-header">
+    <header
+      v-if="!focusMode"
+      class="pw-chat-workspace-header"
+      @mouseover="handleHeaderMouseOver"
+      @mouseleave="handleHeaderMouseLeave"
+      @click="handleHeaderMouseLeave"
+    >
       <div
-        class="flex min-h-8 items-center justify-between gap-2 overflow-x-auto no-scrollbar"
+        class="flex min-h-8 w-full items-center justify-between gap-3 sm:gap-4 overflow-x-auto no-scrollbar"
       >
         <div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <slot name="target" />
@@ -1788,7 +1832,8 @@ defineExpose({
             v-if="session.threadId.value"
             type="button"
             class="group inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 py-1 text-[11px] text-gray-500 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
-            title="点击复制完整 Thread ID"
+            data-tooltip="点击复制完整 Thread ID"
+            aria-label="点击复制完整 Thread ID"
             @click="copyThreadId"
           >
             <span class="font-mono text-gray-400 dark:text-dark-400">#</span>
@@ -1811,7 +1856,7 @@ defineExpose({
           <span
             v-if="session.accessPolicy.value === 'full_access'"
             class="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-300/80 bg-red-50/80 px-2 py-0.5 text-[10px] font-medium text-red-800 dark:border-red-800/80 dark:bg-red-950/40 dark:text-red-300"
-            title="当前会话启用全权负责模式：默认放行所有工具审批"
+            data-tooltip="全权负责模式：默认放行所有工具审批"
           >
             <span class="h-1.5 w-1.5 rounded-full bg-red-500" />
             全权负责
@@ -1819,7 +1864,7 @@ defineExpose({
           <span
             v-else-if="session.accessPolicy.value === 'workspace_write'"
             class="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-300/80 bg-amber-50/80 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300"
-            title="当前会话启用工作区免审策略"
+            data-tooltip="工作区免审策略"
           >
             <span class="h-1.5 w-1.5 rounded-full bg-amber-500" />
             工作区免审
@@ -1837,7 +1882,8 @@ defineExpose({
                   ? 'font-semibold text-blue-600 dark:text-blue-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 dark:after:bg-blue-400'
                   : 'text-gray-400 hover:text-gray-700 dark:text-dark-400 dark:hover:text-gray-200'
               "
-              title="切换至对话视图"
+              data-tooltip="切换至对话视图"
+              aria-label="切换至对话视图"
               @click="activeView = 'chat'"
             >
               对话
@@ -1850,7 +1896,8 @@ defineExpose({
                   ? 'font-semibold text-blue-600 dark:text-blue-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 dark:after:bg-blue-400'
                   : 'text-gray-400 hover:text-gray-700 dark:text-dark-400 dark:hover:text-gray-200'
               "
-              title="切换至轨迹排障视图"
+              data-tooltip="切换至轨迹排障视图"
+              aria-label="切换至轨迹排障视图"
               @click="activeView = 'trajectory'"
             >
               轨迹
@@ -1859,7 +1906,7 @@ defineExpose({
           <button
             v-if="showExecutionMode"
             type="button"
-            class="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-medium transition-all shadow-2xs"
+            class="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2 text-xs font-medium transition-all shadow-2xs"
             :class="[
               currentExecutionMode === 'ultra'
                 ? 'border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800/80 dark:bg-purple-950/40 dark:text-purple-300'
@@ -1869,7 +1916,8 @@ defineExpose({
                     ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300'
                     : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200',
             ]"
-            title="点击切换执行模式与参数"
+            :data-tooltip="`执行模式: ${currentExecutionMode.toUpperCase()}（点击切换）`"
+            aria-label="执行模式配置"
             @click="openOptions"
           >
             <span
@@ -1884,7 +1932,9 @@ defineExpose({
                       : 'bg-emerald-500',
               ]"
             />
-            <span class="font-semibold uppercase tracking-wider text-[10px]">
+            <span
+              class="hidden xl:inline font-semibold uppercase tracking-wider text-[10px]"
+            >
               {{ currentExecutionMode }}
             </span>
             <span
@@ -1892,7 +1942,7 @@ defineExpose({
                 currentExecutionMode === 'pro' ||
                 currentExecutionMode === 'ultra'
               "
-              class="text-[10px] opacity-75 font-mono"
+              class="hidden 2xl:inline text-[10px] opacity-75 font-mono"
             >
               100步
             </span>
@@ -1906,16 +1956,51 @@ defineExpose({
                 ? 'border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400'
                 : ''
             "
-            title="沙箱工作区与产物面板"
+            data-tooltip="沙箱工作区与产物面板"
+            aria-label="沙箱工作区与产物面板"
             @click="showWorkspace = !showWorkspace"
           >
             <BaseIcon name="folder" size="xs" />
-            <span class="hidden sm:inline">工作区</span>
+            <span class="hidden 2xl:inline">工作区</span>
           </button>
           <slot name="actions" />
         </div>
       </div>
     </header>
+
+    <!-- 顶栏小图标浮动 Tooltip 气泡 (Teleport 至 body，指向正上方小三角) -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0 translate-y-[-2px]"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition duration-100 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-[-2px]"
+      >
+        <div
+          v-if="headerTooltip.visible"
+          role="tooltip"
+          class="pointer-events-none fixed z-50 flex flex-col items-center"
+          :style="{
+            left: `${headerTooltip.left}px`,
+            top: `${headerTooltip.top}px`,
+            transform: 'translateX(-50%)',
+          }"
+        >
+          <!-- 指向正上方的小三角 -->
+          <div
+            class="h-0 w-0 border-x-[5px] border-b-[6px] border-x-transparent border-b-gray-900/90 dark:border-b-dark-800"
+          />
+          <!-- 气泡主体 -->
+          <div
+            class="whitespace-nowrap rounded-lg bg-gray-900/90 px-2.5 py-1 text-xs font-medium text-white shadow-lg backdrop-blur-sm dark:border dark:border-dark-700/80 dark:bg-dark-800 dark:text-gray-100"
+          >
+            {{ headerTooltip.text }}
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
     <span role="status" aria-live="polite" class="sr-only"
       >{{ status }}<span v-if="!canWrite"> · 只读</span></span
     >

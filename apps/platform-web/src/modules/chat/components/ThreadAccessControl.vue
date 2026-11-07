@@ -1,201 +1,259 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import BaseDialog from '@/components/base/BaseDialog.vue'
-import BaseSelect from '@/components/base/BaseSelect.vue'
-import { listProjectMembers } from '@/services/members/members.service'
-import { shareThread, takeOverThread, endThreadTakeover, type SharedThreadAction, type TakeoverCategory } from '@/services/threads/access.service'
-import { createSessionService } from '@/services/threads/session.service'
-import { createLanggraphAuthorizedFetch } from '@/services/langgraph/client'
-import type { ManagementProjectMember } from '@/types/management'
+import { computed, ref, watch } from "vue";
+import BaseButton from "@/components/base/BaseButton.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import BaseDialog from "@/components/base/BaseDialog.vue";
+import BaseSelect from "@/components/base/BaseSelect.vue";
+import { listProjectMembers } from "@/services/members/members.service";
+import {
+  shareThread,
+  takeOverThread,
+  endThreadTakeover,
+  type SharedThreadAction,
+  type TakeoverCategory,
+} from "@/services/threads/access.service";
+import { createSessionService } from "@/services/threads/session.service";
+import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
+import type { ManagementProjectMember } from "@/types/management";
 
 const props = defineProps<{
-  projectId: string
-  threadId: string
-  canShare: boolean
-  canTakeover: boolean
-  showTakeoverButton?: boolean
-}>()
+  projectId: string;
+  threadId: string;
+  canShare: boolean;
+  canTakeover: boolean;
+  showTakeoverButton?: boolean;
+}>();
 
 const emit = defineEmits<{
-  updated: []
-}>()
+  updated: [];
+}>();
 
-const mode = ref<'share' | 'takeover' | null>(null)
-const members = ref<ManagementProjectMember[]>([])
-const target = ref('project')
-const actions = ref<SharedThreadAction[]>(['read'])
-const grants = ref<Record<string, SharedThreadAction[]>>({})
-const busy = ref(false)
-const shareLoaded = ref(false)
-const error = ref('')
-const notice = ref('')
-const category = ref<TakeoverCategory>('user_support')
-const reason = ref('')
-const reference = ref('')
-const duration = ref(15)
-let epoch = 0
+const mode = ref<"share" | "takeover" | null>(null);
+const members = ref<ManagementProjectMember[]>([]);
+const target = ref("project");
+const actions = ref<SharedThreadAction[]>(["read"]);
+const grants = ref<Record<string, SharedThreadAction[]>>({});
+const busy = ref(false);
+const shareLoaded = ref(false);
+const error = ref("");
+const notice = ref("");
+const category = ref<TakeoverCategory>("user_support");
+const reason = ref("");
+const reference = ref("");
+const duration = ref(15);
+let epoch = 0;
 
 const targets = computed(() => [
-  { value: 'project', label: '当前项目所有成员' },
-  ...members.value.map(member => ({ value: member.user_id, label: member.username })),
+  { value: "project", label: "当前项目所有成员" },
+  ...members.value.map((member) => ({
+    value: member.user_id,
+    label: member.username,
+  })),
   ...Object.keys(grants.value)
-    .filter(id => id !== 'project' && grants.value[id]?.length && !members.value.some(member => member.user_id === id))
-    .map(id => ({ value: id, label: `已离开项目（${id}，仅可撤销）` })),
-])
+    .filter(
+      (id) =>
+        id !== "project" &&
+        grants.value[id]?.length &&
+        !members.value.some((member) => member.user_id === id),
+    )
+    .map((id) => ({ value: id, label: `已离开项目（${id}，仅可撤销）` })),
+]);
 
-const targetLeft = computed(() => target.value !== 'project' && !members.value.some(member => member.user_id === target.value))
+const targetLeft = computed(
+  () =>
+    target.value !== "project" &&
+    !members.value.some((member) => member.user_id === target.value),
+);
 
 const actionOptions = computed(() => [
-  { value: 'read', label: '读取', desc: '可查看全部历史对话、步骤与产物' },
-  { value: 'comment', label: '发送消息', desc: '可向该会话继续提问或交互' },
-  { value: 'edit', label: '编辑', desc: '可回退并编辑前序对话内容' },
-  ...(target.value === 'project' ? [] : [{ value: 'share', label: '转授权', desc: '可将此会话进一步共享给他人' }]),
-  ...(members.value.find(member => member.user_id === target.value)?.role === 'project_admin' ? [{ value: 'delete', label: '删除（仅管理员）', desc: '允许删除此会话记录' }] : []),
-])
+  { value: "read", label: "读取", desc: "可查看全部历史对话、步骤与产物" },
+  { value: "comment", label: "发送消息", desc: "可向该会话继续提问或交互" },
+  { value: "edit", label: "编辑", desc: "可回退并编辑前序对话内容" },
+  ...(target.value === "project"
+    ? []
+    : [
+        { value: "share", label: "转授权", desc: "可将此会话进一步共享给他人" },
+      ]),
+  ...(members.value.find((member) => member.user_id === target.value)?.role ===
+  "project_admin"
+    ? [
+        {
+          value: "delete",
+          label: "删除（仅管理员）",
+          desc: "允许删除此会话记录",
+        },
+      ]
+    : []),
+]);
 
 // 格式化已授权名单列表
 const grantedList = computed(() => {
   const result: Array<{
-    id: string
-    name: string
-    isProject: boolean
-    isDeparted: boolean
-    role?: string
-    actions: SharedThreadAction[]
-  }> = []
+    id: string;
+    name: string;
+    isProject: boolean;
+    isDeparted: boolean;
+    role?: string;
+    actions: SharedThreadAction[];
+  }> = [];
 
   // 1. 项目全员
   if (grants.value.project && grants.value.project.length > 0) {
     result.push({
-      id: 'project',
-      name: '当前项目所有成员',
+      id: "project",
+      name: "当前项目所有成员",
       isProject: true,
       isDeparted: false,
-      actions: grants.value.project
-    })
+      actions: grants.value.project,
+    });
   }
 
   // 2. 个人成员
-  Object.keys(grants.value).forEach(id => {
-    if (id === 'project') return
-    const acts = grants.value[id]
-    if (!acts || acts.length === 0) return
-    const mem = members.value.find(m => m.user_id === id)
+  Object.keys(grants.value).forEach((id) => {
+    if (id === "project") return;
+    const acts = grants.value[id];
+    if (!acts || acts.length === 0) return;
+    const mem = members.value.find((m) => m.user_id === id);
     result.push({
       id,
       name: mem ? mem.username : `已离开成员 (${id})`,
       isProject: false,
       isDeparted: !mem,
       role: mem?.role,
-      actions: acts
-    })
-  })
+      actions: acts,
+    });
+  });
 
-  return result
-})
+  return result;
+});
 
 watch(target, () => {
-  actions.value = [...(grants.value[target.value] || ['read'])]
-})
+  actions.value = [...(grants.value[target.value] || ["read"])];
+});
 
-watch(() => [props.projectId, props.threadId], () => {
-  epoch++
-  mode.value = null
-  error.value = ''
-  notice.value = ''
-  busy.value = false
-})
+watch(
+  () => [props.projectId, props.threadId],
+  () => {
+    epoch++;
+    mode.value = null;
+    error.value = "";
+    notice.value = "";
+    busy.value = false;
+  },
+);
 
 async function openShare() {
-  if (!props.canShare || busy.value) return
-  mode.value = 'share'
-  error.value = ''
-  notice.value = ''
-  busy.value = true
-  shareLoaded.value = false
-  grants.value = {}
-  members.value = []
-  const current = epoch
+  if (!props.canShare || busy.value) return;
+  mode.value = "share";
+  error.value = "";
+  notice.value = "";
+  busy.value = true;
+  shareLoaded.value = false;
+  grants.value = {};
+  members.value = [];
+  const current = epoch;
   try {
-    const service = createSessionService(createLanggraphAuthorizedFetch(), props.projectId)
-    const [people, thread] = await Promise.all([listProjectMembers(props.projectId), service.get(props.threadId)])
-    if (current !== epoch) return
-    members.value = people
+    const service = createSessionService(
+      createLanggraphAuthorizedFetch(),
+      props.projectId,
+    );
+    const [people, thread] = await Promise.all([
+      listProjectMembers(props.projectId),
+      service.get(props.threadId),
+    ]);
+    if (current !== epoch) return;
+    members.value = people;
     grants.value = {
-      ...(thread.metadata?.shared_actions as Record<string, SharedThreadAction[]> || {}),
-      project: (thread.metadata?.project_actions as SharedThreadAction[] || [])
-    }
-    target.value = 'project'
-    actions.value = [...(grants.value.project || ['read'])]
-    shareLoaded.value = true
+      ...((thread.metadata?.shared_actions as Record<
+        string,
+        SharedThreadAction[]
+      >) || {}),
+      project: (thread.metadata?.project_actions as SharedThreadAction[]) || [],
+    };
+    target.value = "project";
+    actions.value = [...(grants.value.project || ["read"])];
+    shareLoaded.value = true;
   } catch (cause) {
-    if (current === epoch) error.value = cause instanceof Error ? cause.message : '读取共享权限失败'
+    if (current === epoch)
+      error.value = cause instanceof Error ? cause.message : "读取共享权限失败";
   } finally {
-    if (current === epoch) busy.value = false
+    if (current === epoch) busy.value = false;
   }
 }
 
 function openTakeover() {
-  if (!props.canTakeover) return
-  mode.value = 'takeover'
-  error.value = ''
-  notice.value = ''
+  if (!props.canTakeover) return;
+  mode.value = "takeover";
+  error.value = "";
+  notice.value = "";
 }
 
 async function quickRevoke(targetId: string) {
-  target.value = targetId
-  await save(true)
+  target.value = targetId;
+  await save(true);
 }
 
 function quickSelect(targetId: string) {
-  target.value = targetId
+  target.value = targetId;
 }
 
 async function save(revoke = false) {
-  if (busy.value) return
-  if (mode.value === 'share' && (!props.canShare || !shareLoaded.value || (targetLeft.value && !revoke))) return
-  if (mode.value === 'takeover' && !props.canTakeover) return
-  if (mode.value === null) return
-  busy.value = true
-  error.value = ''
-  notice.value = ''
-  const current = epoch
+  if (busy.value) return;
+  if (
+    mode.value === "share" &&
+    (!props.canShare || !shareLoaded.value || (targetLeft.value && !revoke))
+  )
+    return;
+  if (mode.value === "takeover" && !props.canTakeover) return;
+  if (mode.value === null) return;
+  busy.value = true;
+  error.value = "";
+  notice.value = "";
+  const current = epoch;
   try {
-    if (mode.value === 'share') {
-      const next = revoke ? [] : [...new Set<SharedThreadAction>(['read', ...actions.value])]
-      await shareThread(props.projectId, props.threadId, target.value === 'project' ? null : target.value, next)
-      if (current !== epoch) return
-      grants.value[target.value] = next
-      notice.value = revoke ? '已撤销所选对象的共享权限；其他授权不变。' : '共享权限已保存。'
+    if (mode.value === "share") {
+      const next = revoke
+        ? []
+        : [...new Set<SharedThreadAction>(["read", ...actions.value])];
+      await shareThread(
+        props.projectId,
+        props.threadId,
+        target.value === "project" ? null : target.value,
+        next,
+      );
+      if (current !== epoch) return;
+      grants.value[target.value] = next;
+      notice.value = revoke
+        ? "已撤销所选对象的共享权限；其他授权不变。"
+        : "共享权限已保存。";
     } else if (revoke) {
-      await endThreadTakeover(props.projectId, props.threadId)
-      if (current !== epoch) return
-      notice.value = '临时访问已结束。'
+      await endThreadTakeover(props.projectId, props.threadId);
+      if (current !== epoch) return;
+      notice.value = "临时访问已结束。";
     } else {
       const grant = await takeOverThread(props.projectId, props.threadId, {
         category: category.value,
         reason: reason.value,
         reference: reference.value,
-        duration_minutes: duration.value
-      })
-      if (current !== epoch) return
-      notice.value = `临时读取已授权，${new Date(grant.expires_at * 1000).toLocaleTimeString()} 到期。请重新打开此会话。`
+        duration_minutes: duration.value,
+      });
+      if (current !== epoch) return;
+      notice.value = `临时读取已授权，${new Date(grant.expires_at * 1000).toLocaleTimeString()} 到期。请重新打开此会话。`;
     }
-    window.dispatchEvent(new Event('thread-access-updated'))
-    emit('updated')
+    window.dispatchEvent(new Event("thread-access-updated"));
+    emit("updated");
   } catch (cause) {
-    if (current === epoch) error.value = cause instanceof Error ? cause.message : '权限操作失败'
+    if (current === epoch)
+      error.value = cause instanceof Error ? cause.message : "权限操作失败";
   } finally {
-    if (current === epoch) busy.value = false
+    if (current === epoch) busy.value = false;
   }
 }
 
 defineExpose({
   openShare,
-  openTakeover
-})
+  openTakeover,
+});
 </script>
 
 <template>
@@ -204,14 +262,12 @@ defineExpose({
       v-if="canShare"
       type="button"
       class="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
-      title="分享此会话给项目成员"
+      data-tooltip="分享此会话给项目成员"
+      aria-label="分享此会话给项目成员"
       @click="openShare"
     >
-      <BaseIcon
-        name="users"
-        size="xs"
-      />
-      <span>分享</span>
+      <BaseIcon name="users" size="xs" />
+      <span class="hidden 2xl:inline">分享</span>
     </button>
     <button
       v-if="canTakeover && showTakeoverButton"
@@ -220,10 +276,7 @@ defineExpose({
       title="管理员临时安全接管此会话"
       @click="openTakeover"
     >
-      <BaseIcon
-        name="shield"
-        size="xs"
-      />
+      <BaseIcon name="shield" size="xs" />
       <span>临时访问</span>
     </button>
 
@@ -233,14 +286,13 @@ defineExpose({
       width="normal"
       @close="mode = null"
     >
-      <form
-        class="space-y-5"
-        @submit.prevent="save()"
-      >
+      <form class="space-y-5" @submit.prevent="save()">
         <!-- 共享模式 -->
         <template v-if="mode === 'share'">
           <!-- 提示条 -->
-          <div class="flex items-start gap-2.5 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200">
+          <div
+            class="flex items-start gap-2.5 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200"
+          >
             <BaseIcon
               name="info"
               size="sm"
@@ -253,9 +305,13 @@ defineExpose({
           </div>
 
           <!-- 授权配置区 -->
-          <div class="rounded-xl border border-gray-200/80 bg-gray-50/60 p-4 space-y-4 dark:border-dark-700 dark:bg-dark-900/50">
+          <div
+            class="rounded-xl border border-gray-200/80 bg-gray-50/60 p-4 space-y-4 dark:border-dark-700 dark:bg-dark-900/50"
+          >
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 选择共享成员或范围
               </label>
               <BaseSelect
@@ -271,11 +327,10 @@ defineExpose({
               </p>
             </div>
 
-            <fieldset
-              :disabled="busy || targetLeft"
-              class="space-y-2"
-            >
-              <legend class="mb-1 text-xs font-semibold text-gray-700 dark:text-dark-200">
+            <fieldset :disabled="busy || targetLeft" class="space-y-2">
+              <legend
+                class="mb-1 text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 授予的权限动作（保存时自动包含读取）
               </legend>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -284,9 +339,10 @@ defineExpose({
                   :key="option.value"
                   class="flex cursor-pointer items-start gap-2.5 rounded-lg border p-2.5 transition-all text-xs"
                   :class="[
-                    actions.includes(option.value as SharedThreadAction) || option.value === 'read'
+                    actions.includes(option.value as SharedThreadAction) ||
+                    option.value === 'read'
                       ? 'border-primary-500/50 bg-primary-50/40 text-primary-950 dark:border-primary-800 dark:bg-primary-950/30 dark:text-primary-200 font-medium'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-300'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-300',
                   ]"
                 >
                   <input
@@ -295,7 +351,7 @@ defineExpose({
                     :value="option.value"
                     :disabled="option.value === 'read'"
                     class="mt-0.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800"
-                  >
+                  />
                   <div class="min-w-0 flex-1">
                     <div class="font-medium text-gray-900 dark:text-white">
                       {{ option.label }}
@@ -308,7 +364,9 @@ defineExpose({
               </div>
             </fieldset>
 
-            <div class="flex items-center justify-between pt-1 border-t border-gray-200/60 dark:border-dark-700">
+            <div
+              class="flex items-center justify-between pt-1 border-t border-gray-200/60 dark:border-dark-700"
+            >
               <span class="text-xs text-gray-500 dark:text-dark-400">
                 配置完成后点击右侧按钮生效
               </span>
@@ -328,7 +386,7 @@ defineExpose({
                   type="submit"
                   :disabled="busy || !shareLoaded || targetLeft"
                 >
-                  {{ busy ? '处理中…' : '保存共享' }}
+                  {{ busy ? "处理中…" : "保存共享" }}
                 </BaseButton>
               </div>
             </div>
@@ -337,10 +395,14 @@ defineExpose({
           <!-- 已生效授权名单展示区 -->
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <span
+                class="text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 已生效的共享权限清单 ({{ grantedList.length }})
               </span>
-              <span class="text-[11px] text-gray-400">点击用户可直接编辑或撤销</span>
+              <span class="text-[11px] text-gray-400"
+                >点击用户可直接编辑或撤销</span
+              >
             </div>
 
             <div
@@ -350,21 +412,24 @@ defineExpose({
               当前会话尚未向任何人共享，仅本人可访问。
             </div>
 
-            <div
-              v-else
-              class="max-h-48 overflow-y-auto space-y-1.5 pr-0.5"
-            >
+            <div v-else class="max-h-48 overflow-y-auto space-y-1.5 pr-0.5">
               <div
                 v-for="item in grantedList"
                 :key="item.id"
                 class="flex items-center justify-between rounded-xl border border-gray-200/70 bg-white px-3 py-2 transition-all hover:border-gray-300 dark:border-dark-700 dark:bg-dark-900"
-                :class="target === item.id ? 'ring-1 ring-primary-500/50 border-primary-500' : ''"
+                :class="
+                  target === item.id
+                    ? 'ring-1 ring-primary-500/50 border-primary-500'
+                    : ''
+                "
               >
                 <div
                   class="flex min-w-0 items-center gap-2.5 cursor-pointer flex-1"
                   @click="quickSelect(item.id)"
                 >
-                  <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xs font-medium text-gray-600 dark:bg-dark-800 dark:text-dark-200">
+                  <div
+                    class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-xs font-medium text-gray-600 dark:bg-dark-800 dark:text-dark-200"
+                  >
                     <BaseIcon
                       :name="item.isProject ? 'users' : 'user'"
                       size="xs"
@@ -372,14 +437,16 @@ defineExpose({
                   </div>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-1.5">
-                      <span class="truncate text-xs font-medium text-gray-900 dark:text-white">
+                      <span
+                        class="truncate text-xs font-medium text-gray-900 dark:text-white"
+                      >
                         {{ item.name }}
                       </span>
                       <span
                         v-if="item.role"
                         class="rounded bg-gray-100 px-1 py-0.2 text-[10px] text-gray-500 dark:bg-dark-800 dark:text-dark-400"
                       >
-                        {{ item.role === 'project_admin' ? '管理员' : '成员' }}
+                        {{ item.role === "project_admin" ? "管理员" : "成员" }}
                       </span>
                       <span
                         v-if="item.isDeparted"
@@ -394,7 +461,17 @@ defineExpose({
                         :key="act"
                         class="rounded-full bg-blue-50 px-1.5 py-0.2 text-[9px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
                       >
-                        {{ act === 'read' ? '读取' : act === 'comment' ? '提问' : act === 'edit' ? '编辑' : act === 'share' ? '转授' : '删除' }}
+                        {{
+                          act === "read"
+                            ? "读取"
+                            : act === "comment"
+                              ? "提问"
+                              : act === "edit"
+                                ? "编辑"
+                                : act === "share"
+                                  ? "转授"
+                                  : "删除"
+                        }}
                       </span>
                     </div>
                   </div>
@@ -407,10 +484,7 @@ defineExpose({
                   :disabled="busy"
                   @click="quickRevoke(item.id)"
                 >
-                  <BaseIcon
-                    name="x"
-                    size="xs"
-                  />
+                  <BaseIcon name="x" size="xs" />
                   <span>撤销</span>
                 </button>
               </div>
@@ -420,7 +494,9 @@ defineExpose({
 
         <!-- 管理员临时安全接管模式 -->
         <template v-else>
-          <div class="flex items-start gap-2.5 rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+          <div
+            class="flex items-start gap-2.5 rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200"
+          >
             <BaseIcon
               name="shield"
               size="sm"
@@ -434,7 +510,10 @@ defineExpose({
 
           <div class="space-y-3.5 text-xs">
             <div>
-              <label class="mb-1 block font-semibold text-gray-700 dark:text-dark-200">用途类别</label>
+              <label
+                class="mb-1 block font-semibold text-gray-700 dark:text-dark-200"
+                >用途类别</label
+              >
               <BaseSelect
                 v-model="category"
                 :disabled="busy"
@@ -442,13 +521,16 @@ defineExpose({
                   { value: 'user_support', label: '用户授权技术排障' },
                   { value: 'security_incident', label: '安全应急事件' },
                   { value: 'compliance', label: '合规与审计调查' },
-                  { value: 'handover', label: '紧急工作交接' }
+                  { value: 'handover', label: '紧急工作交接' },
                 ]"
               />
             </div>
 
             <div>
-              <label class="mb-1 block font-semibold text-gray-700 dark:text-dark-200">关联工单 / 审批编号</label>
+              <label
+                class="mb-1 block font-semibold text-gray-700 dark:text-dark-200"
+                >关联工单 / 审批编号</label
+              >
               <input
                 v-model="reference"
                 required
@@ -457,11 +539,14 @@ defineExpose({
                 placeholder="例如：SEC-2026-0922 或 TICKET-8891"
                 :disabled="busy"
                 class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none dark:border-dark-700 dark:bg-dark-900 dark:text-white"
-              >
+              />
             </div>
 
             <div>
-              <label class="mb-1 block font-semibold text-gray-700 dark:text-dark-200">具体申请事由</label>
+              <label
+                class="mb-1 block font-semibold text-gray-700 dark:text-dark-200"
+                >具体申请事由</label
+              >
               <textarea
                 v-model="reason"
                 required
@@ -475,7 +560,10 @@ defineExpose({
             </div>
 
             <div>
-              <label class="mb-1 block font-semibold text-gray-700 dark:text-dark-200">接管有效期（1 — 60 分钟）</label>
+              <label
+                class="mb-1 block font-semibold text-gray-700 dark:text-dark-200"
+                >接管有效期（1 — 60 分钟）</label
+              >
               <input
                 v-model.number="duration"
                 type="number"
@@ -485,11 +573,13 @@ defineExpose({
                 required
                 :disabled="busy"
                 class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 focus:border-primary-500 focus:outline-none dark:border-dark-700 dark:bg-dark-900 dark:text-white"
-              >
+              />
             </div>
           </div>
 
-          <div class="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-dark-800">
+          <div
+            class="flex justify-end gap-2 pt-2 border-t border-gray-100 dark:border-dark-800"
+          >
             <BaseButton
               variant="secondary"
               type="button"
@@ -498,11 +588,8 @@ defineExpose({
             >
               立即结束临时访问
             </BaseButton>
-            <BaseButton
-              type="submit"
-              :disabled="busy"
-            >
-              {{ busy ? '处理中…' : '申请临时读取' }}
+            <BaseButton type="submit" :disabled="busy">
+              {{ busy ? "处理中…" : "申请临时读取" }}
             </BaseButton>
           </div>
         </template>

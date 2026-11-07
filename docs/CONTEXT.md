@@ -11,10 +11,11 @@
 
 ## 最近改动
 
-2026-11-07 | **前端产物原生下载、空闲会话断流误报防范与页面刷新历史还原三联缺陷治理闭环**：1) **Markdown 产物协议放行与一键原生流式下载**：在 `markdown.ts` 中将 `artifact:` 协议纳入安全白名单并标记 `data-artifact-id`，在 `MarkdownContent.vue` 和 `MessageContent.vue` 中委托拦截点击，阻止浏览器默认打开空白页面，调用 `downloadArtifactById` 直接触发浏览器原生文件下载；2) **空闲会话重连断流异常收敛（Reconnection Resilience）**：在 `useChatSession.ts` 中扩充 `isNonFatalStreamError` 识别 `Event stream closed` 等流断开异常；多会话池切换唤醒空闲已完成会话时，静默吞没重连拒接，不再误弹红色“执行出错”与橙色恢复条；3) **页面刷新历史全量水合还原**：彻底根除 `ChatSession.vue` 在会话初次水合（F5 刷新）时因抽屉未开提前 return 导致不调 `loadHistory` 的 Bug，无条件发起最新 10~20 条 checkpoint 检索，解决已完成会话刷新后卡在“前 6 步中间态”的假未完成缺陷；修复 `MessageContent.vue` 的 Pinia 依赖隔离，全量 158 套单测（932 个用例）全部跑绿，生产环境已同步打包部署生效。
+2026-11-07 | **历史会话侧边栏三段式工业级重构、会话批量删除与顶栏 Tooltip 交互优化**：1) **顶栏 Tooltip 接入与防撞车重叠**：实装 `.pw-tooltip-top` 毛玻璃暗色提示，覆盖所有功能小图标；将左侧容器由 `min-w-0 shrink` 改为 `shrink-0`，彻底根除侧边栏展开时“全权负责”标签与“对话”按钮的重叠缺陷；2) **会话侧边栏方案 A 三段式排版**：第一行紧凑标头徽章聚合操作（`[📁 批量]`、`[💬 新建]`、`[‹ 收起]`）、第二行 32px 全宽沉浸式搜索、第三行单行永不断行分类胶囊，消灭折行掉队；3) **会话批量删除并发 Worker 队列**：纯前端实现并发度 3 的并发删除队列、实时进度展示与二次确认弹窗；全量 159 套单测 945 项 100% 绿灯，线上构建部署验证全量通过。
 
 ## 本月归并
 
+2026-11-07 | **前端产物原生下载、空闲会话断流误报防范与页面刷新历史还原三联缺陷治理闭环**：在 `markdown.ts` 中放行 `artifact:` 协议并原生流式下载；识别并过滤 `Event stream closed` 等非致命断流异常；会话初次水合（F5 刷新）全量拉取 checkpoint 修复历史截断。
 2026-11-06 | **会话删除前置条件死锁与前端列表回显缺陷根治闭环**：在 `thread_lifecycle.py` 中放行终态报错任务解除删除死锁；在 `platform_api` 实行乐观注销权限，杜绝幽灵会话回显。
 
 2026-10 | 会话保留收尾；委派简化验收合并与隔离资源清理；运行重投、工具输出和代码剖析预算治理
@@ -95,7 +96,7 @@
 |---|---|---|
 | runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。 |
 | platform-api | 2026-11-06 | 升级部署至 `05dd20eb`；Alembic 0010 迁移落地，uv sync 依赖同步完成。生产 2 Workers 运行正常，端口 2142 探针通过。 |
-| platform-web | 2026-11-06 | 前端产物原子覆盖至 `/www/wwwroot/agent-platform`（基于 `ea7773c5` 构建，支持 artifact 下载与空闲流断开防误报），Nginx 端口 80 反代及静态资源访问正常。 |
+| platform-web | 2026-11-07 | 侧边栏方案 A 三段式排版、批量删除并发队列、顶栏 Tooltip 与布局防重叠已交付；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

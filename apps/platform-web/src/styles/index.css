@@ -182,7 +182,9 @@
   }
 
   .pw-chat-workspace-header {
-    @apply relative z-10 shrink-0 border-b border-gray-100 bg-white px-4 py-2.5 md:px-6;
+    display: flex;
+    align-items: center;
+    @apply relative z-10 h-16 shrink-0 border-b border-gray-100 bg-white px-4 md:px-6;
     @apply dark:border-dark-800/80 dark:bg-dark-950;
   }
 

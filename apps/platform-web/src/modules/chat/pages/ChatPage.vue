@@ -223,6 +223,85 @@ async function deleteThread() {
     deleting.value = false;
   }
 }
+const threadSidebarRef = ref<{ exitBatchMode?: () => void } | null>(null);
+const batchDeleteOpen = ref(false);
+const batchDeleting = ref(false);
+const batchDeleteIds = ref<string[]>([]);
+const batchDeleteProgress = ref({ done: 0, total: 0 });
+
+function requestBatchDelete(ids: string[]) {
+  if (!ids.length) return;
+  batchDeleteIds.value = ids;
+  batchDeleteProgress.value = { done: 0, total: ids.length };
+  batchDeleteOpen.value = true;
+}
+
+async function confirmBatchDelete() {
+  if (batchDeleting.value || !batchDeleteIds.value.length) return;
+  const idsToDelete = batchDeleteIds.value.filter((id) =>
+    threadCan(id, "delete"),
+  );
+  if (idsToDelete.length === 0) {
+    batchDeleteOpen.value = false;
+    return;
+  }
+
+  const requestEpoch = epoch;
+  batchDeleting.value = true;
+  batchDeleteProgress.value = { done: 0, total: idsToDelete.length };
+
+  const concurrency = 3;
+  let currentIndex = 0;
+  let hasFailed = false;
+
+  async function worker() {
+    while (currentIndex < idsToDelete.length) {
+      const idx = currentIndex++;
+      const id = idsToDelete[idx];
+      try {
+        await service.value.remove(id);
+        for (const entry of pool.entries.values()) {
+          if (entry.threadId.value === id) pool.remove(entry);
+        }
+        chatSessionStore.removeSession(activeProjectId.value, id);
+      } catch {
+        hasFailed = true;
+      } finally {
+        batchDeleteProgress.value.done++;
+      }
+    }
+  }
+
+  try {
+    const workers = Array.from(
+      { length: Math.min(concurrency, idsToDelete.length) },
+      () => worker(),
+    );
+    await Promise.all(workers);
+
+    if (requestEpoch !== epoch) return;
+
+    if (selectedThread.value && idsToDelete.includes(selectedThread.value)) {
+      await router.replace({
+        path: chatPath.value,
+        query: { agentId: selectedTarget.value },
+      });
+    }
+
+    await loadThreads();
+    threadSidebarRef.value?.exitBatchMode?.();
+    batchDeleteOpen.value = false;
+    if (hasFailed) {
+      listError.value = "部分会话删除失败，请检查网络后重试";
+    }
+  } catch (cause) {
+    if (requestEpoch === epoch) {
+      listError.value = cause instanceof Error ? cause.message : "批量删除失败";
+    }
+  } finally {
+    batchDeleting.value = false;
+  }
+}
 const threadTitleEpochs = ref<Map<string, number>>(new Map());
 
 function bumpTitleEpoch(threadId: string): number {
@@ -956,6 +1035,7 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
 
         <ChatThreadSidebar
           v-if="!sidebarCollapsed && !focusMode"
+          ref="threadSidebarRef"
           v-model:search="threadQuery"
           v-model:status-filter="threadStatus"
           class="fixed inset-y-0 left-0 z-50 shadow-2xl lg:static lg:z-auto lg:shadow-none"
@@ -984,6 +1064,7 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
           @start-new-thread="newThread"
           @select-thread="openThread"
           @delete-thread="requestDelete"
+          @batch-delete="requestBatchDelete"
           @rename-thread="handleRenameThread"
           @ai-summarize-title="handleAiSummarizeTitle"
           @collapse="sidebarCollapsed = true"
@@ -1012,7 +1093,8 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
                   ? 'border-gray-200/80 bg-white/90 text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white'
                   : 'border-primary-200/80 bg-primary-50/70 text-primary-700 hover:bg-primary-100/70 dark:border-primary-800/60 dark:bg-primary-950/40 dark:text-primary-300'
               "
-              :title="sidebarCollapsed ? '展开历史会话' : '收起历史会话'"
+              :data-tooltip="sidebarCollapsed ? '展开历史会话' : '收起历史会话'"
+              :aria-label="sidebarCollapsed ? '展开历史会话' : '收起历史会话'"
               @click="sidebarCollapsed = !sidebarCollapsed"
             >
               <BaseIcon name="columns" size="xs" />
@@ -1031,11 +1113,12 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
               <button
                 class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
                 :disabled="!target"
-                title="新建会话"
+                data-tooltip="新建会话"
+                aria-label="新建会话"
                 @click="newThread"
               >
                 <BaseIcon name="chat" size="xs" />
-                <span class="whitespace-nowrap">新对话</span>
+                <span class="hidden 2xl:inline whitespace-nowrap">新对话</span>
               </button>
               <ThreadAccessControl
                 v-if="
@@ -1140,6 +1223,50 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
         <BaseButton :loading="deleting" @click="deleteThread">
           确认删除
         </BaseButton>
+      </template>
+    </BaseDialog>
+    <BaseDialog
+      :show="batchDeleteOpen"
+      title="批量删除对话"
+      @close="!batchDeleting && (batchDeleteOpen = false)"
+    >
+      <div class="space-y-2 text-sm text-gray-700 dark:text-dark-200">
+        <p>
+          确定要删除选中的
+          <strong class="text-red-600 dark:text-red-400 font-semibold">{{
+            batchDeleteIds.length
+          }}</strong>
+          个对话吗？删除后无法恢复这些对话及运行历史。
+        </p>
+        <p
+          v-if="batchDeleting"
+          class="text-xs text-primary-600 dark:text-primary-400 font-medium"
+        >
+          正在执行删除，请稍候... ({{ batchDeleteProgress.done }} /
+          {{ batchDeleteProgress.total }})
+        </p>
+      </div>
+      <template #footer>
+        <div class="flex items-center justify-end gap-2">
+          <BaseButton
+            variant="secondary"
+            :disabled="batchDeleting"
+            @click="batchDeleteOpen = false"
+          >
+            取消
+          </BaseButton>
+          <BaseButton
+            variant="danger"
+            :disabled="batchDeleting"
+            @click="confirmBatchDelete"
+          >
+            {{
+              batchDeleting
+                ? `正在删除 (${batchDeleteProgress.done}/${batchDeleteProgress.total})...`
+                : "确认删除"
+            }}
+          </BaseButton>
+        </div>
       </template>
     </BaseDialog>
   </section>
