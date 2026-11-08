@@ -18,6 +18,11 @@ import {
   getTaskCompletionStatusMeta,
   type BackgroundTaskCompletionInfo,
 } from "../background-tasks/completion-parser";
+import {
+  buildTraceUrl,
+  isTracingEnabled,
+} from "@/services/observability/langfuse-url";
+import { env } from "@/config/env";
 const props = defineProps<{
   messages: readonly BaseMessage[];
   calls: readonly AssembledToolCall[];
@@ -315,6 +320,19 @@ function getFallbackModelName(modelId?: string): string {
   if (!modelId) return "备用模型";
   const found = props.models?.find((m) => m.id === modelId);
   return found?.name || "备用模型";
+}
+
+const isTracingActive = computed(() => isTracingEnabled());
+
+const tracingPlatformName = computed(() => {
+  return env.tracingProvider === "langfuse" ? "Langfuse" : "EvalFlow";
+});
+
+function getMessageTraceUrl(entry: any): string {
+  const raw = entry?.content?.[entry?.content?.length - 1]?.raw as any;
+  const runId =
+    raw?.response_metadata?.run_id || raw?.id || entry?.messageId || "";
+  return buildTraceUrl(runId, { threadId: props.threadId });
 }
 </script>
 
@@ -657,6 +675,26 @@ function getFallbackModelName(modelId?: string): string {
               />
               <span class="text-[11px]">分支</span>
             </button>
+            <a
+              v-if="
+                isTracingActive &&
+                displayEntry.author === 'agent' &&
+                (threadId || displayEntry.messageId) &&
+                getMessageTraceUrl(displayEntry)
+              "
+              :href="getMessageTraceUrl(displayEntry)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-emerald-600 hover:bg-emerald-50/80 dark:text-dark-400 dark:hover:text-emerald-400 dark:hover:bg-dark-800/80 transition-colors whitespace-nowrap"
+              :title="`在 ${tracingPlatformName} 查看该轮调用链路`"
+            >
+              <BaseIcon
+                name="graph"
+                size="xs"
+                class="text-emerald-600 dark:text-emerald-400 shrink-0"
+              />
+              <span class="text-[11px]">链路 ↗</span>
+            </a>
             <div
               v-if="hasBranchSwitcher(displayEntry.messageId || '')"
               class="inline-flex items-center gap-1 rounded-md border border-gray-200/60 bg-white/70 px-1 py-0.5 text-xs dark:border-dark-800 dark:bg-dark-900/60"

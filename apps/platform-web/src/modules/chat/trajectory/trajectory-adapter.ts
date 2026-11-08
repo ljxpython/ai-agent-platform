@@ -9,6 +9,7 @@ import type {
   TrajectoryRecordStatus,
   TrajectoryTokens,
   TrajectoryTurnGroup,
+  TrajectoryTraceOverrides,
 } from "./types";
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -181,6 +182,34 @@ function extractTextContent(message: BaseMessage): string {
   return "";
 }
 
+export function extractRecordTraceId(message: unknown): string | undefined {
+  if (!message || typeof message !== "object") return undefined;
+  const raw = message as Record<string, unknown>;
+  const meta = asObject(raw.response_metadata);
+  const add = asObject(raw.additional_kwargs);
+
+  const candidate =
+    meta.trace_id ||
+    meta.platform_trace_id ||
+    meta.request_id ||
+    meta.run_id ||
+    add.trace_id ||
+    add.platform_trace_id ||
+    add.request_id ||
+    add.run_id ||
+    raw.id;
+
+  if (typeof candidate === "string" && candidate.trim()) {
+    const trimmed = candidate.trim();
+    // 忽略浏览器端 LangChain 临时生成的内部 ID (如 lc_run--xxx)
+    if (trimmed.startsWith("lc_run--")) {
+      return undefined;
+    }
+    return trimmed;
+  }
+  return undefined;
+}
+
 export function buildTrajectoryRecords(
   messages: readonly BaseMessage[],
   calls: readonly AssembledToolCall[] = [],
@@ -189,7 +218,34 @@ export function buildTrajectoryRecords(
   hasError = false,
   modelMap?: Record<string, string>,
   errorMessage?: string | null,
+  runs?: Array<{ run_id: string }>,
+  traceOverrides?: TrajectoryTraceOverrides | Record<number, string>,
 ): TrajectoryRecord[] {
+  const turnTraces: Record<number, string> | undefined =
+    traceOverrides && "turnTraces" in traceOverrides
+      ? traceOverrides.turnTraces
+      : (traceOverrides as Record<number, string> | undefined);
+  const runTraces: Record<string, string> | undefined =
+    traceOverrides && "runTraces" in traceOverrides
+      ? traceOverrides.runTraces
+      : undefined;
+
+  function resolveRecordTraceId(
+    turn: number,
+    msg?: unknown,
+    turnRunId?: string,
+  ): string | undefined {
+    if (turnTraces && turnTraces[turn]) {
+      return turnTraces[turn];
+    }
+    if (turnRunId && runTraces && runTraces[turnRunId]) {
+      return runTraces[turnRunId];
+    }
+    const extracted = extractRecordTraceId(msg);
+    if (extracted) return extracted;
+    return turnRunId;
+  }
+
   const baseTime = Date.now();
   const records: TrajectoryRecord[] = [];
   let currentTurn = 0;
@@ -256,6 +312,7 @@ export function buildTrajectoryRecords(
       currentStep = 1;
       const text = extractTextContent(msg);
       const userTiming = deriveRecordTiming(msg, "user", text.length, baseTime);
+      const turnRunId = runs?.[currentTurn - 1]?.run_id;
       records.push({
         id: `turn-${currentTurn}-step-${currentStep}-user`,
         turnIndex: currentTurn,
@@ -268,6 +325,7 @@ export function buildTrajectoryRecords(
         durationMs: userTiming.durationMs,
         input: text,
         output: text,
+        traceId: resolveRecordTraceId(currentTurn, msg, turnRunId),
         raw: msg,
       });
       continue;
@@ -322,6 +380,7 @@ export function buildTrajectoryRecords(
         ) {
           reasoningStatus = "interrupted";
         }
+        const turnRunId = runs?.[currentTurn - 1]?.run_id;
         records.push({
           id: `turn-${currentTurn}-step-${currentStep}-reasoning`,
           turnIndex: currentTurn,
@@ -335,6 +394,7 @@ export function buildTrajectoryRecords(
           ttftMs: timing.ttftMs,
           decodingMs: timing.decodingMs,
           reasoning: reasoningText,
+          traceId: resolveRecordTraceId(currentTurn, msg, turnRunId),
           raw: msg,
         });
       }
@@ -405,6 +465,7 @@ export function buildTrajectoryRecords(
             baseTime,
           );
 
+          const turnRunId = runs?.[currentTurn - 1]?.run_id;
           records.push({
             id: `turn-${currentTurn}-step-${currentStep}-tool-${callId}`,
             turnIndex: currentTurn,
@@ -418,6 +479,11 @@ export function buildTrajectoryRecords(
             input: inputArgs,
             output: outputContent,
             error: errorMsg,
+            traceId: resolveRecordTraceId(
+              currentTurn,
+              toolResultMsg || msg,
+              turnRunId,
+            ),
             raw: { call: rawCall, result: toolResultMsg, assembled },
           });
         }
@@ -454,6 +520,7 @@ export function buildTrajectoryRecords(
             (modelMap && modelMap[resilience.effectiveModelId]) || "备用模型";
           assistantSummary = `${assistantSummary} · 已自动切换至${modelName} (尝试 ${resilience.attempts} 次)`;
         }
+        const turnRunId = runs?.[currentTurn - 1]?.run_id;
         records.push({
           id: `turn-${currentTurn}-step-${currentStep}-assistant`,
           turnIndex: currentTurn,
@@ -468,6 +535,7 @@ export function buildTrajectoryRecords(
           decodingMs: timing.decodingMs,
           tokens,
           output: contentText,
+          traceId: resolveRecordTraceId(currentTurn, msg, turnRunId),
           raw: msg,
         });
       }
@@ -490,6 +558,7 @@ export function buildTrajectoryRecords(
         String(content || "").length,
         baseTime,
       );
+      const turnRunId = runs?.[currentTurn - 1]?.run_id;
       records.push({
         id: `turn-${currentTurn}-step-${currentStep}-tool-orphan-${callId || i}`,
         turnIndex: currentTurn,
@@ -504,6 +573,7 @@ export function buildTrajectoryRecords(
         durationMs: orphanTiming.durationMs,
         output: content,
         error: isErr ? String(content) : undefined,
+        traceId: resolveRecordTraceId(currentTurn, msg, turnRunId),
         raw: msg,
       });
     }
@@ -513,9 +583,11 @@ export function buildTrajectoryRecords(
   for (const call of calls) {
     if (call.callId && !processedToolCallIds.has(call.callId)) {
       currentStep++;
+      const liveTurn = currentTurn || 1;
+      const turnRunId = runs?.[liveTurn - 1]?.run_id;
       records.push({
-        id: `turn-${currentTurn || 1}-step-${currentStep}-tool-live-${call.callId}`,
-        turnIndex: currentTurn || 1,
+        id: `turn-${liveTurn}-step-${currentStep}-tool-live-${call.callId}`,
+        turnIndex: liveTurn,
         stepIndex: currentStep,
         kind: "tool",
         name: call.name || "正在调用的工具",
@@ -528,6 +600,7 @@ export function buildTrajectoryRecords(
         input: call.input,
         output: call.output,
         error: call.error,
+        traceId: resolveRecordTraceId(liveTurn, undefined, turnRunId),
         raw: call,
       });
     }
@@ -540,6 +613,7 @@ export function buildTrajectoryRecords(
       currentStep++;
       const lastRec = records[records.length - 1];
       const errorTurn = lastRec?.turnIndex || currentTurn || 1;
+      const turnRunId = runs?.[errorTurn - 1]?.run_id;
       const displaySummary =
         errorMessage?.trim() || "智能体运行异常中断或连接中断";
       records.push({
@@ -551,6 +625,7 @@ export function buildTrajectoryRecords(
         summary: displaySummary,
         status: "error",
         error: displaySummary,
+        traceId: resolveRecordTraceId(errorTurn, undefined, turnRunId),
         raw: { runStatus, hasError, errorMessage: displaySummary },
       });
     }
@@ -561,6 +636,7 @@ export function buildTrajectoryRecords(
 
 export function groupTrajectoryByTurn(
   records: TrajectoryRecord[],
+  turnTraceOverrides?: Record<number, string>,
 ): TrajectoryTurnGroup[] {
   const groups: TrajectoryTurnGroup[] = [];
   const map = new Map<number, TrajectoryRecord[]>();
@@ -574,9 +650,15 @@ export function groupTrajectoryByTurn(
   }
 
   for (const [turnIndex, turnRecords] of map.entries()) {
+    const turnTraceId =
+      turnTraceOverrides?.[turnIndex] ||
+      turnRecords.find((r) => r.kind === "assistant" && r.traceId)?.traceId ||
+      turnRecords.find((r) => Boolean(r.traceId))?.traceId;
+
     groups.push({
       turnIndex,
       records: turnRecords,
+      traceId: turnTraceId,
     });
   }
 

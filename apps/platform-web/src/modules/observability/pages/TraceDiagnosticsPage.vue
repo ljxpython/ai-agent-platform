@@ -6,7 +6,12 @@ import BaseIcon from "@/components/base/BaseIcon.vue";
 import BaseInput from "@/components/base/BaseInput.vue";
 import PageHeader from "@/components/layout/PageHeader.vue";
 import { platformHttpClient } from "@/services/http/client";
-import { buildLangfuseTraceUrl } from "@/services/observability/langfuse-url";
+import {
+  buildEvalFlowDashboardUrl,
+  buildLangfuseTraceUrl,
+  buildMlflowTraceUrl,
+} from "@/services/observability/langfuse-url";
+import { env } from "@/config/env";
 import { useThemeStore } from "@/stores/theme";
 
 interface TraceLogEntry {
@@ -37,8 +42,8 @@ const route = useRoute();
 const router = useRouter();
 const themeStore = useThemeStore();
 
-// 演示用生产真实 Trace ID
-const DEMO_TRACE_ID = "54aaf459b9c5415b90370e5874dbb255";
+// 演示用真实有效 Trace ID（对齐 EvalFlow 真实数据）
+const DEMO_TRACE_ID = "tr-e245eda13f6aa1f91f58b110f9b9014b";
 
 const traceQueryInput = ref(
   (route.query.traceId as string | undefined)?.trim() || "",
@@ -108,6 +113,23 @@ const exploreExternalUrl = computed(() => {
 const langfuseTraceUrl = computed(() => {
   return buildLangfuseTraceUrl(activeTraceId.value);
 });
+
+const mlflowTraceUrl = computed(() => {
+  return buildMlflowTraceUrl(activeTraceId.value);
+});
+
+const isMlflowEnabled = computed(() => {
+  return env.tracingProvider === "mlflow" || env.tracingProvider === "both";
+});
+
+const isLangfuseEnabled = computed(() => {
+  return env.tracingProvider === "langfuse" || env.tracingProvider === "both";
+});
+
+function openEvalFlowDashboard() {
+  const url = buildEvalFlowDashboardUrl();
+  window.open(url, "_blank", "noopener,noreferrer");
+}
 
 function handleIframeLoaded() {
   if (iframeTimeoutTimer) {
@@ -356,8 +378,8 @@ onUnmounted(() => {
       description="基于 W3C TraceContext + Loki 毫秒级直连代理。输入全局 Trace ID 即时拉取跨微服务调用日志流与可视化耗时瀑布。"
     >
       <template #actions>
-        <div class="flex items-center gap-2">
-          <div class="w-64 sm:w-72">
+        <div class="flex items-center gap-2 flex-nowrap shrink-0">
+          <div class="w-40 sm:w-56 md:w-64 shrink-0">
             <BaseInput
               v-model="traceQueryInput"
               placeholder="输入 32 位 Trace ID..."
@@ -367,23 +389,46 @@ onUnmounted(() => {
           <BaseButton
             variant="primary"
             size="sm"
+            class="whitespace-nowrap shrink-0"
             :disabled="loading"
             @click="handleSearchTrace"
           >
-            <BaseIcon name="search" class="w-4 h-4 mr-1" />
-            {{ loading ? "检索中..." : "诊断" }}
+            <BaseIcon name="search" class="w-4 h-4 mr-1 shrink-0" />
+            <span>{{ loading ? "检索中..." : "诊断" }}</span>
           </BaseButton>
           <BaseButton
             v-if="traceQueryInput || activeTraceId"
             variant="ghost"
             size="sm"
+            class="whitespace-nowrap shrink-0"
             @click="handleClearTrace"
           >
             清空
           </BaseButton>
-          <BaseButton variant="secondary" size="sm" @click="goToDashboard">
-            <BaseIcon name="activity" class="w-4 h-4 mr-1 text-emerald-500" />
-            指标大盘
+          <BaseButton
+            variant="secondary"
+            size="sm"
+            class="whitespace-nowrap shrink-0"
+            @click="goToDashboard"
+          >
+            <BaseIcon
+              name="activity"
+              class="w-4 h-4 mr-1 text-emerald-500 shrink-0"
+            />
+            <span>指标大盘</span>
+          </BaseButton>
+          <BaseButton
+            v-if="isMlflowEnabled"
+            variant="secondary"
+            size="sm"
+            class="whitespace-nowrap shrink-0 border-emerald-300 dark:border-emerald-700 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 shadow-2xs"
+            @click="openEvalFlowDashboard"
+          >
+            <BaseIcon
+              name="activity"
+              class="w-4 h-4 mr-1 text-emerald-600 dark:text-emerald-400 shrink-0"
+            />
+            <span>EvalFlow 评测大盘 ↗</span>
           </BaseButton>
         </div>
       </template>
@@ -450,7 +495,21 @@ onUnmounted(() => {
         </div>
 
         <a
-          v-if="activeTraceId && langfuseTraceUrl"
+          v-if="activeTraceId && isMlflowEnabled && mlflowTraceUrl"
+          :href="mlflowTraceUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 shadow-2xs transition ml-1 shrink-0 whitespace-nowrap"
+        >
+          <BaseIcon
+            name="graph"
+            class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0"
+          />
+          <span>EvalFlow 链路树 ↗</span>
+        </a>
+
+        <a
+          v-if="activeTraceId && isLangfuseEnabled && langfuseTraceUrl"
           :href="langfuseTraceUrl"
           target="_blank"
           rel="noopener noreferrer"
@@ -497,7 +556,7 @@ onUnmounted(() => {
       <div class="flex items-center gap-2 self-start md:self-auto shrink-0">
         <BaseButton variant="secondary" size="sm" @click="applyDemoTrace">
           <BaseIcon name="sparkle" class="w-4 h-4 mr-1 text-amber-500" />
-          演示：载入生产真实 Trace
+          演示：载入 EvalFlow 真实 Trace
         </BaseButton>
       </div>
     </div>
@@ -756,7 +815,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-        <!-- 无日志状态 -->
+        <!-- 无日志 / 错误状态 -->
         <div
           v-else-if="
             activeTraceId && (!traceData?.logs || traceData.logs.length === 0)
@@ -764,22 +823,49 @@ onUnmounted(() => {
           class="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-dark-400 space-y-3"
         >
           <BaseIcon
-            name="search"
+            :name="
+              traceData?.error === 'loki_service_unavailable'
+                ? 'activity'
+                : 'search'
+            "
             class="w-12 h-12 text-gray-300 dark:text-dark-600 mb-1"
           />
           <p class="text-sm font-semibold text-gray-800 dark:text-dark-200">
-            未检索到关联日志记录
+            {{
+              traceData?.error === "loki_service_unavailable"
+                ? "Loki 日志服务未连接 (本地单机模式)"
+                : "未检索到关联微服务日志记录"
+            }}
           </p>
           <p
             class="text-xs text-gray-500 dark:text-dark-400 max-w-md text-center leading-relaxed"
           >
-            可能原因：1) 该请求未经过微服务打标；2) 本地日志尚未推入 Loki
-            (通常有 1~2s 延迟)；3) 该日志已超过 7 天保留期被自动淘汰。
+            {{
+              traceData?.error === "loki_service_unavailable"
+                ? "本地环境未部署或未连接 Loki 集中日志服务，极速微服务日志流不可用；但该链路已被 EvalFlow 完整采集！"
+                : "可能原因：1) 该请求未经过微服务打标；2) 本地日志尚未推入 Loki (通常有 1~2s 延迟)；3) 该日志已超过 7 天保留期被自动淘汰。"
+            }}
           </p>
-          <BaseButton variant="secondary" size="sm" @click="handleSearchTrace">
-            <BaseIcon name="refresh" class="w-4 h-4 mr-1" />
-            重试检索
-          </BaseButton>
+          <div class="flex items-center gap-2.5 flex-wrap justify-center pt-1">
+            <BaseButton
+              variant="secondary"
+              size="sm"
+              @click="handleSearchTrace"
+            >
+              <BaseIcon name="refresh" class="w-4 h-4 mr-1" />
+              重试检索
+            </BaseButton>
+            <a
+              v-if="isMlflowEnabled && mlflowTraceUrl"
+              :href="mlflowTraceUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm transition shrink-0"
+            >
+              <BaseIcon name="graph" class="w-4 h-4" />
+              <span>直接在 EvalFlow 评测平台查看该链路 ↗</span>
+            </a>
+          </div>
         </div>
 
         <!-- 筛选结果为空提示 -->

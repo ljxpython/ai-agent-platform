@@ -234,30 +234,49 @@ def resolve_model_max_output_tokens(
 def _with_context_capacity(
     model: BaseChatModel, connection: Mapping[str, object] | None
 ) -> BaseChatModel:
-    capacity = connection.get("context_window_tokens") if connection else None
-    if capacity is not None:
-        if type(capacity) is not int or capacity <= 0:
-            raise RuntimeResolutionError(
-                "runtime.model.initialization_failed", "context_window_tokens"
-            )
-        model_name = str(
-            connection.get("model")
-            or getattr(model, "model_name", None)
-            or getattr(model, "model", "")
+    if connection is None:
+        return model
+    capacity = connection.get("context_window_tokens")
+    model_name = str(
+        connection.get("model")
+        or getattr(model, "model_name", None)
+        or getattr(model, "model", "")
+    )
+    provider = str(connection.get("provider") or "")
+    if capacity is None:
+        name_lower = model_name.lower()
+        if any(
+            k in name_lower
+            for k in ("deepseek", "qwen", "glm", "kimi", "minimax", "claude")
+        ):
+            capacity = 128_000
+        elif any(k in name_lower for k in ("gpt-4", "gpt-3.5", "o1", "o3")):
+            capacity = 128_000
+        else:
+            capacity = 65_536
+
+    if type(capacity) is not int or capacity <= 0:
+        raise RuntimeResolutionError(
+            "runtime.model.initialization_failed", "context_window_tokens"
         )
-        provider = str(connection.get("provider") or "")
-        explicit_max = connection.get("max_output_tokens")
-        max_output = resolve_model_max_output_tokens(
-            model_name=model_name,
-            provider=provider,
-            capacity=capacity,
-            explicit_max_output=explicit_max if isinstance(explicit_max, int) else None,
-        )
+    explicit_max = connection.get("max_output_tokens")
+    max_output = resolve_model_max_output_tokens(
+        model_name=model_name,
+        provider=provider,
+        capacity=capacity,
+        explicit_max_output=explicit_max if isinstance(explicit_max, int) else None,
+    )
+    existing_profile = getattr(model, "profile", None)
+    if not isinstance(existing_profile, dict):
+        existing_profile = {}
+    try:
         model.profile = {
-            **(model.profile or {}),
+            **existing_profile,
             "max_input_tokens": capacity,
             "max_output_tokens": max_output,
         }
+    except (AttributeError, TypeError):
+        pass
     return model
 
 

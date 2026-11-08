@@ -34,6 +34,7 @@
 
 ## 活跃项目
 
+- [MLflow 链路追踪与会话评测适配](projects/20261108-mlflow-tracing-adaptation/README.md)：`done`；全栈完成 MLflow / EvalFlow 平台平滑接入，支持动态环境变量热切换（langfuse/mlflow/both/none）。落地三大场景：1) 前端安全防御守护（none 模式下追踪 UI 彻底消失零报错）；2) Project 维度项目物理隔离（动态自动创建 `project-{project_id}` 独立实验）；3) 超级链接原生直达线程 ID（直接进入 `#/experiments/{id}/chat-sessions/{sessionId}` 全景对话卡片）。单测 153 项全绿、Vue-tsc 0 报错、browser-skill 真实浏览器端到端实测验证通过。
 - [Runtime Agent 开发指南与入口纠偏](projects/20261108-runtime-development-harness-governance/README.md)：done（文档范围，2026-11-08 用户人工验收通过）；52 篇全文审查完成，经验已沉淀；文档提交 5ea9ea8c、整合提交 2b434585 已推送并合入 main，主干原有功能保留，f335 Worktree 已清理，无所属服务/测试数据库。CI 不在本期，产品测试未重跑。
 - [工作区总览工业级重构与信息密度治理](projects/20261108-workspace-overview-refactor/README.md)：`done`；针对工作区总览废话文案、空洞留白与狗皮膏药治理入口立项工业级重构全栈交付，4 联指标看板、紧凑 Header、主辅双栏高能工作流已落地，单测全绿。
 - [会话快照水合与媒体外置治理](projects/20261107-session-hydration-and-artifact-offloading/README.md)：`partial`；仅覆盖新会话及其刷新/重连，不做存量或旧逻辑兼容；Runtime 图片引用化、模型临时展开、Web 首屏快照优先和按需预览已完成。真实 xiaok DeepSeek + Playwright Chromium 通过；GraphHarbor 保持通用边界且未修改。30 样本性能、远端 Workspace 和完整竞态/故障注入待补。

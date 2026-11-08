@@ -28,7 +28,7 @@ class Correlation(DiagnosticFields):
 
 
 class TraceReference(DiagnosticFields):
-    provider: Literal["langfuse"]
+    provider: Literal["langfuse", "mlflow", "both", "none"] | Identifier
     trace_id: Identifier
     url: None = None
 

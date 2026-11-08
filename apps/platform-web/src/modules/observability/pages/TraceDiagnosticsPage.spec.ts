@@ -62,8 +62,9 @@ describe("TraceDiagnosticsPage (Native Timeline Edition)", () => {
     expect(wrapper.text()).toContain("链路诊断中心");
     expect(wrapper.text()).toContain("诊断");
     expect(wrapper.text()).toContain("指标大盘");
+    expect(wrapper.text()).toContain("EvalFlow 评测大盘");
     expect(wrapper.text()).toContain("Trace ID 获取途径与排障指引");
-    expect(wrapper.text()).toContain("演示：载入生产真实 Trace");
+    expect(wrapper.text()).toContain("演示：载入 EvalFlow 真实 Trace");
   });
 
   it("fetches and renders native timeline logs when traceId is provided", async () => {

@@ -569,18 +569,33 @@ def with_langfuse_tracing(
         )
     callbacks = list(bound["callbacks"])
     trace_id = trace_id_for(bound_metadata)
-    try:
-        callback = (
-            _new_callback(trace_context={"trace_id": trace_id})
-            if trace_id
-            else _new_callback()
+    from runtime_service.observability.mlflow_tracer import (
+        create_mlflow_callback,
+        is_langfuse_enabled,
+        is_mlflow_enabled,
+    )
+
+    if is_langfuse_enabled():
+        try:
+            callback = (
+                _new_callback(trace_context={"trace_id": trace_id})
+                if trace_id
+                else _new_callback()
+            )
+            if callback is not None:
+                callbacks.append(callback)
+        except LangfuseConfigurationError:
+            raise
+        except Exception as error:
+            _record_export_error(error)
+
+    if is_mlflow_enabled():
+        mlflow_cb = create_mlflow_callback(
+            graph_id=graph_id,
+            bound_metadata=bound_metadata,
         )
-        if callback is not None:
-            callbacks.append(callback)
-    except LangfuseConfigurationError:
-        raise
-    except Exception as error:
-        _record_export_error(error)
+        if mlflow_cb is not None:
+            callbacks.append(mlflow_cb)
     try:
         otel_provider = initialize_otel(on_error=_record_export_error)
         if otel_provider is not None:

@@ -58,9 +58,20 @@ export interface TrajectoryRecord {
   error?: string;
   /** 原始底层数据对象 */
   raw?: unknown;
+  /** 关联的链路追踪 ID (Trace ID / Run ID) */
+  traceId?: string;
 }
 
 export interface TrajectoryTurnGroup {
   turnIndex: number;
   records: TrajectoryRecord[];
+  /** 关联的链路追踪 ID (Trace ID / Run ID) */
+  traceId?: string;
+}
+
+export interface TrajectoryTraceOverrides {
+  /** 按回合索引 (从 1 开始) 映射真实 Trace ID (如 EvalFlow 原生 tr-xxxx) */
+  turnTraces?: Record<number, string>;
+  /** 按平台 Run ID 映射真实 Trace ID */
+  runTraces?: Record<string, string>;
 }

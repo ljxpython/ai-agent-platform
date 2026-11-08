@@ -83,6 +83,10 @@ const envSchema = z.object({
     .default("https://jp.cloud.langfuse.com"),
   VITE_LANGFUSE_PROJECT_ID: z.string().optional().default(""),
   VITE_LANGFUSE_TRACE_URL_TEMPLATE: z.string().optional().default(""),
+  VITE_TRACING_PROVIDER: z.string().default("mlflow"),
+  VITE_MLFLOW_BASE_URL: z.string().default("http://127.0.0.1:9128"),
+  VITE_MLFLOW_EXPERIMENT_ID: z.string().default("6"),
+  VITE_MLFLOW_TRACE_URL_TEMPLATE: z.string().optional().default(""),
 });
 
 const parsed = envSchema.parse(import.meta.env);
@@ -100,4 +104,18 @@ export const env = {
   langfuseTraceUrlTemplate: (
     parsed.VITE_LANGFUSE_TRACE_URL_TEMPLATE || ""
   ).trim(),
+  get tracingProvider(): string {
+    if (typeof window !== "undefined") {
+      const override =
+        (window as any).__TRACING_PROVIDER__ ||
+        window.sessionStorage?.getItem("VITE_TRACING_PROVIDER");
+      if (override !== null && override !== undefined && override !== "") {
+        return String(override).trim().toLowerCase();
+      }
+    }
+    return (parsed.VITE_TRACING_PROVIDER || "mlflow").trim().toLowerCase();
+  },
+  mlflowBaseUrl: stripTrailingSlash(parsed.VITE_MLFLOW_BASE_URL),
+  mlflowExperimentId: (parsed.VITE_MLFLOW_EXPERIMENT_ID || "6").trim(),
+  mlflowTraceUrlTemplate: (parsed.VITE_MLFLOW_TRACE_URL_TEMPLATE || "").trim(),
 };

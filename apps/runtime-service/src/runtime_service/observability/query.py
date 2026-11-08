@@ -192,8 +192,12 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
         accepted = list(dict.fromkeys(item.get("trace_id") for item in records))[:50]
         records = [item for item in records if item.get("trace_id") in accepted]
     if len(traces) == 1:
+        from runtime_service.observability.mlflow_tracer import get_tracing_provider
+
+        active_provider = get_tracing_provider()
+        chosen_provider = "mlflow" if active_provider == "mlflow" else "langfuse"
         result["trace"] = {
-            "provider": "langfuse",
+            "provider": chosen_provider,
             "trace_id": next(iter(traces)),
             "url": None,
         }

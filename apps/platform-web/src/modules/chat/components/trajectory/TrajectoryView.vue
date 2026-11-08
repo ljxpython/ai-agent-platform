@@ -13,6 +13,14 @@ import TrajectoryTimeline from "./TrajectoryTimeline.vue";
 import RunDiagnostics from "./RunDiagnostics.vue";
 import RunUsage from "./RunUsage.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import {
+  buildTraceUrl,
+  fetchProjectExperimentId,
+  fetchSessionTraces,
+  getProjectExperimentId,
+  isTracingEnabled,
+} from "@/services/observability/langfuse-url";
+import { env } from "@/config/env";
 
 const props = withDefaults(
   defineProps<{
@@ -61,6 +69,9 @@ const modelMap = computed(() => {
   return map;
 });
 
+const realTurnTraces = ref<Record<number, string>>({});
+const realRunTraces = ref<Record<string, string>>({});
+
 const records = computed(() =>
   buildTrajectoryRecords(
     props.messages,
@@ -70,10 +81,17 @@ const records = computed(() =>
     props.hasError,
     modelMap.value,
     props.errorMessage,
+    props.runs,
+    {
+      turnTraces: realTurnTraces.value,
+      runTraces: realRunTraces.value,
+    },
   ),
 );
 
-const groups = computed(() => groupTrajectoryByTurn(records.value));
+const groups = computed(() =>
+  groupTrajectoryByTurn(records.value, realTurnTraces.value),
+);
 
 type InspectorMode = "record" | "diagnostics" | "usage";
 const inspectorMode = ref<InspectorMode>(
@@ -97,6 +115,89 @@ watch(
     selectedRunId.value = (val as string) || (runs as any)?.[0]?.run_id || null;
   },
 );
+
+const isTracingActive = computed(() => isTracingEnabled());
+
+const resolvedExperimentId = ref<string>(
+  props.projectId ? getProjectExperimentId(props.projectId) || "" : "",
+);
+
+async function loadSessionTraces() {
+  const expId = resolvedExperimentId.value;
+  const threadId = props.threadId;
+  if (!expId || !threadId || !isTracingActive.value) {
+    realTurnTraces.value = {};
+    realRunTraces.value = {};
+    return;
+  }
+
+  try {
+    const traces = await fetchSessionTraces(expId, threadId);
+    if (!traces || traces.length === 0) return;
+
+    const turnMap: Record<number, string> = {};
+    const runMap: Record<string, string> = {};
+
+    traces.forEach((item, idx) => {
+      turnMap[idx + 1] = item.requestId;
+      if (item.runId) {
+        runMap[item.runId] = item.requestId;
+      }
+    });
+
+    realTurnTraces.value = turnMap;
+    realRunTraces.value = runMap;
+  } catch (err) {
+    console.warn("[TrajectoryView] 加载真实链路 Trace 列表失败:", err);
+  }
+}
+
+watch(
+  () => [
+    resolvedExperimentId.value,
+    props.threadId,
+    props.messages.length,
+    props.isRunning,
+  ],
+  () => {
+    loadSessionTraces();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.projectId,
+  async (newProjId) => {
+    if (!newProjId) {
+      resolvedExperimentId.value = "";
+      return;
+    }
+    const cached = getProjectExperimentId(newProjId);
+    if (cached) {
+      resolvedExperimentId.value = cached;
+      return;
+    }
+    const expId = await fetchProjectExperimentId(newProjId);
+    if (expId) {
+      resolvedExperimentId.value = expId;
+    }
+  },
+  { immediate: true },
+);
+
+const trajectoryTraceUrl = computed(() => {
+  if (!isTracingActive.value || (!props.threadId && !selectedRunId.value))
+    return "";
+  return buildTraceUrl(selectedRunId.value || "", {
+    projectId: props.projectId,
+    experimentId: resolvedExperimentId.value || undefined,
+    threadId: props.threadId,
+  });
+});
+
+const tracingPlatformName = computed(() => {
+  return env.tracingProvider === "langfuse" ? "Langfuse" : "EvalFlow";
+});
 
 watch(
   () => props.initialInspectorMode,
@@ -337,6 +438,22 @@ function handleCloseInspector() {
 
       <!-- Right: Search + Filter -->
       <div class="flex items-center gap-2.5">
+        <a
+          v-if="isTracingActive && trajectoryTraceUrl"
+          :href="trajectoryTraceUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-300/80 bg-emerald-50/80 px-2 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 shadow-2xs transition whitespace-nowrap font-mono"
+          :title="`在 ${tracingPlatformName} 查看当前 Run / 会话链路树`"
+        >
+          <BaseIcon
+            name="graph"
+            size="xs"
+            class="text-emerald-600 dark:text-emerald-400 shrink-0"
+          />
+          <span>{{ tracingPlatformName }} 链路树 ↗</span>
+        </a>
+
         <!-- Search Input -->
         <div class="relative flex items-center">
           <BaseIcon
@@ -427,6 +544,8 @@ function handleCloseInspector() {
           :search-query="searchQuery"
           :all-turns-collapsed="allTurnsCollapsed"
           :all-calls-collapsed="allCallsCollapsed"
+          :project-id="projectId"
+          :experiment-id="resolvedExperimentId"
           @select="handleSelect"
         />
       </div>
@@ -472,6 +591,8 @@ function handleCloseInspector() {
         <TrajectoryInspector
           v-else-if="selectedRecord"
           :record="selectedRecord"
+          :project-id="projectId"
+          :experiment-id="resolvedExperimentId"
           @close="handleCloseInspector"
           @inspect-diagnostic="emit('inspect-diagnostic')"
         />
