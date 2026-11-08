@@ -11,6 +11,7 @@ import type {
 } from "../types";
 import {
   formatTokenNumber,
+  formatCompactTokens,
   resolveDisplayTokens,
   formatDashboardCost,
   formatChangeRatio,
@@ -294,37 +295,38 @@ const runsErrorMessage = computed(() => {
 
     <!-- 4. 四组金融级核心指标卡 -->
     <section
-      class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-opacity duration-150"
+      class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 transition-opacity duration-150"
       :class="{ 'opacity-70': isRefreshing }"
     >
       <!-- 卡片 1: 已记录 Token -->
       <article
-        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between"
+        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
       >
-        <div>
+        <div class="min-w-0 overflow-hidden">
           <div
             class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400"
           >
-            <span>已记录 Token</span>
+            <span class="truncate">已记录 Token</span>
             <span
               v-if="displayTokens.isPartial"
-              class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+              class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800 shrink-0"
             >
               部分小计
             </span>
           </div>
           <div
-            class="mt-2 text-2xl font-bold font-mono tracking-tight text-gray-950 dark:text-white"
+            class="mt-2 text-xl xl:text-2xl font-bold font-mono tracking-tight text-gray-950 dark:text-white truncate"
+            :title="formatTokenNumber(displayTokens.data?.total_tokens)"
           >
             {{ formatTokenNumber(displayTokens.data?.total_tokens) }}
           </div>
         </div>
         <div
-          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between"
+          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
         >
-          <span>较紧邻前窗：</span>
+          <span class="shrink-0">较紧邻前窗：</span>
           <span
-            class="font-mono font-medium"
+            class="font-mono font-medium truncate"
             :class="
               Number(
                 dashboardData?.previous_window.total_token_change_ratio || 0,
@@ -342,74 +344,84 @@ const runsErrorMessage = computed(() => {
         </div>
       </article>
 
-      <!-- 卡片 2: 输入 / 输出明细 -->
+      <!-- 卡片 2: 输入 / 输出明细 (工业级紧凑单位 + 悬停全精度防截断) -->
       <article
-        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between"
+        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
       >
-        <div>
+        <div class="min-w-0 overflow-hidden">
           <div
-            class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400"
+            class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400 truncate"
           >
             输入 / 输出 Tokens
           </div>
           <div
-            class="mt-2 text-2xl font-bold font-mono tracking-tight text-gray-950 dark:text-white"
+            class="mt-2 flex items-baseline font-mono font-bold tracking-tight text-lg sm:text-xl xl:text-2xl text-gray-950 dark:text-white whitespace-nowrap min-w-0"
+            :title="`输入: ${formatTokenNumber(displayTokens.data?.input_tokens)} / 输出: ${formatTokenNumber(displayTokens.data?.output_tokens)}（完整精度）`"
           >
-            <span class="text-primary-600 dark:text-primary-400">{{
-              formatTokenNumber(displayTokens.data?.input_tokens)
+            <span class="text-primary-600 dark:text-primary-400 shrink-0">{{
+              formatCompactTokens(displayTokens.data?.input_tokens)
             }}</span>
-            <span class="mx-1 text-gray-300 dark:text-dark-600">/</span>
-            <span class="text-emerald-600 dark:text-emerald-400">{{
-              formatTokenNumber(displayTokens.data?.output_tokens)
+            <span
+              class="mx-1.5 text-gray-300 dark:text-dark-600 font-normal shrink-0"
+              >/</span
+            >
+            <span class="text-emerald-600 dark:text-emerald-400 shrink-0">{{
+              formatCompactTokens(displayTokens.data?.output_tokens)
             }}</span>
           </div>
         </div>
         <div
-          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between"
+          class="mt-3 border-t border-gray-100 pt-2 text-[11px] sm:text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
         >
           <span
-            >缓存读:
+            class="truncate mr-1"
+            :title="`缓存读完整精度: ${formatTokenNumber(displayTokens.data?.cache_read_tokens)}`"
+          >
+            缓存读:
             <strong class="font-mono text-gray-700 dark:text-gray-300">{{
               formatTokenNumber(displayTokens.data?.cache_read_tokens)
-            }}</strong></span
-          >
+            }}</strong>
+          </span>
           <span
-            >推理:
+            class="truncate"
+            :title="`推理完整精度: ${formatTokenNumber(displayTokens.data?.reasoning_tokens)}`"
+          >
+            推理:
             <strong class="font-mono text-gray-700 dark:text-gray-300">{{
               formatTokenNumber(displayTokens.data?.reasoning_tokens)
-            }}</strong></span
-          >
+            }}</strong>
+          </span>
         </div>
       </article>
 
       <!-- 卡片 3: 估算成本 (USD) -->
       <article
-        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between"
+        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
       >
-        <div>
+        <div class="min-w-0 overflow-hidden">
           <div
             class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400"
           >
-            <span>估算成本 (USD)</span>
+            <span class="truncate">估算成本 (USD)</span>
             <span
               v-if="costViewModel.isPartial"
-              class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200"
+              class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 shrink-0"
             >
               部分计价
             </span>
           </div>
           <div
-            class="mt-2 text-2xl font-bold font-mono tracking-tight text-amber-600 dark:text-amber-400"
+            class="mt-2 text-lg sm:text-xl xl:text-2xl font-bold font-mono tracking-tight text-amber-600 dark:text-amber-400 truncate"
             :title="`完整精度：${costViewModel.fullUsd}`"
           >
             {{ costViewModel.display }}
           </div>
         </div>
         <div
-          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between"
+          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
         >
-          <span>未计价调用数：</span>
-          <span class="font-mono font-medium">{{
+          <span class="shrink-0">未计价调用数：</span>
+          <span class="font-mono font-medium truncate">{{
             dashboardData?.summary.cost.unpriced_call_count ?? "—"
           }}</span>
         </div>
@@ -417,30 +429,32 @@ const runsErrorMessage = computed(() => {
 
       <!-- 卡片 4: 已采集调用 / Run -->
       <article
-        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between"
+        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
       >
-        <div>
+        <div class="min-w-0 overflow-hidden">
           <div
-            class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400"
+            class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400 truncate"
           >
             已采集调用 / 运行数
           </div>
           <div
-            class="mt-2 text-2xl font-bold font-mono tracking-tight text-gray-950 dark:text-white"
+            class="mt-2 text-xl xl:text-2xl font-bold font-mono tracking-tight text-gray-950 dark:text-white truncate"
           >
             <span>{{
               dashboardData?.summary.coverage.observed_call_count ?? "—"
             }}</span>
-            <span class="mx-1 text-gray-300 dark:text-dark-600">/</span>
+            <span class="mx-0.5 xl:mx-1 text-gray-300 dark:text-dark-600"
+              >/</span
+            >
             <span>{{ dashboardData?.summary.recorded_run_count ?? "—" }}</span>
           </div>
         </div>
         <div
-          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between"
+          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
         >
-          <span>调用报告率：</span>
+          <span class="shrink-0">调用报告率：</span>
           <span
-            class="font-mono font-medium text-emerald-600 dark:text-emerald-400"
+            class="font-mono font-medium text-emerald-600 dark:text-emerald-400 truncate"
           >
             {{
               dashboardData?.summary.coverage.observed_call_count

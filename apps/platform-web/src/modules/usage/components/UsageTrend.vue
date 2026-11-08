@@ -150,15 +150,18 @@ const activeBar = computed(() => {
     class="pw-trend-card rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900 shadow-sm"
     data-testid="usage-trend-panel"
   >
-    <!-- 头部工具栏 -->
+    <!-- 头部工具栏 (自适应两端对齐，防 MacBook 视口掉行悬空) -->
     <div
-      class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4 dark:border-dark-800"
+      class="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4 dark:border-dark-800"
     >
-      <div>
+      <div class="min-w-0 flex-1 mr-2">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
           用量与成本趋势
         </h3>
-        <p class="text-xs text-gray-500 dark:text-dark-400 mt-0.5">
+        <p
+          class="text-xs text-gray-500 dark:text-dark-400 mt-0.5 truncate"
+          :title="`${granularity === 'hour' ? '按小时切片分布（最近 7 天）' : '按日切片分布'}，支持输入输出堆叠与成本分析`"
+        >
           {{
             granularity === "hour"
               ? "按小时切片分布（最近 7 天）"
@@ -167,7 +170,7 @@ const activeBar = computed(() => {
         </p>
       </div>
 
-      <div class="flex items-center gap-2.5">
+      <div class="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
         <!-- 指标切换 (Token / 成本) -->
         <div
           class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-dark-700 dark:bg-dark-950"

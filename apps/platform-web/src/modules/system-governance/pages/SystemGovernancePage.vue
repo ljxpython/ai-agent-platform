@@ -238,7 +238,7 @@ onUnmounted(() => {
     <PageHeader
       eyebrow="Governance"
       title="System Probes"
-      description="这里把 live / ready / health / metrics 收成正式值班页。值班、联调、演示都别再去记零散接口地址，直接看这页。"
+      description="系统探针实时看板，聚合 Live、Ready、Health 探针状态与核心吞吐指标。"
     >
       <template #actions>
         <router-link to="/workspace/observability">

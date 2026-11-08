@@ -33,6 +33,30 @@ export function formatTokenCompact(count: number | null | undefined): string {
 }
 
 /**
+ * 工业级紧凑格式化 Token 计数（用于指标卡大数与看板）：
+ * 规则：
+ * 1. null 或 undefined 返回 "—"
+ * 2. 绝对值 < 1,000：使用本地千分位整数（如 798 -> "798"）
+ * 3. 1,000 ~ 999,999：显示为 K，保留 1 位小数（如 2,206 -> "2.2K", 305,257 -> "305.3K"）
+ * 4. 1,000,000 ~ 999,999,999：显示为 M，保留 2 位小数（如 1,152,362 -> "1.15M", 33,134,222 -> "33.13M"）
+ * 5. >= 1,000,000,000：显示为 B，保留 2 位小数（如 1,200,000,000 -> "1.2B"）
+ */
+export function formatCompactTokens(count: number | null | undefined): string {
+  if (count === null || count === undefined) {
+    return "—";
+  }
+  const abs = Math.abs(count);
+  if (abs < 1_000) {
+    return count.toLocaleString();
+  }
+  return new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    compactDisplay: "short",
+    maximumFractionDigits: abs >= 1_000_000 ? 2 : 1,
+  }).format(count);
+}
+
+/**
  * 优先使用完整 Token，若缺失则降级为已知小计并打上 partial 标记
  */
 export function resolveDisplayTokens(

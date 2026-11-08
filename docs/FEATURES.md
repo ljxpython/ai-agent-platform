@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 工作区总览工业级重构与信息密度治理 | 已完成：彻底清除“从当前项目继续工作。”废话副标题；收纳平台治理按钮；实装 4 联项目指标看板（Agents、对话数、工具数、运行时健康）；主辅双栏高能工作流（最近对话相对时间流 + Agent 矩阵模型 Tag 与一键对话直达）；补齐 OverviewPage.spec.ts，单测、vue-tsc 与生产构建全绿 | [项目概览](projects/20261108-workspace-overview-refactor/README.md) · [实现记录](projects/20261108-workspace-overview-refactor/implementation/01-overview-refactor.md) |
 | 会话侧边栏三段式工业级重构与批量删除、顶栏 Tooltip 交互优化 | 已完成：落实方案 A 三段式纯净排版（标头聚合操作、全宽搜索、单行永不断行分类胶囊），实装并发度 3 纯前端批量删除队列与进度响应，顶栏毛玻璃 Tooltip 接入并根治压缩撞车重合；全仓单测 159 套件 945 项 100% 绿灯，线上部署验证通过 | [变更记录](../apps/platform-web/docs/changes/20261107-chat-sidebar-redesign-and-batch-delete.md) |
 | 新会话快照优先展示与媒体按需加载 | 本地功能已完成：首屏依赖 SDK 权威快照，历史抽屉按需读取；真实刷新恢复通过；性能/竞态治理证据待补 | [项目概览](projects/20261107-session-hydration-and-artifact-offloading/README.md) |
 | 运行异常重投拦截与草稿防丢回填 | 已完成：彻底移除回合失败时前端私自调用 `submitQueuedMessage` 导致原 Prompt 被静默包装为排队消息拉起死循环的严重 Bug，规范为草稿安全回填用户输入框并撤销乐观气泡；58 项 Vitest 单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/01-frontend-resubmission-fix.md) |

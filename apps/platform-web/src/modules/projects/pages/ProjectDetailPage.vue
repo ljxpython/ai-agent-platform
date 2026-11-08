@@ -335,74 +335,42 @@ watch(
 </script>
 
 <template>
-  <section class="pw-page-shell">
+  <section class="pw-page-shell h-full min-h-0 overflow-y-auto space-y-4 pr-1">
     <PageHeader
       eyebrow="Projects"
       :title="project?.name || '项目详情'"
-      description="项目详情页负责承接正式项目信息、成员预览、工作区切换与删除治理，不再伪装不存在的编辑能力。"
+      description=""
+      compact
     >
       <template #actions>
+        <BaseButton
+          variant="secondary"
+          :disabled="!project"
+          class="gap-1.5"
+          @click="handleCopyProjectId"
+        >
+          <BaseIcon name="copy" size="sm" />
+          <span>复制 ID</span>
+        </BaseButton>
+        <BaseButton
+          :variant="activeProjectId === project?.id ? 'secondary' : 'primary'"
+          :disabled="!project || activeProjectId === project?.id"
+          class="gap-1.5 shadow-sm"
+          @click="focusProject"
+        >
+          <BaseIcon
+            :name="activeProjectId === project?.id ? 'check' : 'project'"
+            size="sm"
+          />
+          <span>{{
+            activeProjectId === project?.id ? "当前工作区项目" : "设为当前项目"
+          }}</span>
+        </BaseButton>
         <BaseButton
           variant="secondary"
           @click="void router.push('/workspace/projects')"
         >
           返回列表
-        </BaseButton>
-        <BaseButton
-          variant="secondary"
-          :disabled="!project"
-          @click="handleCopyProjectId"
-        >
-          <BaseIcon name="copy" size="sm" />
-          复制项目 ID
-        </BaseButton>
-        <BaseButton :disabled="!project" @click="focusProject">
-          <BaseIcon name="project" size="sm" />
-          设为当前项目
-        </BaseButton>
-        <BaseButton
-          v-if="canTakeoverProject"
-          variant="secondary"
-          :disabled="
-            !project || project.status !== 'active' || governingProject
-          "
-          @click="takeoverDialogOpen = true"
-        >
-          接管项目
-        </BaseButton>
-        <BaseButton
-          v-if="canManageProject"
-          variant="secondary"
-          :disabled="
-            !project || project.status !== 'active' || governingProject
-          "
-          @click="recoveryDialogOpen = true"
-        >
-          恢复管理员
-        </BaseButton>
-        <BaseButton
-          v-if="canManageProject && project?.status === 'active'"
-          variant="secondary"
-          :disabled="governingProject"
-          @click="openLifecycleDialog('archive')"
-        >
-          归档项目
-        </BaseButton>
-        <BaseButton
-          v-if="canManageProject && project?.status === 'disabled'"
-          variant="secondary"
-          :disabled="governingProject"
-          @click="openLifecycleDialog('restore')"
-        >
-          恢复项目
-        </BaseButton>
-        <BaseButton
-          v-if="canManageProject"
-          variant="danger"
-          :disabled="!project || deletingProject"
-          @click="openDeleteDialog"
-        >
-          {{ deletingProject ? "删除中..." : "删除项目" }}
         </BaseButton>
       </template>
     </PageHeader>
@@ -442,10 +410,6 @@ watch(
             <div>
               <div class="text-lg font-semibold text-gray-900 dark:text-white">
                 基础信息
-              </div>
-              <div class="mt-1 text-sm text-gray-500 dark:text-dark-300">
-                旧版这里本来就是项目级入口，不承担复杂编辑。Vue
-                版保持这个口径，但把信息密度和入口动作做完整。
               </div>
             </div>
             <StatusPill tone="success">
@@ -520,9 +484,6 @@ watch(
               <div class="text-lg font-semibold text-gray-900 dark:text-white">
                 成员预览
               </div>
-              <div class="mt-1 text-sm text-gray-500 dark:text-dark-300">
-                后续正式成员管理页会在这里继续展开。
-              </div>
             </div>
             <BaseButton
               variant="ghost"
@@ -580,6 +541,134 @@ watch(
           </div>
         </SurfaceCard>
       </div>
+
+      <!-- 底部危险区与生命周期治理（对标 GitHub 工业级标准） -->
+      <SurfaceCard
+        v-if="canTakeoverProject || canManageProject"
+        class="border-rose-100 dark:border-rose-950/40"
+      >
+        <div
+          class="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 dark:border-dark-700"
+        >
+          <div>
+            <div
+              class="flex items-center gap-2 text-base font-semibold text-rose-600 dark:text-rose-400"
+            >
+              <BaseIcon name="shield" size="sm" />
+              <span>项目治理与生命周期</span>
+            </div>
+            <p class="mt-1 text-xs text-gray-500 dark:text-dark-300">
+              包含项目管理员权限恢复、超级管理员应急接管、项目只读归档与物理删除等高危操作。
+            </p>
+          </div>
+        </div>
+
+        <div class="divide-y divide-gray-100 dark:divide-dark-700">
+          <!-- 接管项目 -->
+          <div
+            v-if="canTakeoverProject"
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5"
+          >
+            <div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                接管项目
+              </div>
+              <p class="text-xs text-gray-500 dark:text-dark-300 mt-0.5">
+                当项目管理员缺失或需要应急介入时，平台超级管理员可接管项目管理权并写入审计日志。
+              </p>
+            </div>
+            <BaseButton
+              variant="secondary"
+              :disabled="
+                !project || project.status !== 'active' || governingProject
+              "
+              @click="takeoverDialogOpen = true"
+            >
+              接管项目
+            </BaseButton>
+          </div>
+
+          <!-- 恢复管理员 -->
+          <div
+            v-if="canManageProject"
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5"
+          >
+            <div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                恢复项目管理员
+              </div>
+              <p class="text-xs text-gray-500 dark:text-dark-300 mt-0.5">
+                指定有效用户 ID，将其重新赋予或恢复为当前项目的管理员权限。
+              </p>
+            </div>
+            <BaseButton
+              variant="secondary"
+              :disabled="
+                !project || project.status !== 'active' || governingProject
+              "
+              @click="recoveryDialogOpen = true"
+            >
+              恢复管理员
+            </BaseButton>
+          </div>
+
+          <!-- 归档 / 恢复项目 -->
+          <div
+            v-if="canManageProject"
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5"
+          >
+            <div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                {{
+                  project?.status === "active" ? "归档项目" : "恢复已归档项目"
+                }}
+              </div>
+              <p class="text-xs text-gray-500 dark:text-dark-300 mt-0.5">
+                {{
+                  project?.status === "active"
+                    ? "归档后项目变为只读，停止接收新会话写入与外部机器访问。"
+                    : "恢复后项目恢复正常可写状态，成员与服务账号重新生效。"
+                }}
+              </p>
+            </div>
+            <BaseButton
+              variant="secondary"
+              :disabled="governingProject"
+              @click="
+                openLifecycleDialog(
+                  project?.status === 'active' ? 'archive' : 'restore',
+                )
+              "
+            >
+              {{ project?.status === "active" ? "归档项目" : "恢复项目" }}
+            </BaseButton>
+          </div>
+
+          <!-- 删除项目 -->
+          <div
+            v-if="canManageProject"
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3.5"
+          >
+            <div>
+              <div
+                class="text-sm font-semibold text-rose-600 dark:text-rose-400"
+              >
+                删除项目
+              </div>
+              <p class="text-xs text-gray-500 dark:text-dark-300 mt-0.5">
+                永久删除该项目及其所有关联数据，操作不可逆，请务必提前确认。
+              </p>
+            </div>
+            <BaseButton
+              variant="danger"
+              :disabled="!project || deletingProject"
+              @click="openDeleteDialog"
+            >
+              {{ deletingProject ? "删除中..." : "删除项目" }}
+            </BaseButton>
+          </div>
+        </div>
+      </SurfaceCard>
 
       <ConfirmDialog
         :show="showDeleteDialog"

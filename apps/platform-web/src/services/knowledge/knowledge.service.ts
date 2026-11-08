@@ -23,8 +23,8 @@ export interface KnowledgeDocument {
   file_name: string;
   mime_type: string;
   size_bytes: number;
-  status: "ready";
-  searchable: true;
+  status: KnowledgeStatus;
+  searchable: boolean;
   published_at: string;
 }
 

@@ -15,7 +15,7 @@ from pydantic import (
 from platform_api.core.schemas import OffsetPage
 
 JobId = Annotated[str, Field(pattern=r"^kj_[a-f0-9]{32}$")]
-DocumentId = Annotated[str, Field(pattern=r"^kd_[a-f0-9]{32}$")]
+DocumentId = Annotated[str, Field(pattern=r"^(kd_|doc[-_])[a-f0-9]{32}$")]
 FileName = Annotated[
     str, Field(min_length=1, max_length=200, pattern=r"^[^/\\\x00-\x1f\x7f]+$")
 ]
@@ -71,8 +71,8 @@ class KnowledgeDocument(Fields):
     file_name: FileName
     mime_type: Mime
     size_bytes: Size
-    status: Literal["ready"]
-    searchable: Literal[True]
+    status: Literal["queued", "parsing", "indexing", "publishing", "ready", "failed"]
+    searchable: StrictBool
     published_at: AwareDatetime
 
 
