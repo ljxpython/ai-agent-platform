@@ -1,5 +1,9 @@
 # 模型目录与前端信息架构简化方案
 
+## 阅读边界（2026-11-08 复核）
+
+这是 09-05 的简化实施计划，M3/M5 及 9.5 的进行中状态需结合 [09-07 验收](10-implementation-status.md#107-浏览器-retry历史分支与模型目录真实执行2026-09-07) 阅读。opaque runtime_model_ref 已落地，七字段只是最小起点。
+
 - 文档类型：Harness planning record
 - 状态：`Accepted by owner; 9.1-9.4/9.6-9.7 local-complete; 9.5 in-progress`
 - 适用范围：`platform-web`、`platform-api`、Runtime model resolution、本地全链路测试
@@ -150,6 +154,8 @@ Governance
 | M5 | 清理旧入口和兼容层 | legacy route/module、旧文档 | 静态引用检查、OpenSpec strict validate、owner UAT | `pending` |
 
 ## 8. 验收标准
+
+> **后续对照：** 禁用/无权模型应在调用前拒绝；Provider 网络、容量或推理失败可能发生在实际调用时，不能承诺全部 Provider 错误都能预检。失败分类与已批准受管容错沿现行规范。
 
 - 不设置 `RUNTIME_MODEL_PROFILE` 和 `RUNTIME_E2E` 也能启动五个本地服务并完成基础全链路 smoke。
 - 用户可从独立 Models 页面录入多个模型，API Key 不在任何读取响应中出现。

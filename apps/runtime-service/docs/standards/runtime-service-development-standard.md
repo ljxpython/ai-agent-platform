@@ -1,6 +1,13 @@
 # Runtime Service 开发范式与规则
 
-## 以 Showcase Demo 为模板
+本文维护现有开发约束与专题细节。新增 Agent 的完整设计/实现步骤见
+[Agent 设计与开发指南](runtime-agent-development-guide.md)，案例选择和官方查询入口见
+[案例与资料导航](runtime-service-reading-guide.md)。
+
+## 按需求选择案例
+
+普通工具 Agent 从 reference_agent 学习当前接入，确定流程参考 workflow_demo；需要文件、Skills、子 Agent 时再参考 Showcase。
+单项 Demo 解释机制，DearFlow 展示复杂业务接线，不要求新 Agent 复制其全部能力。
 
 - `agent.py` 是唯一组合根：校验身份和 Context，获取模型，显式装配 Middleware、工具和子 Agent。
 - `prompts.py` 只放提示词和纯渲染函数；不读环境变量、不发网络请求。
@@ -8,11 +15,11 @@
 - `backend.py` 只处理工作区、资源边界和执行隔离；优先复用官方 Backend。
 - `subagents.py` 用声明式角色和最小权限；禁止无边界通用子 Agent。
 - `skills/` 是按需读取的资源，不授予权限。
-- Graph 入口通过 `langgraph*.json -> graphs -> services/<name>/agent.py` 注册。
+- Graph 入口通过 `langgraph*.json -> src/runtime_service/graphs/<graph_id>.py -> services/<service>/agent.py` 注册；稳定导出层按需复用现有调度/后台完成包装，业务装配仍在 Service。
 
 ## 必须遵守
 
-1. 先查本导航、相关 knowledge、官方 MCP 文档和现有调用者，再改代码。
+1. 先读开发指南与本次任务适用的规则、当前案例源码/测试和现有调用者；涉及框架 API 再查官方 MCP，knowledge 按需用于设计背景，不作为必读全集。
 2. 优先使用 LangChain/LangGraph/Deep Agents 官方能力，不自建 Agent 循环、Tool Registry、Builder 或审批 State。
 3. 信任边界必须校验：身份、Context 哈希、tenant/project/thread scope、工具 allowlist 和审批动作。
 4. 正式环境文件和命令执行必须限制在当前线程工作区；禁止回退到宿主机 shell，禁止把凭据或绝对路径放进 Prompt/Context。Showcase 经评审允许受信任本地开发显式选择 LocalShellBackend（本地栈默认 local），该模式不提供 shell 隔离，不用于生产或多租户环境；独立 Runtime 默认仍为 Docker。
@@ -22,7 +29,7 @@
 
 ## 新功能最短流程
 
-阅读资料 → 复制 Showcase 的边界模式 → 在所属 Service 显式装配 → 编写最小测试 → 本地运行 → 更新文档和变更记录 → 提交评审。
+明确需求与副作用 → 选择 Agent 类型及最小参考案例 → 划分模块 → 在所属 Service 显式装配 → 核对图注册/工具目录/能力声明 → 编写对应测试并本地验证 → 更新说明与所需变更记录。具体接入清单见开发指南；提交和发布仍按用户授权执行。
 
 ## Workspace 执行目标与恢复
 
@@ -88,9 +95,9 @@ DearFlow/Showcase 子图用 `child=True` 且绑定自己的只读工具实例，
 run/thread/exit_behavior；主子图分别声明 scope，禁止合并为未实现的全局额度。默认余量为 3 次调用、
 8 个 supersteps。不要通过扫描模型消息或 after_agent 判断异常退出。
 
-可选 `TimeoutWrapupMiddleware` 只接主模型 Agent；单调时钟/latch 为 invocation 私有状态，不能持久化
-或接受客户端覆盖。阈值缺省关闭，Worker 独立持有 hard timeout；自定义 Workflow 的模型时间从内层
-Agent invocation 起算。通知沿现有 custom writer，不接 Slack 或新事件存储；公开数据由平台白名单投影。
+`TimeoutWrapupMiddleware` 只在主模型 Agent 装配，正式执行消费受信 `RunBudget`；Workflow 内层
+重建共享外层 Worker attempt 预算，不重新计时。预算不能由客户端覆盖；无预算的本地直调兼容
+路径才使用 invocation 私有时钟与可选阈值。通知沿现有 custom writer；公开数据由平台白名单投影。
 接入/自定义 StateGraph 样例见 [Showcase](../../src/runtime_service/services/demo/showcase_demo/README.md)。
 
 ## Run Token 额度保护
@@ -127,7 +134,7 @@ provider 最终失败用安全 RuntimeExecutionError，真实 PG/checkpoint/leas
 
 ## 通用会话停止与资源适配
 
-`run_control/`持有平台控制动作、恢复租约、inbox屏障、资源回执和确定性报告；GraphHarbor持有Run/lease/checkpoint执行事实。Runtime使用正式引擎cancel-active与固定回执接口，不直接改引擎runs/lease表、不新增Agent循环或停止工具。该源码已隔离验证，正式配套版本/锁接入与真实Docker仍blocked；本期不代表现役可用。
+`run_control/`持有平台控制动作、恢复租约、inbox屏障、资源回执和确定性报告；GraphHarbor持有Run/lease/checkpoint执行事实。Runtime使用正式引擎cancel-active与固定回执接口，不直接改引擎runs/lease表、不新增Agent循环或停止工具。取消专项已记录隔离 HTTP 与真实 Docker 取消/清理通过；旧文档的 Docker blocked 不再适用。当前依赖来源以 pyproject.toml/uv.lock 为准（本次核对为 post48）；历史候选包发布交接不等于现役环境已部署，目标环境仍须核验配套版本与运行证据。
 
 - 新Agent沿当前组合根/图注册即可接入会话停止；`webapp.py`统一挂internal Stop路由和受管lifespan reconciler，无需每图加middleware。业务工具要传播 `CancelledError`，不要改成普通ToolMessage成功/失败。
 - 长命令资源复用 `workspace/execution.py::execute_in_workspace()` 与 `run_control/resources.py::{register_resource,finish_resource,wait_cleanup}`。资源登记只保存thread/run/kind/status，不保存命令、宿主路径或凭据；重复取消也要等待已拥有的清理任务并持久记录confirmed/unconfirmed。

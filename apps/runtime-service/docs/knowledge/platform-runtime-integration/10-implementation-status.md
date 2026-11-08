@@ -1,5 +1,9 @@
 # Platform Runtime Integration 实施状态
 
+## 阅读边界（2026-11-08 复核）
+
+本篇按时间追加证据：§0–§10.6 包含 09-05 及更早状态，§10.7 是 09-07 后续验收。早期“未完成”不覆盖后面的已验证项，但后者也未证明所有 UAT/生产发布。Context.tools、v2 与旧 app/ 路径仅描述当时版本。
+
 - 文档类型：Harness supporting implementation record
 - 状态：`L1 local-complete; L2 local-complete; L3 chain-complete`
 - 更新时间：2026-09-07
@@ -94,11 +98,13 @@ mock、fake 或未执行的人工验收写成完成。
 
 ## 8. 未完成边界
 
+> **后续对照：** 以下未完成项是 09-05 快照，其中 retry/history/branch 等已有 §10.7 后续证据；其余范围按实际记录保留，不能用整段旧状态推断今日功能缺失。
+
 以下不是代码遗漏，而是没有可信输入或需要额外人工/真实环境证据：
 
 - 真实 HITL graph 的浏览器 respond/retry 链路；服务端 `workflow_demo` respond 已通过；
--- 完整浏览器 retry、history/branch、响应式、基础可访问性、跨 project 拒绝与 owner 页面 UAT；
--- 浏览器已覆盖登录、切换 `dev`、Agent 目录（`reference_agent`、`workflow_demo`）、Graphs 目录、Chat 页面、真实 send/stream/reopen/HITL/respond/cancel 主链路和 console errors=0；完整 retry/history/branch/responsive/accessibility/cross-project 仍未全部执行。
+- 完整浏览器 retry、history/branch、响应式、基础可访问性、跨 project 拒绝与 owner 页面 UAT；
+- 浏览器已覆盖登录、切换 `dev`、Agent 目录（`reference_agent`、`workflow_demo`）、Graphs 目录、Chat 页面、真实 send/stream/reopen/HITL/respond/cancel 主链路和 console errors=0；完整 retry/history/branch/responsive/accessibility/cross-project 仍未全部执行。
 - 生产 Provider、Secret Store、RS256/JWKS、execution reference 和模型代理治理；这些已被 owner 废弃，未来需另立 change；
 - 历史 Thread inventory、legacy upstream Assistant mutation 删除；
 - 独立 outbox 表、生产定时扫描、性能 SLO 和灰度回滚。
@@ -282,12 +288,12 @@ GitHub/Slack/Linear、消息入队或 Dashboard API 业务逻辑。
 ## 11. 最小验证命令
 
 ```bash
-rtk uv run --frozen python -m unittest discover -s apps/platform-api/tests -p 'test*.py' -q
-rtk uv run --frozen pytest apps/runtime-service/tests/runtime apps/runtime-service/tests/middlewares apps/runtime-service/tests/services/reference_agent -q
-rtk npm run --prefix apps/platform-web test:run -- --reporter=dot
-rtk uv run --frozen python scripts/check_docs.py
-rtk openspec validate redesign-platform-runtime-integration --strict --no-interactive
-rtk git diff --check
+uv run --frozen python -m unittest discover -s apps/platform-api/tests -p 'test*.py' -q
+uv run --frozen pytest apps/runtime-service/tests/runtime apps/runtime-service/tests/middlewares apps/runtime-service/tests/services/reference_agent -q
+npm run --prefix apps/platform-web test:run -- --reporter=dot
+uv run --frozen python scripts/check_docs.py
+openspec validate redesign-platform-runtime-integration --strict --no-interactive
+git diff --check
 ```
 
 ## 12. 2026-09-07 收尾校验

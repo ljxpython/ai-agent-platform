@@ -1,5 +1,9 @@
 # RuntimeContext、运行时配置与本地调试架构设计（Draft）
 
+## 阅读边界（2026-11-08 复核）
+
+五类输入拆分仍有价值。本文 Context.tools、仅从 server_info 取身份、本地 langgraph dev 与 RUNTIME_E2E 的调试流程属于早期设计。当前 Context 无 tools，执行事实来自受信认证链；配置以 contracts.py 与 [开发规则](../standards/runtime-service-development-standard.md) 为准。
+
 > 文档类型：Draft
 >
 > 状态：讨论结论，暂不替代 `docs/standards/` 下的现行规范
@@ -98,7 +102,7 @@ flowchart LR
 
 ## 3. 核心类型伪代码
 
-以下代码只表达契约，不是最终实现文件：
+以下代码保留早期五类输入的设计草图，不是当前契约。尤其 `RuntimeContext.tools` 已移除、执行模式/审批/Plan 等字段后来增加；新代码直接使用 [runtime/contracts.py](../../src/runtime_service/runtime/contracts.py)，不要复制这份 dataclass。
 
 ```python
 from dataclasses import dataclass
@@ -393,6 +397,8 @@ principal user_id / tenant_id / project_id
 快照用于审计和解释“当时为何这样运行”，不保证外部模型和第三方 API 永远可位级重放。
 
 ## 9. 不经过 Platform API 的 Agent 调试
+
+> **后续实现对照：** 本节保留早期调试设计，不是可执行操作手册。现有测试身份/模型只用于明确的测试 adapter；真实运行按 [运行与验证](../standards/runtime-service-onboarding-and-verification.md) 使用 GraphHarbor 和隔离资源，不复制下面旧 CLI/issuer/开关。
 
 ### 9.1 两档调试
 

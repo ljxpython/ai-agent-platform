@@ -1,5 +1,9 @@
 # Platform Runtime Integration 推荐基线与决策记录
 
+## 阅读边界（2026-11-08 复核）
+
+保留最小模型管理、密钥 write-only/加密和单一目录的已确认决策。“七字段”描述初期最小集合，不是当前完整 schema；模型容量、参数及受管容错以现行 DTO 和 [模型容错专项](../../../../../docs/projects/20261006-agent-model-resilience/README.md) 为准。
+
 - 文档类型：`Supporting Decision Register`
 - 状态：`owner-confirmed; implementation-partial`
 - 阶段口径：当前实施使用 `L1/L2/L3`；历史 `P1` 仅作为 OpenSpec 变更范围标识。
@@ -50,6 +54,8 @@ API key 只写不读。服务端保存时使用部署级 master key 加密，查
 > 且只替换凭据存储实现，不恢复 `execution_model_id`、revision 或统一代理契约。
 
 ## 3. 模型配置行为
+
+> **后续对照：** 禁止隐式 fallback 仍有效；后续经过审批且受策略约束的模型容错不等于任意 Provider 降级。旧 implementation-partial 只描述当时阶段，后续证据见 [实施记录](10-implementation-status.md)。
 
 ### 创建/编辑
 

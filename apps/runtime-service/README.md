@@ -1,7 +1,8 @@
 # Runtime Service
 
-`apps/runtime-service` 是 LangGraph、LangChain 和 DeepAgents 的执行层。当前按绿色重构开发，
-新代码唯一位于：
+`apps/runtime-service` 是平台的 Agent 执行层，基于 LangGraph、LangChain、DeepAgents 和 GraphHarbor。
+开发新 Agent 先读 [Agent 设计与开发指南](docs/standards/runtime-agent-development-guide.md)，再按
+[案例与资料导航](docs/standards/runtime-service-reading-guide.md) 选择源码、测试和官方资料。当前代码位于：
 
 ```text
 apps/runtime-service/src/runtime_service/
@@ -10,15 +11,23 @@ apps/runtime-service/src/runtime_service/
 旧 `runtime_service/` 包已经归档到 `archive/apps/runtime-service/runtime_service/`，不再导入、
 适配或维护。
 
-## R0 基线
+## 当前开发入口
 
-R0 当前提供两个参考入口：
+- [Agent 设计与开发指南](docs/standards/runtime-agent-development-guide.md)：如何选型、划分模块、实现并接入新 Agent。
+- [现行开发规则](docs/standards/runtime-service-development-standard.md)：平台边界、工具与运行约束。
+- [文档导航](docs/README.md)：案例、专题和设计依据。
+- [运行与验证](docs/standards/runtime-service-onboarding-and-verification.md)：所属环境与验证要求。
+
+下文 R0～R6 标题保留早期阶段背景和验证专题，不是当前项目总体验收状态。涉及旧版本、旧路径或历史部署条件时，先核对当前配置与对应后续专项。
+
+普通 Agent 和确定流程的起点分别是：
 
 - `reference_agent`：`create_agent` + Runtime 模型解析
 - `workflow_demo`：真实模型 `create_agent` + Typed `StateGraph` 条件路由/HITL
 
-生产配置 `langgraph.json` 注册 `reference_agent` 和真实模型驱动的 `workflow_demo`；本地学习配置
-`langgraph.demo.json` 额外注册能力 Demo。每个 Service 的正式入口都是：
+当前正式配置 `langgraph.json` 注册 `reference_agent`、`workflow_demo`、`showcase_demo`、`dearflow_agent`；
+`langgraph.demo.json` 注册参考图和单项能力 Demo。配置指向 `src/runtime_service/graphs/` 的稳定入口，
+由其导出对应 Service 的组合根，并按需接入已有调度/后台完成包装。每个 Service 的正式入口都是：
 
 ```python
 async def get_agent(config: RunnableConfig) -> Pregel: ...
@@ -80,7 +89,7 @@ RUNTIME_R5=1 uv run pytest tests/e2e/test_langfuse_real.py -m e2e -q
 
 ## GraphHarbor 启动
 
-新机器或远程 Linux 开发先按[非 Docker 部署手册](../../docs/quickstart/deployment-guide.md)安装、建库和配置。
+新机器或远程 Linux 开发先按[非 Docker 部署手册](../../docs/guides/deployment-guide.md)安装、建库和配置。
 
 ### 本地进程模式
 
@@ -280,14 +289,10 @@ project 的 Worker 收敛为唯一运行实例，再用 `recovery_demo` 执行�
 
 ## 文档入口
 
-1. `docs/README.md`
-2. `docs/knowledge/28-runtime-refactor-development-plan.md`
-3. `docs/knowledge/13-runtime-service-target-code-layout.md`
-4. `docs/knowledge/24-package-langgraph-startup-shutdown-design.md`
-5. `docs/knowledge/25-runtime-testing-and-cross-service-contract-design.md`
-
-`docs/standards/` 将在 R0 完成后，根据绿色重构后的实际实现重新生成；在此之前不要引用归档
-目录中的旧标准。
+新开发者从 [当前开发文档](docs/README.md) 进入。
+`docs/standards/` 是当前开发规则和指南；`docs/knowledge/` 中的 R0～R6 计划、Draft 和旧对齐审计
+用于理解历史设计，不能取代当前规范、源码和测试。按任务选择阅读，见
+[案例与资料导航](docs/standards/runtime-service-reading-guide.md)。
 
 
 ### 当前技能管理与应用迁移

@@ -13,6 +13,10 @@
 2. 系统提示词原先要求“联网研究先 search_web，再 fetch_page 核对正文”，模型教条地对搜出的几十个网页逐一调用 `fetch_page` 拉取全文，造成网络请求暴涨和算力浪费；
 3. 缺少“边际效用递减”哲学与“调研预算天花板”。
 
+## 阅读边界
+
+以下记录当日 Prompt/Skill 的收敛调整，数字预算不是框架硬限，也不替代用户明确要求的全文/全量审查。后续运行额度、上下文与子任务策略见 [现行开发规范](../standards/runtime-service-development-standard.md)；PID 和热重启结果只属于当日环境，本轮未重启服务。
+
 ## 改动内容
 
 1. **重构 `deep-research/SKILL.md`（注入预算与收敛止步法则）**：
@@ -22,7 +26,7 @@
      - 硬性天花板：单次任务严禁超过 8 次搜索或 5 篇全文抓取，达到预算必须立即停止检索转入大纲梳理与正文撰写。
    - **确立四大核心原则**：
      - 高信噪比优先（Signal-to-Noise Over Raw Quantity）；
-     - 边际效用递减法则（前 3~5 次搜索已覆盖 80% 核心事实，严禁顺藤摸瓜追溯次要枝节）；
+     - 边际效用递减法则（原方案以“前 3~5 次搜索覆盖 80%”作为启发式目标，未测得通用覆盖率保证，严禁顺藤摸瓜追溯次要枝节）；
      - 严禁递归兔子洞（No Endless Rabbit Holes）；
      - 摘要优先评估（Snippet-First Evaluation，绝大多数公开数据优先采纳高置信度摘要，避免全量 fetch）。
    - **重构收敛检查（Phase 4: Synthesis Check）**：由原先“只要有缺口就继续搜”的死循环逻辑，改造为“达到预算或核心观点齐备时立即收敛进入输出，未尽长尾问题列入延伸探讨”。
@@ -35,8 +39,8 @@
      - 严禁顺藤摸瓜，掌握核心事实即刻收敛产出；
      - 阶段性交付：长尾问题以“后续建议探讨方向”呈现，把探索边界交给用户。
 
-## 验证结果
+## 当日验证结果（2026-10-27）
 
-- **测试套件**：`apps/runtime-service/tests/services/dearflow_agent/skills/` 全量 30 项测试通过（28 passed, 2 skipped）；
+- **测试套件**：`apps/runtime-service/tests/services/dearflow_agent/skills/` 共 30 项：28 项通过、2 项跳过（28 passed, 2 skipped；跳过不计为通过）；
 - **技能指纹与契约**：`test_deep_research.py` 4 项测试 100% 跑绿；
 - **服务状态**：`runtime-api` (pid 67189) 与 `runtime-worker` (pid 67517) 平滑热重启成功，状态就绪。

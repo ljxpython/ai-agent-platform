@@ -2,7 +2,11 @@
 
 公共 loader 位于 `runtime_service/tools/mcp.py`，声明校验位于 `runtime/mcp_config.py`。DearFlow/Showcase 在组合根显式装配；其他图、子图、Plan、schema-only、offload 不获得知识工具。沿官方 langchain-mcp-adapters 0.3.2，不另写客户端或 Agent 循环。
 
-## 三份服务端配置
+## 服务端绑定与配置
+
+公共 loader 支持两条受信路径：resource_id 命中服务端连接表，或绑定携带平台签发的 auth_token/gateway_url；后一条仍须验证 provider 与线程 scope。下述三份配置描述静态连接表路径，不是要求所有部署额外维护一份映射。客户端不能选择这两条路径或传入连接凭据。
+
+### 静态连接表路径
 
 API `PLATFORM_KNOWLEDGE_MCP_BINDINGS_JSON` 默认 `{}`：
 
@@ -42,7 +46,7 @@ HTTP返回单JSON文本和同值structuredContent，status为ok/no_hit，sources
 
 online协议兼容并通过真实联合验收后可加 `mcp_submit_project_knowledge_document(file_ref)` 和 `mcp_get_project_knowledge_ingest_job(job_id)`。Runtime `RUNTIME_KNOWLEDGE_UPLOAD_ENABLED=0` 默认关闭submit，关闭不禁用query/job。allowed_tools精确列出三工具；写工具只有submit例外，其四annotations固定readOnly=false/destructive=false/idempotent=true/openWorld=false，陌生mutation拒绝。工具目录与组合根defaults使用同一门禁。
 
-新增API connections、Runtime/RAG同知识专用HMAC配置与回调要求见[成员上传部署手册](../../../../docs/projects/20261012-project-member-knowledge-upload/deployment-runbook.md)。只在DearFlow/Showcase根装配，Plan/schema-only/offload/子图/unbound/deny不提权。review/workspace_write走既有HITL，full_access沿原策略；submit不加入WORKSPACE_WRITE_TOOLS。
+新增 API connections、Runtime/RAG 知识专用 HMAC 与首次提交要求见 [成员上传部署手册](../../../../docs/projects/20261012-project-member-knowledge-upload/deployment-runbook.md)。其中 RAG Worker 反向公网回调/SSH 隧道已由 [免隧道自治专项](../../../../docs/projects/20261014-knowledge-zero-tunnel-auth/README.md) 取代：提交时验签并持久化身份，异步 Worker 在 `KNOWLEDGE_AUTHORIZE_URL=local` 或 `KNOWLEDGE_LOCAL_AUTHORIZE=true` 模式本地自验。Runtime 向 Platform 的上传/查询授权复核仍保留，不能因去掉 RAG 回调而跳过平台权限。只在DearFlow/Showcase根装配，Plan/schema-only/offload/子图/unbound/deny不提权。review/workspace_write走既有HITL，full_access沿原策略；submit不加入WORKSPACE_WRITE_TOOLS。
 
 普通附件不自动共享。仅用户明确要求，Runtime校验当前Thread原六字段FileRef、HTTP私有回执及原bytes/hash/size/MIME；回执在Agent工作区之外保存，fork复制，旧文档无回执时使用内容地址文件名而非模型别名。工具单一参数file_ref也支持原五字段ImageRef，PNG/JPEG在私有图片HTTP收据与原bytes通过后才在interceptor转换为RAG六字段KnowledgeFileRef；WebP/生成图/outputs/伪六字段图片/跨Thread/无收据拒绝。图片原名经上传file_name query可信记录，同Thread相同引用采用首次成功原名；旧图片无收据需重传。图片5MiB、文档20MiB，不新增原件副本。调用精确upload授权→受管HTTP PUT原件→再授权→官方MCPToolCallRequest.override注入私有upload/grant headers。模型不接触host/Bearer/授权内容。
 
@@ -56,6 +60,6 @@ request_id由可信tenant/project/thread/run/tool_call确定性派生；提交�
 
 资料留在外部 `rag-anything-use`。既有legacy路径仍为管理员离线CLI导入、检查ready、publish；已发布namespace冻结，服务持锁，更新用新namespace完整重建，切换凭据scope后重启。online扩展由外部RAG负责原件去重、异步worker与generation：G01已选择完整冻结快照恢复到独立候选workspace、仅增量处理新文档，成功后CAS切active，新旧资料累计可查，旧版本不可变。平台不维护第二套队列/成果缓存/索引。模型/Embedding/维度变更仍需新处理签名和完整重建边界。
 
-online上传默认关闭；新文档/图片与v2真实联合验收见[平台接线专项](../../../../docs/projects/20261013-knowledge-documents-platform/verification.md)。只关闭Runtime/API新增upload开关时保留旧query、job工具和状态GET，并让已受理任务start/activate在原签名、Run与当前IAM校验下继续。RAG管理员项目uploads=off属于解析暂停/回退操作，queued保留，不等同平台新提交关闭；冻结版本回退前应停新提交、等待在途构建结束，再按RAG运维契约操作。全部知识停用才使用下述撤token流程。
+online上传默认关闭；新文档/图片与v2真实联合验收见[平台接线专项](../../../../docs/projects/20261013-knowledge-documents-platform/verification.md)。只关闭Runtime/API新增upload开关时保留旧query、job工具和状态GET，并保留已受理任务的签名与 Run 绑定；RAG start/activate 按免隧道专项的持久身份本地自验继续，Runtime 查询结果仍复核当前平台权限。RAG管理员项目uploads=off属于解析暂停/回退操作，queued保留，不等同平台新提交关闭；冻结版本回退前应停新提交、等待在途构建结束，再按RAG运维契约操作。全部知识停用才使用下述撤token流程。
 
 停用先deny项目查询工具并处理在途Run，再撤token/移除映射/停MCP；仅删映射无法撤旧binding。保留Thread/checkpoint/语料，历史授权不变更为公开。运行环境与验证见[专项](../../../../docs/projects/20261011-project-knowledge-mcp/README.md)。本机Intel Mac的重型Docling解析受Torch wheel阻塞，不能以文本验收代替PDF/Office能力声明。

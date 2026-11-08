@@ -1,5 +1,9 @@
 # Agent Server 替代方案调研：Aegra 与 GraphHarbor
 
+## 阅读边界（2026-11-08 复核）
+
+保留 Aegra 未采用、GraphHarbor 选型和 2026-09-02 post20 验收结论，未重新做外部产品调查。文内“当前 revision”、未提交状态、主机基础设施缺口和私人凭据位置均是当时环境记录，不是今日操作指南。
+
 - 文档类型：`Supporting / Research`
 - 调研日期：2026-08-30；复核日期：2026-09-02
 - 适用范围：`apps/runtime-service` 的 Durable Agent Server 选型
@@ -568,6 +572,8 @@ Langfuse 故障；灰度 0% -> 1% -> 10% -> 50% -> 100% 及立即回退无丢 Ru
 只有全部硬门槛 `pass` 且 owner 批准独立切换 change 才能标记 `ready_for_cutover`，否则保持 `not_ready`。
 
 ## 10. 当前建议
+
+> **后续实现对照：** 本节建议属于原调研时点。当前应用锁文件为 GraphHarbor 双包 post48（2026-11-08 源码核对），不表示本轮做过新版本兼容或生产验收。启动和凭据配置按 [运行与验证](../standards/runtime-service-onboarding-and-verification.md)，不要使用历史私人路径。
 
 GraphHarbor 的 per-Run async factory、终态条件写入、SSE replay、Context 签名等原先列为
 阻塞的代码改造已经完成主要部分，并有固定 fixture、PostgreSQL/Redis 本地验收和官方

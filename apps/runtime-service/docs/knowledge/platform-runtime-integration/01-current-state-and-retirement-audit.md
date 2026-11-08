@@ -1,5 +1,9 @@
 # P1 现状与退役审计
 
+## 阅读边界（2026-11-08 复核）
+
+退役审计记录的是 2026-09-03 现状，Keep/Delete/Archive 表不能当成今日删除清单。授权、单一事实源和不复活 legacy fallback 原则仍适用；后续结果见 [实施记录](10-implementation-status.md#107-浏览器-retry历史分支与模型目录真实执行2026-09-07)。Platform API 代码路径已由 app/ 迁入 src/platform_api/，旧行号仅作历史定位。
+
 - 文档类型：Draft Supporting Audit
 - 状态：owner 已批准处置方向；实施与归档进行中
 - 审计日期：2026-09-03
@@ -44,6 +48,8 @@
 | `AUD-DATA-01` | Thread project metadata 检查 | 当前 Gateway 主要依赖 metadata 判断归属 | metadata 只能辅助，不能是唯一授权依据 | ❌ |
 
 ## 3. Platform Web 代码处置矩阵
+
+> **后续对照：** 以下处置已处于历史实施期；新修改前须重新检查当前文件、调用方及有效需求，不按本表自动删文件。
 
 | 表面 | 目标职责 | 处置 | 实施前证明 |
 | --- | --- | --- | --- |

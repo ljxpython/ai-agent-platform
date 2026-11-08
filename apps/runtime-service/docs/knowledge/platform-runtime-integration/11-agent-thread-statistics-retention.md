@@ -1,5 +1,9 @@
 # Agent/Thread 统计与保留策略
 
+## 阅读边界（2026-11-08 复核）
+
+运行事实由 GraphHarbor 持有、Agent 项目配置由平台持有的原则仍有效。文中两个 graph、SQLite 统计与 retention pending 是 09-05 快照；当前正式配置注册四图，保留与删除策略已在 10-30 专项落地。
+
 - 文档类型：Harness supporting policy record
 - 状态：`local-complete; legacy assistant cleanup completed; retention window pending`
 - 更新时间：2026-09-05
@@ -38,6 +42,8 @@ GraphHarbor，也不能根据 Thread metadata 自行汇总权限范围。
   明确的 Thread purge 操作和 owner 审批。
 
 ### 3.2 Thread/Run
+
+> **后续对照：** 本节待定窗口已由 [会话保留与可靠删除](../../../../../docs/projects/20261030-session-and-runtime-retention-governance/README.md) 取代：30 天无查看/发送的闲置会话进入回收，沿可靠删除链清理 Workspace。专项完成不等于所有生产环境已部署，不能另加旧式独立 prune。
 
 - active Run、等待 HITL 的 Run、未完成 reconciliation 的 Run 永不自动清理。
 - 已完成 Thread/Run 的具体时间窗口由 GraphHarbor 部署的 retention 配置决定；在没有明确窗口前，

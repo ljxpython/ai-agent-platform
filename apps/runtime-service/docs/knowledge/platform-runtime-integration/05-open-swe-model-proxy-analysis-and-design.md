@@ -1,8 +1,12 @@
-# Open SWE 模型配置借鉴与本项目 V1 方案
+# 模型配置借鉴与本项目 V1 方案（来源更正）
+
+## 阅读边界（2026-11-08 复核）
+
+本篇引用的 providers.zh.md、credentials.zh.md、ProviderEditor 和 llm-pi-ai 路径来自 DeepSeek Harness，旧标题和正文误归为 Open SWE，现更正来源。保留 V1 取舍，不把外部仓库路径当作本项目文件。
 
 ## 1. 借鉴结论
 
-Open SWE 的有用做法是：模型构造入口集中、Provider 协议明确、凭据只写不读、请求时读取最新凭据、
+DeepSeek Harness 可借鉴的做法是：模型构造入口集中、Provider 协议明确、凭据只写不读、请求时读取最新凭据、
 错误在模型调用边界返回。它的团队模型设置、复杂 fallback、Sandbox 和多层 credential provider 不属于
 本项目当前需求。
 
@@ -10,6 +14,8 @@ Open SWE 的有用做法是：模型构造入口集中、Provider 协议明确�
 `packages/llm/llm-pi-ai/src/config.ts`。
 
 ## 2. 本项目 V1
+
+> **后续对照：** 这是 2026-09-04 的最小字段/功能边界。后续 opaque reference、模型容量与受管容错不由此禁止；凭据不回显和拒绝任意客户端连接仍有效。详细来源见 [DeepSeek Harness 研究](08-deepseek-harness-model-entry-reference.md)。
 
 模型录入只需要：`provider`、`display_name`、`base_url`、`protocol`、`model`、`api_key`、`enabled`。
 其中 `api_key` 只出现在创建/轮换请求，读取接口返回 `credential_configured`，不返回密钥。

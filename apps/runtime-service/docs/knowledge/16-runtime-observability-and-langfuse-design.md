@@ -1,5 +1,9 @@
 # Runtime 公共可观测与 Langfuse 架构设计（Draft）
 
+## 阅读边界（2026-11-08 复核）
+
+本篇保留 R5 设计、原测试数和当时 exporter/生产镜像阻塞；它们不能覆盖十月后续验收。metadata-only 的隐私边界仍必须遵守，不能从研究中的 content 模式推导出正文采集权限。
+
 > 文档类型：Draft
 >
 > 状态：讨论结论，暂不替代 `docs/standards/` 下的现行规范
@@ -26,6 +30,8 @@
 > 输入和验收命令。
 
 ## 1. 本轮结论
+
+> **后续实现对照：** 后续模型失败诊断、启动 tracing 与安全查询见 [可观测专项](../../../../docs/projects/20261006-agent-observability-hardening/README.md)，日志/Trace 联查见 [链路专项](../../../../docs/projects/20261022-trace-to-logs-distributed-observability/README.md)。旧 v2/CLI/延期状态仅属 R5，现行隐私要求见 [隐私规范](../standards/model-context-privacy.md)。
 
 Runtime Service 使用 Langfuse 作为 Agent 工程 Trace Backend，但 Langfuse 不是整个平台的
 唯一可观测事实源。
@@ -428,7 +434,7 @@ Langfuse 当前 Trace 更新和并发 Handler 行为以真实契约测试为准�
 建议在后续 B3 OpenSpec change 中实施：
 
 1. 锁定 SDK 版本并编写 Callback、并发、Subagent 和脱敏契约测试；
-2. 创建 `observability/langfuse.py`，实现 `off/metadata/content` 和生命周期；
+2. 创建 `observability/langfuse.py`，实现首期 `off/metadata` 和生命周期；`content` 不在本期授权内；
 3. 在 `reference_agent.get_agent()` 注入 Callback；
 4. 在 `RuntimeConfigMiddleware` 决议成功后补充可信安全摘要；
 5. 接入 shutdown flush、结构化告警和丢弃指标；

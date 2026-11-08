@@ -1,63 +1,30 @@
 # workflow_demo
 
-这是一个真实模型驱动的 Workflow Agent。它使用 Runtime 的模型解析、模型目录连接和
-`create_agent` 调用模型；外层 Typed StateGraph 保留条件分支和本地 Interrupt/Resume。
+确定流程与模型 Agent 组合的教学例。已注册到正式与 demo 配置；从 [开发指南](../../../../../docs/standards/runtime-agent-development-guide.md) 进入，按 [schemas.py](schemas.py) → [workflow.py](workflow.py) → [agent.py](agent.py) 阅读。
 
-## State And Routes
+## 流程与职责
 
-入口是：
+外层 StateGraph 为 prepare → 可选 confirm → route → approve/reject → respond → END。批准和拒绝分支都会继续到模型回答；这里的确认演示业务路由，**不能把 reject 分支当成外部写工具已被阻止的安全模板**。
 
-```python
-async def get_agent(config: RunnableConfig) -> Pregel: ...
-```
+输入支持 `message` 和标准 Chat `messages`，每轮提取最新 user/human 消息。显式 `requires_confirmation=True`，或 Chat 中包含“需要人工确认”，进入教学确认点。Resume 接受 approve/reject 或平台 HITL decisions envelope。使用当前返回的 interrupt ID 和同一 thread_id；非法决定返回 `workflow.invalid_resume` 并再次确认。
 
-输入支持旧的 `message` 字段以及标准 Chat 的 `messages` 字段，另有 `route` 和
-`requires_confirmation`：
+State 的验证字段是 `prepared_count`，用于证明恢复没有重复已完成的准备节点。
 
-- `route="approve"` 进入批准节点；
-- `route="reject"` 进入拒绝节点；
-- 不提供 `route` 时调用真实模型回答当前对话；
-- `requires_confirmation=True` 时先暂停，Resume 支持直接传 `approve`/`reject`，也支持正式 Chat
-  HITL 面板使用的 `{"decisions": [{"type": "approve"}]}` 或 reject envelope。
-- 浏览器标准 Chat 输入包含“需要人工确认”时，会进入同一确认中断；这是该 Demo 的稳定 HITL 验收入口。
-- Chat 请求会从当前 Thread 中最新的 user/human 消息提取文本并传给模型，把最终响应追加到 `messages`；
-  同一个 Thread 的每一轮都会处理当前输入，不会复用第一轮的 `message`。
+## 模型与恢复
 
-`prepare_count` 是 State 中的验证字段，用于证明 Resume 不会重新执行已完成的准备节点。
+`get_agent(config)` 绑定受信运行事实，模型连接在 respond 节点才获取，等待人工确认前不请求模型。正式运行使用受管 opaque reference；恢复时的私有引用由平台注入，浏览器不能自行构造。
 
-## Local Invocation
+当前 `workflow.py:build_graph()` 显式使用 `InMemorySaver()`，内层 Agent 使用 `checkpointer=True`。这是源码中保留的教学实现，不能据此宣称跨进程持久化或 Worker 重启恢复。新生产 Workflow 应遵循平台 checkpointer 生命周期，并补真实服务验证；本轮只修正文档，没有迁移此例的 saver。
 
-带 checkpointer 的执行必须提供稳定的 `thread_id`：
+## 如何验证
 
-```python
-from langgraph.types import Command
-from runtime_service.services.demo.workflow_demo.agent import get_agent
-
-graph = await get_agent({"configurable": {"_runtime_test_local_auth": True}})
-config = {"configurable": {"thread_id": "workflow-example"}}
-
-result = await graph.ainvoke(
-    {"message": "hello", "requires_confirmation": True},
-    config,
-)
-interrupt_id = result["__interrupt__"][0].id
-resumed = await graph.ainvoke(Command(resume={interrupt_id: "approve"}), config)
-```
-
-首次调用返回 `__interrupt__` 和保存的 State；Resume 使用返回的 interrupt ID 和同一个
-`thread_id`，从确认点继续。非法 interrupt ID 或 Resume 值不会完成流程，而是返回带有
-`workflow.invalid_resume` 的下一次确认点。
-
-## Lifecycle And Verification
-
-`get_agent(config)` 会按当前 Runtime Context 构造模型 Agent；模型连接来自 Platform 模型目录的
-受控 opaque reference，未提供目录引用时使用部署级 Runtime Provider 配置。外层 checkpointer
-当前是进程内 `InMemorySaver`，只用于本地组合验证；PostgreSQL、Redis、Worker 重启和生产
-Durable Run 由 R6 验证。
-
-验证命令：
+在应用目录运行：
 
 ```bash
 uv run pytest tests/services/workflow_demo -q
 uv run pytest tests/integration/test_workflow_demo_agent_server.py -m integration -q
 ```
+
+可复制的本地调用以 [test_agent.py](../../../../../tests/services/workflow_demo/test_agent.py) 的 `test_workflow_demo_interrupt_resume_does_not_repeat_completed_step` 为准：显式注入 `BindableFakeChatModel`（`_runtime_model`）、本地测试身份、稳定 thread_id，并使用实际 interrupt ID。仅开启本地身份不会自动得到 fake 模型。
+
+另读该文件中模型引用延迟获取、最新消息、条件分支、非法 Resume 和外层预算保持的测试。正式时间预算由受信 Worker attempt 提供，内层模型重建不能重新计时。集成测试需要隔离基础设施，环境按 [运行与验证](../../../../../docs/standards/runtime-service-onboarding-and-verification.md) 准备；命令列出不代表本轮已执行。

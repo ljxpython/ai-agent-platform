@@ -1,5 +1,9 @@
 # Runtime Custom Route 与模型配置边界设计
 
+## 阅读边界（2026-11-08 复核）
+
+Runtime 不建设第二套模型配置中心仍有效；“不新增 Custom Route”“不回查 API”是早期首期限制，已被受管模型引用、文件/知识/控制等专属 HTTP 能力取代。
+
 > 文档类型：Draft
 >
 > 状态：讨论结论，暂不替代 `docs/standards/` 下的现行规范
@@ -14,7 +18,9 @@
 
 ## 1. 本次结论
 
-本次 Runtime Service 重构不新增 Custom Route，也不在 Runtime 建设模型配置中心。
+> **后续实现对照：** 现行职责为 Platform 管目录/授权、Runtime 验签并按 opaque runtime_model_ref 获取执行连接；纯 resolver 仍无 I/O。当前入口见 [开发指南](../standards/runtime-agent-development-guide.md)，HTTP 实现见 webapp.py 与 http/。下文旧 JSON 的 tools 字段和 langgraph dev 不可作为新调用样例。
+
+当时首期重构不新增 Custom Route；这一范围后来已演进。Runtime 不建设第二套模型配置中心的职责边界仍保留。
 
 ```text
 Platform API

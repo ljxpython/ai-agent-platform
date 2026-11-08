@@ -1,5 +1,9 @@
 # Graph、Thread、Backend 与 Checkpoint 生命周期设计（Draft）
 
+## 阅读边界（2026-11-08 复核）
+
+Graph/Thread/Backend/checkpoint 生命周期分离仍有效；静态实例优先和只在 Service 内管理资源是早期取舍，不能覆盖当前受信 per-Run factory 和公共 Workspace。
+
 > 文档类型：Draft
 >
 > 状态：讨论结论，暂不替代 `docs/standards/` 下的现行规范
@@ -52,6 +56,8 @@ Open SWE 没有在每个 `server.py` 中手工配置生产 Checkpointer；部署
 ## 3. Graph 生命周期
 
 ### 3.1 静态 Graph（默认）
+
+> **后续实现对照：** 本节的“模板稳定”不再要求同一 graph 实例永久复用。当前 reference 也按身份/模型绑定构图；实例缓存不能跨租户携带资源。清理/TTL 以 [保留与删除专项](../../../../docs/projects/20261030-session-and-runtime-retention-governance/README.md) 为准；示例内存 saver 不证明跨 Worker 恢复。
 
 ```python
 _AGENT = create_agent(

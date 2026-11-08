@@ -1,13 +1,13 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-07（会话快照水合与媒体外置治理已完成本地新会话功能闭环：Runtime 工具返回前图片外置、模型请求副本临时展开、Web 首屏快照优先/历史按需读取；真实 xiaok DeepSeek + Playwright Chromium 刷新恢复通过。性能、远端 Workspace 和完整竞态证据待补，GraphHarbor 未修改。）
+> **最后更新：** 2026-11-08（Runtime Agent 开发指南与入口纠偏已完成文档交付；会话快照水合与媒体外置治理已完成本地新会话功能闭环：Runtime 工具返回前图片外置、模型请求副本临时展开、Web 首屏快照优先/历史按需读取；真实 xiaok DeepSeek + Playwright Chromium 刷新恢复通过。性能、远端 Workspace 和完整竞态证据待补，GraphHarbor 未修改。）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-11-07
+**最后更新：** 2026-11-08（Runtime Agent 开发指南及 52 篇全文审查完成；用户批准的“后续验收同步纠正文档当前态限制”已沉淀至 ai-workflow 经验库；服务部署状态未变）
 
 ## 最近改动
 
@@ -33,6 +33,7 @@
 
 ## 活跃项目
 
+- [Runtime Agent 开发指南与入口纠偏](projects/20261108-runtime-development-harness-governance/README.md)：done（文档范围）；完成设计/架构/规则/资料导航及追加的 52 篇全文审查，追加轮 45 篇修订、7 篇保留，逐篇清单与独立 Final 已记录。CI 与检查器扩展移出本期；只改关联 Worktree 文档，业务与部署未变，产品测试未重跑。
 - [会话快照水合与媒体外置治理](projects/20261107-session-hydration-and-artifact-offloading/README.md)：`partial`；仅覆盖新会话及其刷新/重连，不做存量或旧逻辑兼容；Runtime 图片引用化、模型临时展开、Web 首屏快照优先和按需预览已完成。真实 xiaok DeepSeek + Playwright Chromium 通过；GraphHarbor 保持通用边界且未修改。30 样本性能、远端 Workspace 和完整竞态/故障注入待补。
 - [前端 Markdown 产物链接拦截下载与空闲会话长连接断开误报治理](projects/20261106-chat-artifact-download-and-stream-resilience/README.md)：`done`（已全量通过代码审查、单元测试、构建与部署）；针对 Agent 生成产物链接被 Markdown 误洗为 `#` 导致新开空白标签页、以及会话池切换切回已完成会话时空闲 SSE 流重连被拒导致 `Event stream closed.` 误报两大缺陷立项治理。
 - [智能体会话与运行时数据生命周期治理](projects/20261030-session-and-runtime-retention-governance/README.md)：`done`（8/8任务、8条Phase与Final核验通过）；30天闲置/查看发送续期、正式post48通用TTL、Workspace随会话回收、关联事实分级保留及有界维护均已实现；提交`5635e621`已推送并快进合并`main`，专属服务和测试资源已清理，生产服务未部署。systemd仅静态核验，远端失联为受控fixture。
@@ -97,6 +98,6 @@
 | runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。 |
 | platform-api | 2026-11-06 | 升级部署至 `05dd20eb`；Alembic 0010 迁移落地，uv sync 依赖同步完成。生产 2 Workers 运行正常，端口 2142 探针通过。 |
 | platform-web | 2026-11-07 | 侧边栏方案 A 三段式排版、批量删除并发队列、顶栏 Tooltip 与布局防重叠已交付；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。 |
-| AI Harness（AGENTS.md + Skills） | 2026-10-13 | 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
+| AI Harness（AGENTS.md + Skills） | 2026-11-08 | 关联 Worktree 已完成 Runtime Agent 开发指南、案例/官方资料与验证导航，原 CI 治理提案移出本期；根 AGENTS/Skills 未修改。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

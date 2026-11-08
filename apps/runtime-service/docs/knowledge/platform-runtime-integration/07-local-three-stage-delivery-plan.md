@@ -1,5 +1,9 @@
 # 本地三阶段实施与验收计划
 
+## 阅读边界（2026-11-08 复核）
+
+这是 2026-09-04 本地三阶段计划，L1/L3 partial 与本机 .env/基础设施条件只属于当次执行。后续本机浏览器与模型目录闭环见 [09-07 结果](10-implementation-status.md#107-浏览器-retry历史分支与模型目录真实执行2026-09-07)。
+
 ## 1. 阶段
 
 | 阶段 | 目标 | 状态 |
@@ -23,12 +27,14 @@ PostgreSQL、Redis 使用本机实例；不启动 Docker daemon。真实模型�
 
 ## 3. L2 最短真实链
 
+> **后续对照：** 下面命令保留历史用途；关联 Worktree 先按 [资源隔离规范](../../../../../docs/standards/worktree-development.md) 分配所属环境，不能沿用主工作区数据库、端口或依赖。
+
 启动五个应用进程：`runtime-api`、`runtime-worker`、`platform-api`、`platform-worker`、`platform-web`。
 PostgreSQL 和 Redis 是外部本机基础设施，不计入五个应用进程。
 
 ```bash
-rtk bash scripts/local-stack.sh start
-rtk bash scripts/local-stack.sh status
+bash scripts/local-stack.sh start
+bash scripts/local-stack.sh status
 uv run --project "apps/platform-api" --frozen python "scripts/local_stack_l2_runtime_smoke.py"
 ```
 

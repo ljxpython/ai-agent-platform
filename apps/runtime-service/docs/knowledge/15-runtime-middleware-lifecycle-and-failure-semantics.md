@@ -1,5 +1,9 @@
 # Runtime Middleware 生命周期、顺序与失败语义（Draft）
 
+## 阅读边界（2026-11-08 复核）
+
+显式 middleware 栈、分类错误与幂等重试仍有效。R3 表中的“prepare/recovery/fallback 未建设”和 test-only 状态仅为当时范围；后续公共 RunPrepare、受管模型容错、Plan/消息/预算已进入组合根。伪代码只解释职责，不是锁定版本构造参数。
+
 > 文档类型：Draft
 >
 > 状态：讨论结论，暂不替代 `docs/standards/` 下的现行规范
@@ -19,6 +23,8 @@
 > HITL 产品交互、可观测后端和源码实现
 
 ## 1. 本轮结论
+
+> **后续实现对照：** 现行装配看 [开发规则](../standards/runtime-service-development-standard.md) 及 [模型容错专项](../../../../docs/projects/20261006-agent-model-resilience/README.md)；后者不授权任意模型降级。下文 R3 原始失败/延期记录保留，不据此关闭今天已批准的公共能力。
 
 公共 Middleware 不是所有 Agent 自动套用的“全家桶”，也不提供
 `build_middleware_stack(options)` 一类万能 Builder。公共层只提供可独立理解的原子能力，

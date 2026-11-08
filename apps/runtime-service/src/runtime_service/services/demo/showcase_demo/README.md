@@ -1,282 +1,82 @@
 # Showcase：真实项目教学 Agent
 
-这个服务演示如何在 LangChain、LangGraph、Deep Agents 的原生能力上，增加少量平台运行时接入。
-它可以分析和修改实际文件，通过人工审批后运行 Python。正式模式使用 Docker；本地栈默认使用 LocalShellBackend 便于开发调试。正式工具不返回模拟成功结果。
+演示文件读写、执行、Skills、委派、审批和平台能力如何在一个 Deep Agent 组合根中协作。先读 [Agent 开发指南](../../../../../docs/standards/runtime-agent-development-guide.md)，再按需要选择本例的能力；不要为简单 Agent 复制整套工具。
 
 ## 从一个真实任务开始
 
-新线程会得到一个小型销售报表项目：
+线程首次准备时会得到 [examples](examples/README.md) 中的 README、sales.csv、report.py。报表故意只累加单价，输出 27.00；乘上数量后的正确金额为 43.50。这是教学输入，不应在维护 Agent 时顺手修掉。
 
-```text
-/workspace/
-├── README.md
-├── sales.csv
-└── report.py
-```
+可以依次要求“只分析原因”“修复并验证”“查阅 Python Decimal 官方资料”。工具返回真实结果；写入和执行是否需要人工确认取决于受信 `access_policy`，不能承诺所有模式都弹审批。
 
-`report.py` 是真实可运行程序，初始版本**故意保留一个教学缺陷**：统计时没有乘数量，输出 `27.00`；正确结果为 `43.50`。
-这个缺陷属于输入样例，不属于 Agent 的执行实现。
+## 阅读顺序与模块
 
-可以依次尝试：
+| 文件 | 职责 / 应学习的边界 |
+|---|---|
+| [agent.py](agent.py) | 唯一组合根：探测/执行分流、身份与 Context、受管模型、工具及 middleware 装配 |
+| [prompts.py](prompts.py) | 主角色和子角色的业务指令 |
+| [backend.py](backend.py) | 工作区准备、文件 Backend、公共执行适配；不重建资源调度 |
+| [subagents.py](subagents.py) | research、general-purpose 及有 chart_tools 时的 chart-agent |
+| [tools.py](tools.py) | 本服务的受限 HTTPS 文档抓取 |
+| [chart.py](chart.py) → [公共 chart.py](../../../tools/chart.py)、[chart-schemas.json](../../../tools/chart-schemas.json) | 服务兼容导出与公共 AntV MCP schema、调用及图片落盘；探测不启动外部进程 |
+| [skills/showcase-notes/SKILL.md](skills/showcase-notes/SKILL.md) | 按需加载的任务知识，不授予执行权限 |
 
-1. “只分析销售报表为什么算错，不修改、不运行。”
-2. “修复这个问题，添加一个可运行的检查，然后验证。”
-3. “查阅 Python Decimal 官方文档，解释金额计算为什么使用它。”
+稳定入口为 [graphs/showcase_demo.py](../../../graphs/showcase_demo.py)，在服务工厂外包装 scheduled_execution 与 background_completion_execution。正式 `langgraph.json` 和 `langgraph.demo.json` 均注册本图；不能继续按旧版“仅 demo、只重导出”接线。
 
-第一步只读。第二步可使用 Todo 和子 Agent，修改和执行前弹出审批。
-第三步真实访问允许的官方文档站点。简单问题不强制列计划，也不按关键词强制走完整流程。
+## 平台装配与权限
 
-## 每个文件负责什么
+Agent 循环、task、文件工具、Skills 和 interrupt/resume 复用框架。平台层显式接入 RuntimeConfig、受管模型容错、Workspace、Token/调用/时间预算、Plan、消息与后台能力、隐私、上下文治理、公共文档/图片/MCP 和观测。精确启用条件与顺序以 agent.py 及 [组合测试](../../../../../tests/services/showcase_demo/) 为准，不能用早期“只有少量封装”清单替代。
 
-| 文件 | 职责 | 开发新 Agent 时怎么借鉴 |
-| --- | --- | --- |
-| `agent.py` | 唯一组合根：校验身份和 Context，取得模型，组合官方 Agent/中间件，接入追踪 | 保持显式装配，不实现工具或 HTTP client |
-| `prompts.py` | 主 Agent、只读研究助手、实现助手、图表助手的指令 | 只放纯文本或纯渲染函数，不读环境变量和网络 |
-| `subagents.py` | 三个明确的内部角色及最小工具、权限、审批 | 角色复杂前使用声明式 SubAgent，不增加第二个 graph ID |
-| `chart.py` / `chart-schemas.json` | 固定版本 AntV 工具与线程图片落盘 | 使用官方 MCP adapter，schema 探测不启动外部进程 |
-| `backend.py` | 线程工作区初始化、官方 FilesystemBackend、Docker 与本地执行适配 | local 仅限受信任开发机，正式环境使用 Docker |
-| `tools.py` | 受限 HTTPS 文档抓取 | 只放本服务特有的真实业务动作 |
-| `skills/showcase-notes/SKILL.md` | 可按需读取的任务指南 | Skills 是资源，不是工具，也不能授予权限 |
-| `examples/` | 初次使用线程时复制的 CSV 项目 | 测试夹具与模型 mock 不进入正式工具 |
-| `__init__.py` | Python 包标识 | 不批量导入组合根 |
+Context 不接受 tools。模型参数、execution_mode/access_policy、offload 和 Plan 等字段以 [RuntimeContext](../../../runtime/contracts.py) 为准；目录、defaults、实际工具集与签名禁用项须一致，新增工具不存在 internal 绕过。
 
-部署入口是 `runtime_service.graphs.showcase_demo:get_agent`，该文件只重导出服务的 `get_agent`。
-注册位于应用根 `langgraph.demo.json`，不进入默认生产配置。
+- research：ls/read_file/glob/grep，只读，无执行。
+- general-purpose：文件读写和执行，无再次 task 或额外网络工具。
+- chart-agent：仅在图表能力已装配时提供，文件只读加图表工具，无 shell/任意写文件/再次委派。
 
-## 哪些直接使用官方能力
+角色工具可见性与执行授权都要检查。Workspace 绑定可信 tenant/project/thread；审批不替代授权。不要缓存包含某次运行身份或资源的图。
 
-| 能力 | 实现 |
-| --- | --- |
-| Agent 循环、工具调用、长上下文处理 | `create_deep_agent` |
-| 计划和实时进度 | `TodoListMiddleware` 的 `write_todos` 和 `values.todos` |
-| 文件读写、grep、glob、执行 | `FilesystemMiddleware` 的原生工具 |
-| Skills 发现和按需读取 | `SkillsMiddleware` 与 `CompositeBackend` |
-| 委派 | `task` 工具和声明式 `SubAgent` |
-| 审批 | `interrupt_on`、`HumanInTheLoopMiddleware`、`Command(resume=...)` |
-| 持久化、流式事件 | LangGraph checkpointer、`astream`、namespace |
-| 调用次数限制 | `ModelCallLimitMiddleware`、`ToolCallLimitMiddleware` |
+## Workspace、执行与恢复
 
-二次封装只有平台身份/策略/模型接入、追踪、线程资源及受限文档抓取。
-没有通用 Builder、工具 Registry、自建 Agent 循环或第二套审批 State。
-不声明空的 `scenario`、`confirmation`、`sandbox_output` 字段；默认 State 与 Middleware 扩展就是事实来源。
+文件工具使用 `/workspace/...` 虚拟路径，shell 使用工作区相对路径，如 `python report.py`。Skills 使用只读资源路由，不能给 shell 授予包目录访问权。工作区文件独立于 checkpoint，恢复 checkpoint 不回滚真实文件。
 
-## 子 Agent 和权限
+`backend.py` 的 Docker 路径委托公共 `workspace/execution.py:execute_in_workspace`。执行目标、remote 模式、租约、资源登记、清理和存储要求以 [沙箱手册](../../../../../../../docs/runbooks/runtime-sandbox-node.md) 和 [Workspace/停止规则](../../../../../docs/standards/runtime-service-development-standard.md#workspace-执行目标与恢复) 为准；不再假设每条命令后删除容器或所有部署都共享同一宿主挂载路径。Thread 回收沿 [保留与删除专项](../../../../../../../docs/projects/20261030-session-and-runtime-retention-governance/README.md)。
 
-`research` 只有 `ls/read_file/glob/grep`，不能写文件或执行代码。
-`general-purpose` 是明确配置的实现助手，拥有读、写和执行工具，但没有再次委派或额外网络工具。
-显式使用官方默认角色名，避免框架另加一个权限不清楚的通用子 Agent；不修改全局模型 HarnessProfile。
+LocalShellBackend 仅供受信本地开发，不隔离宿主文件、网络或 CPU/内存。该适配允许 1–60 秒超时；同步线程无法强杀，取消不保证立即结束命令及子进程，资源回执可能 unconfirmed。Docker/remote 失败不能回退宿主 shell。
 
-主/子 Agent 都接入 `RuntimeConfigMiddleware`。它在模型可见工具及实际调用边界检查：
-可信身份、Context 哈希、assistant/thread scope 与该角色的显式工具集；原有工具使用平台 allowlist，新增图片/MCP 工具由 Runtime 固定声明。
-`WorkspaceMiddleware` 再确认资源所属 tenant/project/thread，防止把已绑定的图复用于另一个租户。
+## 预算与失败
 
-`RuntimeContext` 仍只有平台标准的 `model_id/temperature/max_tokens/top_p/tools`。
-`tools=[]` 表示禁用原有受平台管理工具；省略则使用原有服务默认工具清单，平台必须授权这些工具及权限。
-新增图片/MCP 工具独立由 Runtime 启用，不受该字段管理，具体边界见下方图片能力说明。
-`execute` 是可修改整个线程工作区的能力，不能授予只读角色；审批只代表用户同意，不能替代 Runtime 授权。
+当前默认模型次数为每 Run 50、每 Thread 500，工具为每 Run 100、每 Thread 1000；分别可通过 AGENT_MODEL_CALL_LIMIT_PER_RUN/THREAD、AGENT_TOOL_CALL_LIMIT_PER_RUN/THREAD 调整。主子角色各自计数，不宣称是全局合计额度。模型单次超时按受管 policy 解析，不再固定写成 30 秒。
 
-工具声明在 `runtime/capabilities.py` 的 `SHOWCASE_TOOLS` 中统一定义，Platform 签名禁用项由 Runtime 执行。
-每个角色最多 12 次模型调用、24 次工具调用；模型调用超时 30 秒。
+正式软收尾使用受信 Worker attempt 的 RunBudget；内部重建和子 Agent 不能重新起表。旧 `resolve_wrapup_after_seconds()` 是无 RunBudget 的本地调用兼容路径，不是生产接入示例。Token 累计、上下文窗口、模型次数、工具次数、supersteps 和时间预算是不同约束，见 [现行预算规则](../../../../../docs/standards/runtime-service-development-standard.md#run-时间预算与收尾)。
 
-## 路径、存储和真实执行
+工具和模型的可恢复错误沿公共分类处理；取消、权限、隐私和未知结果不伪装成功。完成标记或额度停止不等于业务目标已全部完成。
 
-文件工具使用 `/workspace/...` 虚拟路径；shell 已位于线程工作区，统一使用相对路径，例如 `python report.py`。
-Docker 内该目录是 `/workspace`，local 模式中是线程对应的宿主目录；local 不映射 shell 中的 `/workspace/...` 绝对路径。
-Skills 通过 `/skills/` 访问，由 `importlib.resources` 定位安装包资源，随 wheel 发布。
-**不把开发机绝对路径放进 Prompt、Context 或 Skills 参数。**
+## 图片、文档与 MCP
 
-| 部署变量 | 默认值 | 用途 |
-| --- | --- | --- |
-| `RUNTIME_BACKEND` | `docker`（本地栈默认 `local`） | 控制所有智能体 execute 与交互终端；非法值报错 |
-| `RUNTIME_SHOWCASE_WORKSPACE_ROOT` | `.runtime/showcase` | 专用数据根目录，可配置相对或绝对路径 |
-| `RUNTIME_SHOWCASE_IMAGE` | `python:3.13-slim` | Docker 执行镜像；正式环境建议固定镜像 digest |
+主图显式装配公共 ImageToolsMiddleware 与 DocumentToolsMiddleware。图片能力含生成、编辑和分析；副作用审批按 access_policy，视觉模型选择按当前服务配置/受管路径，不能把“只用豆包”当成永久接口限制。图片/文档工具复用线程引用和公共安全校验，不接收任意宿主路径；生成付费请求不能盲目重试。
 
-线程目录由可信 tenant/project/thread 的摘要派生。初始化不会覆盖用户已修改的样例文件。
-Docker 模式的命令容器只绑定当前线程的 `/workspace`，不挂载源代码、凭据或 Docker socket。
-容器关闭网络、使用只读根文件系统、去除 capabilities，限制 CPU、内存、进程、文件大小和输出量。
-命令默认 30 秒，最多 60 秒；返回真实 stdout/stderr 合并输出及退出码，最多 128 KiB。
-异步执行沿用官方线程适配；取消 Run 不保证立即终止正在执行的命令，容器内命令仍受最多 60 秒限制。
-执行 worker 面向 Linux/macOS，使用宿主进程 UID/GID；Windows 原生运行未验证。
-Docker 不可用或镜像缺失会明确失败，**不会回退到宿主机 shell**。
+chart-agent 通过官方 task 和 MCP adapter 使用锁定的 AntV schema，图片转存到线程工作区。外部图表服务可能处理图表数据，不能宣称纯本地计算。schema 随包发布；升级时同步 schema 与格式测试。
 
-local 模式使用官方 `LocalShellBackend` 在宿主机运行，仅供受信任本地开发。文件工具和审批仍保留，但 shell 没有文件、网络、CPU/内存隔离，不能保证只能访问自己的线程目录。
-不继承父进程环境；仅提供 Runtime Python 所在目录及系统 PATH、线程 HOME 和独立 Git 配置路径。默认超时 30 秒，允许 1–60 秒，输出沿用官方截断行为（不是内存上限）；取消 Run 不保证终止本地命令及其子进程。
+项目知识 MCP 沿 [公共规范](../../../../../docs/standards/project-knowledge-mcp.md) 显式挂载，服务端绑定和工具策略决定可用性。外部发现失败隔离不意味着授权校验可以跳过。
 
-官方文件工具直接读写受限的线程目录；shell 在容器中读写同一目录。
-Shell 授权覆盖整个该工作区，不宣称按 shell 文本实现逐文件权限。
-Skills 只读规则作用在独立的非执行 Backend 路由上；容器不能访问包内 Skills。
+## 运行与验证
 
-工作区文件独立于 checkpoint：恢复已有 Run 会继续使用真实文件，不会随 checkpoint 回滚文件系统。
-容器在命令完成时删除，工作区保留。部署者负责磁盘配额、备份和停用线程的数据清理。
-这个 Demo 不额外实现分布式存储和资源调度。多副本必须使用共享存储，并保证 Docker daemon 能看到相同的 bind-mount 路径。
-建议在安装 Docker 的专用 worker 主机运行；若 runtime 自身在容器内，需要配置专用执行部署，不能直接照搬默认生产镜像。
+本地栈和模型/认证配置先按 [运行与验证](../../../../../docs/standards/runtime-service-onboarding-and-verification.md) 准备；关联 Worktree 必须先遵循 [资源隔离规范](../../../../../../../docs/standards/worktree-development.md)。当前锁定版本看应用 pyproject.toml/uv.lock，不用本 README 固定某个旧 post 版本。
 
-## 本地运行与调用
+探测图保留相同 schema，但不创建工作区、请求模型目录或启动 Docker；正式 checkpointer 由底座提供。运行时 Context、受管模型和身份沿平台链路，不能开放 `_runtime_test_*` 给浏览器。
 
-在仓库根目录启动本地栈，默认使用 local：
+在应用目录按范围运行：
 
 ```bash
-bash scripts/local-stack.sh start
-# 显式切换已有栈（Runtime API 和 Worker 都需重启）
-RUNTIME_BACKEND=docker bash scripts/local-stack.sh restart
-RUNTIME_BACKEND=local bash scripts/local-stack.sh restart
-```
-
-选择优先级：调用脚本时的环境变量 > Runtime `.env` > 本地栈默认 `local`。
-`start` 不会替换已有进程，切换模式应使用 `restart`。同一变量控制 Showcase、Dear Agent 与交互终端。
-
-在 `apps/runtime-service` 目录，按应用 `.env.example` 配置模型与 Runtime 认证，并准备 Docker：
-
-```bash
-docker pull python:3.13-slim
-uv run graphharbor serve --config langgraph.demo.json --host 127.0.0.1 --port 8123
-```
-
-数据库、Redis、签名配置及独立 worker 启动方式沿用应用部署说明。
-Platform 通过认证网关调用；不要为了演示跳过 JWT/Delegation 或开放测试身份开关。
-正式入口不接受 `_runtime_test_*`；fake model 和测试身份仅存在于 `tests/`。
-
-`get_agent` 是异步 graph factory。真实 Run 的 Backend 绑定线程，因此这里使用动态构图；
-普通只依赖 StateBackend 的 Agent 应优先静态编译。schema/state 探测使用相同拓扑的不可执行图，
-不创建线程目录、不请求模型 catalog、不启动 Docker。
-checkpointer 由 Agent Server 注入，不在服务里创建进程内 saver。
-本例锁定 GraphHarbor `0.13.0.post26`：Worker 通过官方参数传递 Context，状态和历史接口通过 LangGraph 还原增量 messages、待执行节点及审批。
-
-流式调用使用官方参数：
-
-```python
-async for event in graph.astream(
-    {"messages": [("user", "分析销售报表")]},
-    config,
-    context=context,
-    stream_mode=["values", "updates", "messages"],
-    subgraphs=True,
-    version="v2",
-):
-    ...
-```
-
-远程 SDK 对应 `stream_subgraphs=True`。用 namespace/tool call ID 区分主/子 Agent；
-子 Agent 通过父 Run 暂停和恢复，不是独立的平台 Run。
-
-同一个 HITL payload 可含多个 `action_requests`，这不等于多个独立 interrupt。
-审批列表必须按动作顺序提供同样数量的 decisions；多个独立 interrupt 使用 ID → decisions 映射。
-调用方应在提交前校验数量和决定类型；非法 resume 会由官方 Middleware 抛错，不能承诺原地重试任意错误 payload。
-
-## 验证
-
-### 公共图片工具与图表 MCP
-
-主 Agent 挂载公共 `ImageToolsMiddleware`：`generate_image(prompt)` 每次需人工批准
-（支持批准/拒绝），`analyze_image(image_path, question)` 无需审批且不写分析文件。
-生成结果保存在 `/workspace/generated/`，识图只接受线程内 PNG/JPEG/WebP 文件。
-图片限制 20 MiB、2500 万像素；生成最多等待 180 秒，识图 60 秒，不自动重试付费请求。
-
-`chart-agent` 使用 `@antv/mcp-server-chart@0.9.10`，通过原生 `task` 委派。
-图表子智能体仅具备图表工具和只读文件工具，无法执行 shell、任意写文件或再次委派。
-图表工具的图片 URL 由 Runtime 转存至 `/workspace/charts/`；电子表格工具不在本图片演示范围。
-AntV 默认会使用外部图表服务，数据并非只在本地 stdio 进程内处理。
-
-示例：
-- “生成一张白底蓝色圆形图片。” → 文生图审批 → 返回实际路径。
-- “识别刚才生成的图片。” → 豆包识图 → 返回文本。
-- “把 A=12、B=23 交给图表助手画成条形图。” → task → chart-agent → MCP → 图表路径。
-
-这些新增工具由 Runtime 组合根固定启用和按角色授权，不加入上层 Context 工具名单。
-Context 不接受 tools；图片、图表和 task 均属于 Runtime 声明，受签名禁用与子 Agent 上限约束，不存在 internal 绕过。
-身份、Context 哈希及 tenant/project/thread 检查仍然执行。不要将内部工具名单来源改成用户输入。
-公共工具通过绑定 `ImageWorkspace` 复用，不依赖 showcase 模块。
-
-测试用凭据放在应用 `.env`，由启动器注入；工具不自行读取用户主目录：
-
-| 环境变量 | 用途 |
-| --- | --- |
-| `IMAGE_25_URL` / `IMAGE_25_KEY` / `IMAGE_25_MODEL` | 文生图兼容接口、凭据、模型 |
-| `RUNTIME_IMAGE_ASSET_HOSTS` | 文生图返回图片的 HTTPS 下载域名，逗号分隔；不跟随重定向 |
-| `DOUBAO_API_BASE` / `DOUBAO_API_KEY` / `DOUBAO_MODEL` | 豆包 ChatOpenAI 兼容接口 |
-| `DOUBAO_MAX_TOKENS` | 识图输出 token 上限，最多 4096 |
-
-`/workspace/...` 是 Agent/容器路径，不是网页 URL。实际位置是
-`RUNTIME_SHOWCASE_WORKSPACE_ROOT/<scope-hash>/workspace/`；默认根目录相对服务进程工作目录解析。
-MCP schema 随包发布，构图与 schema 探测均不会启动 npx；每次真正调用才通过官方适配器开关会话。
-升级 MCP 版本时须同步工具 schema 并重新验证返回格式。
-
-```bash
-uv run pytest tests/services/showcase_demo/test_images_chart.py -m "not e2e"
-# 显式启用：一次真实文生图、豆包识图、主子图委派和 AntV MCP，测试会自动批准这一次生成。
-RUNTIME_IMAGE_LIVE_TEST=1 uv run pytest tests/services/showcase_demo/test_images_chart.py -k live -s
-```
-
-```bash
-# 确定性模型驱动真实 Graph/文件工具；不调用外部模型和 Docker
+# 确定性组合测试
 uv run pytest tests/services/showcase_demo -m "not integration and not e2e"
-
-# 实际 Docker 执行、文件产物、退出码、隔离与限制
+# 需要真实 Docker 等隔离资源
 uv run pytest tests/services/showcase_demo -m integration
-
-# 真实模型只读流式分析；需配置本地 DeepSeek 模型连接
-RUNTIME_SHOWCASE_LIVE_TEST=1 uv run pytest tests/services/showcase_demo/test_agent.py -k live_model
+# 图片/图表的非外部验收
+uv run pytest tests/services/showcase_demo/test_images_chart.py -m "not e2e"
 ```
 
-测试断言真实 Todo 状态、Skills 内容、文件变更、授权拒绝、子图事件和审批恢复。
-外部模型可以在测试中替换为官方 fake model，以稳定覆盖分支；正式工具不替换为假实现。
-完整进度与远程/前端验收边界见仓库 `docs/projects/20260908-showcase-demo/verification.md`。
+外部模型/图片测试会发生真实调用和费用；所需开关与条件以 test_agent.py、test_images_chart.py 的 skip/marker 为准，不把 skip 记为通过。重启验收入口为应用 `scripts/showcase_acceptance.py`，需要独立 DB/Redis、模型和执行环境；先按运行指南准备，不在默认共享环境直接迁移。
 
-### 真实服务重启验收
+重点核对：探测无副作用、工具授权、角色缩权、Skills 只读、真实文件变化、Todo、审批与恢复、取消及预算。HITL 的 action_requests 与 decisions 数量/顺序应一致；多个 interrupt 以实际 ID 恢复。子 Agent 使用父 Run 与独立 namespace，不是另一个平台 Run。
 
-使用专用测试 PostgreSQL 数据库与 Redis 地址，先完成迁移，再运行验收脚本：
-
-```bash
-# DATABASE_URI、REDIS_URI 必须指向专用测试基础设施
-uv run graphharbor migrate upgrade
-uv run python scripts/showcase_acceptance.py --output /tmp/showcase-acceptance-new
-```
-
-脚本启动独立 API 和 Worker，在真实模型提出修改审批时停止并重启两个进程，
-确认原 interrupt ID 和完整 messages 保持一致，然后恢复审批、运行模型生成的检查并独立执行报表。
-脚本仅在这个隔离验证流程中自动批准工作区修改/执行；正式 Demo 仍由调用方人工审批。
-运行需要 Docker、本地执行镜像和 `.env` 中的模型连接；输出目录必须不存在。
-验证完成后脚本停止自己启动的进程，保留证据、日志及工作区，不删除数据库或已有服务。
-
-### 通用执行预算接入
-
-在组合根中复用共享能力；已有模型限制器替换成薄扩展，原限额、退出策略和工具限制器保持原值：
-
-```python
-from runtime_service.middlewares import (
-    ExecutionBudgetMiddleware,
-    TimeoutWrapupMiddleware,
-)
-from runtime_service.middlewares.timeout_wrapup import resolve_wrapup_after_seconds
-
-middleware = [
-    ExecutionBudgetMiddleware(
-        run_limit=50,
-        thread_limit=500,
-        exit_behavior="error",
-        scope="primary",  # Child composition uses "subagent".
-        graph_key="showcase_demo",
-    ),
-]
-if (seconds := resolve_wrapup_after_seconds()) is not None:
-    middleware.append(TimeoutWrapupMiddleware(seconds, graph_key="showcase_demo"))
-```
-
-主子 graph 各自计数，子图不另装主图软时间中间件。通知复用运行时 custom writer，不需要通知 Tool
-或 Slack 属性；默认余量为 3 次模型调用、8 个 graph supersteps。prompt override 只作用于原模型请求，
-不发额外总结调用。无受信 `metadata.run_id` 的本地调用不伪造公开通知，hard limit 仍有效。
-
-自定义 StateGraph 继承 `GraphBudgetState`，在模型前的节点调用 `check_graph_budget()`，公开 input/output
-仍声明原业务 schema；参考 Workflow 的 `schemas.py`/`workflow.py`。内层模型是主业务执行时，将通知 writer
-绑定到外层 ContextVar 上下文；真正委派子图保留自己的 namespace。图预算和模型次数不能混称“工具步骤”。
-
-`AGENT_WRAPUP_AFTER_SECONDS` 缺省关闭，启用后从模型 Agent invocation 开始计时，在下一模型边界触发，
-不包含排队/构图/人工等待，不能中断正在挂起的请求；Worker hard timeout 独立配置。
-原生 success + end 标记表示额度停止而不是任务完整完成；前端接入见
-[执行预算交接](../../../../../../../docs/projects/20261007-agent-execution-budget/frontend-handoff.md)。
-
-
-框架参考：[Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview)、
-[Backends](https://docs.langchain.com/oss/python/deepagents/backends)、
-[Subagents](https://docs.langchain.com/oss/python/deepagents/subagents)、
-[Human-in-the-loop](https://docs.langchain.com/oss/python/langchain/human-in-the-loop)。
+早期端到端结果保留在 [Showcase 验证记录](../../../../../../../docs/projects/20260908-showcase-demo/verification.md)，后续能力需读各自专项。本文于 2026-11-08 按源码修订，未重新执行产品或外部服务测试。

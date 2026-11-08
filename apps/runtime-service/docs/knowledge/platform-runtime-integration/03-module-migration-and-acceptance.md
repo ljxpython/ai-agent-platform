@@ -1,5 +1,9 @@
 # P1 模块迁移与验收 Harness
 
+## 阅读边界（2026-11-08 复核）
+
+本篇的阶段空项、旧 tools 三态和 UI 范围是 09-04 迁移基线，不能覆盖 [09-07 后续结果](10-implementation-status.md#107-浏览器-retry历史分支与模型目录真实执行2026-09-07)。新任务进度按根 AGENTS 的 tasks/verification 记录，不再维护历史 OpenSpec 为唯一任务入口。
+
 - 文档类型：Draft Supporting Delivery Design
 - 状态：L1 部分实现；L2 链路进行中
 
@@ -158,6 +162,8 @@ created_at / updated_at
 | Legacy cleanup | 无证据 fallback 和重复状态机删除 | ❌ |
 
 ## 7. 测试与证据矩阵
+
+> **后续对照：** 保留原验收覆盖思路，但当前 Context 无 tools，必须测试旧字段拒绝与签名禁用策略；模型 opaque reference 是受信执行传递机制，不是被拒绝的版本 registry。
 
 | 层级 | 测试点 | 通过定义 |
 | --- | --- | --- |

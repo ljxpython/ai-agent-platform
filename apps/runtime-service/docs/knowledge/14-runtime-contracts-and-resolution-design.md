@@ -1,5 +1,9 @@
 # Runtime Contracts 与配置决议架构设计（Draft）
 
+## 阅读边界（2026-11-08 复核）
+
+纯函数 resolver、受信来源与签名校验仍有效。本文混合早期 R1 与 09-20 工具治理补充；当前 Context 为 v6、无 tools，工具使用签名禁用项/false-only overrides。版本和类型以 runtime/contracts.py 与 auth 实现为准，不能复制旧 Context v4/config-v3 或签名伪代码。
+
 > 文档类型：Draft
 >
 > 状态：讨论结论，暂不替代 `docs/standards/` 下的现行规范
@@ -402,6 +406,8 @@ Platform 签名 tool_policy_version；Runtime 对完整声明计算 tool_declara
 
 ## 8. Prompt、Model 和 Tool 绑定
 
+> **后续实现对照：** 纯 resolver 不做 I/O，不等于整个 Runtime 不回查平台。正式组合根已通过受管 runtime_model_ref 获取模型 bundle；模型连接获取与 resolver 分层。参数及身份来源按 [当前组合根生命周期](../standards/runtime-agent-development-guide.md#5-组合根必须理解的生命周期) 实现。
+
 Resolver 只生成标识和参数，Middleware 只从 Service 已经装配到 Agent 的工具中筛选：
 
 ```python
@@ -499,6 +505,8 @@ modeling.py   -> ResolvedRuntimeConfig -> ChatModel
 只有出现真实且稳定的重复实现，才提取更小的公共函数。
 
 ## 9. `config_hash` 规范化
+
+> 本节是早期 config-v3 设计，不是可自行重建签名的协议模板。当前字段集合、Context hash 与委托版本必须直接对照 [resolver.py](../../src/runtime_service/runtime/resolver.py)、[auth.py](../../src/runtime_service/runtime/auth.py) 及跨服务测试；不能仅把下方 schema marker 改成新版本便宣称兼容。
 
 使用：
 
@@ -870,4 +878,4 @@ R1 capability-chain-complete-graphharbor-durable / platform-cutover-deferred
 platform-cutover-deferred`。
 
 
-2026-09-20 工具治理实现与本次验证以 [专项记录](../../../../docs/projects/20260920-runtime-optional-tool-resolution/README.md) 为准；下方早期 R1 证据仅描述当时版本，不作为新版工具授权契约。
+2026-09-20 工具治理实现与本次验证以 [专项记录](../../../../docs/projects/20260920-runtime-optional-tool-resolution/README.md) 为准；上方早期 R1 证据仅描述当时版本，不作为新版工具授权契约。

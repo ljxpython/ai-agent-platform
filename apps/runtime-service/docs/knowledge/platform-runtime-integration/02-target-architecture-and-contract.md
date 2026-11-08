@@ -1,5 +1,9 @@
 # P1 目标架构与契约
 
+## 阅读边界（2026-11-08 复核）
+
+这是 09-04 冻结的 P1 最小方案。拒绝 execution_model_id/revision registry 不等于拒绝目前使用的短期 opaque runtime_model_ref。七字段是当时最小产品表单，后续模型容量、容错等扩展不受其永久禁止。
+
 - 文档类型：Draft Supporting Design
 - 状态：owner 已冻结方案；实现与证据进行中
 
@@ -166,6 +170,8 @@ Agent 的 Graph、Prompt、默认 Tools 和 Middleware 仍由 `runtime-service` 
 
 ### 5.2 模型管理页面
 
+> **后续对照：** 模型目录到 Runtime 的受信内部获取已在 [09-07 验收](10-implementation-status.md#107-浏览器-retry历史分支与模型目录真实执行2026-09-07) 落地，旧“不实施受信拉取”已被该闭环取代；不是引入新 Secret Store 或公开模型代理。
+
 模型管理在现有目录上增加最小连接配置，不引入第二套模型注册表。当前字段固定为：
 
 | 字段 | 用途 | 安全规则 |
@@ -199,8 +205,8 @@ Agent 的 Graph、Prompt、默认 Tools 和 Middleware 仍由 `runtime-service` 
 | 方案 | 做法 | 判断 |
 | --- | --- | --- |
 | 部署环境变量 | 录入后仍由运维手工改 Worker 环境并重启 | 只能作为当前兼容路径，不满足动态录入 |
-| Runtime 受信拉取 | Runtime 直接读取 Platform/Secret Store | 不实施；会扩大服务身份和 Secret 边界 |
-| 服务端配置读取 | Platform 保存七字段配置，Runtime 使用受信配置 | 目标方案；当前链路待验证 |
+| Runtime 受信拉取 | 早期候选为直接读 Platform/Secret Store | 原候选未采用；后续已实现短期 opaque reference + Platform 内部连接端点，不读取任意 Secret Store |
+| 服务端配置读取 | Platform 保存模型配置，Runtime 使用受信引用获取连接 | 后续链路见 10 号文档 §10.7；不沿用本表早期待验证状态 |
 
 `GATE-11` 已由 owner 接受。旧统一模型代理及其 owner、Secret Store、版本路由和服务身份门禁已废弃，
 不再阻塞当前实现；未来需求另立 change。

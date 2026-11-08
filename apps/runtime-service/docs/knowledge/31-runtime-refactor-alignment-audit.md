@@ -1,12 +1,16 @@
 # Runtime 重构设计与 R0-R5 实现对齐审计
 
+## 阅读边界（2026-11-08 复核）
+
+本篇是 2026-09-02 审计快照，表格中的测试计数/partial/blocked 保持原义。standards 现已建立、P1 与十月能力已有后续交付；不再把这里的历史缺口当成全仓当前状态。
+
 > 审计日期：2026-09-02
 >
 > 审计范围：`apps/runtime-service/docs/knowledge/10-30`、`apps/runtime-service/src/`、
 > `apps/runtime-service/tests/`、部署配置和 R0-R6 OpenSpec 验证记录。
 >
-> 本文是实现对齐审计，不替代领域 Current Standard。当前
-> `apps/runtime-service/docs/standards/` 为空，因此不能把 `knowledge/` 下的 Draft
+> 本文是实现对齐审计，不替代领域 Current Standard。审计当日
+> `apps/runtime-service/docs/standards/` 为空（现已建立，见上方后续入口），因此不能把 `knowledge/` 下的 Draft
 > 直接当成已批准规范。
 
 ## 1. 结论先行
@@ -165,6 +169,8 @@ R2 的范围已由 owner 批准为：Workflow 条件分支和本地 Interrupt/Re
 
 ## 5. 未实现或没有证据的关键能力
 
+> **后续实现对照：** 以下是审计当日缺口。后续状态入口为 [P1 实施记录](platform-runtime-integration/10-implementation-status.md)、[现行规范](../standards/README.md) 与对应 docs/projects 验证；这次文档复核没有重跑或改写旧验收结果。
+
 ### P0/后续门槛：本轮明确 deferred
 
 1. **已完成的发布物基线**：GraphHarbor 已锁定为已发布的 `0.13.0.post20`，并从 PyPI 安装到 Runtime
@@ -241,10 +247,10 @@ P1 deferred
 | Requirement | 是否实现 | 实现位置 | 测试/验证位置 | 证据与未覆盖边界 |
 | --- | --- | --- | --- | --- |
 | Tool Policy 同时约束模型可见与执行前调用 | ✅ | `src/runtime_service/middlewares/runtime_config.py`；R4 三个 Service `agent.py` | `tests/services/test_r4_capability_demos.py` | `44 passed`；伪造 `execute/task` 被拒绝 |
-| MCP 显式加载、名称冲突、required/optional 失败 | ✅ | `services/demo/mcp_services/demo/loader.py` | `tests/services/test_r4_capability_demos.py` | 本地 stdio fake；无远程凭据、重连、取消证据 |
-| Bundled Skill 只读 | ✅ | `services/demo/deep_agent_services/demo/agent.py` | `test_deep_agent_rejects_skill_write_before_backend_execution` | `/skills/**` 写入在 handler 前失败；未实现 User/Organization Skill |
-| Thread Workspace 本地隔离与 graph rebuild | ✅ | `services/demo/backend_services/demo/agent.py` | `test_backend_workspace_survives_graph_rebuild_for_same_thread`；`test_backend_workspace_isolated_between_threads` | `InMemorySaver` 仅证明本地协议，不证明 Worker/服务重启恢复 |
-| Subagent 实际缩权委派 | ✅ | `deep_agent_services/demo/agent.py` 显式 `tools=[]`、`permissions` 和 `summarizer` | `tests/services/test_r4_capability_demos.py::test_deep_agent_performs_explicit_subagent_delegation`：`1 passed` | 官方 `task` 调用返回子 Agent 结果；父 Agent 仍仅暴露显式工具集合 |
+| MCP 显式加载、名称冲突、required/optional 失败 | ✅ | `services/demo/mcp_demo/loader.py` | `tests/services/test_r4_capability_demos.py` | 本地 stdio fake；无远程凭据、重连、取消证据 |
+| Bundled Skill 只读 | ✅ | `services/demo/deep_agent_demo/agent.py` | `test_deep_agent_rejects_skill_write_before_backend_execution` | `/skills/**` 写入在 handler 前失败；未实现 User/Organization Skill |
+| Thread Workspace 本地隔离与 graph rebuild | ✅ | `services/demo/backend_demo/agent.py` | `test_backend_workspace_survives_graph_rebuild_for_same_thread`；`test_backend_workspace_isolated_between_threads` | `InMemorySaver` 仅证明本地协议，不证明 Worker/服务重启恢复 |
+| Subagent 实际缩权委派 | ✅ | `deep_agent_demo/agent.py` 显式 `tools=[]`、`permissions` 和 `summarizer` | `tests/services/test_r4_capability_demos.py::test_deep_agent_performs_explicit_subagent_delegation`：`1 passed` | 官方 `task` 调用返回子 Agent 结果；父 Agent 仍仅暴露显式工具集合 |
 | Backend scope mismatch、资源清理、跨 Worker Durable | ❌ | 尚无生产资源 binding/cleanup 实现 | OpenSpec `5.4/5.5/5.6` 未执行 | Agent Server entitlement、PostgreSQL/Redis、Sandbox 前置条件缺失，状态为 `blocked/not-executed` |
 
 结论：R4 为 `local-complete / production-resource-hardening-deferred`；R6 已有 Durable Core formal evidence，

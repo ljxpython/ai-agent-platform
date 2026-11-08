@@ -4,6 +4,10 @@
 在 Showcase Demo 场景中，用户提问基于已上传的原图进行重绘或风格转换时，原先平台仅提供 `generate_image(prompt)` 文生图与 `analyze_image(image_path, question)` 视觉识别两项能力，缺少直接输入已有图片路径进行图生图（Image-to-Image / Image Editing）的专用工具。
 此外，原有工具在遇到模型供应商的内容安全审核拦截（如 `content_policy_violation`）时，吞掉了具体错误细节，仅抛出笼统的 `BadRequestError, status=400`，导致 Agent 无法获知拦截原因进而自我纠错。
 
+## 后续规则（2026-11-08 对照）
+
+这是 09-13 的能力变更记录。当前 generate/edit 的审批由组合根按受信 access_policy 装配，不是所有模式都必须人工确认；实际规则见 [Showcase](../../src/runtime_service/services/demo/showcase_demo/README.md)。图片 Provider 错误已采用公共安全分类，不向模型透出原始敏感响应，见 [工具容错专项](../../../../docs/projects/20261006-agent-tool-error-resilience/README.md)。下面测试结论为当时记录，本轮未重跑。
+
 ## 改动内容
 1. **新增 `edit_image` 图生图工具 (`src/runtime_service/tools/images.py`)**：
    - 入参：`image_path: str`（工作区待编辑图片路径）、`prompt: str`（修改重绘指令）；

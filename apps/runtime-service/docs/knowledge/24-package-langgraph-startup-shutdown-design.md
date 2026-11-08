@@ -1,5 +1,9 @@
 # Package、langgraph.json、启动与优雅退出设计（Draft）
 
+## 阅读边界（2026-11-08 复核）
+
+包资源、langgraph.json 注册真源、探测无副作用和优雅退出原则保留；langgraph dev、商业镜像生成与 http.app 仅 lifespan 属于早期部署。如今 webapp.py 承载 Runtime 自有 HTTP 路由，平台部署使用 GraphHarbor。
+
 > 文档类型：Draft
 >
 > 状态：讨论结论，暂不替代 `docs/standards/` 下的现行规范
@@ -192,6 +196,8 @@ Checkpoint/Store TTL 可以使用 Agent Server 或 `langgraph.json` 支持的部
 动态 Graph 只在真实执行上下文中获取 Thread Backend。对于统一的 `get_agent(config)` 入口，可参考 Open SWE 的 `graph_loaded_for_execution(config)`；如果锁定版本提供可靠的 `ServerRuntime.execution_runtime`，则使用官方机制。schema、visualization 等 introspection 请求不能触发昂贵资源初始化。
 
 ## 5. 本地启动
+
+> **后续实现对照：** 下面保留旧 CLI 调研，不再作为启动命令。当前启动、独立 Worker 与隔离资源按 [运行与验证](../standards/runtime-service-onboarding-and-verification.md) 和 [Worktree 规范](../../../../docs/standards/worktree-development.md)。历史 entitlement 403 是当时商用镜像证据，不代表现用 GraphHarbor 部署被阻塞。
 
 从项目根启动：
 

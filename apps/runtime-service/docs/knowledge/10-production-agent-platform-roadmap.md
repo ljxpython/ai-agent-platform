@@ -1,5 +1,9 @@
 # 生产级 Agent 平台架构结论与演进路线（总路线图）
 
+## 阅读边界（2026-11-08 复核）
+
+总路线记录 2026-08-29 至 09-02 的演进安排。分层职责和证据分级仍可参考；平台自建 coordinator/runtime_runs、Protocol v2、首期不建 HTTP/P1 后置与仅一个正式图属于旧路线，不能指导新开发。当前入口为 [Agent 开发指南](../standards/runtime-agent-development-guide.md)，注册真源为应用 langgraph.json，运行事实由 GraphHarbor 持有。
+
 - 文档类型：`Supporting`
 - 适用范围：`apps/runtime-service`、`apps/platform-api` 及二者最短正式链路
 - 结论确认日期：2026-08-29
@@ -244,6 +248,8 @@ HITL、明确的 retry 名单和工具自身的幂等/范围校验隔离。详�
 形成首版契约草案；具体 Schema、错误映射和跨服务测试仍待实施阶段冻结。
 
 ## 5. 目标架构
+
+> **后续实现对照：** 以下为当时拟议架构。平台原生网关接线与职责见 [P1 后续实施记录](platform-runtime-integration/10-implementation-status.md)；不要按旧图再建运行事实库或平台执行状态机。
 
 ```text
 Platform governance
@@ -503,19 +509,19 @@ StateGraph；Deep Agent、MCP 和 Backend 能力在 R4 通过独立 Demo 验证�
 
 ## 9. 相关资料
 
-- [LangGraph 生态优秀仓库调研与 runtime-service 对照](./07-langgraph-ecosystem-repository-research.md)
-- [官方 LangGraph Runtime 升级与事件流迁移记录](./09-langgraph-runtime-upgrade-and-event-migration.md)
+- 早期 07 号《LangGraph 生态优秀仓库调研与 runtime-service 对照》：当前 checkout 未保留，需通过仓库历史追溯。
+- 早期 09 号《官方 LangGraph Runtime 升级与事件流迁移记录》：当前 checkout 未保留；现行启动入口见 [运行与验证](../standards/runtime-service-onboarding-and-verification.md)。
 - [Agent Service 目录与部署入口](./11-agent-service-directory-architecture.md)
 - [RuntimeContext 与本地调试](./12-runtime-context-and-local-debug-architecture.md)
 - [Runtime Service 目标物理目录与 Legacy 处置](./13-runtime-service-target-code-layout.md)
 - [Runtime Contracts 与配置决议](./14-runtime-contracts-and-resolution-design.md)
 - [Middleware 生命周期、顺序与失败语义](./15-runtime-middleware-lifecycle-and-failure-semantics.md)
 - [Langfuse 与公共可观测边界](./16-runtime-observability-and-langfuse-design.md)
-- [平台可观测查询与 Admin Console](./17-platform-observability-query-and-admin-console-design.md)
+- 早期 17 号《平台可观测查询与 Admin Console》：当前 checkout 未保留；后续见 [可观测专项](../../../../docs/projects/20261006-agent-observability-hardening/README.md)。
 - [Open SWE 借鉴与 Run Explorer 适配](./18-open-swe-to-runtime-event-and-run-explorer-design.md)
 - [Tool 显式装配、Capability Policy、MCP 与副作用隔离](./19-runtime-tool-capability-mcp-and-side-effect-design.md)
 - [Backend、Workspace、Skills 与 Subagents 接入](./20-runtime-backend-workspace-skills-and-subagents-design.md)
-- [Agent、Graph、Prompt、Tool Policy 版本与发布治理](./21-agent-release-versioning-rollout-rollback-and-run-binding-design.md)
+- 早期 21 号《Agent、Graph、Prompt、Tool Policy 版本与发布治理》：当前 checkout 未保留，不作为今日发布门禁。
 - [Platform API / Runtime Service 契约](./22-platform-runtime-contract-design.md)
 - [Graph、Thread、Backend 与 Checkpoint 生命周期](./23-graph-thread-backend-checkpoint-lifecycle-design.md)
 - [Package、langgraph.json、启动与优雅退出](./24-package-langgraph-startup-shutdown-design.md)
@@ -523,7 +529,7 @@ StateGraph；Deep Agent、MCP 和 Backend 能力在 R4 通过独立 Demo 验证�
 - [Runtime Custom Route 与模型配置边界](./26-runtime-custom-routes-and-model-config-design.md)
 - [Platform API 与 Runtime Service 分阶段整合设计](./27-platform-runtime-integration-phased-design.md)
 - [Runtime Service Demo 计划](./28-runtime-refactor-development-plan.md#13-可运行-demo-计划)
-- [platform-api Runtime Gateway 标准](../../../../platform-api/docs/standards/runtime-gateway-interface-standard.md)
+- [platform-api Runtime Gateway 标准](../../../platform-api/docs/standards/runtime-gateway-interface-standard.md)
 - [Open SWE](https://github.com/langchain-ai/open-swe)
 
 外部 `agent-engineering-learning` 分析资料用于形成本文结论，但不作为本仓库 current standard；

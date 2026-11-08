@@ -1,5 +1,9 @@
 # Runtime Service 目标物理目录与 Legacy 处置设计（Draft）
 
+## 阅读边界（2026-11-08 复核）
+
+src layout、组合根和去 Legacy 的方向仍适用；这里的目标目录是 R0 快照。如今 tools/、workspace/、http/ 已有公共职责，webapp.py 挂现行 HTTP 路由；Platform API 已迁入 src/platform_api。当前 capability 重导出仍见 runtime/capabilities.py，不借文档审查顺带改架构。
+
 > 文档类型：Draft
 >
 > 状态：目标目录已按 R0 落地，暂不替代 `docs/standards/` 下的新规范
@@ -85,13 +89,13 @@ apps/runtime-service/
 │   └── services/
 │       ├── reference_agent/
 │       │   └── test_agent.py
-│       ├── workflow_services/demo/
+│       ├── workflow_demo/
 │       │   └── test_agent.py
-│       ├── deep_agent_services/demo/
+│       ├── deep_agent_demo/
 │       │   └── test_agent.py
-│       ├── mcp_services/demo/
+│       ├── mcp_demo/
 │       │   └── test_agent.py
-│       └── backend_services/demo/
+│       └── backend_demo/
 │           └── test_agent.py
 └── src/
     └── runtime_service/
@@ -128,15 +132,15 @@ apps/runtime-service/
             │   └── README.md
             └── services/demo/                  # 学习和受控验收 Demo
                 ├── __init__.py
-                ├── workflow_services/demo/     # StateGraph 示例
+                ├── workflow_demo/     # StateGraph 示例
                 │   ├── __init__.py
                 │   ├── agent.py
                 │   ├── workflow.py
                 │   ├── schemas.py
                 │   └── README.md
-                ├── deep_agent_services/demo/   # create_deep_agent 示例
-                ├── mcp_services/demo/          # MCP 和副作用隔离示例
-                └── backend_services/demo/      # Backend/Workspace 生命周期示例
+                ├── deep_agent_demo/   # create_deep_agent 示例
+                ├── mcp_demo/          # MCP 和副作用隔离示例
+                └── backend_demo/      # Backend/Workspace 生命周期示例
 ```
 
 这是一棵职责地图，不是空目录生成清单。Git 不跟踪空目录，不为占位创建 `.gitkeep`；目录
@@ -415,6 +419,8 @@ platform-api -> import runtime_service
 ```
 
 ## 8. Legacy 目录处置表
+
+> **后续实现对照：** 本表只解释当时的迁移处置，不是今日删除指令；尤其 services/、HTTP 和公共能力现在已有有效实现。新增模块按 [现行模块架构](../standards/runtime-agent-development-guide.md#3-当前模块架构) 判断职责。
 
 以下是目标处置，不是本轮执行删除。表中 `runtime_service/` 均指当前 Legacy 包；新代码只写入
 `src/runtime_service/`：

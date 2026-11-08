@@ -1,5 +1,9 @@
 # DeepSeek Harness 模型录入借鉴与最小方案
 
+## 阅读边界（2026-11-08 复核）
+
+本篇为 2026-09-04 DeepSeek Harness 的定时点研究，不是第三方当前 API 说明。凭据保护和简化原则仍适用；七字段与暂不建设列表只定义当时 V1，不能覆盖之后批准的模型容量/容错及 opaque 引用接线。
+
 - 文档类型：Harness Supporting Design Record
 - 状态：`Accepted; minimal V1 baseline`
 - 适用范围：Platform 模型管理、Runtime 模型连接配置、模型凭据保护
@@ -156,6 +160,8 @@ API key 不放在 Runtime Context、GraphHarbor Run payload、Thread metadata、
 ## 6. 本项目落点与验证
 
 ### 当前代码事实
+
+> **后续对照：** 本节代码事实属于研究时点；Platform API app/modules 已迁入 src/platform_api/modules。后续真正从模型目录执行的证据见 [实施记录](10-implementation-status.md)，本次未重新调查外部研究仓库。
 
 - `apps/platform-api/app/modules/runtime_catalog` 已增加七字段模型写入、更新和启停接口；
 - `runtime_catalog_models` 保存非敏感字段、`enabled` 和 `api_key_ciphertext`；读取只映射为 `credential_configured`；

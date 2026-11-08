@@ -1,9 +1,15 @@
 # 模型配置实施约束（V1 最小方案）
 
+## 阅读边界（2026-11-08 复核）
+
+模型唯一写入方、加密与安全投影仍有效。“字段固定”及不加 execution reference 是早期 V1 约束；当前受信 opaque runtime_model_ref 已由后续方案落地，不能因此删除它或公开密钥。
+
 - 适用范围：Platform API 模型管理、Runtime Gateway、Runtime 模型构造。
 - 状态：`Accepted by owner; implementation-partial`。
 
 ## 1. 边界
+
+> **后续对照：** 当前模型字段与解析以 Platform DTO、Runtime contracts.py 和 modeling.py 为准；七字段保留为历史最小基线，受管模型获取的验收见 [实施记录](10-implementation-status.md)。
 
 Platform API 是模型配置的唯一写入方；Platform Web 只提交表单和展示脱敏状态；GraphHarbor 只接收标准
 Run/Context，不保存 Platform 模型密钥；Runtime 在服务端调用边界使用已保存连接配置。

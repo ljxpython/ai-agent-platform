@@ -1,5 +1,9 @@
 # Runtime 测试目录与跨服务契约测试设计
 
+## 阅读边界（2026-11-08 复核）
+
+测试按边界分层和 fake/真实证据区分继续适用；旧 tools 三态、Protocol v2 和 contracts/runtime-v1 布局已不是当前可执行契约，当前 Context 必须拒绝 tools。
+
 > 文档类型：Draft
 >
 > 状态：讨论结论，暂不替代 `docs/standards/` 下的现行规范
@@ -257,6 +261,8 @@ run.accepted
 - Stream 断开不会被误判为 Run 取消。
 
 ## 9. 命令与 CI 分层
+
+> **后续实现对照：** 此节是历史测试/CI 提案，不代表已接入 CI，也不是本次实施范围。当前测试命令、marker 与资源条件见 [运行与验证](../standards/runtime-service-onboarding-and-verification.md)。旧 RUNTIME_E2E 总开关已不适合作为全部测试的入口，未开开关也不代表测试自动退化成 fake。
 
 建议 Runtime Service 提供以下最小命令：
 

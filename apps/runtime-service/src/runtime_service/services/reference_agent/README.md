@@ -1,44 +1,31 @@
 # reference_agent
 
-这是 R2 的最小 Runtime-aware `create_agent` 参考 Service。组合根会先解析
-`RuntimeContext`、`AgentDefaults` 和本地演示 `RuntimePolicy`，再创建模型和 Agent Graph。
+普通工具 Agent 的参考组合根。先读 [Agent 开发指南](../../../../docs/standards/runtime-agent-development-guide.md)，再按本例学习受信身份、Context、受管模型与只读工具装配；它不是 Workspace、MCP 或复杂委派的完整模板。
 
-生产默认路径使用 `DEEPSEEK_PROXY_*` Provider 配置，缺少凭据时直接失败，不会静默切换 fake
-model。测试可以通过 `configurable._runtime_model` 显式注入 `FakeListChatModel`，这种注入不属于
-生产配置。
+## 入口与模块
 
-正式入口是：
+- [agent.py](agent.py)：`get_agent(config)` 区分探测与执行，`_build_agent()` 按本次运行事实装配模型、工具、middleware 和追踪。
+- [tools.py](tools.py)：只读业务工具 `read_reference`。
+- [prompts.py](prompts.py)：业务指令。
+- [graphs/reference_agent.py](../../graphs/reference_agent.py)：稳定导出；正式与 demo JSON 均注册本图。
 
-```python
-async def get_agent(config: RunnableConfig) -> Pregel: ...
+schema 探测不取真实模型连接，探测图不能执行任务。正式执行读取已验证的 `langgraph_auth_user`，校验 Context 与策略，通过受管模型引用取得连接；演示默认模型 ID 不替代平台模型目录。不得缓存带其他用户身份、模型连接或资源的 graph。
+
+## 装配要求
+
+`RuntimeConfigMiddleware` 同时约束模型可见工具与真实调用。组合根还接入 Token/调用次数/Run 时间预算、Plan、错误分类、消息队列及按配置启用的隐私与循环检测；精确顺序以 [装配测试](../../../../tests/services/reference_agent/test_middleware_order.py) 为准。
+
+`read_reference` 的重试仅覆盖明确的只读连接失败。正式模型容错来自受管 bundle policy；测试用 fallback/retry 注入不属于客户端配置。未知异常、权限、取消和隐私失败不能伪装成功。Context 当前不接受 `tools`；工具目录和签名禁用策略沿公共 Runtime 规则。
+
+## 测试与接入边界
+
+在应用目录运行：
+
+```bash
+uv run pytest tests/services/reference_agent -q
+uv run pytest tests/services/test_schema_introspection.py -q
 ```
 
-Graph 注册由根目录的 `langgraph.json` 和 `langgraph.demo.json` 负责。
+本地模型注入参考 [test_agent.py](../../../../tests/services/reference_agent/test_agent.py) 的 `test_get_agent_accepts_explicit_fake_model_and_runtime_context`：使用测试支持的 `BindableFakeChatModel` 和 `configurable._runtime_model`。不要直接替换成不支持 `bind_tools()` 的 FakeListChatModel，也不要把测试身份注入带入正式请求。
 
-本地组合测试示例：
-
-```python
-from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from runtime_service.runtime import RuntimeContext
-from runtime_service.services.reference_agent.agent import get_agent
-
-graph = await get_agent(
-    {"configurable": {"_runtime_model": FakeListChatModel(responses=["ok"])}}
-)
-result = await graph.ainvoke(
-    {"messages": [{"role": "user", "content": "hello"}]},
-    context=RuntimeContext(),
-)
-```
-
-`get_agent(config)` 只负责构图配置；每次 Run 的 Context 使用 LangGraph 的 `context` 参数传入，
-不会写入 `configurable` 或 Prompt。无 Thread 级外部资源时默认 graph 可复用；未来需要
-Workspace/Sandbox 时才改为按 Thread 动态构图。
-
-R3 在组合根中显式加入 `RuntimeConfigMiddleware`、官方模型/工具调用上限、Tool retry/error
-和单次模型超时。`ToolRetryMiddleware` 只对 `read_reference` 这个明确只读 Tool 重试
-`ConnectionError`；`ToolErrorMiddleware` 只向模型暴露脱敏的 `ValueError`/临时连接错误，未知异常继续传播。
-测试可以显式注入 fallback model 或开启 model retry 来验证官方组件的真实 graph 行为；生产默认不从
-`configurable` 注入 fallback，也不默认开启 model retry。
-R4 增加 `read_reference` 只读 Tool，并同时通过模型可见性过滤和执行前 allowlist 检查；写入、
-MCP、Sandbox 和 Subagent 能力由对应 R4 Demo 单独展示，不塞进这个最小模板。
+重点读受信身份逐 Run 生效、Context 覆盖、策略拒绝、无身份失败和拓扑稳定的断言。拓扑稳定不等于可跨用户复用实例。测试源码不是运行结果；正式接入仍需 [平台链路验证](../../../../docs/standards/runtime-service-onboarding-and-verification.md)。

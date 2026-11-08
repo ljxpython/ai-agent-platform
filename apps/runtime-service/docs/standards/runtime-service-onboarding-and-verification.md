@@ -1,18 +1,49 @@
 # Runtime Service 介入与验证
 
+## 新 Agent 的验证顺序
+
+先完成[开发指南](runtime-agent-development-guide.md)中的设计与接入清单，再按 Agent 类型选择测试。下表用于选择现有参考断言；新增 Agent 还需自己的 `tests/services/<service_name>/`，跑旧案例不能代替新 Agent 验证。
+
+| Agent/改动类型 | 现有参考测试 | 要证明什么 |
+|---|---|---|
+| 普通工具 Agent | `tests/services/reference_agent/`、`tests/services/test_schema_introspection.py` | 受信身份、Context、模型、工具、探测不可执行 |
+| 确定流程/HITL | `tests/services/workflow_demo/test_agent.py` | 分支、最新消息、批准/拒绝、resume 不重复已完成步骤 |
+| 单项 Deep Agent/MCP/Backend 机制 | `tests/services/test_r4_capability_demos.py` | 机制与权限；该组会启动测试 stdio MCP 子进程 |
+| 文件/审批/子 Agent 组合 | `tests/services/showcase_demo/` | 文件副作用、角色边界、审批与资源；按 marker 区分外部依赖 |
+| 扩展 DearFlow | 对应 `tests/services/dearflow_agent/` 测试文件 | 当前修改的业务能力；不要无条件跑带真实模型/外部服务的整目录 |
+| 注册或公共契约 | `tests/test_r0_baseline.py`、对应公共层测试 | 新图注册、配置、schema 与所改公共约束 |
+
+当前应用使用 pytest；从 `apps/runtime-service` 目录执行。下面是已存在测试的选择示例，本次文档更新未重新执行这些测试：
+
+```bash
+uv run --frozen pytest tests/services/reference_agent tests/services/test_schema_introspection.py -q
+uv run --frozen pytest tests/services/workflow_demo/test_agent.py -q
+uv run --frozen pytest tests/services/showcase_demo -m "not integration and not durable and not e2e" -q
+```
+
+先验证新 Agent 的确定性单元/组合行为，再按涉及边界做真实资源集成，最后验证平台受管调用。marker 之外仍可能存在环境开关或子进程需求，运行前查看所选测试 fixture。skip、fake 成功或 `/ready` 成功均不能代替实际业务验收。
+
 ## 本地介入
 
-```bash
-cd apps/runtime-service
-uv sync
-RUNTIME_BACKEND=local uv run graphharbor serve --config langgraph.demo.json --host 127.0.0.1 --port 8123
-```
-
-先运行不依赖外部服务的快速测试：
+关联 Worktree 从仓库根使用统一入口初始化和管理所属资源，具体前提见[资源隔离规范](../../../../docs/standards/worktree-development.md)：
 
 ```bash
-uv run pytest tests/services/showcase_demo -m "not integration and not e2e"
+bash "scripts/local-stack.sh" init
+bash "scripts/local-stack.sh" deps
+bash "scripts/local-stack.sh" doctor
+bash "scripts/local-stack.sh" start
+bash "scripts/local-stack.sh" status
 ```
+
+独立主工作区开发且已配置数据库、Redis 和认证时，才使用以下应用目录示例；端口不能照搬到关联 Worktree：
+
+```bash
+cd "apps/runtime-service"
+uv sync --frozen
+RUNTIME_BACKEND=local uv run --frozen graphharbor serve --config langgraph.demo.json --host 127.0.0.1 --port 8123
+```
+
+测试选择以本页首表和本次新增 Agent 的实际能力为准，不再将 Showcase 一组测试当成所有新 Agent 的验证入口。
 
 需要 Docker 隔离时运行 integration；需要真实模型或外部 MCP 时显式设置对应环境变量和 marker，凭据缺失必须失败并说明原因，禁止静默降级。
 

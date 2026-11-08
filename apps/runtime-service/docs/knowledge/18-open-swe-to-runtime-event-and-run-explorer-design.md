@@ -1,5 +1,9 @@
 # Open SWE 借鉴与 Runtime Run Event / Run Explorer 设计（Draft）
 
+## 阅读边界（2026-11-08 复核）
+
+命令与观察分离、稳定关联键、事实源分层仍可借鉴；本文的平台事件身份/查询域与 Run Explorer 方案已被后续原生网关及观测专项取代，不是当前事件契约。
+
 > 文档类型：Draft
 >
 > 状态：讨论稿，不替代 `docs/standards/` 下的现行规范
@@ -202,6 +206,8 @@ project；Langfuse callback 负责 Model、Tool、Subagent Trace。它解决的�
 不解决 Run 状态、产品事件、SSE 重放或权限查询。
 
 ## 5. 我们的适配设计
+
+> **后续实现对照：** 以下方案已被取代，不能据此新建 runtime_run_events 或平台执行状态机。当前运行事实由 GraphHarbor 持有，平台负责授权/投影；见 [原生网关实施](platform-runtime-integration/10-implementation-status.md)、[Run Explorer](../../../../docs/projects/20260914-agent-observability-run-explorer/README.md) 与 [后续日志链路](../../../../docs/projects/20261022-trace-to-logs-distributed-observability/README.md)。
 
 ### 5.1 平台事件身份
 

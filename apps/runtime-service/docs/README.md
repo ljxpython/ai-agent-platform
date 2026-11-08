@@ -1,43 +1,38 @@
 # Runtime Service 开发文档
 
-这里是新 Runtime Service 的项目级文档入口。新代码位于
-`apps/runtime-service/src/runtime_service/`，本目录只保留绿色重构真正需要的设计和实施资料。
+这里帮助开发者在现有平台中新增或扩展 Agent。先看当前开发路径，再按任务查专题和历史设计。
 
-R0-R5 已有局部实现和归档验证记录，但尚未全部满足生产链路设计；R6 Durable Run 的
-GraphHarbor Durable Core 已在隔离 PostgreSQL/Redis 环境取得部分真实证据，但生产切换仍未就绪。
-逐文档对齐结果见
-`knowledge/31-runtime-refactor-alignment-audit.md`。实现代码和测试以应用根 README、
-`tests/runtime/` 和 `tests/services/` 为准；R0-R6 不修改 Platform API。
+## 新开发者的阅读顺序
 
-## 阅读顺序
+1. [Agent 设计与开发指南](standards/runtime-agent-development-guide.md)：选择 Agent 类型、理解模块架构、划分目录、接入平台并完成验证。
+2. [开发范式与规则](standards/runtime-service-development-standard.md)：必须遵守的约束及各能力的具体规则。
+3. [案例与资料导航](standards/runtime-service-reading-guide.md)：当前任务该看哪段源码、哪组测试、哪些官方资料。
+4. [运行与验证](standards/runtime-service-onboarding-and-verification.md)：所属环境启动、按类型选测试和结果记录。
 
-1. `knowledge/10-production-agent-platform-roadmap.md`：总路线图和阶段依赖
-2. `knowledge/28-runtime-refactor-development-plan.md`：R0～R6、P1 开发计划和验收门槛
-3. `knowledge/13-runtime-service-target-code-layout.md`：目标物理目录和依赖方向
-4. `knowledge/14-runtime-contracts-and-resolution-design.md`：Contracts、Resolver、Modeling
-5. `knowledge/11-agent-service-directory-architecture.md`：Agent Service 组合根和代码规范
-6. `knowledge/15-runtime-middleware-lifecycle-and-failure-semantics.md`：Middleware 生命周期和失败语义
-7. `knowledge/23-graph-thread-backend-checkpoint-lifecycle-design.md`：Graph、Thread、Backend、Checkpoint
-8. `knowledge/24-package-langgraph-startup-shutdown-design.md`：Package、langgraph.json、启动和退出
-9. `knowledge/25-runtime-testing-and-cross-service-contract-design.md`：测试分层和跨服务契约测试
-10. `knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md`：Tool、MCP 和副作用隔离
-11. `knowledge/20-runtime-backend-workspace-skills-and-subagents-design.md`：Backend、Workspace、Skills、Subagents
-12. `knowledge/16-runtime-observability-and-langfuse-design.md`：Trace、日志、指标和脱敏
-13. `knowledge/18-open-swe-to-runtime-event-and-run-explorer-design.md`：Open SWE 借鉴和事件投影
-14. `knowledge/26-runtime-custom-routes-and-model-config-design.md`：不建设 Custom Route 的模型配置边界
-15. `knowledge/22-platform-runtime-contract-design.md`：Platform 整合阶段的 JSON、Token、事件和幂等契约
-16. `knowledge/27-platform-runtime-integration-phased-design.md`：Runtime 与 Platform 分阶段整合
-17. `knowledge/31-runtime-refactor-alignment-audit.md`：设计、源码、测试和真实证据对齐审计
+[应用 README](../README.md) 提供安装与启动背景；[standards 首页](standards/README.md) 汇总当前规则。关联 Worktree 先读[资源隔离规范](../../../docs/standards/worktree-development.md)。
 
-新开发者先读当前生效规范：`standards/README.md`。其中说明官方 MCP/外部资料查询入口、knowledge 借鉴地图、Showcase Demo 复用边界，以及开发和验证流程。
+## 常见任务从哪里进入
 
-R4 Demo 快速入口：`src/runtime_service/services/demo/deep_agent_services/demo/README.md`、
-`src/runtime_service/services/demo/mcp_services/demo/README.md`、
-`src/runtime_service/services/demo/backend_services/demo/README.md`。
+| 任务 | 先读 |
+|---|---|
+| 新增一个普通工具 Agent | 开发指南中的类型选择、模块架构与接入步骤；reference_agent 源码和测试 |
+| 固定步骤、条件分支、人工确认 | 开发指南中的 Workflow 边界；workflow_demo 源码和恢复测试 |
+| 文件操作、Skills、子 Agent | 案例导航中的 deep_agent_demo / backend_demo / Showcase |
+| 接入 MCP、文档、知识或后台任务 | 案例导航的按需专题，不复制整套 DearFlow |
+| 修改模型/Context、权限或跨服务能力 | 对应现行专题与双端代码；按根 AGENTS 判断影响级别 |
+| 查当初为何这样设计 | 下方 knowledge 索引；不能直接把历史 Draft 当作当前规范 |
 
-## 文档边界
+## 设计依据与历史资料
 
-- `knowledge/` 下的文档服务于新 Runtime 绿色重构，不是旧代码迁移指南。
-- 旧 `runtime_service/docs/` 只作为历史参考，不从新代码导入或复制。
-- 旧契约、旧数据、旧 Graph、旧 HTTP 路由不进入新实现；不做双读、双写或兼容 Adapter。
-- 21 号版本治理文档暂不复制，它是延期的未来议题；17 号 Admin Console 文档属于后续平台建设。
+`knowledge/` 保存架构推导、早期 R0～R6 计划和专项资料。其中的版本、目录、能力状态可能对应当时阶段，不能代表当前运行状态。仍有效的设计保留在原位置；有差异时先核对源码、测试和当前标准，安全/权限/契约问题按根规则人工裁决。
+
+按问题选择阅读，不要求新开发者通读全部资料：
+
+- Service/Graph/目录职责：[11 服务架构](knowledge/11-agent-service-directory-architecture.md)、[13 目标目录](knowledge/13-runtime-service-target-code-layout.md)。
+- Context/模型与策略：[14 契约与解析](knowledge/14-runtime-contracts-and-resolution-design.md)。
+- 生命周期/失败：[15 Middleware](knowledge/15-runtime-middleware-lifecycle-and-failure-semantics.md)、[23 Graph/Thread/Checkpoint](knowledge/23-graph-thread-backend-checkpoint-lifecycle-design.md)。
+- 工具与资源：[19 Tool/MCP](knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md)、[20 Workspace/Skills/Subagents](knowledge/20-runtime-backend-workspace-skills-and-subagents-design.md)。
+- 测试与整合：[25 测试设计](knowledge/25-runtime-testing-and-cross-service-contract-design.md)、[22 平台契约设计](knowledge/22-platform-runtime-contract-design.md)。
+- 历史阶段证据：[28 重构计划](knowledge/28-runtime-refactor-development-plan.md)、[31 早期对齐审计](knowledge/31-runtime-refactor-alignment-audit.md)。
+
+当前功能状态查[全仓功能总览](../../../docs/FEATURES.md)和对应项目验证记录；不能用早期 R6 的状态覆盖后续专项，也不能凭当前依赖版本解除旧验收限制。

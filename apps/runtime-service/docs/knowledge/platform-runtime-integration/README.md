@@ -1,5 +1,9 @@
 # Platform Runtime Integration 专项
 
+## 阅读边界（2026-11-08 复核）
+
+本目录保留 2026-09 Platform/Runtime 整合的设计取舍与分日验收，不再作为新 Agent 的首读规范。先读 [开发指南](../../standards/runtime-agent-development-guide.md) 与 [现行规范](../../standards/README.md)，再按问题回看本目录；后文 B3/OpenSpec 是当时流程。
+
 - 文档类型：Draft Supporting Navigation
 - 状态：总体方案已确认；L1/L2/L3 自动化与本机浏览器链路已完成；旧兼容代码/文档和重叠 OpenSpec 已清理归档；仅 owner UAT 与本 change 最终 spec sync/archive 保留门禁（2026-09-07）
 - Owning loci：`apps/platform-web`、`apps/platform-api`
@@ -45,6 +49,8 @@ platform-web
 GraphHarbor 必须对这些路径、envelope、SSE、取消、重连和失败语义兼容。
 
 ## 3. 阅读顺序
+
+> **后续对照：** 按日期读方案演进：04/06/08 为 09-04 最小模型基线，12 为 09-05 后续计划，10 的 §10.7 为 09-07 结果。当前 Context 无 tools、模型使用受管引用、正式图有四个；工具管理/禁用属于平台治理，Chat 不提交 tools；保留策略见 [10-30 专项](../../../../../docs/projects/20261030-session-and-runtime-retention-governance/README.md)。
 
 1. [现状与退役审计](./01-current-state-and-retirement-audit.md)：哪些旧内容可保留、应重写或拟归档。
 2. [目标架构与契约](./02-target-architecture-and-contract.md)：前端、平台后端、GraphHarbor 和 Runtime 如何交互。
