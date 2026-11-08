@@ -514,3 +514,21 @@ def test_resolve_model_max_output_tokens_by_family_and_capacity() -> None:
         resolve_model_max_output_tokens(model_name="unknown-model", capacity=128000)
         == 4096
     )
+
+
+def test_connection_without_context_window_falls_back_to_safe_capacity():
+    from langchain_core.language_models.fake_chat_models import (
+        FakeMessagesListChatModel,
+    )
+
+    fake = FakeMessagesListChatModel(responses=[])
+    res = modeling._with_context_capacity(
+        fake,
+        {
+            "model": "deepseek-v4.1-flash",
+            "provider": "maomaoai",
+            "context_window_tokens": None,
+        },
+    )
+    assert res.profile["max_input_tokens"] == 128_000
+    assert res.profile["max_output_tokens"] == 8192

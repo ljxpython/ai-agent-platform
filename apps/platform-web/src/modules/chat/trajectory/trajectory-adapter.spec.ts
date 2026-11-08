@@ -4,6 +4,7 @@ import type { AssembledToolCall } from "@langchain/vue";
 import {
   buildTrajectoryRecords,
   extractReasoning,
+  extractRecordTraceId,
   extractTokens,
   groupTrajectoryByTurn,
 } from "./trajectory-adapter";
@@ -293,5 +294,100 @@ describe("trajectory-adapter", () => {
     expect(errorRec).toBeDefined();
     expect(errorRec?.name).toContain("执行异常中断");
     expect(errorRec?.summary).toContain("智能体运行异常中断");
+  });
+
+  it("正确提取 traceId 并透传至 TrajectoryRecord 与 TrajectoryTurnGroup", () => {
+    const messages = [
+      {
+        type: "human",
+        content: "你好呀",
+      } as unknown as BaseMessage,
+      {
+        type: "ai",
+        content: "你好！",
+        response_metadata: {
+          trace_id: "tr-test-turn-1",
+        },
+      } as unknown as BaseMessage,
+    ];
+
+    const records = buildTrajectoryRecords(messages, [], false, null, false);
+    expect(records[1].traceId).toBe("tr-test-turn-1");
+
+    const groups = groupTrajectoryByTurn(records);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].traceId).toBe("tr-test-turn-1");
+  });
+
+  it("extractRecordTraceId 应当忽略客户端内部生成的 lc_run-- 虚拟 ID", () => {
+    const fakeMessage = {
+      id: "lc_run--01a1bb74-5c60-7131-a7b2-a32cc7df9ae9",
+      response_metadata: {
+        run_id: "lc_run--01a1bb74-5c60-7131-a7b2-a32cc7df9ae9",
+      },
+    };
+    expect(extractRecordTraceId(fakeMessage)).toBeUndefined();
+  });
+
+  it("buildTrajectoryRecords 与 groupTrajectoryByTurn 正确应用真实 turnTraces 与 runTraces 覆盖", () => {
+    const messages = [
+      {
+        type: "human",
+        content: "第一轮提问",
+      } as unknown as BaseMessage,
+      {
+        type: "ai",
+        content: "第一轮回答",
+        response_metadata: {
+          run_id: "lc_run--ignore-me",
+        },
+      } as unknown as BaseMessage,
+      {
+        type: "human",
+        content: "第二轮提问",
+      } as unknown as BaseMessage,
+      {
+        type: "ai",
+        content: "第二轮回答",
+      } as unknown as BaseMessage,
+    ];
+
+    const records = buildTrajectoryRecords(
+      messages,
+      [],
+      false,
+      null,
+      false,
+      undefined,
+      undefined,
+      [{ run_id: "run-turn-1" }, { run_id: "run-turn-2" }],
+      {
+        turnTraces: {
+          1: "tr-real-turn-1",
+          2: "tr-real-turn-2",
+        },
+      },
+    );
+
+    // Turn 1 记录的 traceId 应当为 tr-real-turn-1
+    const turn1Records = records.filter((r) => r.turnIndex === 1);
+    expect(turn1Records.every((r) => r.traceId === "tr-real-turn-1")).toBe(
+      true,
+    );
+
+    // Turn 2 记录的 traceId 应当为 tr-real-turn-2
+    const turn2Records = records.filter((r) => r.turnIndex === 2);
+    expect(turn2Records.every((r) => r.traceId === "tr-real-turn-2")).toBe(
+      true,
+    );
+
+    // 分组测试
+    const groups = groupTrajectoryByTurn(records, {
+      1: "tr-real-turn-1",
+      2: "tr-real-turn-2",
+    });
+    expect(groups).toHaveLength(2);
+    expect(groups[0].traceId).toBe("tr-real-turn-1");
+    expect(groups[1].traceId).toBe("tr-real-turn-2");
   });
 });

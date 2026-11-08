@@ -101,7 +101,7 @@ export const correlationSchema = z.object({
 export type CorrelationInfo = z.infer<typeof correlationSchema>;
 
 export const traceInfoSchema = z.object({
-  provider: z.literal("langfuse"),
+  provider: z.enum(["langfuse", "mlflow", "both", "none"]).or(z.string()),
   trace_id: z.string().max(128),
   url: z.string().nullable().optional().default(null),
 });

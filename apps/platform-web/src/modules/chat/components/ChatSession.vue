@@ -1848,7 +1848,7 @@ defineExpose({
             />
           </button>
           <span
-            v-else
+            v-if="!session.threadId.value"
             class="inline-flex shrink-0 items-center rounded-lg border border-dashed border-gray-200 bg-gray-50/50 px-2 py-1 text-[11px] text-gray-400 dark:border-dark-700 dark:bg-dark-900/50"
           >
             新会话
@@ -2144,6 +2144,9 @@ defineExpose({
               :error="error || streamError"
               :disabled="!canWrite || cancelling || turnState === 'stopping'"
               :budget="runBudget.budget.value"
+              :project-id="projectId"
+              :thread-id="session.threadId.value || undefined"
+              :run-id="selectedRunId || session.run.value?.run_id || null"
               @cancel="handleStop"
               @resume="handleResume"
               @verify-stop="handleVerifyStop"

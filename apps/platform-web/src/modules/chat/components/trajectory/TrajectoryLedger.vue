@@ -5,6 +5,11 @@ import type {
   TrajectoryRecordKind,
   TrajectoryTurnGroup,
 } from "../../trajectory/types";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import {
+  buildTraceUrl,
+  isTracingEnabled,
+} from "@/services/observability/langfuse-url";
 
 const props = withDefaults(
   defineProps<{
@@ -14,12 +19,16 @@ const props = withDefaults(
     searchQuery?: string;
     allTurnsCollapsed?: boolean;
     allCallsCollapsed?: boolean;
+    projectId?: string;
+    experimentId?: string;
   }>(),
   {
     filter: "all",
     searchQuery: "",
     allTurnsCollapsed: false,
     allCallsCollapsed: false,
+    projectId: undefined,
+    experimentId: undefined,
   },
 );
 
@@ -48,6 +57,40 @@ function toggleTurn(turnIndex: number) {
 
 function isTurnCollapsed(turnIndex: number): boolean {
   return Boolean(collapsedTurnMap.value[turnIndex]);
+}
+
+const copiedTraceId = ref<string | null>(null);
+
+async function copyTurnTraceId(tid?: string) {
+  if (!tid) return;
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(tid);
+    }
+    copiedTraceId.value = tid;
+    setTimeout(() => {
+      if (copiedTraceId.value === tid) {
+        copiedTraceId.value = null;
+      }
+    }, 2000);
+  } catch {
+    // 降级
+  }
+}
+
+function formatTraceId(id?: string): string {
+  if (!id) return "";
+  if (id.length <= 16) return id;
+  return `${id.slice(0, 8)}…${id.slice(-4)}`;
+}
+
+function getTurnTraceUrl(tid?: string): string {
+  if (!isTracingEnabled() || !tid) return "";
+  return buildTraceUrl(tid, {
+    projectId: props.projectId,
+    experimentId: props.experimentId,
+    view: "trace",
+  });
 }
 
 const filteredGroups = computed(() => {
@@ -148,8 +191,47 @@ function getBadgeStyle(kind: TrajectoryRecordKind) {
           >
           <span>Turn {{ group.turnIndex }}</span>
         </div>
-        <div class="text-[9px] text-gray-400 dark:text-dark-500">
-          {{ group.records.length }} 步
+        <div class="flex items-center gap-2">
+          <div
+            v-if="group.traceId"
+            class="flex items-center gap-1 text-[9px] text-gray-400 dark:text-dark-400"
+            :title="`Trace ID: ${group.traceId}`"
+            @click.stop
+          >
+            <span class="font-mono"
+              >Trace: {{ formatTraceId(group.traceId) }}</span
+            >
+            <button
+              type="button"
+              class="inline-flex items-center justify-center p-0.5 rounded text-gray-400 hover:text-gray-600 dark:text-dark-400 dark:hover:text-dark-200"
+              :title="
+                copiedTraceId === group.traceId ? '已复制' : '复制 Trace ID'
+              "
+              @click.stop="copyTurnTraceId(group.traceId)"
+            >
+              <BaseIcon
+                :name="copiedTraceId === group.traceId ? 'check' : 'copy'"
+                size="xs"
+                :class="
+                  copiedTraceId === group.traceId ? '!text-emerald-500' : ''
+                "
+              />
+            </button>
+            <a
+              v-if="getTurnTraceUrl(group.traceId)"
+              :href="getTurnTraceUrl(group.traceId)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center justify-center p-0.5 rounded text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 font-sans text-[10px] font-bold"
+              title="在 EvalFlow 中直达该 Trace 详情"
+              @click.stop
+            >
+              <span>↗</span>
+            </a>
+          </div>
+          <div class="text-[9px] text-gray-400 dark:text-dark-500">
+            {{ group.records.length }} 步
+          </div>
         </div>
       </div>
 

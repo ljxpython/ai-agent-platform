@@ -1,10 +1,10 @@
 <script setup lang="ts">
 defineProps<{
-  title: string
-  description: string
-  eyebrow?: string
-  compact?: boolean
-}>()
+  title: string;
+  description: string;
+  eyebrow?: string;
+  compact?: boolean;
+}>();
 </script>
 
 <template>
@@ -12,7 +12,7 @@ defineProps<{
     class="pw-page-header transition-all duration-200"
     :class="compact ? 'mb-1 gap-1.5 xl:items-center' : ''"
   >
-    <div>
+    <div class="min-w-0 flex-1">
       <div
         v-if="eyebrow"
         class="pw-page-eyebrow transition-all duration-200"
@@ -35,7 +35,7 @@ defineProps<{
     </div>
     <div
       v-if="$slots.actions"
-      class="flex flex-wrap items-center gap-3 transition-all duration-200"
+      class="flex flex-wrap items-center gap-2.5 transition-all duration-200 shrink-0"
       :class="compact ? 'gap-1.5' : ''"
     >
       <slot name="actions" />

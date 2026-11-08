@@ -7,7 +7,7 @@ import {
   type DiagnosticContext,
 } from "@/services/observability/diagnostic-packet";
 import { errorRingBuffer } from "@/services/observability/error-buffer";
-import { buildLangfuseTraceUrl } from "@/services/observability/langfuse-url";
+import { buildTraceUrl } from "@/services/observability/langfuse-url";
 import { getRunDiagnostics } from "@/services/threads/diagnostics.service";
 import type { RunDiagnosticsV1 } from "../diagnostics/types";
 
@@ -176,9 +176,24 @@ const traceId = computed(() => {
   return backendDiagnostics.value?.trace?.trace_id || "";
 });
 
+const traceProvider = computed(() => {
+  return backendDiagnostics.value?.trace?.provider;
+});
+
 const traceUrl = computed(() => {
-  if (!traceId.value) return "";
-  return buildLangfuseTraceUrl(traceId.value);
+  if (!traceId.value && !props.threadId) return "";
+  return buildTraceUrl(traceId.value, {
+    provider: traceProvider.value,
+    threadId: props.threadId,
+    projectId: props.projectId,
+  });
+});
+
+const traceProviderLabel = computed(() => {
+  const p = (traceProvider.value || "").toLowerCase();
+  if (p === "mlflow") return "EvalFlow";
+  if (p === "langfuse") return "Langfuse";
+  return "链路";
 });
 
 const handleClose = () => {
@@ -403,7 +418,7 @@ const handleGoToTrajectory = () => {
               class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-indigo-700 bg-white border border-indigo-200 rounded-md shadow-2xs hover:bg-indigo-50 dark:bg-indigo-900/50 dark:text-indigo-200 dark:border-indigo-800 transition-colors"
               data-testid="diagnostic-open-trace-btn"
             >
-              <span>Langfuse 追踪</span>
+              <span>{{ traceProviderLabel }} 追踪</span>
               <svg
                 class="size-3"
                 fill="none"

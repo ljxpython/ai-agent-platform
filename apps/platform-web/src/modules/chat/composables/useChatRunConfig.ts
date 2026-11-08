@@ -223,8 +223,18 @@ export function useChatRunConfig(options: UseChatRunConfigOptions) {
       const projectDefault = policies.items.find(
         (item) => item.policy.is_default_for_project,
       );
+      const isTestOrBroken = (m: (typeof models.value)[0]) =>
+        /故障|broken|mock|宕机|模拟/i.test(m.display_name) ||
+        /broken|mock/i.test(m.model || "");
+      const normalModels = models.value.filter((m) => !isTestOrBroken(m));
       const defaultModel =
         models.value.find((model) => model.id === projectDefault?.catalog_id) ??
+        normalModels.find((m) =>
+          /deepseek-v4\.1-flash/i.test(m.model || m.display_name),
+        ) ??
+        normalModels.find((m) => /deepseek/i.test(m.model || m.display_name)) ??
+        normalModels.find((m) => /qwen/i.test(m.model || m.display_name)) ??
+        normalModels[0] ??
         models.value[0];
       defaultModelId.value = defaultModel?.id ?? "";
       defaultModelName.value = defaultModel?.display_name ?? "";

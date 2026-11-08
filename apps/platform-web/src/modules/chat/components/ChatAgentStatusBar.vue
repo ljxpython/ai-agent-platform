@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { useRoute } from "vue-router";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import { formatThreadTime } from "@/utils/threads";
 import { copyDiagnosticPacket } from "@/services/observability/diagnostic-packet";
 import type { SessionTurnState } from "../composables/useChatSession";
 import type { BudgetViewModel } from "../budget/view-model";
+
+const route = useRoute();
 
 const props = defineProps<{
   isRunning: boolean;
@@ -14,6 +17,9 @@ const props = defineProps<{
   disabled?: boolean;
   turnState?: SessionTurnState;
   budget?: BudgetViewModel | null;
+  projectId?: string;
+  threadId?: string;
+  runId?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -28,8 +34,15 @@ const emit = defineEmits<{
 const isCopied = ref(false);
 
 async function handleCopyDiagnostic() {
+  const currentProjectId =
+    props.projectId || (route?.params?.projectId as string) || undefined;
+  const currentThreadId =
+    props.threadId || (route?.params?.threadId as string) || undefined;
   const res = await copyDiagnosticPacket({
-    customMessage: statusText.value,
+    projectId: currentProjectId,
+    threadId: currentThreadId,
+    runId: props.runId || undefined,
+    customMessage: props.error || statusText.value,
     error: props.error,
   });
   if (res.success) {

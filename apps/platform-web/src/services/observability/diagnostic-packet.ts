@@ -38,6 +38,10 @@ export const REASON_CODE_TEXT: Record<string, string> = {
   model_unavailable: "当前工作区未配置或不支持所选模型",
   sandbox_unreachable: "沙箱运行环境失联或已被销毁",
   step_limit: "单次任务执行达到最大步数限制 (GraphRecursionError)",
+  model_connection_refused:
+    "无法连接到模型服务节点（连接被拒绝 / Connection Refused）",
+  "runtime.context.capacity_unknown":
+    "模型未配置 context_window_tokens 且无法推断上下文预算",
   "runtime.execution_failed": "智能体执行中断或发生不可恢复异常",
   "runtime.loop.detected": "检测到工具调用或模型输出进入死循环",
   context_offload_not_supported: "当前智能体未开启或不支持上下文手动整理",
@@ -60,6 +64,10 @@ export const REASON_CODE_FOLLOW_UP: Record<string, string> = {
   model_unavailable: "请前往设置检查模型凭据是否有效，或选择其他可用模型。",
   sandbox_unreachable: "建议刷新页面并重新发起运行以自动重建沙箱。",
   step_limit: "任务复杂度过高，建议将大任务拆分为小步骤分别指派给智能体。",
+  model_connection_refused:
+    "目标服务地址拒绝连接或网络不可达，若正在做故障演练测试请确认预期；若是正常调用请检查模型 base_url 配置或端口是否开启。",
+  "runtime.context.capacity_unknown":
+    "请在模型连接管理中为该模型配置合法的 context_window_tokens 字段。",
   "runtime.loop.detected":
     "已触发安全保护终止循环，请调整 Prompt 明确停止条件后重试。",
   "runtime.execution_failed":
@@ -126,6 +134,16 @@ export function resolveReasonDetails(
       matchedCode = "sandbox_unreachable";
     } else if (haystack.includes("loop")) {
       matchedCode = "runtime.loop.detected";
+    } else if (
+      haystack.includes("connection refused") ||
+      haystack.includes("connecterror") ||
+      haystack.includes("econnrefused") ||
+      haystack.includes("failed to connect") ||
+      haystack.includes("59999")
+    ) {
+      matchedCode = "model_connection_refused";
+    } else if (haystack.includes("capacity_unknown")) {
+      matchedCode = "runtime.context.capacity_unknown";
     } else if (normCode) {
       matchedCode = normCode;
     } else {
@@ -274,6 +292,23 @@ export function generateDiagnosticMarkdown(
   - Trace ID: \`${traceId || "未分配或暂无"}\`
 ${traceUrl ? `  - Trace 直达链接: [在 Langfuse 中打开追踪 (Open Trace ↗)](${sanitizeDiagnosticText(traceUrl)})\n` : ""}${executionRequestId ? `  - Execution Request ID: \`${executionRequestId}\`\n` : ""}`;
 
+  let inferredProjectId = context.projectId;
+  let inferredThreadId = context.threadId;
+  if (typeof window !== "undefined") {
+    if (!inferredProjectId) {
+      const matchProj = window.location.pathname.match(
+        /\/projects\/([a-zA-Z0-9_-]+)/,
+      );
+      if (matchProj) inferredProjectId = matchProj[1];
+    }
+    if (!inferredThreadId) {
+      const matchThread = window.location.pathname.match(
+        /\/(?:dear-agent|chat)\/([a-zA-Z0-9_-]+)/,
+      );
+      if (matchThread) inferredThreadId = matchThread[1];
+    }
+  }
+
   const report = `### 🛠️ 故障诊断数据包 (Diagnostic Packet)
 - **发生时间**: ${now}
 - **访问路径**: \`${path}\`
@@ -282,8 +317,8 @@ ${traceUrl ? `  - Trace 直达链接: [在 Langfuse 中打开追踪 (Open Trace 
   - 安全上下文: ${isSecure ? "是 (HTTPS/Localhost)" : "否 (纯 HTTP 裸访问)"}
   - User Agent: \`${ua}\`
 - **业务上下文**:
-  - Project ID: \`${context.projectId || "未提供"}\`
-  - Thread ID: \`${context.threadId || "未提供"}\`
+  - Project ID: \`${inferredProjectId || "未提供"}\`
+  - Thread ID: \`${inferredThreadId || "未提供"}\`
   - Run ID: \`${context.runId || "未提供"}\`
   - 关联 Request ID: \`${resolvedRequestId}\`
 ${tracingSection}- **错误概况**:

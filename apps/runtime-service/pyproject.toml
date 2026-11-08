@@ -35,6 +35,7 @@ dependencies = [
     "python-pptx==1.0.2",
     "python-docx==1.2.0",
     "prometheus-client>=0.21.0",
+    "mlflow>=2.18",
 ]
 
 [dependency-groups]

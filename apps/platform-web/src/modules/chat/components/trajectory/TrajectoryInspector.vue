@@ -7,9 +7,15 @@ import type {
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import MarkdownContent from "@/components/platform/MarkdownContent.vue";
 import { copyDiagnosticPacket } from "@/services/observability/diagnostic-packet";
+import {
+  buildTraceUrl,
+  isTracingEnabled,
+} from "@/services/observability/langfuse-url";
 
 const props = defineProps<{
   record: TrajectoryRecord | null;
+  projectId?: string;
+  experimentId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -18,6 +24,32 @@ const emit = defineEmits<{
 }>();
 
 const copiedDiagnostic = ref(false);
+const copiedTrace = ref(false);
+
+async function handleCopyTraceId() {
+  const tid = props.record?.traceId;
+  if (!tid) return;
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(tid);
+    }
+    copiedTrace.value = true;
+    setTimeout(() => {
+      copiedTrace.value = false;
+    }, 2000);
+  } catch {
+    // 降级
+  }
+}
+
+const recordTraceUrl = computed(() => {
+  if (!isTracingEnabled() || !props.record?.traceId) return "";
+  return buildTraceUrl(props.record.traceId, {
+    projectId: props.projectId,
+    experimentId: props.experimentId,
+    view: "trace",
+  });
+});
 
 async function handleCopyDiagnostic() {
   const msg = props.record?.error || props.record?.summary || "";
@@ -245,6 +277,41 @@ async function handleCopy(text: string) {
             <dd class="font-mono text-gray-700 dark:text-gray-300">
               In: {{ record.tokens.input ?? 0 }} · Out:
               {{ record.tokens.output ?? 0 }}
+            </dd>
+          </div>
+          <div
+            v-if="record.traceId"
+            class="grid grid-cols-[80px_1fr] items-center"
+          >
+            <dt class="text-gray-400 dark:text-dark-400">Trace ID</dt>
+            <dd
+              class="flex items-center gap-1.5 font-mono text-gray-700 dark:text-gray-300 min-w-0"
+            >
+              <span class="truncate font-mono" :title="record.traceId">{{
+                record.traceId
+              }}</span>
+              <button
+                type="button"
+                class="inline-flex shrink-0 items-center justify-center p-0.5 rounded text-gray-400 hover:text-gray-600 dark:text-dark-400 dark:hover:text-dark-200"
+                :title="copiedTrace ? '已复制' : '复制 Trace ID'"
+                @click.stop="handleCopyTraceId"
+              >
+                <BaseIcon
+                  :name="copiedTrace ? 'check' : 'copy'"
+                  size="xs"
+                  :class="copiedTrace ? '!text-emerald-500' : ''"
+                />
+              </button>
+              <a
+                v-if="recordTraceUrl"
+                :href="recordTraceUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-sans font-medium text-emerald-600 dark:text-emerald-400 hover:underline ml-1"
+                title="在 EvalFlow 中查看该 Trace 详情"
+              >
+                <span>直达 ↗</span>
+              </a>
             </dd>
           </div>
         </dl>

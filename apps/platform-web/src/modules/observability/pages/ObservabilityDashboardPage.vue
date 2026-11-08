@@ -5,9 +5,16 @@ import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import PageHeader from "@/components/layout/PageHeader.vue";
 import { useThemeStore } from "@/stores/theme";
+import {
+  isTracingEnabled,
+  buildEvalFlowDashboardUrl,
+} from "@/services/observability/langfuse-url";
 
 const themeStore = useThemeStore();
 const router = useRouter();
+
+const isTracingActive = computed(() => isTracingEnabled());
+const evalFlowDashboardUrl = computed(() => buildEvalFlowDashboardUrl());
 
 // 优先使用环境变量配置的大盘 URL，未配置则回退到生产默认地址
 const rawDashboardUrl =
@@ -106,7 +113,7 @@ onUnmounted(() => {
       description="基于 Prometheus + Grafana 的全栈性能与资源监控。实时洞察微服务 QPS、P99 延时、容器内存与活跃会话。"
     >
       <template #actions>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap shrink-0">
           <BaseButton
             variant="secondary"
             size="sm"
@@ -115,6 +122,19 @@ onUnmounted(() => {
             <BaseIcon name="search" class="w-4 h-4 mr-1 text-sky-500" />
             链路诊断中心
           </BaseButton>
+          <a
+            v-if="isTracingActive && evalFlowDashboardUrl"
+            :href="evalFlowDashboardUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg shadow-2xs whitespace-nowrap shrink-0 transition"
+          >
+            <BaseIcon
+              name="activity"
+              class="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+            />
+            <span>EvalFlow 评测大盘 ↗</span>
+          </a>
           <BaseButton
             variant="ghost"
             size="sm"

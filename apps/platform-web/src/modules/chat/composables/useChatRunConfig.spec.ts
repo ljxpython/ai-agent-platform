@@ -70,6 +70,55 @@ describe("useChatRunConfig", () => {
     expect(context.value.model_id).toBe("model-2");
   });
 
+  it("skips broken/test models when selecting default model without project policy", async () => {
+    vi.spyOn(runtimeService, "listRuntimeModels").mockResolvedValue({
+      models: [
+        {
+          id: "broken-1",
+          model: "broken-primary-model",
+          display_name: "🔥 故障测试主模型 (模拟宕机/断网)",
+          provider: "openai",
+          enabled: true,
+          scope_type: "platform",
+          created_at: "2026-09-01T00:00:00Z",
+          updated_at: "2026-09-01T00:00:00Z",
+        },
+        {
+          id: "model-main",
+          model: "deepseek-v4.1-flash",
+          display_name: "deepseek-v4.1-flash",
+          provider: "maomaoai",
+          enabled: true,
+          scope_type: "platform",
+          created_at: "2026-09-02T00:00:00Z",
+          updated_at: "2026-09-02T00:00:00Z",
+        },
+      ],
+    });
+    vi.spyOn(policyService, "listRuntimeModelPolicies").mockResolvedValue({
+      items: [],
+    });
+
+    const context = ref({ model_id: "" });
+    const recursionLimit = ref(100);
+    const isModeLocked = computed(() => false);
+
+    const config = useChatRunConfig({
+      projectId: "new-proj",
+      graphId: "chat",
+      context,
+      recursionLimit,
+      isModeLocked,
+    });
+
+    await vi.waitFor(() => {
+      expect(config.modelsLoading.value).toBe(false);
+    });
+
+    expect(config.defaultModelId.value).toBe("model-main");
+    expect(context.value.model_id).toBe("model-main");
+  });
+
   it("manages draft options and applies updates with validation", () => {
     vi.spyOn(runtimeService, "listRuntimeModels").mockResolvedValue({
       models: [],
