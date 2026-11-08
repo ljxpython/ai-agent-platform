@@ -2,7 +2,7 @@
 
 ## 范围与状态
 
-2026-10-29，用户批准后在既有隔离Worktree实施T5.1–T5.6。当前实施中；本记录不代表原题质量验收通过，不进入Final。主目录仅维护文档，应用源码在`/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform`。已有改动不重置；本轮前置哈希保存在所属`.local-stack/v25-before-manifest.json`。
+2026-10-29，用户批准后在既有隔离Worktree实施T5.1–T5.6。当前实施中；本记录不代表原题质量验收通过，不进入Final。主目录仅维护文档，应用源码在`~/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform`。已有改动不重置；本轮前置哈希保存在所属`.local-stack/v25-before-manifest.json`。
 
 ## 已实施的最小改动
 

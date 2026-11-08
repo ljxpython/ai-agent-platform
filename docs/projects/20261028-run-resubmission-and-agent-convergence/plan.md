@@ -18,13 +18,13 @@
 ## 2. 总体架构设计与改动方案
 
 ### 方案 1：前端移除盲目重投降级逻辑（Surgical Fix）
-- **修改位置**：[ChatSession.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/ChatSession.vue)
+- **修改位置**：`apps/platform-web/src/modules/chat/components/ChatSession.vue`
 - **改动原则**：
   - `session.send` 失败（`!ok`）时，**绝不自动调用 `submitQueuedMessage` 重新派发**！
   - 只有当网络出现瞬时 409 / 正在排队时，由用户的明确操作控制；对于执行中断、模型超额或失败，恢复草稿（`submittedDraft`）或保持界面状态，允许用户人工审阅或调整后再决定是否重发。
 
 ### 方案 2：Agent System Prompt 增加代码与本地文件调研收敛准则
-- **修改位置**：[prompts.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py)
+- **修改位置**：`apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py`
 - **改动原则**：
   - 对齐现有联网调研约束（3~5 次搜索、2~4 篇精读），增加针对**代码库、本地项目与架构剖析**的收敛约束：
     - 坚持自顶向下（Top-Down）架构抽象原则，严禁微观递归、严禁写脚本对海量文件遍历扫描；
@@ -32,7 +32,7 @@
     - 一旦掌握顶层拓扑与关键模块职责，必须立即停止顺藤摸瓜，迅速转入产物编写与输出交付。
 
 ### 方案 3：强化模型预算逼近时的收尾感知（Graceful Wrapup）
-- **修改位置**：[execution_budget.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/execution_budget.py)
+- **修改位置**：`apps/runtime-service/src/runtime_service/middlewares/execution_budget.py`
 - **改动原则**：
   - 为 `WRAPUP_INSTRUCTION` 增加中英双语的明确强制收敛指示：“当前执行预算即将耗尽（剩余最后几次调用）。严禁启动新的探索、严禁再调用工具查询次要细节；必须立即利用手头已掌握的资料完成结论整合并输出最终答复。”
   - 确保模型在最后阶段刹车并交付已获得的成果。

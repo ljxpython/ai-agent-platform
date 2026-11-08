@@ -78,6 +78,7 @@ class AgentModelResilienceTest(unittest.IsolatedAsyncioTestCase):
             create_thread_run=AsyncMock(return_value={"run_id": str(uuid4())}),
             get_thread_run=AsyncMock(return_value={"status": "success"}),
             get_thread_state=AsyncMock(return_value={}),
+            touch_thread=AsyncMock(return_value={"status": "ok"}),
         )
         self.gateway = RuntimeGatewayService(
             session_factory=self.factory,

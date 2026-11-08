@@ -66,8 +66,10 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
                     "target_type": "graph",
                     "assistant_id": "test_case_agent",
                     "project_id": "project-1",
+                    "tenant_id": "__default",
                 },
                 "graph_id": "test_case_agent",
+                "retention": {"mode": "idle", "ttl_minutes": 43200},
                 "thread_id": payload["thread_id"],
                 "if_exists": "raise",
             }

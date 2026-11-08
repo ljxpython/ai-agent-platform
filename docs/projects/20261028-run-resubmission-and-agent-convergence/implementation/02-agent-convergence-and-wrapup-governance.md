@@ -1,9 +1,9 @@
 # 实现记录 02: Agent 代码库调研收敛与预算收尾感知治理
 
 ## 改动文件
-- [prompts.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py)
-- [execution_budget.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/execution_budget.py)
-- [agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)
+- `apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py`
+- `apps/runtime-service/src/runtime_service/middlewares/execution_budget.py`
+- `apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py`
 
 ## 改动背景与根因
 1. 原 `SYSTEM_PROMPT` 仅针对联网搜索设定了 3~5 次的收敛约束，对代码库与本地文件分析完全缺少边界限制。导致 Agent 在剖析 GitHub 仓库时陷入微观强迫症，频繁调用 `execute` 运行临时脚本对数十兆的全量文件树进行逐行正则遍历，耗尽 50 轮模型调用仍未输出产物。

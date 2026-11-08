@@ -1,7 +1,7 @@
 # 实现记录 01: 修复前端发送失败盲目重投 Bug
 
 ## 改动文件
-- [ChatSession.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/ChatSession.vue)
+- `apps/platform-web/src/modules/chat/components/ChatSession.vue`
 
 ## 改动背景与根因
 在原实现中，当 `session.send` 执行完毕返回 `ok === false`（例如模型额度耗尽 `ModelCallLimitExceededError` 或执行中断）且没有直接抛出 JS 异常时，降级逻辑错误地调用了 `await submitQueuedMessage(content)`。这导致已失败的 Prompt 被静默包装成 `multitask_strategy: "enqueue"` 重新发给后端服务端队列，导致新 Run 立即自动启动并陷入无限循环。

@@ -4,8 +4,8 @@
 - 状态：已完成（done，8/8 任务；Phase与Final核验通过）。
 - 人工评审：2026-10-30 用户同意 GraphHarbor 承担通用 TTL/可靠删除，平台定义业务规则；同意 Workspace 随会话删除、取消额外七天等待及此前风险修正。后续已授权提交、推送并合并主工作区；未部署生产服务。
 - 导航：[方案](plan.md) · [任务](tasks.md) · [验证](verification.md) · [实现记录](implementation/01-platform-runtime-retention.md) · [维护手册](../../runbooks/session-retention-maintenance.md)
-- 开发 Worktree：`/Users/lijiaxin/.codex/worktrees/retention-governance/ai-agent-platform`；环境 `wt_5642ffa8be9a` 已停止并销毁，Worktree 已清理。
-- GraphHarbor 项目：`/Users/lijiaxin/PyCharmMiscProject/graphharbor/docs/projects/20261030-thread-retention-lifecycle/`。
+- 开发 Worktree：`~/.codex/worktrees/retention-governance/ai-agent-platform`；环境 `wt_5642ffa8be9a` 已停止并销毁，Worktree 已清理。
+- GraphHarbor 项目：`graphharbor/docs/projects/20261030-thread-retention-lifecycle/`。
 
 目标：连续 30 天无用户主动查看或发送的会话自动删除；手动与自动删除共用可靠流程，确认资源释放后立即回收 Workspace，安全处理关联事实和幂等凭证。
 

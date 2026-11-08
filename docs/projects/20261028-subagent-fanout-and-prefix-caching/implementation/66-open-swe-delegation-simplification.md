@@ -12,7 +12,7 @@
 
 ## 复用边界
 
-参考库 `/Users/lijiaxin/PyCharmMiscProject/research/open-swe` 已 fetch 到 `241c74b8f306c270c428f708e469572f511329fe`。参考工作树有本地内容与分叉，未 checkout/pull 覆盖；最新源码通过 `git show FETCH_HEAD:...` 核对。
+参考库 `research/open-swe` 已 fetch 到 `241c74b8f306c270c428f708e469572f511329fe`。参考工作树有本地内容与分叉，未 checkout/pull 覆盖；最新源码通过 `git show FETCH_HEAD:...` 核对。
 
 旧布局 `agent/chat.py:_chat_general_purpose_subagent()`（87–104 行）通过同名声明替换默认通用角色，并使用只读文件工具白名单。最新 `openswe/server.py`（2240–2254 行）同样只装配一个通用子角色与既有工具。平台直接复用二者共用的官方 SDK 执行器，保留自身 Runtime 鉴权和中间件；未逐字复制 Open SWE 的应用组合根、异步 Worker 或 Anthropic 缓存适配。Open SWE 最新依赖与本平台版本不同，不能宣称整套移植。
 

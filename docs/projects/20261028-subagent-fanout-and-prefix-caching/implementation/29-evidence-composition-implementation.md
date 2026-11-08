@@ -1,6 +1,6 @@
 # 子概览与有界证据组合接入
 
-2026-10-29，用户明确批准28号修订后实施。对应T5.7；应用源码只在`/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform/`修改，本文不代替tasks.md进度与正式语义验收。
+2026-10-29，用户明确批准28号修订后实施。对应T5.7；应用源码只在 `~/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform/` 修改，本文不代替tasks.md进度与正式语义验收。
 
 ## 实现
 

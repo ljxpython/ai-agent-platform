@@ -21,7 +21,7 @@
 
 - GraphHarbor G02–G07完成：源码392 passed/22 skipped、独立Cron3 passed、候选wheel23/sdist19 passed；正式四产物SHA256一致，无缓存冷安装与13项HTTP/CLI/恢复探针通过。
 - Runtime `pyproject.toml`、`uv.lock` 锁定正式post48，经所属local-stack同步依赖并重启API/Worker/Platform API；真实三服务使用发布包通过。
-- [引擎验证](/Users/lijiaxin/PyCharmMiscProject/graphharbor/docs/projects/20261030-thread-retention-lifecycle/verification.md) 保留完整命令与证据。旧post45不能接管014，未伪称可直接降旧版。
+- 引擎验证（见 `graphharbor/docs/projects/20261030-thread-retention-lifecycle/verification.md`）保留完整命令与证据。旧post45不能接管014，未伪称可直接降旧版。
 
 ### P03 2026-10-30
 

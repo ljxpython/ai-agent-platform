@@ -6,7 +6,7 @@
 
 - 主工作区与Worktree起点均为`78aa17177ca597443bd708e741d60312e1d4a600`；远端main同一提交。
 - 逐文件核对功能代码一致；主工作区额外保留的历史实施文档和Redis启动探测变更记录同步到分支。历史65号主目录内容更完整，采用主目录完整记录，原差异保存在备份。
-- 提交前141份主工作区改动和73份Worktree改动已按路径备份，并保存二进制diff与SHA256。备份及真实验证证据保存在`/Users/lijiaxin/.codex/task-evidence/20261030-subagent-fanout-closeout/`，不随Worktree清理删除，不提交私有配置。
+- 提交前141份主工作区改动和73份Worktree改动已按路径备份，并保存二进制diff与SHA256。备份及真实验证证据保存在`~/.codex/task-evidence/20261030-subagent-fanout-closeout/`，不随Worktree清理删除，不提交私有配置。
 - 使用独立分支`feat/subagent-open-swe-simplification`，普通推送；主工作区优先快进合并，合并前保存脏工作区，再逐文件核对已验收代码及主工作区原有改动。禁止reset --hard、强推或以旧目录整棵覆盖新功能。
 
 ## 服务与资源

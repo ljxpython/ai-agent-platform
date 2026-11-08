@@ -4,7 +4,7 @@
 
 ## 工作区
 
-实现仅位于 `/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform`，基于 `78aa17177ca597443bd708e741d60312e1d4a600`，尚未提交或合并。项目文档先在主工作区维护，验收整理时同步到实现 Worktree。Pro delegation 已在开启状态通过63项测试；根据用户放宽预算的新指示，为新1M同额度串行组临时设为False，随后恢复True测委派。
+实现仅位于 `~/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform`，基于 `78aa17177ca597443bd708e741d60312e1d4a600`，尚未提交或合并。项目文档先在主工作区维护，验收整理时同步到实现 Worktree。Pro delegation 已在开启状态通过63项测试；根据用户放宽预算的新指示，为新1M同额度串行组临时设为False，随后恢复True测委派。
 
 ## 预算链路
 

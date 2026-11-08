@@ -4,7 +4,7 @@
 
 ## 应用改动
 
-源码在所属隔离Worktree `/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform`；下列路径以仓库根为准。
+源码在所属隔离Worktree `~/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform`；下列路径以仓库根为准。
 
 - `apps/runtime-service/src/runtime_service/services/dearflow_agent/subagents/source_quotes.py:observed_github_windows()`：提取既有成功、公开GitHub固定SHA来源识别，原句校验和新交接共用；不读取来源指针或本机参考仓库。
 - `apps/runtime-service/src/runtime_service/services/dearflow_agent/subagents/source_context.py`：只从完整连续的实际行窗口选择README概述首段，保留原文、行号、来源call和观测窗口SHA256。支持语言后缀、中文概述标题及完整EOF，拒绝截断、浮动ref、不连续/未闭合窗口、代码围栏和非正文块；超长整段跳过。每子最多2段且紧凑JSON≤1600字符，版本化ResearchHandoff≤6500，模型仍只生成≤4800的ResearchReport。

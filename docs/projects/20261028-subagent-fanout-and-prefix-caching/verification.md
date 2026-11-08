@@ -53,7 +53,7 @@
 
 用户明确确认本需求验收通过，并授权停止服务、提交推送、合并、清理Worktree及相关开发测试数据库。功能提交`e40742baa14082c7dcab8765b152325b16305e90`已推送独立分支并快进合并main；逐项核对原主目录61份代码/测试/配置，内容一致或Python AST等价，仅提交钩子格式化，无覆盖原有功能。
 
-所属五服务全部stopped；数据库`wt_bf33bcf838fd_runtime`和`wt_bf33bcf838fd_platform`及同名角色已通过带归属校验的destroy删除，其他57个数据库定义与清理前一致；29201/29713/26751/28302监听已释放。关联Worktree及隔离资源登记已移除。验证材料3877份另存`/Users/lijiaxin/.codex/task-evidence/20261030-subagent-fanout-closeout/`，失败证据不随数据库清理丢失。
+所属五服务全部stopped；数据库`wt_bf33bcf838fd_runtime`和`wt_bf33bcf838fd_platform`及同名角色已通过带归属校验的destroy删除，其他57个数据库定义与清理前一致；29201/29713/26751/28302监听已释放。关联Worktree及隔离资源登记已移除。验证材料3877份另存`~/.codex/task-evidence/20261030-subagent-fanout-closeout/`，失败证据不随数据库清理丢失。
 
 本轮收尾仅更新文档并合并已验收代码；原模型语义评分、skip与未知费用保持原样，没有以人工验收替代未执行的测试。main推送后以远端SHA回查确认，本地机器记录在上述归档目录，详见[67号](implementation/67-acceptance-merge-and-cleanup.md)。
 

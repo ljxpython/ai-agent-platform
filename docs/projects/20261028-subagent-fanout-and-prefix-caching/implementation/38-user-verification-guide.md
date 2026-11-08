@@ -7,8 +7,8 @@
 - 平台入口：`http://127.0.0.1:29201`，项目 `test`。
 - 本地管理员：`admin / admin123456`；这是所属隔离 Worktree 的开发账号。
 - Runtime API：`http://127.0.0.1:26751`，Platform API：`http://127.0.0.1:29713`。
-- 运行源码目录：`/Users/lijiaxin/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform`。
-- 代码审查目录：`/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform`；本次冻结清单中1010份应用源码、配置和测试逐字一致；最新只读循环隔离修正见64号。没有复制私有环境或数据，尚未 Git 提交、推送或部署。
+- 运行源码目录：`~/.codex/worktrees/subagent-baseline-20261028/ai-agent-platform`。
+- 代码审查目录：主工作区（`ai-agent-platform`）；本次冻结清单中1010份应用源码、配置和测试逐字一致；最新只读循环隔离修正见64号。没有复制私有环境或数据，尚未 Git 提交、推送或部署。
 
 服务由运行源码目录的 `scripts/local-stack.sh` 管理，所属环境为 `wt_bf33bcf838fd`。当前运行时使用 local 后端，不需要 Docker。用户要求交付时保持五服务运行，最终健康状态另见交付记录。
 
