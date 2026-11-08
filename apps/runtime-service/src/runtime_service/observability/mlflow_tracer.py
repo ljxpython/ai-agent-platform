@@ -51,7 +51,7 @@ def initialize_mlflow(*, env: Mapping[str, str] | None = None) -> bool:
             return True
         settings_env = os.environ if env is None else env
         tracking_uri = settings_env.get(
-            "MLFLOW_TRACKING_URI", "http://49.233.222.54:5000"
+            "MLFLOW_TRACKING_URI", "http://127.0.0.1:5000"
         ).strip()
         experiment_name = settings_env.get(
             "MLFLOW_EXPERIMENT_NAME", _DEFAULT_EXPERIMENT_NAME
