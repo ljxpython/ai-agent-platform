@@ -1,17 +1,17 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-09（MLflow / EvalFlow 原生链路追踪与会话评测适配全栈交付闭环，用户验收通过；已完成项目物理隔离、会话全景与单条 Trace 详情秒级直达）
+> **最后更新：** 2026-11-09（MLflow / EvalFlow 原生链路追踪与会话评测适配全栈交付并完成 sshmy1 生产发布上线，Systemd 进程热重启正常，静态前端与追踪反代 100% 连通验证通过）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-11-09（MLflow 追踪适配全链路完成，单测与 TS 检查 100% 绿灯，用户验收通过）
+**最后更新：** 2026-11-09（MLflow 追踪适配全链路完成并已成功部署至 sshmy1 生产环境）
 
 ## 最近改动
 
-2026-11-08 | **MLflow / EvalFlow 原生链路追踪与会话评测适配全栈闭环**：1) **架构防腐与平台接入**：新增 Fail-soft MLflow Tracer 适配器，支持环境变量 TRACING_PROVIDER（mlflow/langfuse/both/none）零侵入平滑热切换；2) **项目维度物理隔离**：动态根据 project_id 自动划分并绑定 project-{id} 专属实验，根除数据窜漏；3) **会话全景直达**：将 thread_id 与 session 穿透对齐，直达 chat-sessions/{sessionId} 全景对话卡片；4) **原生 Trace 映射与秒级直达**：剔除 lc_run-- 客户端临时 ID，异步拉取真实 tr-xxxx ID 映射到各轮次与步骤，详情面板点击直接展开 Span 瀑布树图抽屉；5) **安全防御**：none 模式下追踪 UI 彻底隐藏零报错；全仓单测 161 套 979 项全绿，vue-tsc 0 错误，browser-skill 真实浏览器全链路截屏验证通过。
+2026-11-09 | **MLflow / EvalFlow 原生链路追踪与会话评测适配全栈上线与生产发布**：1) **架构防腐与平台接入**：新增 Fail-soft MLflow Tracer 适配器，支持环境变量 TRACING_PROVIDER（mlflow/langfuse/both/none）零侵入平滑热切换；2) **项目维度物理隔离**：动态根据 project_id 自动划分并绑定 project-{id} 专属实验，根除数据窜漏；3) **会话全景直达**：将 thread_id 与 session 穿透对齐，直达 chat-sessions/{sessionId} 全景对话卡片；4) **原生 Trace 映射与秒级直达**：剔除 lc_run-- 客户端临时 ID，异步拉取真实 tr-xxxx ID 映射到各轮次与步骤，详情面板点击直接展开 Span 瀑布树图抽屉；5) **安全防御**：none 模式下追踪 UI 彻底隐藏零报错；全仓单测 161 套 979 项全绿，vue-tsc 0 错误；6) **生产发布闭环**：代码合并推送至 main，远端 sshmy1 同步代码并通过腾讯云内网千兆源高速安装 mlflow 运行时依赖，前端精准注入 `http://49.233.222.54:9128` 打包产物，原子同步部署至 `/www/wwwroot/agent-platform`，平滑热重启 `agent-runtime-api`、`agent-runtime-worker`、`agent-platform-api`，生产 HTTP/200 及跨域追踪验证 100% 通过。
 
 ## 本月归并
 
