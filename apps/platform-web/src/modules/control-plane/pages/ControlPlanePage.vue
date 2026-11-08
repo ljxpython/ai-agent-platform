@@ -1,287 +1,302 @@
 <script setup lang="ts">
-import { computed, onMounted, onScopeDispose, ref } from 'vue'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import BaseSelect from '@/components/base/BaseSelect.vue'
-import SurfaceCard from '@/components/base/SurfaceCard.vue'
-import { useAuthorization } from '@/composables/useAuthorization'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import EmptyState from '@/components/platform/EmptyState.vue'
-import GuidePanel from '@/components/platform/GuidePanel.vue'
-import MetricCard from '@/components/platform/MetricCard.vue'
-import StateBanner from '@/components/platform/StateBanner.vue'
-import StatusPill from '@/components/platform/StatusPill.vue'
-import { listAudit } from '@/services/audit/audit.service'
-import { listServiceAccounts } from '@/services/system/service-accounts.service'
-import { getPlatformConfigSnapshot } from '@/services/system/platform-config.service'
+import { computed, onMounted, onScopeDispose, ref } from "vue";
+import BaseButton from "@/components/base/BaseButton.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import BaseSelect from "@/components/base/BaseSelect.vue";
+import SurfaceCard from "@/components/base/SurfaceCard.vue";
+import { useAuthorization } from "@/composables/useAuthorization";
+import PageHeader from "@/components/layout/PageHeader.vue";
+import EmptyState from "@/components/platform/EmptyState.vue";
+import GuidePanel from "@/components/platform/GuidePanel.vue";
+import MetricCard from "@/components/platform/MetricCard.vue";
+import StateBanner from "@/components/platform/StateBanner.vue";
+import StatusPill from "@/components/platform/StatusPill.vue";
+import { listAudit } from "@/services/audit/audit.service";
+import { listServiceAccounts } from "@/services/system/service-accounts.service";
+import { getPlatformConfigSnapshot } from "@/services/system/platform-config.service";
 import {
   getSystemHealth,
   getSystemReadyProbe,
-  type SystemProbeStatus
-} from '@/services/system/system-governance.service'
+  type SystemProbeStatus,
+} from "@/services/system/system-governance.service";
 import type {
   ManagementAuditRow,
   ManagementServiceAccount,
   PermissionCode,
-  PlatformConfigSnapshot
-} from '@/types/management'
-import { formatDateTime } from '@/utils/format'
-import { useWorkspaceStore } from '@/stores/workspace'
-import { refreshRuntimeGraphs, refreshRuntimeTools } from '@/services/runtime/runtime.service'
+  PlatformConfigSnapshot,
+} from "@/types/management";
+import { formatDateTime } from "@/utils/format";
+import { useWorkspaceStore } from "@/stores/workspace";
+import {
+  refreshRuntimeGraphs,
+  refreshRuntimeTools,
+} from "@/services/runtime/runtime.service";
 
 type QuickLinkItem = {
-  to: string
-  label: string
-  description: string
-  icon: 'activity' | 'audit' | 'lock' | 'shield' | 'users'
-  requiredPermissions: PermissionCode[]
-  permissionMode?: 'all' | 'any'
-}
+  to: string;
+  label: string;
+  description: string;
+  icon: "activity" | "audit" | "lock" | "shield" | "users";
+  requiredPermissions: PermissionCode[];
+  permissionMode?: "all" | "any";
+};
 
-const authorization = useAuthorization()
-const workspace = useWorkspaceStore()
-const catalogProjectId = ref('')
-const catalogBusy = ref(false)
-const catalogError = ref('')
-const catalogNotice = ref('')
-const catalogProjects = computed(() => workspace.projects.filter(project => project.status === 'active')
-  .map(project => ({ value: project.id, label: project.name })))
-let disposed = false
-onScopeDispose(() => { disposed = true })
+const authorization = useAuthorization();
+const workspace = useWorkspaceStore();
+const catalogProjectId = ref("");
+const catalogBusy = ref(false);
+const catalogError = ref("");
+const catalogNotice = ref("");
+const catalogProjects = computed(() =>
+  workspace.projects
+    .filter((project) => project.status === "active")
+    .map((project) => ({ value: project.id, label: project.name })),
+);
+let disposed = false;
+onScopeDispose(() => {
+  disposed = true;
+});
 
-async function refreshCatalog(kind: 'graphs' | 'tools') {
-  const projectId = catalogProjectId.value
-  if (catalogBusy.value || !authorization.can('platform.catalog.refresh') || !catalogProjects.value.some(project => project.value === projectId)) return
-  catalogBusy.value = true
-  catalogError.value = ''
-  catalogNotice.value = ''
+async function refreshCatalog(kind: "graphs" | "tools") {
+  const projectId = catalogProjectId.value;
+  if (
+    catalogBusy.value ||
+    !authorization.can("platform.catalog.refresh") ||
+    !catalogProjects.value.some((project) => project.value === projectId)
+  )
+    return;
+  catalogBusy.value = true;
+  catalogError.value = "";
+  catalogNotice.value = "";
   try {
-    const result = await (kind === 'graphs' ? refreshRuntimeGraphs(projectId) : refreshRuntimeTools(projectId))
-    if (!disposed && authorization.can('platform.catalog.refresh')) catalogNotice.value = `${kind === 'graphs' ? 'Graph' : '工具'}全局目录已刷新，共 ${result.count} 项。`
+    const result = await (kind === "graphs"
+      ? refreshRuntimeGraphs(projectId)
+      : refreshRuntimeTools(projectId));
+    if (!disposed && authorization.can("platform.catalog.refresh"))
+      catalogNotice.value = `${kind === "graphs" ? "Graph" : "工具"}全局目录已刷新，共 ${result.count} 项。`;
   } catch (cause) {
-    if (!disposed) catalogError.value = cause instanceof Error ? cause.message : '目录刷新失败'
+    if (!disposed)
+      catalogError.value =
+        cause instanceof Error ? cause.message : "目录刷新失败";
   } finally {
-    if (!disposed) catalogBusy.value = false
+    if (!disposed) catalogBusy.value = false;
   }
 }
-const loading = ref(false)
-const error = ref('')
-const snapshot = ref<PlatformConfigSnapshot | null>(null)
-const health = ref<SystemProbeStatus | null>(null)
-const ready = ref<SystemProbeStatus | null>(null)
-const recentAuditRows = ref<ManagementAuditRow[]>([])
-const recentServiceAccounts = ref<ManagementServiceAccount[]>([])
+const loading = ref(false);
+const error = ref("");
+const snapshot = ref<PlatformConfigSnapshot | null>(null);
+const health = ref<SystemProbeStatus | null>(null);
+const ready = ref<SystemProbeStatus | null>(null);
+const recentAuditRows = ref<ManagementAuditRow[]>([]);
+const recentServiceAccounts = ref<ManagementServiceAccount[]>([]);
 
 const quickLinks: QuickLinkItem[] = [
   {
-    to: '/workspace/audit',
-    label: 'Audit',
-    description: '查请求链路与治理操作记录',
-    icon: 'audit',
-    requiredPermissions: ['platform.audit.read', 'project.audit.read'],
-    permissionMode: 'any'
+    to: "/workspace/audit",
+    label: "Audit",
+    description: "查请求链路与治理操作记录",
+    icon: "audit",
+    requiredPermissions: ["platform.audit.read", "project.audit.read"],
+    permissionMode: "any",
   },
   {
-    to: '/workspace/platform-config',
-    label: 'Platform Config',
-    description: '查看环境、feature flags 与配置快照',
-    icon: 'lock',
-    requiredPermissions: ['platform.config.read']
+    to: "/workspace/platform-config",
+    label: "Platform Config",
+    description: "查看环境、feature flags 与配置快照",
+    icon: "lock",
+    requiredPermissions: ["platform.config.read"],
   },
   {
-    to: '/workspace/system-governance',
-    label: 'System Governance',
-    description: '看 live / ready / health / metrics',
-    icon: 'shield',
-    requiredPermissions: ['platform.config.read']
+    to: "/workspace/system-governance",
+    label: "System Governance",
+    description: "看 live / ready / health / metrics",
+    icon: "shield",
+    requiredPermissions: ["platform.config.read"],
   },
   {
-    to: '/workspace/service-accounts',
-    label: 'Service Accounts',
-    description: '治理平台级 token 与账号权限',
-    icon: 'users',
-    requiredPermissions: ['platform.service_account.read']
-  }
-]
+    to: "/workspace/service-accounts",
+    label: "Service Accounts",
+    description: "治理平台级 token 与账号权限",
+    icon: "users",
+    requiredPermissions: ["platform.service_account.read"],
+  },
+];
 
 const visibleQuickLinks = computed(() =>
   quickLinks.filter((item) => {
-    const mode = item.permissionMode === 'any' ? 'any' : 'all'
+    const mode = item.permissionMode === "any" ? "any" : "all";
     const evaluator = (permission: PermissionCode) =>
-      permission.startsWith('project.')
-        ? authorization.currentProjectCan(permission) || authorization.canAnyProject(permission)
-        : authorization.can(permission)
+      permission.startsWith("project.")
+        ? authorization.currentProjectCan(permission) ||
+          authorization.canAnyProject(permission)
+        : authorization.can(permission);
 
-    return mode === 'any'
+    return mode === "any"
       ? item.requiredPermissions.some((permission) => evaluator(permission))
-      : item.requiredPermissions.every((permission) => evaluator(permission))
-  })
-)
+      : item.requiredPermissions.every((permission) => evaluator(permission));
+  }),
+);
 
 const heroStats = computed(() => {
-  const current = snapshot.value
+  const current = snapshot.value;
   return [
     {
-      label: '环境',
-      value: current?.service.env || '--',
-      hint: current ? `${current.service.name} ${current.service.version}` : '平台快照未加载',
-      icon: 'globe',
-      tone: 'primary'
+      label: "环境",
+      value: current?.service.env || "--",
+      hint: current
+        ? `${current.service.name} ${current.service.version}`
+        : "平台快照未加载",
+      icon: "globe",
+      tone: "primary",
     },
     {
-      label: 'Ready',
-      value: ready.value?.status || 'unknown',
-      hint: `db ${ready.value?.database_ready ?? '--'}`,
-      icon: 'check',
-      tone: ready.value?.status === 'ready' ? 'success' : 'warning'
+      label: "Ready",
+      value: ready.value?.status || "unknown",
+      hint: `db ${ready.value?.database_ready ?? "--"}`,
+      icon: "check",
+      tone: ready.value?.status === "ready" ? "success" : "warning",
     },
     {
-      label: 'Health',
-      value: health.value?.status || 'unknown',
-      hint: health.value?.request_id || '未记录 request id',
-      icon: 'shield',
-      tone: health.value?.status === 'ok' ? 'success' : 'danger'
+      label: "Health",
+      value: health.value?.status || "unknown",
+      hint: health.value?.request_id || "未记录 request id",
+      icon: "shield",
+      tone: health.value?.status === "ok" ? "success" : "danger",
     },
     {
-      label: '服务账号',
+      label: "服务账号",
       value: current?.security.service_accounts.total_accounts ?? 0,
       hint: `active token ${current?.security.service_accounts.active_tokens ?? 0}`,
-      icon: 'users',
-      tone: 'success'
-    }
-  ]
-})
+      icon: "users",
+      tone: "success",
+    },
+  ];
+});
 
 const riskFlags = computed(() => {
   const flags: Array<{
-    title: string
-    description: string
-    tone: 'success' | 'warning' | 'danger'
-  }> = []
+    title: string;
+    description: string;
+    tone: "success" | "warning" | "danger";
+  }> = [];
 
-  if (ready.value && ready.value.status !== 'ready') {
+  if (ready.value && ready.value.status !== "ready") {
     flags.push({
-      title: 'Ready 未通过',
+      title: "Ready 未通过",
       description: `当前 ready = ${ready.value.status}，先看 数据库。`,
-      tone: 'danger'
-    })
+      tone: "danger",
+    });
   }
 
-  if (health.value && health.value.status !== 'ok') {
+  if (health.value && health.value.status !== "ok") {
     flags.push({
-      title: 'Health 已降级',
+      title: "Health 已降级",
       description: `当前 health = ${health.value.status}，值班先看 system governance。`,
-      tone: 'danger'
-    })
+      tone: "danger",
+    });
   }
-
 
   if ((snapshot.value?.observability.requests.failure_rate ?? 0) >= 0.05) {
     flags.push({
-      title: '请求失败率偏高',
-      description: `当前失败率 ${(((snapshot.value?.observability.requests.failure_rate ?? 0) * 100)).toFixed(2)}%。`,
-      tone: 'warning'
-    })
+      title: "请求失败率偏高",
+      description: `当前失败率 ${((snapshot.value?.observability.requests.failure_rate ?? 0) * 100).toFixed(2)}%。`,
+      tone: "warning",
+    });
   }
 
   if (flags.length === 0 && snapshot.value && !error.value && !loading.value) {
     flags.push({
-      title: '控制面状态稳定',
-      description: '当前可作为演示基线，未发现明显风险项。',
-      tone: 'success'
-    })
+      title: "控制面状态稳定",
+      description: "当前可作为演示基线，未发现明显风险项。",
+      tone: "success",
+    });
   }
 
-  return flags
-})
-
+  return flags;
+});
 
 function auditTone(statusCode: number) {
   if (statusCode >= 500) {
-    return 'danger'
+    return "danger";
   }
   if (statusCode >= 400) {
-    return 'warning'
+    return "warning";
   }
-  return 'success'
+  return "success";
 }
 
 async function loadControlPlane() {
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = "";
 
-  const failedSections: string[] = []
+  const failedSections: string[] = [];
   const results = await Promise.allSettled([
     getPlatformConfigSnapshot(),
     getSystemHealth(),
     getSystemReadyProbe(),
-    listAudit(
-      null,
-      {
-        limit: 6,
-        offset: 0
-      }
-    ),
+    listAudit(null, {
+      limit: 6,
+      offset: 0,
+    }),
     listServiceAccounts({
       limit: 6,
-      offset: 0
-    })
-  ])
+      offset: 0,
+    }),
+  ]);
 
   const [
     snapshotResult,
     healthResult,
     readyResult,
     auditResult,
-    serviceAccountsResult
-  ] = results
+    serviceAccountsResult,
+  ] = results;
 
-  if (snapshotResult.status === 'fulfilled') {
-    snapshot.value = snapshotResult.value
+  if (snapshotResult.status === "fulfilled") {
+    snapshot.value = snapshotResult.value;
   } else {
-    snapshot.value = null
-    failedSections.push('platform config')
+    snapshot.value = null;
+    failedSections.push("platform config");
   }
 
-  if (healthResult.status === 'fulfilled') {
-    health.value = healthResult.value
+  if (healthResult.status === "fulfilled") {
+    health.value = healthResult.value;
   } else {
-    health.value = null
-    failedSections.push('health')
+    health.value = null;
+    failedSections.push("health");
   }
 
-  if (readyResult.status === 'fulfilled') {
-    ready.value = readyResult.value
+  if (readyResult.status === "fulfilled") {
+    ready.value = readyResult.value;
   } else {
-    ready.value = null
-    failedSections.push('ready')
+    ready.value = null;
+    failedSections.push("ready");
   }
 
-
-  if (auditResult.status === 'fulfilled') {
-    recentAuditRows.value = auditResult.value.items
+  if (auditResult.status === "fulfilled") {
+    recentAuditRows.value = auditResult.value.items;
   } else {
-    recentAuditRows.value = []
-    failedSections.push('audit')
+    recentAuditRows.value = [];
+    failedSections.push("audit");
   }
 
-  if (serviceAccountsResult.status === 'fulfilled') {
-    recentServiceAccounts.value = serviceAccountsResult.value.items
+  if (serviceAccountsResult.status === "fulfilled") {
+    recentServiceAccounts.value = serviceAccountsResult.value.items;
   } else {
-    recentServiceAccounts.value = []
-    failedSections.push('service accounts')
+    recentServiceAccounts.value = [];
+    failedSections.push("service accounts");
   }
 
   if (failedSections.length > 0) {
-    error.value = `部分控制面模块加载失败：${failedSections.join('、')}`
+    error.value = `部分控制面模块加载失败：${failedSections.join("、")}`;
   }
 
-  loading.value = false
+  loading.value = false;
 }
 
 onMounted(() => {
-  void loadControlPlane()
-})
+  void loadControlPlane();
+});
 </script>
 
 <template>
@@ -289,7 +304,7 @@ onMounted(() => {
     <PageHeader
       eyebrow="Governance"
       title="Control Plane"
-      description="把 audit、platform config、system governance、service accounts 压成一个统一组合页。演示、值班、排查先看这里，再钻到具体治理页。"
+      description="控制面全景总览，整合系统探针健康度、配置快照、审计事件与凭据治理核心指标。"
     >
       <template #actions>
         <BaseButton
@@ -297,10 +312,7 @@ onMounted(() => {
           :disabled="loading"
           @click="loadControlPlane"
         >
-          <BaseIcon
-            name="refresh"
-            size="sm"
-          />
+          <BaseIcon name="refresh" size="sm" />
           刷新总览
         </BaseButton>
       </template>
@@ -308,23 +320,14 @@ onMounted(() => {
 
     <SurfaceCard v-if="authorization.can('platform.catalog.refresh')">
       <div class="space-y-3 p-4">
-        <h2 class="font-semibold">
-          全局目录同步
-        </h2>
+        <h2 class="font-semibold">全局目录同步</h2>
         <p class="text-sm text-gray-500 dark:text-dark-300">
           同步平台共享的执行图和工具定义。选择一个现有项目作为同步范围，无需加入项目，也不会获得聊天或执行权限。
         </p>
-        <p
-          v-if="!catalogProjects.length"
-          role="status"
-          class="text-sm"
-        >
+        <p v-if="!catalogProjects.length" role="status" class="text-sm">
           暂无可用项目，请联系平台管理员先创建项目。
         </p>
-        <label
-          v-else
-          class="block text-sm"
-        >
+        <label v-else class="block text-sm">
           同步范围
           <BaseSelect
             v-model="catalogProjectId"
@@ -349,25 +352,11 @@ onMounted(() => {
             同步工具目录
           </BaseButton>
         </div>
-        <p
-          v-if="catalogBusy"
-          role="status"
-          class="text-sm"
-        >
-          正在同步目录…
-        </p>
-        <p
-          v-if="catalogError"
-          role="alert"
-          class="text-sm text-red-600"
-        >
+        <p v-if="catalogBusy" role="status" class="text-sm">正在同步目录…</p>
+        <p v-if="catalogError" role="alert" class="text-sm text-red-600">
           {{ catalogError }}
         </p>
-        <p
-          v-if="catalogNotice"
-          role="status"
-          class="text-sm text-green-700"
-        >
+        <p v-if="catalogNotice" role="status" class="text-sm text-green-700">
           {{ catalogNotice }}
         </p>
       </div>
@@ -386,12 +375,7 @@ onMounted(() => {
       description="先看上方五个核心指标，再看风险项，然后顺着快捷入口进入具体治理页。这样汇报和排障都不会乱。"
       tone="success"
     />
-    <p
-      v-if="loading"
-      role="status"
-    >
-      正在读取控制面…
-    </p>
+    <p v-if="loading" role="status">正在读取控制面…</p>
 
     <div class="grid gap-4 xl:grid-cols-5">
       <MetricCard
@@ -417,12 +401,10 @@ onMounted(() => {
     <template v-else>
       <div class="grid gap-4 xl:items-start xl:grid-cols-3">
         <SurfaceCard class="space-y-4 xl:col-span-3">
-          <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="alert"
-              size="sm"
-              class="text-primary-500"
-            />
+          <div
+            class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+          >
+            <BaseIcon name="alert" size="sm" class="text-primary-500" />
             当前风险摘要
           </div>
           <div class="grid gap-3 xl:items-start xl:grid-cols-3">
@@ -430,16 +412,20 @@ onMounted(() => {
               v-for="flag in riskFlags"
               :key="flag.title"
               class="rounded-2xl border px-4 py-4 shadow-sm"
-              :class="flag.tone === 'danger'
-                ? 'border-rose-200 bg-rose-50/80 dark:border-rose-900/40 dark:bg-rose-950/20'
-                : flag.tone === 'warning'
-                  ? 'border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-950/20'
-                  : 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-emerald-950/20'"
+              :class="
+                flag.tone === 'danger'
+                  ? 'border-rose-200 bg-rose-50/80 dark:border-rose-900/40 dark:bg-rose-950/20'
+                  : flag.tone === 'warning'
+                    ? 'border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-950/20'
+                    : 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-emerald-950/20'
+              "
             >
               <StatusPill :tone="flag.tone">
                 {{ flag.title }}
               </StatusPill>
-              <div class="mt-3 text-sm leading-6 text-gray-600 dark:text-dark-200">
+              <div
+                class="mt-3 text-sm leading-6 text-gray-600 dark:text-dark-200"
+              >
                 {{ flag.description }}
               </div>
             </article>
@@ -447,12 +433,10 @@ onMounted(() => {
         </SurfaceCard>
 
         <SurfaceCard class="space-y-4 xl:col-span-3">
-          <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="overview"
-              size="sm"
-              class="text-primary-500"
-            />
+          <div
+            class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+          >
+            <BaseIcon name="overview" size="sm" class="text-primary-500" />
             快捷入口
           </div>
           <div class="grid gap-3 xl:items-start xl:grid-cols-5">
@@ -462,7 +446,9 @@ onMounted(() => {
               :to="item.to"
               class="pw-card-subtle px-4 py-4 transition-colors hover:border-primary-200 hover:bg-primary-50/60 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/20"
             >
-              <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+              <div
+                class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+              >
                 <BaseIcon
                   :name="item.icon"
                   size="sm"
@@ -470,7 +456,9 @@ onMounted(() => {
                 />
                 {{ item.label }}
               </div>
-              <div class="mt-2 text-sm leading-6 text-gray-500 dark:text-dark-300">
+              <div
+                class="mt-2 text-sm leading-6 text-gray-500 dark:text-dark-300"
+              >
                 {{ item.description }}
               </div>
             </router-link>
@@ -478,20 +466,17 @@ onMounted(() => {
         </SurfaceCard>
 
         <SurfaceCard class="space-y-4">
-          <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="lock"
-              size="sm"
-              class="text-primary-500"
-            />
+          <div
+            class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+          >
+            <BaseIcon name="lock" size="sm" class="text-primary-500" />
             Platform Posture
           </div>
-          <div
-            v-if="snapshot"
-            class="space-y-3"
-          >
+          <div v-if="snapshot" class="space-y-3">
             <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+              <div
+                class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
+              >
                 Runtime Upstream
               </div>
               <div class="mt-2 break-all text-sm text-gray-900 dark:text-white">
@@ -499,39 +484,44 @@ onMounted(() => {
               </div>
             </div>
             <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+              <div
+                class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
+              >
                 Environment
               </div>
               <div class="mt-2 text-sm text-gray-900 dark:text-white">
                 {{ snapshot.environment.current }}
               </div>
               <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                auth {{ snapshot.environment.auth_required }} / docs {{ snapshot.environment.docs_enabled }}
+                auth {{ snapshot.environment.auth_required }} / docs
+                {{ snapshot.environment.docs_enabled }}
               </div>
             </div>
             <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+              <div
+                class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
+              >
                 Security
               </div>
               <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                API header {{ snapshot.security.service_accounts.api_key_header }}
+                API header
+                {{ snapshot.security.service_accounts.api_key_header }}
               </div>
               <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                oidc {{ snapshot.security.oidc.enabled ? 'enabled' : 'disabled' }} / ttl {{ snapshot.security.service_accounts.default_token_ttl_days }}d
+                oidc
+                {{ snapshot.security.oidc.enabled ? "enabled" : "disabled" }} /
+                ttl
+                {{ snapshot.security.service_accounts.default_token_ttl_days }}d
               </div>
             </div>
           </div>
         </SurfaceCard>
 
-
-
         <SurfaceCard class="space-y-4">
-          <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="audit"
-              size="sm"
-              class="text-primary-500"
-            />
+          <div
+            class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+          >
+            <BaseIcon name="audit" size="sm" class="text-primary-500" />
             Recent Audit
           </div>
           <EmptyState
@@ -548,11 +538,14 @@ onMounted(() => {
             >
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0 flex-1">
-                  <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                  <div
+                    class="truncate text-sm font-semibold text-gray-900 dark:text-white"
+                  >
                     {{ row.method }} {{ row.path }}
                   </div>
                   <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                    {{ row.action || 'n/a' }} · {{ formatDateTime(row.created_at) }}
+                    {{ row.action || "n/a" }} ·
+                    {{ formatDateTime(row.created_at) }}
                   </div>
                 </div>
                 <StatusPill :tone="auditTone(row.status_code)">
@@ -567,17 +560,19 @@ onMounted(() => {
           class="space-y-4"
           :class="recentServiceAccounts.length > 1 ? 'xl:col-span-3' : ''"
         >
-          <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="users"
-              size="sm"
-              class="text-primary-500"
-            />
+          <div
+            class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
+          >
+            <BaseIcon name="users" size="sm" class="text-primary-500" />
             Service Accounts Snapshot
           </div>
           <div
             class="grid gap-3"
-            :class="recentServiceAccounts.length > 1 ? 'xl:items-start xl:grid-cols-3' : 'max-w-[420px]'"
+            :class="
+              recentServiceAccounts.length > 1
+                ? 'xl:items-start xl:grid-cols-3'
+                : 'max-w-[420px]'
+            "
           >
             <article
               v-for="account in recentServiceAccounts"
@@ -585,15 +580,19 @@ onMounted(() => {
               class="pw-card-subtle px-4 py-4"
             >
               <div class="flex flex-wrap items-center gap-2">
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                <div
+                  class="text-sm font-semibold text-gray-900 dark:text-white"
+                >
                   {{ account.name }}
                 </div>
-                <StatusPill :tone="account.status === 'active' ? 'success' : 'warning'">
+                <StatusPill
+                  :tone="account.status === 'active' ? 'success' : 'warning'"
+                >
                   {{ account.status }}
                 </StatusPill>
               </div>
               <div class="mt-2 text-sm text-gray-500 dark:text-dark-300">
-                {{ account.description || '暂无描述' }}
+                {{ account.description || "暂无描述" }}
               </div>
               <div class="mt-3 flex flex-wrap gap-2">
                 <span
@@ -605,7 +604,8 @@ onMounted(() => {
                 </span>
               </div>
               <div class="mt-3 text-xs text-gray-500 dark:text-dark-300">
-                tokens {{ account.tokens.length }} / last used {{ formatDateTime(account.last_used_at) }}
+                tokens {{ account.tokens.length }} / last used
+                {{ formatDateTime(account.last_used_at) }}
               </div>
             </article>
           </div>

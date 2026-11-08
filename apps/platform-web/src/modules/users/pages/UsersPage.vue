@@ -400,7 +400,7 @@ onMounted(() => {
     <PageHeader
       eyebrow="Users"
       title="用户管理"
-      description="用户页承担账号盘点和权限可视化。这里先把列表、筛选和状态表达统一到新的页面母版里。"
+      description="集中管理平台用户账号、平台级全局角色与账号启用状态。"
     >
       <template #actions>
         <BaseButton
@@ -480,7 +480,7 @@ onMounted(() => {
           sort-storage-key="pw:users:sort"
           column-storage-key="pw:users:columns"
           empty-title="没有找到用户"
-          empty-description="当前筛选条件下没有用户数据。后续创建用户、查看用户详情和项目关系可以继续挂在这套母版上。"
+          empty-description="暂无符合筛选条件的用户数据。"
           empty-icon="users"
           @update:selected-row-keys="updateSelectedUserIds"
         >

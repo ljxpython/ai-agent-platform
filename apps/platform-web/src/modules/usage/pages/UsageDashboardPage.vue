@@ -11,6 +11,7 @@ import type {
 } from "../types";
 import {
   formatTokenNumber,
+  formatCompactTokens,
   resolveDisplayTokens,
   formatDashboardCost,
   formatChangeRatio,
@@ -343,7 +344,7 @@ const runsErrorMessage = computed(() => {
         </div>
       </article>
 
-      <!-- 卡片 2: 输入 / 输出明细 (针对 Mac 笔记本视口加固防截断) -->
+      <!-- 卡片 2: 输入 / 输出明细 (工业级紧凑单位 + 悬停全精度防截断) -->
       <article
         class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
       >
@@ -354,36 +355,42 @@ const runsErrorMessage = computed(() => {
             输入 / 输出 Tokens
           </div>
           <div
-            class="mt-2 flex items-baseline font-mono font-bold tracking-tight text-xs sm:text-[13px] xl:text-[14px] 2xl:text-base text-gray-950 dark:text-white whitespace-nowrap min-w-0"
-            :title="`输入: ${formatTokenNumber(displayTokens.data?.input_tokens)} / 输出: ${formatTokenNumber(displayTokens.data?.output_tokens)}`"
+            class="mt-2 flex items-baseline font-mono font-bold tracking-tight text-lg sm:text-xl xl:text-2xl text-gray-950 dark:text-white whitespace-nowrap min-w-0"
+            :title="`输入: ${formatTokenNumber(displayTokens.data?.input_tokens)} / 输出: ${formatTokenNumber(displayTokens.data?.output_tokens)}（完整精度）`"
           >
             <span class="text-primary-600 dark:text-primary-400 shrink-0">{{
-              formatTokenNumber(displayTokens.data?.input_tokens)
+              formatCompactTokens(displayTokens.data?.input_tokens)
             }}</span>
             <span
-              class="mx-1 text-gray-300 dark:text-dark-600 font-normal shrink-0"
+              class="mx-1.5 text-gray-300 dark:text-dark-600 font-normal shrink-0"
               >/</span
             >
             <span class="text-emerald-600 dark:text-emerald-400 shrink-0">{{
-              formatTokenNumber(displayTokens.data?.output_tokens)
+              formatCompactTokens(displayTokens.data?.output_tokens)
             }}</span>
           </div>
         </div>
         <div
           class="mt-3 border-t border-gray-100 pt-2 text-[11px] sm:text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
         >
-          <span class="truncate mr-1"
-            >缓存读:
+          <span
+            class="truncate mr-1"
+            :title="`缓存读完整精度: ${formatTokenNumber(displayTokens.data?.cache_read_tokens)}`"
+          >
+            缓存读:
             <strong class="font-mono text-gray-700 dark:text-gray-300">{{
               formatTokenNumber(displayTokens.data?.cache_read_tokens)
-            }}</strong></span
+            }}</strong>
+          </span>
+          <span
+            class="truncate"
+            :title="`推理完整精度: ${formatTokenNumber(displayTokens.data?.reasoning_tokens)}`"
           >
-          <span class="truncate"
-            >推理:
+            推理:
             <strong class="font-mono text-gray-700 dark:text-gray-300">{{
               formatTokenNumber(displayTokens.data?.reasoning_tokens)
-            }}</strong></span
-          >
+            }}</strong>
+          </span>
         </div>
       </article>
 
