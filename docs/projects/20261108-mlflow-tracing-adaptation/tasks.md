@@ -83,3 +83,17 @@
 - [x] **T16：超级链接穿透到线程 ID（场景三）**
   - 对齐 MLflow 原生路由，单会话全景详情页路径为 `#/experiments/{experimentId}/chat-sessions/{sessionId}`
   - 更新 `buildMlflowTraceUrl`，点击直接直达该 Thread ID 的会话卡片与完整对话流，截图 `evalflow_chat_sessions_view.png` 留存
+
+---
+
+## 阶段七：会话内原生 Trace ID 精准映射与详情瀑布图秒级直达
+- [x] **T17：剔除客户端临时虚拟 ID**
+  - 在 `trajectory-adapter.ts` 中过滤 `lc_run--` 开头的 LangChain 客户端内部 ID，防止伪 ID 污染
+- [x] **T18：会话级原生 Trace ID 动态映射**
+  - 接入 `fetchSessionTraces` API，根据 Experiment ID 和 Thread ID 异步拉取真实的 `tr-xxxx` Trace ID 序列
+  - 动态注入到 `TrajectoryView.vue`、`TrajectoryInspector.vue` 和 `TrajectoryLedger.vue`
+- [x] **T19：单条 Trace 详情抽屉秒开**
+  - 详情面板 Trace ID 点击「直达 ↗」直接定位到单条 Trace 详细页面（`#/experiments/{expId}/traces/{tr-xxxx}`），展示完整 Span 树与调用参数
+- [x] **T20：端到端真实浏览器验证与全量回归**
+  - 使用 `browser-skill` 真实截屏证明：`trajectory_with_real_trace_id.png` 与 `trace_detail_page_verified_live.png`
+  - 前端 161 套测试、979 个用例 100% 绿色通过，TypeScript 类型检查零报错

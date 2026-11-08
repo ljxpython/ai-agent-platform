@@ -19,6 +19,8 @@
 | Phase 6 | 前端类型安全加固与真实浏览器排障体验闭环 | `vue-tsc --noEmit` + `bsk` 真实验证与链接纠偏 | ✅ PASS（图标类型收敛至 `activity`/`graph`、Vite 环境变量热生效至前端 SPA `9128`、Loki 未连接优雅降级并直达 EvalFlow） |
 | Phase 7 | 对话前端全场景 Trace 直达验证（方案一 + 二 + 三） | `browser-skill` (`bsk`) 对真实会话逐项核验 | ✅ PASS（Header 会话追踪、消息级链路直达、轨迹 Tab 链路树 3 处入口均 100% 渲染且链接指向 `9128` 与准确 `session_id`） |
 | Phase 8 | 安全防御、项目隔离与 Session 详情穿透验证 | `browser-skill` (`bsk`) 深度攻防实测与真实调用 | ✅ PASS（场景一：`none` 模式下按钮和链接彻底从 DOM 消失且无任何报错；场景二：运行时自动在 EvalFlow 动态创建 `project-5a5b7239-43e3-40e6-bba3-e64d96057607`（实验 8）实现物理隔离；场景三：直达 URL 对齐为 `#/experiments/{exp}/chat-sessions/{sessionId}`，零心智负担直达单会话全景卡片） |
+| Phase 9 | 会话内真实原生 Trace ID 精准映射与详情瀑布图秒级直达 | `browser-skill` (`bsk`) 端到端实测核验与全量单测 | ✅ PASS（过滤 `lc_run--` 客户端临时 ID；接入 `fetchSessionTraces` 动态绑定真实 `tr-xxxx` Trace ID；轨迹详情面板点击「直达 ↗」直接展开 Span 瀑布树图抽屉；单测与 vue-tsc 全绿） |
+
 
 ---
 
@@ -45,6 +47,27 @@
 - **路由对齐**：MLflow 原生单会话详情路由为 `#/experiments/{experimentId}/chat-sessions/{sessionId}`。
 - **直达呈现**：点击直达按钮后，EvalFlow 呈现完整的会话全景视图（会话总令牌 11169、延迟 7.35s、用户与 Agent 每一轮交互气泡、右侧完整跟踪调用树抽屉）。
 - **截图凭证**：`evalflow_chat_sessions_view.png`。
+
+---
+
+## 阶段九真实链路凭据（真实原生 Trace ID 映射与单条 Trace 详情秒开）
+
+### 1. 真实原生 Trace ID 取证与映射
+- **问题根因**：原前端从消息元数据获取的 `lc_run--` 为浏览器端 LangChain 内部虚拟 Run ID，无法直接被 MLflow 识别为单条 Trace。
+- **解决方案**：
+  - `extractRecordTraceId` 忽略 `lc_run--`；
+  - `fetchSessionTraces` 异步检索当前 Project 专属 Experiment 下属于该 `thread_id` 的所有真实 Trace（按时间戳排序）；
+  - `TrajectoryView.vue` 自动绑定真实 `tr-xxxx` ID 到每轮（Turn）和各步骤（Steps）。
+- **实测 Trace 映射**：
+  - **Turn 1**: `tr-de1969b2dc8b0d4c67a1d56e1011aa4a`
+  - **Turn 2**: `tr-27af92ff7f89c56a9c03e375c64c2cfc`
+- **截图凭证**：`trajectory_with_real_trace_id.png`（右侧详情面板显示真实 Trace ID：`tr-27af92ff7f89c56a9c03e375c64c2cfc`）。
+
+### 2. 单条 Trace 详情秒开直达
+- **直接直达链接**：`http://127.0.0.1:9128/#/experiments/9/traces/tr-27af92ff7f89c56a9c03e375c64c2cfc`。
+- **实测表现**：页面直接定位并自动展开该 Trace 的侧边抽屉，包含 Spans 树瀑布图（`dearflow_agent`、各中间件执行耗时）、Token 用量（11.4K）、输入输出与全量平台治理标签。
+- **截图凭证**：`trace_detail_page_verified_live.png`。
+
 
 ---
 
