@@ -93,4 +93,11 @@
 - 用户明确人工验收通过，授权停止所属服务、标记完成、提交推送、合并主工作区、清理 Worktree 和所属测试数据库。
 - 资源核验：本 Worktree 无 .local-stack/environment.json，公共登记无本路径条目；进程归属工具检查 Runtime API/Worker、Platform API/Web、Redis 均无所属 PID，lsof cwd 复核仅见检查命令自身。知识服务未登记，未调用会报环境缺失的 stop/destroy，也没有为清理反向初始化环境。
 - PostgreSQL 仅只读查询数据库名称、owner 与归属注释；没有可归属本需求的测试数据库。本期未创建测试库，不删除其他专项或主环境库；数据库清理结果为“不适用（无所属资源）”。
-- 合并前主工作区干净，main/origin/main 为 7bb848e4，比本需求起点 1f2283e6 多两个提交；其中业务源码、测试与项目交付均须保留。Git 交付与清理正在执行，完成后追加实测结果。
+- 合并前主工作区干净，main/origin/main 为 7bb848e4，比本需求起点 1f2283e6 多两个提交；其中业务源码、测试与项目交付均须保留。后续 Git 交付与清理结果如下。
+
+- Git 实测：创建 docs/runtime-agent-development-guide-20261108，提交 5ea9ea8c 推送；将 main 合入分支，仅 CONTEXT.md 出现四处内容冲突，保留主干最新功能/服务状态及本需求记录。整合提交 2b434585 推送分支，主工作区使用 --ff-only 快进并推送 main。
+- 远端复核：整合完成时，origin 的 main 与文档分支均为 2b4345852626b2cbf8e0a5fea6ce1e50a68bd922；没有强推、reset 或覆盖主工作区文件。
+- 功能保留检查：主干两个新增提交涉及的 32 个文件中，CONTEXT/FEATURES 合并双方条目，其余 30 个文件逐一比较 Git blob 与原 main 7bb848e4 完全一致；HEAD 相对该主干 60 个差异全部为 Markdown，没有业务源码/测试/依赖/配置变化。
+- 资源与目录收尾：本需求没有所属服务或测试数据库，清理不适用；git worktree remove（未使用 --force）成功，随后 Worktree 列表仅保留主工作区及原 retention-governance，f335 路径不存在，登记无本路径。
+- 收尾静态复核：60 个文档文件中 413 个本地链接/锚点通过（比原 Final 多一条收尾导航）；既有检查器、AST/JSON/版本检查与 diff 空白检查通过。产品测试未重跑，用户本次验收不改写为自动化测试证据。
+- 用户已批准的文档维护经验写入 ai-workflow 经验库，索引计数为 13；本需求状态为 done，人工验收和资源清理均已记录。以上收尾记录另以纯 docs 提交推送 main，提交结果以 Git 历史为准。

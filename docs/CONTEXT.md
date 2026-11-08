@@ -7,7 +7,7 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-11-08（Runtime 文档人工验收通过；收尾提交、合并与 Worktree 清理执行中）
+**最后更新：** 2026-11-08（Runtime 文档人工验收通过；已合并推送 main，f335 Worktree 已清理，无所属服务或测试数据库）
 
 ## 最近改动
 
@@ -34,7 +34,7 @@
 
 ## 活跃项目
 
-- [Runtime Agent 开发指南与入口纠偏](projects/20261108-runtime-development-harness-governance/README.md)：done（文档范围，2026-11-08 用户人工验收通过）；完成设计/架构/规则/资料导航及追加的 52 篇全文审查，追加轮 45 篇修订、7 篇保留，逐篇清单与独立 Final 已记录。CI 与检查器扩展移出本期；只改关联 Worktree 文档，业务与部署未变，产品测试未重跑。
+- [Runtime Agent 开发指南与入口纠偏](projects/20261108-runtime-development-harness-governance/README.md)：done（文档范围，2026-11-08 用户人工验收通过）；52 篇全文审查完成，经验已沉淀；文档提交 5ea9ea8c、整合提交 2b434585 已推送并合入 main，主干原有功能保留，f335 Worktree 已清理，无所属服务/测试数据库。CI 不在本期，产品测试未重跑。
 - [工作区总览工业级重构与信息密度治理](projects/20261108-workspace-overview-refactor/README.md)：`done`；针对工作区总览废话文案、空洞留白与狗皮膏药治理入口立项工业级重构全栈交付，4 联指标看板、紧凑 Header、主辅双栏高能工作流已落地，单测全绿。
 - [会话快照水合与媒体外置治理](projects/20261107-session-hydration-and-artifact-offloading/README.md)：`partial`；仅覆盖新会话及其刷新/重连，不做存量或旧逻辑兼容；Runtime 图片引用化、模型临时展开、Web 首屏快照优先和按需预览已完成。真实 xiaok DeepSeek + Playwright Chromium 通过；GraphHarbor 保持通用边界且未修改。30 样本性能、远端 Workspace 和完整竞态/故障注入待补。
 - [前端 Markdown 产物链接拦截下载与空闲会话长连接断开误报治理](projects/20261106-chat-artifact-download-and-stream-resilience/README.md)：`done`（已全量通过代码审查、单元测试、构建与部署）；针对 Agent 生成产物链接被 Markdown 误洗为 `#` 导致新开空白标签页、以及会话池切换切回已完成会话时空闲 SSE 流重连被拒导致 `Event stream closed.` 误报两大缺陷立项治理。

@@ -194,7 +194,7 @@
 | 跨服务追踪传播治理 | 已完成本期验收：T1—T8、V01—V15、R1—R6，API编号/委托/审计精确查询/SSE关闭及真实Run→Langfuse反查均有证据；PG/SQLite性能留实测数据，不设SLO | [追踪专项](projects/20260926-trace-context-propagation/README.md) |
 | Delegation JWT契约治理 | 部分完成：J1—J6平台任务、v2双端25项矩阵（含cron-read/write）、签发安全失败及R01—R04真实生命周期有证据；消息内部Run回查由后续专项修复源码，本机测试通过，现役链路未验证；GraphHarbor不改 | [JWT专项](projects/20260926-delegation-jwt-contract/README.md) · [回查修复](projects/20260927-message-run-read-delegation/README.md) |
 | AI服务规范路由 | 不再独立立项：后续按仓库级文档小改动补按需阅读规则；本轮未修改AGENTS | [AI路由专项](projects/20260926-ai-service-routing/README.md) |
-| Runtime Agent 开发指南与入口纠偏 | done（文档范围）：设计/架构/规则/案例/资料/验证路径齐全；追加全文审查 45 篇 docs + 7 篇案例 README，修订 45 篇、保留 7 篇；CI/检查器扩展不在本期 | [开发指南](../apps/runtime-service/docs/standards/runtime-agent-development-guide.md) · [逐篇审查](projects/20261108-runtime-development-harness-governance/document-review.md) · [文档交付记录](projects/20261108-runtime-development-harness-governance/README.md) |
+| Runtime Agent 开发指南与入口纠偏 | done（文档范围，2026-11-08 用户验收通过）：45 篇 docs + 7 篇案例 README 全文审查完成；已合并推送 main 并清理所属 Worktree，无所属服务/测试库；CI/检查器扩展不在本期 | [开发指南](../apps/runtime-service/docs/standards/runtime-agent-development-guide.md) · [逐篇审查](projects/20261108-runtime-development-harness-governance/document-review.md) · [文档交付记录](projects/20261108-runtime-development-harness-governance/README.md) |
 | 代码规范自动化门禁 | 部分完成：pre-commit 与 CI 变更文件检查已接入；Python 历史格式基线待单独清理 | [项目记录](projects/20260925-code-quality-automation/README.md) |
 | 前端代码格式化与 Git Hook 工具链治理 | 已完成：引入 eslint-config-prettier 解耦 ESLint 质量检查与 Prettier 视觉排版，优化 pre-commit 执行链并提供 VSCode 保存即格式化配置 | [变更记录](changes/20260928-code-formatting-toolchain-optimization.md) |
 | Python 格式基线清理 | 规划中：约 731 条 Ruff 诊断、297 个文件格式差异待分批清理，本次不实施 | [项目规划](projects/20260925-python-format-baseline-cleanup/README.md) |
