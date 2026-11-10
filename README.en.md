@@ -13,8 +13,9 @@
   <img src="https://img.shields.io/badge/Skills-Agent%20Skills-0F766E" alt="Skills" />
   <img src="https://img.shields.io/badge/Memory-Memory%20Loop-2563EB" alt="Memory" />
   <img src="https://img.shields.io/badge/HITL-Human--in--the--Loop-DC2626" alt="HITL" />
-  <a href="https://youtu.be/alkXoXM7b5Y"><img src="https://img.shields.io/badge/YouTube%20Demo-English%201080P-FF0000?logo=youtube" alt="YouTube Demo (English)" /></a>
-  <a href="https://youtu.be/oWyuC0TKWOo"><img src="https://img.shields.io/badge/YouTube%20Demo-Chinese%201080P-FF0000?logo=youtube" alt="YouTube Demo (Chinese)" /></a>
+  <a href="https://www.bilibili.com/" target="_blank"><img src="https://img.shields.io/badge/Bilibili-Demo%201080P-00A1D6?logo=bilibili&logoColor=white" alt="Bilibili Demo" /></a>
+  <a href="https://youtu.be/alkXoXM7b5Y" target="_blank"><img src="https://img.shields.io/badge/YouTube%20Demo-English%201080P-FF0000?logo=youtube" alt="YouTube Demo (English)" /></a>
+  <a href="https://youtu.be/oWyuC0TKWOo" target="_blank"><img src="https://img.shields.io/badge/YouTube%20Demo-Chinese%201080P-FF0000?logo=youtube" alt="YouTube Demo (Chinese)" /></a>
   <a href="https://github.com/ljxpython/ai-agent-platform/releases/latest"><img src="https://img.shields.io/github/v/release/ljxpython/ai-agent-platform" alt="Latest Release" /></a>
 </p>
 
@@ -66,12 +67,14 @@ To demonstrate the platform's production capability, architectural depth, and in
   </a>
 </p>
 
-> 💡 **Playback Tip**: Click the poster above to watch, or hold `⌘ Command` (Mac) / `Ctrl` (Win) / middle-click to open in a new tab for 1080P full-screen playback ↗
+> 💡 **Playback Guide**: Watch on **Bilibili (Direct stream for China Mainland)** or **YouTube (1080P 60FPS International)**. We recommend middle-clicking or holding `⌘ Command` (Mac) / `Ctrl` (Win) while clicking to open in a new tab ↗.
 
-| Version | Audio & Subtitles | 🌐 YouTube Stream | 📁 Master Copy (Direct Download · 6.2MB) | External Subtitles (SRT) |
-| :--- | :--- | :--- | :--- | :--- |
-| 🇺🇸 **English Edition** | Microsoft Azure Neural Voice (Jenny) + Embedded Subtitles | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ Watch on YouTube (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">⬇️ demo-walkthrough-en.mp4 (Raw Download)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough-en.srt</a> |
-| 🇨🇳 **Chinese Edition** | Microsoft Azure Neural Voice (Xiaoxiao) + Embedded Subtitles | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ Watch on YouTube (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">⬇️ demo-walkthrough.mp4 (Raw Download)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough.srt</a> |
+| Version | Audio & Subtitles | 📺 Bilibili (China Stream) | 🌐 YouTube Stream | 💾 Master Archive (MP4 Download) | External Subtitles (SRT) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 🇺🇸 **English Edition** | Microsoft Azure Neural Voice (Jenny) + Embedded Subtitles | <a href="https://www.bilibili.com/" target="_blank" rel="noopener noreferrer">▶️ Watch on Bilibili ↗</a> | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ Watch on YouTube (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">⬇️ Download (6.2MB)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough-en.srt</a> |
+| 🇨🇳 **Chinese Edition** | Microsoft Azure Neural Voice (Xiaoxiao) + Embedded Subtitles | <a href="https://www.bilibili.com/" target="_blank" rel="noopener noreferrer">▶️ Watch on Bilibili ↗</a> | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ Watch on YouTube (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">⬇️ Download (6.3MB)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough.srt</a> |
+
+> 📌 **Note**: "Master Archive" links provide direct downloads for offline viewing. For in-browser streaming, please use Bilibili or YouTube links above.
 
 ---
 
