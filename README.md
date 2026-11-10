@@ -194,12 +194,12 @@
   </a>
 </p>
 
-> 💡 **播放提示**：点击上方海报直接起播，或按住 `⌘ Command` (Mac) / `Ctrl` (Win) 点击在新标签页打开 YouTube 1080P 全屏视频 ↗
+> 💡 **播放提示**：点击上方海报直接起播，或按住 `⌘ Command` (Mac) / `Ctrl` (Win) / 鼠标滚轮中键点击在新标签页打开 YouTube 1080P 全屏视频 ↗
 
-| 版本 | 语言与解说 | 🌐 YouTube 官方 1080P | 📁 本地母带 (下载 · 6.3MB) | 📝 外挂字幕 (SRT) |
+| 版本 | 语言与解说 | 🌐 YouTube 官方 1080P (免翻墙见下载) | 📁 本地母带 (直连下载 · 6.3MB) | 📝 外挂字幕 (SRT) |
 | :--- | :--- | :--- | :--- | :--- |
-| 🇨🇳 **中文原版** | 微软官方神经网络专业知性女声 + 华文黑体内嵌字幕 | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26)</a> | <a href="docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">📁 demo-walkthrough.mp4</a> | <a href="docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough.srt</a> |
-| 🇺🇸 **英文国际版** | 微软官方 Jenny 纯正美音 + 专业技术术语内嵌字幕 | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26)</a> | <a href="docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">📁 demo-walkthrough-en.mp4</a> | <a href="docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough-en.srt</a> |
+| 🇨🇳 **中文原版** | 微软官方神经网络专业知性女声 + 华文黑体内嵌字幕 | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">⬇️ demo-walkthrough.mp4 (Raw 直链)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough.srt</a> |
+| 🇺🇸 **英文国际版** | 微软官方 Jenny 纯正美音 + 专业技术术语内嵌字幕 | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">⬇️ demo-walkthrough-en.mp4 (Raw 直链)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough-en.srt</a> |
 
 ---
 

@@ -66,12 +66,12 @@ To demonstrate the platform's production capability, architectural depth, and in
   </a>
 </p>
 
-> 💡 **Playback Tip**: Click the poster above to watch, or hold `⌘ Command` (Mac) / `Ctrl` (Win) while clicking to open in a new tab for 1080P full-screen playback ↗
+> 💡 **Playback Tip**: Click the poster above to watch, or hold `⌘ Command` (Mac) / `Ctrl` (Win) / middle-click to open in a new tab for 1080P full-screen playback ↗
 
-| Version | Audio & Subtitles | 🌐 YouTube Stream | 📁 Master Copy (Download · 6.2MB) | External Subtitles (SRT) |
+| Version | Audio & Subtitles | 🌐 YouTube Stream | 📁 Master Copy (Direct Download · 6.2MB) | External Subtitles (SRT) |
 | :--- | :--- | :--- | :--- | :--- |
-| 🇺🇸 **English Edition** | Microsoft Azure Neural Voice (Jenny) + Embedded Subtitles | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ Watch on YouTube (03:26)</a> | <a href="docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">📁 demo-walkthrough-en.mp4</a> | <a href="docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough-en.srt</a> |
-| 🇨🇳 **Chinese Edition** | Microsoft Azure Neural Voice (Xiaoxiao) + Embedded Subtitles | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ Watch on YouTube (03:26)</a> | <a href="docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">📁 demo-walkthrough.mp4</a> | <a href="docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough.srt</a> |
+| 🇺🇸 **English Edition** | Microsoft Azure Neural Voice (Jenny) + Embedded Subtitles | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ Watch on YouTube (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">⬇️ demo-walkthrough-en.mp4 (Raw Download)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough-en.srt</a> |
+| 🇨🇳 **Chinese Edition** | Microsoft Azure Neural Voice (Xiaoxiao) + Embedded Subtitles | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ Watch on YouTube (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">⬇️ demo-walkthrough.mp4 (Raw Download)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough.srt</a> |
 
 ---
 
