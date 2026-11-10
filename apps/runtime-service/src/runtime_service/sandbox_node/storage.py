@@ -359,7 +359,10 @@ class Storage:
 
     def mutate(self, root, operation, arguments, *, protected=True):
         path = arguments["path"]
-        if not path.startswith("/workspace/work/" if protected else "/workspace/"):
+        allowed_prefix = (
+            ("/workspace/work/", "/workspace/outputs/") if protected else "/workspace/"
+        )
+        if not path.startswith(allowed_prefix):
             return {"error": "workspace_write_denied"}
         try:
             if operation == "delete":

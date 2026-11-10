@@ -648,11 +648,13 @@ watch([() => props.threadId, () => isSessionRunning.value], ([, running]) => {
 
 watch(
   () => props.threadId,
-  () => {
+  (newThreadId, oldThreadId) => {
     isStatusBarDismissed.value = false;
     error.value = "";
     localError.value = "";
-    setOptimisticUserMessage(null);
+    if (oldThreadId && newThreadId && oldThreadId !== newThreadId) {
+      setOptimisticUserMessage(null);
+    }
   },
 );
 

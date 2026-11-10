@@ -13,11 +13,14 @@
   <img src="https://img.shields.io/badge/Skills-Agent%20Skills-0F766E" alt="Skills" />
   <img src="https://img.shields.io/badge/Memory-Memory%20Loop-2563EB" alt="Memory" />
   <img src="https://img.shields.io/badge/HITL-Human--in--the--Loop-DC2626" alt="HITL" />
+  <a href="https://youtu.be/alkXoXM7b5Y"><img src="https://img.shields.io/badge/YouTube%20Demo-English%201080P-FF0000?logo=youtube" alt="YouTube Demo (English)" /></a>
+  <a href="https://youtu.be/oWyuC0TKWOo"><img src="https://img.shields.io/badge/YouTube%20Demo-Chinese%201080P-FF0000?logo=youtube" alt="YouTube Demo (Chinese)" /></a>
   <a href="https://github.com/ljxpython/ai-agent-platform/releases/latest"><img src="https://img.shields.io/github/v/release/ljxpython/ai-agent-platform" alt="Latest Release" /></a>
 </p>
 
 <p align="center">
   <a href="#system-overview">System Overview</a> ·
+  <a href="#demo-video">🎬 Demo Video</a> ·
   <a href="#architecture-diagrams">Architecture Diagrams</a> ·
   <a href="#agent-ecosystem">Built-in Agents</a> ·
   <a href="#secondary-development">Secondary Development</a> ·
@@ -48,6 +51,23 @@ This project delivers an **enterprise-ready engineering foundation built for sec
 | **Platform API** | `apps/platform-api` | **Control Plane**: Auth, project isolation, audit logs, model catalog, managed contract gateway | FastAPI + SQLAlchemy + PostgreSQL |
 | **Platform Web** | `apps/platform-web` | **Console UI**: Workspace layout, agent chat stream, access controls, multi-turn rendering | Vue 3 + Vite + Tailwind CSS + Pinia |
 | **Runtime Service** | `apps/runtime-service` | **Agent Runtime**: LangGraph graph registry, tool & MCP binding, session dispatch, SSE streaming | Python 3.11+ + LangGraph + GraphHarbor + Redis |
+
+---
+
+<a id="demo-video"></a>
+
+## 🎬 End-to-End Walkthrough & Capabilities Demo Video (1080P · Bilingual Audio)
+
+To demonstrate the platform's production capability, architectural depth, and interactive frontend experience, we produced a 1080P 60FPS walkthrough video available in both **English** and **Chinese**. The video showcases **long-horizon task execution (DeepEval architecture survey), real-time Markdown report rendering, isolated cloud sandbox workspace (file tree, interactive terminal session, streaming zip download), 20+ enterprise Agent Skills, task artifact archive with SHA256 checksums, Graph Studio 2.0 knowledge graph, and Token cost governance**:
+
+| Version | Audio & Subtitles | YouTube Stream | Local Master Copy (1080P) | External Subtitles (SRT) |
+| :--- | :--- | :--- | :--- | :--- |
+| 🇺🇸 **English Edition** | Microsoft Azure Neural Voice (Jenny) + Embedded Subtitles | [▶️ Watch on YouTube (03:26)](https://youtu.be/alkXoXM7b5Y) | [📁 docs/assets/demo-walkthrough-en.mp4](docs/assets/demo-walkthrough-en.mp4) | [📄 docs/assets/demo-walkthrough-en.srt](docs/assets/demo-walkthrough-en.srt) |
+| 🇨🇳 **Chinese Edition** | Microsoft Azure Neural Voice (Xiaoxiao) + Embedded Subtitles | [▶️ Watch on YouTube (03:26)](https://youtu.be/oWyuC0TKWOo) | [📁 docs/assets/demo-walkthrough.mp4](docs/assets/demo-walkthrough.mp4) | [📄 docs/assets/demo-walkthrough.srt](docs/assets/demo-walkthrough.srt) |
+
+> 📚 **Automated Video Production Playbook**: [📖 docs/knowledge/automated-demo-video-production-playbook.md](docs/knowledge/automated-demo-video-production-playbook.md) (Headless browser orchestration, visual-audio sync gates, neural voice synthesis, and FFmpeg mixing specifications).
+
+---
 
 <a id="architecture-diagrams"></a>
 

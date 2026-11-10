@@ -1,0 +1,31 @@
+1
+00:00:01,000 --> 00:00:20,000
+Welcome to the Enterprise AI Agent Platform. Today, we demonstrate our production-grade architecture through an end-to-end walkthrough on Dear Agent workbench: a deep architectural review of open-source framework DeepEval.
+
+2
+00:00:27,500 --> 00:00:47,500
+Upon receiving instructions, the agent initiates deep reasoning. Built-in graph state machines and safety middleware work in tandem: planning execution paths and chaining web search with code analysis, preventing infinite loops and token blowups.
+
+3
+00:00:53,500 --> 00:01:15,500
+The agent delivers a high-quality structured report. Expanding the isolated sandbox reveals in-browser Markdown preview: system architecture, test pipelines, and pytest integrations. All deliverables are persisted to outputs for streaming download.
+
+4
+00:01:22,500 --> 00:01:40,500
+Clicking the Terminal tab instantly spins up an isolated sandbox. Without leaving the browser, developers run shell commands interactively, inspect runtime environments, and verify code and artifacts with complete operational control.
+
+5
+00:01:49,500 --> 00:02:07,000
+Powering these workflows is our matrix of 20+ production Agent Skills. From web intelligence and code parsing to complex charts, agents dynamically assemble capabilities to match every task— forming a flexible foundation for enterprise development.
+
+6
+00:02:13,500 --> 00:02:32,000
+Entering Artifacts Management, deliverables are centrally archived. Filter by project, session, or asset type with cryptographic hashes, enabling seamless team collaboration and one-click secure exports without missing critical project files.
+
+7
+00:02:37,500 --> 00:02:54,500
+Navigating to the native Knowledge Hub, Graph Studio 2.0 opens: automatically parsing unstructured docs into entities and relationships, rendering thousands of semantic nodes and topological links to ground complex agent decisions.
+
+8
+00:03:00,500 --> 00:03:17,500
+Finally, the Token Analytics dashboard provides aggregated models and character-level cost tracking for full compute governance. From autonomous orchestration to secure sandbox execution, this is your trusted enterprise Agent foundation.

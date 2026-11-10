@@ -202,9 +202,9 @@ def test_untrusted_target_rejected(build, target):
     "path",
     [
         "/workspace/uploads/input.txt",
-        "/workspace/outputs/result.txt",
         "/skills/runtime-smoke/SKILL.md",
         "/workspace/work/../outputs/bad.txt",
+        "/workspace/outputs/../bad.txt",
     ],
 )
 def test_approved_write_cannot_modify_protected_files(build, path):
@@ -226,6 +226,31 @@ def test_approved_write_cannot_modify_protected_files(build, path):
             or "permission" in str(output.content).lower()
             or "traversal" in str(output.content).lower()
         )
+
+    asyncio.run(run())
+
+
+def test_write_file_allows_direct_outputs_write(build):
+    async def run():
+        graph, cfg = await build(
+            [
+                call(
+                    "write_file",
+                    {
+                        "file_path": "/workspace/outputs/result.txt",
+                        "content": "report content",
+                    },
+                ),
+                AIMessage(content="done"),
+            ]
+        )
+        result = await graph.ainvoke({"messages": [("user", "write")]}, cfg, context={})
+        if result.get("__interrupt__"):
+            result = await graph.ainvoke(
+                Command(resume={"decisions": [{"type": "approve"}]}), cfg, context={}
+            )
+        output = next(m for m in result["messages"] if isinstance(m, ToolMessage))
+        assert "workspace_write_denied" not in str(output.content)
 
     asyncio.run(run())
 

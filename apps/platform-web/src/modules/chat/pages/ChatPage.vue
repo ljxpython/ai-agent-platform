@@ -906,7 +906,12 @@ function newThread() {
 }
 function created(id: string) {
   storeDraft("");
-  if (selectedEntry.value)
+  if (selectedEntry.value) {
+    try {
+      pool.bindThread(selectedEntry.value, id);
+    } catch {
+      // ignore
+    }
     selectedEntry.value.draftKey = [
       "pw:chat:draft",
       auth.user?.id,
@@ -914,9 +919,11 @@ function created(id: string) {
       target.value?.agentId,
       id,
     ].join(":");
+  }
   storeDraft(draft.value);
   ownThread = id;
   selectedThread.value = id;
+  mountedThread.value = id;
   chatSessionStore.setLastActiveThread(
     activeProjectId.value,
     "workspace-chat",

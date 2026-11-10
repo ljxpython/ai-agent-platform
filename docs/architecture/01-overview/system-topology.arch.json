@@ -2,85 +2,96 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "AI Agent Platform System Topology",
+    "title": "AI Agent Platform System Architecture",
     "output": "system-topology-interactive.html",
     "quality_profile": "showcase",
     "locale": "zh-CN",
     "views": [
       {
         "id": "full-stack",
-        "label": "端到端全链路",
+        "label": "端到端推理链路",
         "focus": ["browser", "web", "api", "rt_api", "rt_worker", "llm"],
-        "note": "从前端用户提问到底层大模型流式推理的完整主路径。"
+        "note": "从前端用户提问、网关委托代理到底层大模型流式推理与 SSE 回推的全链路。"
       },
       {
-        "id": "control-plane",
-        "label": "控制面治理与隔离",
-        "focus": ["web", "api", "db_platform"],
-        "note": "平台用户登录、权限验证与数据隔离边界。"
+        "id": "control-and-knowledge",
+        "label": "控制面与知识中台",
+        "focus": ["web", "api", "db_platform", "knowledge"],
+        "note": "IAM 权限、模型 Catalog 治理与 LightRAG 原生知识图谱单向免隧道检索。"
       },
       {
-        "id": "execution-plane",
-        "label": "执行引擎与观测",
-        "focus": ["rt_api", "redis", "rt_worker", "db_runtime", "langfuse", "llm"],
-        "note": "LangGraph 图执行、状态快照与全链路追踪。"
+        "id": "execution-and-sandbox",
+        "label": "执行面与沙箱韧性",
+        "focus": ["rt_api", "redis", "rt_worker", "db_runtime", "sandbox"],
+        "note": "LangGraph 图状态机、六大防爆中间件、Smart Zip Docker 沙箱流式隔离。"
+      },
+      {
+        "id": "observability-pipeline",
+        "label": "全链路可观测体系",
+        "focus": ["api", "rt_api", "observability"],
+        "note": "W3C traceparent 穿透、MLflow 原生链路树直达与 Loki 毫秒日志对齐。"
       }
     ]
   },
   "components": [
-    { "id": "browser", "type": "external", "label": "用户浏览器", "sublabel": "Browser Client", "pos": [40, 280], "size": [130, 60] },
-    { "id": "web", "type": "frontend", "label": "Platform Web", "sublabel": "Vue 3 :5173", "pos": [230, 280], "size": [140, 60], "tag": "Chat & Admin" },
-    { "id": "api", "type": "backend", "label": "Platform API", "sublabel": "FastAPI :8000", "pos": [450, 280], "size": [140, 60], "tag": "Control Plane" },
-    { "id": "db_platform", "type": "database", "label": "平台业务库", "sublabel": "PostgreSQL :5432", "pos": [450, 120], "size": [140, 60], "tag": "Auth & Models" },
-    { "id": "rt_api", "type": "backend", "label": "Runtime API", "sublabel": "FastAPI :8001", "pos": [680, 280], "size": [140, 60], "tag": "Delegation Auth" },
-    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "Queue & Lock :6379", "pos": [680, 120], "size": [140, 60], "tag": "Task Dispatch" },
-    { "id": "rt_worker", "type": "backend", "label": "Runtime Worker", "sublabel": "LangGraph 1.2", "pos": [910, 280], "size": [140, 60], "tag": "GraphHarbor" },
-    { "id": "db_runtime", "type": "database", "label": "运行时状态库", "sublabel": "PostgreSQL :5432", "pos": [910, 120], "size": [140, 60], "tag": "Checkpoints" },
-    { "id": "langfuse", "type": "external", "label": "Langfuse", "sublabel": "Observability", "pos": [680, 440], "size": [140, 60], "tag": "Trace 树" },
-    { "id": "llm", "type": "cloud", "label": "大模型供应商", "sublabel": "OpenAI / Claude", "pos": [910, 440], "size": [140, 60], "tag": "Inference" }
+    { "id": "browser", "type": "external", "label": "用户浏览器", "sublabel": "Browser Client", "pos": [40, 260], "size": [120, 60] },
+    { "id": "web", "type": "frontend", "label": "Platform Web", "sublabel": "Vue 3 :3000", "pos": [220, 260], "size": [130, 60], "tag": "Chat & Admin" },
+    { "id": "api", "type": "backend", "label": "Platform API", "sublabel": "FastAPI :2142", "pos": [430, 260], "size": [130, 60], "tag": "Control Plane" },
+    { "id": "db_platform", "type": "database", "label": "平台业务库", "sublabel": "PostgreSQL :5432", "pos": [430, 110], "size": [130, 60], "tag": "IAM & Models" },
+    { "id": "knowledge", "type": "backend", "label": "原生知识中台", "sublabel": "LightRAG Engine", "pos": [430, 410], "size": [130, 60], "tag": "Canvas Graph" },
+    { "id": "rt_api", "type": "backend", "label": "Runtime API", "sublabel": "FastAPI :8123", "pos": [640, 260], "size": [130, 60], "tag": "Delegation Auth" },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "Queue & Lock :6379", "pos": [640, 110], "size": [130, 60], "tag": "Task Dispatch" },
+    { "id": "observability", "type": "external", "label": "可观测中心", "sublabel": "MLflow / Loki / Prom", "pos": [640, 410], "size": [130, 60], "tag": "W3C Trace" },
+    { "id": "rt_worker", "type": "backend", "label": "Runtime Worker", "sublabel": "LangGraph 1.2", "pos": [850, 260], "size": [130, 60], "tag": "Resilience Agent" },
+    { "id": "db_runtime", "type": "database", "label": "运行时状态库", "sublabel": "PostgreSQL :5432", "pos": [850, 110], "size": [130, 60], "tag": "Checkpoints" },
+    { "id": "sandbox", "type": "backend", "label": "沙箱执行集群", "sublabel": "Docker / PTY", "pos": [850, 410], "size": [130, 60], "tag": "Smart Zip" },
+    { "id": "llm", "type": "cloud", "label": "大模型供应商", "sublabel": "DeepSeek / Claude", "pos": [1060, 260], "size": [130, 60], "tag": "Inference" }
   ],
   "boundaries": [
-    { "kind": "security-group", "label": "Client Layer (前端层)", "wraps": ["browser", "web"] },
-    { "kind": "security-group", "label": "Control Plane (控制面)", "wraps": ["api", "db_platform"] },
-    { "kind": "security-group", "label": "Execution Plane (运行面)", "wraps": ["rt_api", "rt_worker", "db_runtime", "redis"] }
+    { "kind": "security-group", "label": "Client Layer (前端工作台)", "wraps": ["browser", "web"] },
+    { "kind": "security-group", "label": "Control Plane (平台控制面与知识中台)", "wraps": ["api", "db_platform", "knowledge"] },
+    { "kind": "security-group", "label": "Execution Plane (运行时执行面与沙箱)", "wraps": ["rt_api", "rt_worker", "db_runtime", "redis", "sandbox"] }
   ],
   "connections": [
-    { "id": "browser-to-web", "from": "browser", "to": "web", "label": "HTTP :5173", "variant": "emphasis" },
-    { "id": "web-to-api", "from": "web", "to": "api", "label": "User JWT / SSE", "variant": "emphasis" },
-    { "id": "api-to-db", "from": "api", "to": "db_platform", "label": "SQL", "fromSide": "top", "toSide": "bottom" },
+    { "id": "browser-to-web", "from": "browser", "to": "web", "label": "HTTP :3000", "variant": "emphasis" },
+    { "id": "web-to-api", "from": "web", "to": "api", "label": "JWT / SSE", "variant": "emphasis", "labelDy": -20 },
+    { "id": "api-to-db", "from": "api", "to": "db_platform", "label": "SQL", "fromSide": "top", "toSide": "bottom", "labelDy": -25 },
+    { "id": "api-to-knowledge", "from": "api", "to": "knowledge", "label": "HMAC 验签", "fromSide": "bottom", "toSide": "top", "labelDy": 25 },
     { "id": "api-to-rt", "from": "api", "to": "rt_api", "label": "Delegation JWT", "variant": "security" },
-    { "id": "rt-to-redis", "from": "rt_api", "to": "redis", "label": "入队", "fromSide": "top", "toSide": "bottom" },
+    { "id": "rt-to-redis", "from": "rt_api", "to": "redis", "label": "入队", "fromSide": "top", "toSide": "bottom", "labelDy": -25 },
     { "id": "redis-to-worker", "from": "redis", "to": "rt_worker", "label": "抢占消费", "fromSide": "right", "toSide": "top" },
-    { "id": "worker-to-db", "from": "rt_worker", "to": "db_runtime", "label": "Checkpoints", "fromSide": "top", "toSide": "bottom", "labelDy": -36 },
-    { "id": "worker-to-llm", "from": "rt_worker", "to": "llm", "label": "流式推理", "fromSide": "bottom", "toSide": "top", "labelDy": 30 },
-    { "id": "rt-to-langfuse", "from": "rt_api", "to": "langfuse", "label": "Trace 上报", "fromSide": "bottom", "toSide": "top", "labelDy": 30 }
+    { "id": "rt-to-obs", "from": "rt_api", "to": "observability", "label": "Trace / 日志", "fromSide": "bottom", "toSide": "top", "labelDy": 25, "variant": "dashed" },
+    { "id": "worker-to-db", "from": "rt_worker", "to": "db_runtime", "label": "Checkpoints", "fromSide": "top", "toSide": "bottom", "labelDy": -30 },
+    { "id": "worker-to-sandbox", "from": "rt_worker", "to": "sandbox", "label": "沙箱隔离", "fromSide": "bottom", "toSide": "top", "labelDy": 25 },
+    { "id": "worker-to-llm", "from": "rt_worker", "to": "llm", "label": "流式推理", "variant": "emphasis" }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "前端宿主 (Web)",
+      "title": "前端工作台 (Web)",
       "items": [
-        "Vue 3 + Vite 单页管理台与流式对话工作台",
-        "ChatSessionPool 多会话持久池，切 Tab 不断流",
-        "自动处理 HTTP 410 游标过期自愈"
+        "Vue 3 + Vite 单页管理台、工作区总览看板与通透对话流",
+        "ChatSessionPool 多会话持久池，切 Tab 不断流且秒级水合",
+        "内嵌原生 Canvas 2.0 图谱工坊与 DiagnosticDetailModal 毫秒排障"
       ]
     },
     {
       "dot": "emerald",
       "title": "控制面网关 (API)",
       "items": [
-        "FastAPI 处理 RBAC 权限与 BYOK 私有模型秘钥",
-        "生成 60 秒临时 Delegation JWT，隔离底层凭据",
-        "流式反向代理，执行 8MiB 截断与保活心跳注入"
+        "FastAPI 处理双层 RBAC、BYOK 密钥隔离与 PII 脱敏网关",
+        "生成 60 秒临时 Delegation JWT，隔离底层长期用户凭据",
+        "流式反向代理，执行 8MiB 截断保护与保活心跳注入"
       ]
     },
     {
       "dot": "rose",
-      "title": "执行引擎 (Runtime)",
+      "title": "执行引擎与中台 (Runtime)",
       "items": [
-        "LangGraph StateGraph 状态机编排与循环图执行",
-        "GraphHarbor post37 支持子图命名空间 checkpoint_ns",
-        "独立 PostgreSQL 状态库与 Redis 队列无干扰运行"
+        "LangGraph 状态机驱动，覆盖六大防爆与 Token 软停机韧性",
+        "原生知识中台（LightRAG + Scoped HMAC 免隧道单向验签）",
+        "Docker 对话级沙箱 Smart Zip 零内存流式直出压缩与 PTY 终端",
+        "MLflow / Langfuse 双轨链路追踪与 Loki 毫秒日志精准穿透"
       ]
     }
   ]

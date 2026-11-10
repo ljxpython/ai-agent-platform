@@ -99,11 +99,16 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
 
     def _can_write(self, path: str) -> bool:
         # Shell access is restricted by mounts; filesystem tools need their own guard.
-        if not path.startswith("/workspace/work/") or ".." in path.split("/"):
+        if not (
+            path.startswith("/workspace/work/")
+            or path.startswith("/workspace/outputs/")
+        ) or ".." in path.split("/"):
             return False
         try:
             resolved = self._resolve_path(path)
-            return resolved.is_relative_to(self.root / "work")
+            return resolved.is_relative_to(
+                self.root / "work"
+            ) or resolved.is_relative_to(self.root / "outputs")
         except (ValueError, OSError, RuntimeError):
             return False
 

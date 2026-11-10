@@ -446,3 +446,9 @@ deploy/.env.stack
 *.db
 *.sqlite
 *.sqlite3
+
+# Demo video production temp assets
+docs/assets/raw_tour_*.mp4
+docs/assets/voiceover_*/
+docs/assets/sub_texts_*/
+docs/diagrams/*.visual-check.*
