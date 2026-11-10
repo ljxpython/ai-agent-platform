@@ -189,15 +189,15 @@
 为让你身临其境感受平台在生产环境下的实际质感与工程纵深，我们制作了 1080P 60FPS 高清全景端到端实操视频，并提供**中文原版**与**英文国际版**双语母带。视频完整呈现了**真实下发重度长程调研任务（深度剖析 DeepEval 仓库架构）、任务完成万字报告呈现、展开隔离沙箱 Workspace（文件树/终端交互/Zip打包）、20+ 工业级 Skills 技能矩阵、全局任务成果归档库、Graph Studio 2.0 知识图谱工坊与 Token 精准成本核算**：
 
 <p align="center">
-  <a href="https://youtu.be/oWyuC0TKWOo" target="_blank">
+  <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">
     <img src="docs/assets/demo-video-cover.jpg" alt="企业级 AI Agent 平台全景实测视频" width="100%" />
   </a>
 </p>
 
 | 版本 | 语言与解说 | 🌐 YouTube 官方 1080P | 🐱 GitHub 原生在线播放 (免翻墙) | 📝 外挂字幕 (SRT) |
 | :--- | :--- | :--- | :--- | :--- |
-| 🇨🇳 **中文原版** | 微软官方神经网络专业知性女声 + 华文黑体内嵌字幕 | [▶️ YouTube 播放 (03:26)](https://youtu.be/oWyuC0TKWOo) | [▶️ GitHub 在线直接看](https://github.com/ljxpython/ai-agent-platform/blob/main/docs/assets/demo-walkthrough.mp4) | [📄 docs/assets/demo-walkthrough.srt](docs/assets/demo-walkthrough.srt) |
-| 🇺🇸 **英文国际版** | 微软官方 Jenny 纯正美音 + 专业技术术语内嵌字幕 | [▶️ YouTube 播放 (03:26)](https://youtu.be/alkXoXM7b5Y) | [▶️ GitHub 在线直接看](https://github.com/ljxpython/ai-agent-platform/blob/main/docs/assets/demo-walkthrough-en.mp4) | [📄 docs/assets/demo-walkthrough-en.srt](docs/assets/demo-walkthrough-en.srt) |
+| 🇨🇳 **中文原版** | 微软官方神经网络专业知性女声 + 华文黑体内嵌字幕 | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/blob/main/docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">▶️ GitHub 在线直接看</a> | <a href="docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 docs/assets/demo-walkthrough.srt</a> |
+| 🇺🇸 **英文国际版** | 微软官方 Jenny 纯正美音 + 专业技术术语内嵌字幕 | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/blob/main/docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">▶️ GitHub 在线直接看</a> | <a href="docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 docs/assets/demo-walkthrough-en.srt</a> |
 
 ---
 
