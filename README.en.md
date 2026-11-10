@@ -60,12 +60,16 @@ This project delivers an **enterprise-ready engineering foundation built for sec
 
 To demonstrate the platform's production capability, architectural depth, and interactive frontend experience, we produced a 1080P 60FPS walkthrough video available in both **English** and **Chinese**. The video showcases **long-horizon task execution (DeepEval architecture survey), real-time Markdown report rendering, isolated cloud sandbox workspace (file tree, interactive terminal session, streaming zip download), 20+ enterprise Agent Skills, task artifact archive with SHA256 checksums, Graph Studio 2.0 knowledge graph, and Token cost governance**:
 
-| Version | Audio & Subtitles | YouTube Stream | Local Master Copy (1080P) | External Subtitles (SRT) |
-| :--- | :--- | :--- | :--- | :--- |
-| 🇺🇸 **English Edition** | Microsoft Azure Neural Voice (Jenny) + Embedded Subtitles | [▶️ Watch on YouTube (03:26)](https://youtu.be/alkXoXM7b5Y) | [📁 docs/assets/demo-walkthrough-en.mp4](docs/assets/demo-walkthrough-en.mp4) | [📄 docs/assets/demo-walkthrough-en.srt](docs/assets/demo-walkthrough-en.srt) |
-| 🇨🇳 **Chinese Edition** | Microsoft Azure Neural Voice (Xiaoxiao) + Embedded Subtitles | [▶️ Watch on YouTube (03:26)](https://youtu.be/oWyuC0TKWOo) | [📁 docs/assets/demo-walkthrough.mp4](docs/assets/demo-walkthrough.mp4) | [📄 docs/assets/demo-walkthrough.srt](docs/assets/demo-walkthrough.srt) |
+<p align="center">
+  <a href="https://youtu.be/alkXoXM7b5Y" target="_blank">
+    <img src="docs/assets/demo-video-cover-en.jpg" alt="Enterprise AI Agent Platform Walkthrough Video" width="100%" />
+  </a>
+</p>
 
-> 📚 **Automated Video Production Playbook**: [📖 docs/knowledge/automated-demo-video-production-playbook.md](docs/knowledge/automated-demo-video-production-playbook.md) (Headless browser orchestration, visual-audio sync gates, neural voice synthesis, and FFmpeg mixing specifications).
+| Version | Audio & Subtitles | 🌐 YouTube Stream | 🐱 GitHub Native Stream | External Subtitles (SRT) |
+| :--- | :--- | :--- | :--- | :--- |
+| 🇺🇸 **English Edition** | Microsoft Azure Neural Voice (Jenny) + Embedded Subtitles | [▶️ Watch on YouTube (03:26)](https://youtu.be/alkXoXM7b5Y) | [▶️ Watch on GitHub](https://github.com/ljxpython/ai-agent-platform/blob/main/docs/assets/demo-walkthrough-en.mp4) | [📄 docs/assets/demo-walkthrough-en.srt](docs/assets/demo-walkthrough-en.srt) |
+| 🇨🇳 **Chinese Edition** | Microsoft Azure Neural Voice (Xiaoxiao) + Embedded Subtitles | [▶️ Watch on YouTube (03:26)](https://youtu.be/oWyuC0TKWOo) | [▶️ Watch on GitHub](https://github.com/ljxpython/ai-agent-platform/blob/main/docs/assets/demo-walkthrough.mp4) | [📄 docs/assets/demo-walkthrough.srt](docs/assets/demo-walkthrough.srt) |
 
 ---
 
