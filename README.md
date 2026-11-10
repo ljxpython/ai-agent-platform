@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/MLflow-原生链路追踪-0284C7" alt="MLflow" />
   <img src="https://img.shields.io/badge/Docker-流式沙箱-2563EB" alt="Docker Sandbox" />
   <img src="https://img.shields.io/badge/HITL-人机协同审批-DC2626" alt="HITL" />
-  <a href="https://www.bilibili.com/" target="_blank"><img src="https://img.shields.io/badge/Bilibili-哔哩哔哩实测-00A1D6?logo=bilibili&logoColor=white" alt="Bilibili Demo" /></a>
+  <a href="https://www.bilibili.com/video/BV1hFW36LEDv/" target="_blank"><img src="https://img.shields.io/badge/Bilibili-哔哩哔哩实测-00A1D6?logo=bilibili&logoColor=white" alt="Bilibili Demo" /></a>
   <a href="https://youtu.be/oWyuC0TKWOo" target="_blank"><img src="https://img.shields.io/badge/YouTube%20Demo-中文实测%201080P-FF0000?logo=youtube" alt="YouTube Demo (Chinese)" /></a>
   <a href="https://youtu.be/alkXoXM7b5Y" target="_blank"><img src="https://img.shields.io/badge/YouTube%20Demo-English%201080P-FF0000?logo=youtube" alt="YouTube Demo (English)" /></a>
   <a href="https://github.com/ljxpython/ai-agent-platform/releases/latest"><img src="https://img.shields.io/github/v/release/ljxpython/ai-agent-platform" alt="Latest Release" /></a>
@@ -199,8 +199,8 @@
 
 | 版本 | 语言与解说 | 📺 哔哩哔哩 (国内免翻墙) | 🌐 YouTube 官方 1080P | 💾 离线母带归档 (MP4 文件下载) | 📝 外挂字幕 (SRT) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 🇨🇳 **中文原版** | 微软官方神经网络专业知性女声 + 华文黑体内嵌字幕 | <a href="https://www.bilibili.com/" target="_blank" rel="noopener noreferrer">▶️ Bilibili 在线播放 ↗</a> | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">⬇️ 下载母带 (6.3MB)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough.srt</a> |
-| 🇺🇸 **英文国际版** | 微软官方 Jenny 纯正美音 + 专业技术术语内嵌字幕 | <a href="https://www.bilibili.com/" target="_blank" rel="noopener noreferrer">▶️ Bilibili 双语播放 ↗</a> | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">⬇️ 下载母带 (6.2MB)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough-en.srt</a> |
+| 🇨🇳 **中文原版** | 微软官方神经网络专业知性女声 + 华文黑体内嵌字幕 | <a href="https://www.bilibili.com/video/BV1hFW36LEDv/" target="_blank" rel="noopener noreferrer">▶️ Bilibili 在线播放 (03:26) ↗</a> | <a href="https://youtu.be/oWyuC0TKWOo" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.mp4" target="_blank" rel="noopener noreferrer">⬇️ 下载母带 (6.3MB)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough.srt</a> |
+| 🇺🇸 **英文国际版** | 微软官方 Jenny 纯正美音 + 专业技术术语内嵌字幕 | <a href="https://www.bilibili.com/video/BV1hFW36LEDv/" target="_blank" rel="noopener noreferrer">▶️ Bilibili 双语播放 ↗</a> | <a href="https://youtu.be/alkXoXM7b5Y" target="_blank" rel="noopener noreferrer">▶️ YouTube 播放 (03:26) ↗</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.mp4" target="_blank" rel="noopener noreferrer">⬇️ 下载母带 (6.2MB)</a> | <a href="https://github.com/ljxpython/ai-agent-platform/raw/main/docs/assets/demo-walkthrough-en.srt" target="_blank" rel="noopener noreferrer">📄 demo-walkthrough-en.srt</a> |
 
 > 📌 **注**：表格中的“离线母带归档”为原始 MP4 文件直连下载通道（非网页流媒体播放）。在线观看请优先点击上方 Bilibili 或 YouTube 通道。
 
