@@ -1,17 +1,17 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-10（全平台架构全景拓扑交互图重构、纯白浅色大屏资产升级、大屏幕实景 7 联截图替换、2.8分钟零瑕级 1080P 全景实操漫游视频与专业知性女声配音及防溢出字幕交付、知识库深度加载上屏强化、工业级视频生产指南文档沉淀、根目录 README 全景翻新）
+> **最后更新：** 2026-11-13（Agent 自动化评测方案细化；仅文档，产品开发未开始）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-11-10（全平台架构拓扑、全景前端大屏实测截图、166秒零瑕级 1080P 实操视频、自动化视频制作指南与 README 翻新闭环交付）
+**最后更新：** 2026-11-13（EvalFlow 主导的 Agent 评测方案、任务与验收细化）
 
 ## 最近改动
 
-2026-11-10 | **全平台架构拓扑重构、大屏真实截图、2.8分钟零瑕级 1080P 实操演示视频与自动化生产指南沉淀闭环交付**：1) 基于 /archify 重新设计并交付工业级架构拓扑交互图（涵盖控制面、执行面、原生知识中台、Docker流式沙箱、全链路可观测双轨体系），9项 showcase 门禁全绿，自动化真实浏览器 1440x900 ~ 2048x1320 四视口 visual-check 100% pass，导出纯白浅色模式全景静态大图；2) 驱动真实大屏幕浏览器以 1920x1080 视口抓取并更新 7 大真实生产功能实景截图，彻底替换历史旧图；3) 彻底根治视频制作翻车缺陷（方块乱码、字幕溢出、沙箱报告未打开预览、任务成果库空态、知识库加载未就绪即切走、片尾截断）：重构自动化无人驾驶录制机，真实走通 6 大分镜（新建长程任务下发、41 步完整成果会话巡礼 Think、沙箱展开并在线打开 33.1KB Markdown 报告上下平滑滑动、20+ 企业级技能底座、任务成果库 33.1KB 成果归档卡片、深度等待知识库完全加载就绪展示 2,450 实体与 3,890 关系、Token 看板百万成本核算与留白收尾）；采用纯净原片 + 系统级华文黑体 drawtext 单层紧凑烧录（严格 22 字折行，边距 > 260px）+ 微软官方神经网络专业知性女声配音（XiaoxiaoNeural）+ 免版权科技轻快 BGM 双轨混流，生成全长 166 秒（2分46秒，14.83MB）无瑕企业级实操演示大片 `docs/assets/demo-walkthrough.mp4` 与标准外挂字幕 `demo-walkthrough.srt`；4) 在 `docs/knowledge/` 沉淀万字工业级复盘与生产指南 `automated-demo-video-production-playbook.md`，同步反哺根目录 `README.md`。
+2026-11-13 | **Agent 自动化评测方案细化（仅文档）**：EvalFlow 主导执行/评分/题库，业务端按证实缺口最小适配；拆分历史评分与主动回归，明确证据契约、隔离、20 题、T00–T10 和 V01–V25。后续真实模型推理/裁判使用 ~/.my_best/.env 的 xiaok DeepSeek，嵌入使用百炼；开发、真实模型测试与 CI 均未开始，完成后需交付复盘和可复用指南。
 
 ## 本月归并
 
@@ -38,6 +38,7 @@
 
 ## 活跃项目
 
+- [Agent 自动化评测体系](projects/20261112-agent-evaluation-system/README.md)：规划中；2026-11-13 方案修订完成，已明确 EvalFlow 主要开发边界、模型资源、执行任务和验收；产品实现未开始。
 - [MLflow 链路追踪与会话评测适配](projects/20261108-mlflow-tracing-adaptation/README.md)：`done`；全栈完成 MLflow / EvalFlow 平台平滑接入，支持动态环境变量热切换（langfuse/mlflow/both/none）。落地三大场景：1) 前端安全防御守护（none 模式下追踪 UI 彻底消失零报错）；2) Project 维度项目物理隔离（动态自动创建 `project-{project_id}` 独立实验）；3) 超级链接原生直达线程 ID（直接进入 `#/experiments/{id}/chat-sessions/{sessionId}` 全景对话卡片）。单测 153 项全绿、Vue-tsc 0 报错、browser-skill 真实浏览器端到端实测验证通过。
 - [Runtime Agent 开发指南与入口纠偏](projects/20261108-runtime-development-harness-governance/README.md)：done（文档范围，2026-11-08 用户人工验收通过）；52 篇全文审查完成，经验已沉淀；文档提交 5ea9ea8c、整合提交 2b434585 已推送并合入 main，主干原有功能保留，f335 Worktree 已清理，无所属服务/测试数据库。CI 不在本期，产品测试未重跑。
 - [工作区总览工业级重构与信息密度治理](projects/20261108-workspace-overview-refactor/README.md)：`done`；针对工作区总览废话文案、空洞留白与狗皮膏药治理入口立项工业级重构全栈交付，4 联指标看板、紧凑 Header、主辅双栏高能工作流已落地，单测全绿。
@@ -105,6 +106,6 @@
 | runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。 |
 | platform-api | 2026-11-08 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。 |
 | platform-web | 2026-11-08 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。 |
-| AI Harness（AGENTS.md + Skills + 文档） | 2026-11-10 | 根目录 README.md 与 /archify 架构全景大图完成翻新交付，对齐 11 月最新五大支柱与工程基线。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
+| AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent 评测方案已按 EvalFlow 主导修订，T00–T10 开发未开始；本项目推理/裁判指定 xiaok DeepSeek、嵌入指定百炼，覆盖以下通用模型默认值，但不修改全仓默认策略。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。
