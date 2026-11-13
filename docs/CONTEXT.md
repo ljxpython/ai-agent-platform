@@ -1,13 +1,13 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-13（主环境评测A01–A03完成，A04远端沙箱准入阻塞）
+> **最后更新：** 2026-11-13（Agent 生产评测飞轮评审意见已确认并修订方案；修订稿待实施评审）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-11-13（EvalFlow原生评估页面本地交付）
+**最后更新：** 2026-11-13（Agent 生产评测飞轮 README 与四专题已按代码基线修订；产品实现、生产操作均未开始）
 
 2026-11-13 Git交付：用户追加授权将EvalFlow主环境适配及中文/品牌修复提交并推送远端；本仓同步对应的项目状态与验收文档，无Agent服务代码改动。生产部署未授权，A04沙箱准入阻塞保留；最终提交与远端状态以Git记录为准。
 
@@ -48,6 +48,7 @@
 
 ## 活跃项目
 
+- [Agent 线上监控、数据回流飞轮与标准评测体系](projects/20261113-agent-eval-production-flywheel/README.md)：`planning`；评审意见已确认，README 与四专题已修订，待实施评审。复用 EvalFlow，明确旁路采集、外发前授权、原生审核、v1/v2 迁移、盲测隔离和 G0–G3/真实 CI；Task 均未开始。A04 与两仓部署口径差异留待核验，本轮未操作生产。
 - [Agent 自动化评测体系](projects/20261112-agent-evaluation-system/README.md)：done，已合main并清理测试Worktree/专属数据库；EvalFlow执行器、20题、真实基线、门禁、Badcase审核与页面验证通过。Agent仍有KnowledgeRetention质量失败；真实CI、生产发布、新盲测集后置。
 - [MLflow 链路追踪与会话评测适配](projects/20261108-mlflow-tracing-adaptation/README.md)：`done`；全栈完成 MLflow / EvalFlow 平台平滑接入，支持动态环境变量热切换（langfuse/mlflow/both/none）。落地三大场景：1) 前端安全防御守护（none 模式下追踪 UI 彻底消失零报错）；2) Project 维度项目物理隔离（动态自动创建 `project-{project_id}` 独立实验）；3) 超级链接原生直达线程 ID（直接进入 `#/experiments/{id}/chat-sessions/{sessionId}` 全景对话卡片）。单测 153 项全绿、Vue-tsc 0 报错、browser-skill 真实浏览器端到端实测验证通过。
 - [Runtime Agent 开发指南与入口纠偏](projects/20261108-runtime-development-harness-governance/README.md)：done（文档范围，2026-11-08 用户人工验收通过）；52 篇全文审查完成，经验已沉淀；文档提交 5ea9ea8c、整合提交 2b434585 已推送并合入 main，主干原有功能保留，f335 Worktree 已清理，无所属服务/测试数据库。CI 不在本期，产品测试未重跑。
@@ -116,7 +117,7 @@
 | runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。 |
 | platform-api | 2026-11-08 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。 |
 | platform-web | 2026-11-08 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。 |
-| AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent 自动化评测首期与D01–D06已合main，测试资源已回收；详见项目记录。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。 |
+| AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent 生产评测飞轮五份方案已按确认意见修订，待实施评审，尚未开始产品改动。Agent 自动化评测首期与D01–D06已合main，测试资源已回收；详见项目记录。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。
 
