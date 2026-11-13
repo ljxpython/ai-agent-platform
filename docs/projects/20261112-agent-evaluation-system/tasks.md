@@ -265,3 +265,31 @@
 - 清理：仅两个agent-evaluation Worktree、wt_3a133f065724所属两库/角色、Redis/Workspace和EvalFlow SQLite；所有其他DB/角色清单一致，其他Worktree保留。
 - 合规：经验已确认沉淀；README/CONTEXT/FEATURES与独立M01验收同步；生产未部署。
 - 状态：done；详见implementation/12-merge-closeout.md。最终收尾提交随main推送并核验远端一致。
+
+## A01–A04 主环境项目级评测（2026-11-13）
+- [x] A01 项目缺失核查、项目复用/创建与持久配置初始化。
+- [x] A02 主环境/Worktree配置路径兼容、幂等与冲突保护测试。
+- [x] A03 项目专用fixture装配、保留其他配置与前置校验。
+- [ ] A04 主环境真实模型/browser-skill验证、项目可见性、指南与Final收尾。blocked：当前远端沙箱拒绝新出口IP，等待仅补/32准入的明确确认；其余可执行验证/指南已完成。
+
+### A01 完成卡
+- 当前主库初始仅test项目；旧验收项目属于已清理测试库。创建并复用Agent评测项目352e1fdd-10c3-44a5-820c-27ca2d7a7424，用户刷新后确认可见。
+- 正式API配置项目专属xiaok模型，保留Agent已保存context；原生实验10集中保留20题集和5题验收集、温度0/0.3配置。
+- 真实重复setup返回同一目标；不创建额外探针项目。
+
+### A02 完成卡
+- EvalFlow setup_local/config兼容主环境app-local与已登记Worktree；缺登记/不同身份拒绝回退。
+- 幂等复用、同名歧义、跨目标配置、非本地URL、既有模型协议和资源校验均覆盖。
+- 实测纠正项目API不支持GET /projects/{id}，改用分页列表；Mock与真实接口一致。
+
+### A03 完成卡
+- 项目专用fixture静态连接精确scope/工具白名单；保留其他连接、动态知识secret及上传设置；绑定冲突拒绝。
+- 同port重启、旧合法绑定兼容；preflight核验平台binding与runtime connection、索引、MCP真实initialize。
+- 主环境env备份与test项目Agent/策略快照留私有目录；变更后对比一致，未改现有远端Docker模式。
+
+### A04 进行记录
+- browser-skill：项目可见、两集合原生目录、选择配置与集合、创建任务、原生逐题失败结果均已真实验证并截图。
+- DeepSeek真实JSON、百炼1024维嵌入、DeepEval TaskCompletion=1通过。
+- 首次5题Run因主环境远端沙箱TLS超时失败，原证据保留；服务器服务/端口正常，抓包确认当前源IP不在防火墙白名单。仅补当前/32准入已请求用户确认，尚未修改远端安全配置。
+- 修复运行器对runtime error/timeout仅视为质量失败的分类，追加明确execution error并有单测；不掩盖环境故障。
+- Agent完整成功链路待远端准入恢复，不提前记Final通过。

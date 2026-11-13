@@ -181,3 +181,16 @@ browser-skill完成原生页面完整路径并保存截图18–26；原生数据
 ## Final：M01合并收尾（2026-11-13）
 
 判定done（Git集成、本地复验与测试资源清理）。经验已写入EvalFlow经验库；两feature分支已推送，main实现已推送，最终收尾文档随本轮提交继续推送并核验。原开发环境已销毁，历史本地Run链接不可用；截图和脱敏JSON保留。未重跑真实模型/浏览器，合并代码与此前已验收版本完全一致；未部署生产。详见[合并清理记录](implementation/12-merge-closeout.md)。
+
+## A01–A04 验证计划（2026-11-13）
+
+初始化重复执行不增加项目或模型；显式项目ID错误/多同名/资源冲突安全拒绝；缺失Worktree配置不得回退主目录。fixture仅改变目标项目绑定，动态知识/上传与其他项目设置逐字段保持；实际业务test项目Agent与策略前后相同。主环境真实运行基础/审批与知识用例；浏览器看到专用项目、冻结题库和两配置入口。开发单测使用tmp资源；真实验证写专用项目，历史首期Final不替代本扩展验收。
+
+## A01–A04 Phase验证记录（主环境扩展，2026-11-13）
+- A01：正式API建/复用项目、项目专属模型；用户确认刷新可见；两原生数据集20/5题导入冻结通过。
+- A02：主环境/Worktree路径、身份、幂等、冲突测试与真实重复初始化通过。
+- A03：scope/平台binding/MCP初始化检查通过；test项目Agent/模型/Graph/工具策略快照完全一致，其他env配置保留。
+- A04进行中：主环境真实模型/嵌入/DeepEval探针通过；browser-skill启动5题任务并查看失败证据。远端沙箱TLS受准入阻塞，真实Agent成功链路尚未通过；此为Phase记录，不是Final。
+- 证据：EvalFlow页面专项implementation/30–34；脱敏汇总34-primary-project-evidence.json。私有完整报告位于EvalFlow .local-stack/results/95fe2a8b75104c01a614f525796128a8/。
+
+A04当前blocked：75项后端测试、9项前端测试、TypeScript/范围ESLint/Prettier/Ruff/guard通过；真实模型探针和配置保留核对通过。远端抓包确认新源IP未准入，安全策略未擅自改动；无本扩展Final通过结论。

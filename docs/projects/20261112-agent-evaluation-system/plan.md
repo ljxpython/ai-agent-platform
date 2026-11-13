@@ -388,3 +388,16 @@ D01–D06验收见tasks.md与verification.md独立扩展Final。生产部署、�
 平台 agents 表有 uq_agents_project_graph_id 唯一约束，正式运行入口按项目+graph解析配置，不能在同一项目创建多个 dearflow 实例。本期按用户选择采用同一Agent的多份具名评测参数配置，配置保存在EvalFlow服务端 evaluation-profiles.json，通过现有context显式传入温度、max_tokens、top_p；固定使用已授权xiaok模型，页面明确这是配置变体。原计划“两个Agent实例”验收改为“两个独立具名配置”，不迁移业务数据库，不把多个配置冒充多个Agent。
 
 原生Dataset创建API为 /api/3.0/mlflow/datasets/create；实验关联需单独GET /{id}/experiment-ids，不能从getDataset响应推断。inputs保留除expectations外完整Case，expectations独立保存。20题已真实导入并逐字段往返相等。冻结快照在所属EvalFlow .local-stack/tasks/datasets，和MLflow数据一起备份；Run另存完整快照。
+
+## A01–A04：复用主环境的项目级评测（2026-11-13用户批准）
+
+用户批准复用现有本地服务/数据库，只新增或选择专用评测项目；不再要求Worktree，不创建新开发分支。已有Worktree验证机制保留兼容。该调整影响资源装配，按链路扩展记录；不改变平台权限契约或数据库结构。
+
+- A01：核查项目。主库所有状态项目按名称检索无eval/评测项目，公开API仅返回test；旧验收项目位于已销毁环境。新初始化通过正式API按ID选择或按明确名称复用/创建项目，重复调用不得重复创建。展示执行项目与EvalFlow实验的映射。
+- A02：EvalFlow配置/初始化支持主工作区实际app-local env与登记Worktree路径；不伪造环境ID。模型仅为目标项目登记授权xiaok模型，保留现有Agent配置，运行通过已有显式context。可指定已有项目用于只读跨项目隔离探针，不自动另造业务项目。
+- A03：fixture仅追加当前项目的静态MCP绑定与独立resource_id，保留所有其他绑定、动态知识密钥/地址/上传开关；冲突拒绝覆盖。启动检查验证实际项目scope与装配内容。HTTP固定本地、单活动评测、冻结输入和漂移检查继续保留。
+- A04：现有主环境建立持续可见评测项目/集中实验、导入20题与配置变体；真实模型验证基本/审批/知识链路，browser-skill核对项目与运行入口并截图。保护既有test项目/Agent配置、知识设置、其他数据库，留前后对照。
+
+配置只写私有文件；单元测试使用tmp目录与受控客户端；实际运行仅写专用评测项目及新实验。生产不操作，代码提交/推送不在本轮动作内。
+
+A01–A04当前执行状态：A01–A03 done；A04 blocked。代码与非沙箱验证完成，现有远端沙箱准入变更待明确确认，不关闭TLS/不切本地运行绕过，不提前记录Final通过。
