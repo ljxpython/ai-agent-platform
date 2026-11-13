@@ -28,7 +28,7 @@
 2. 历史 Trace 评分与新版本主动回归分开；历史重评分不作为新版本修复证明。
 3. 允许后续开发使用真实模型测试。凭据来源为 `~/.my_best/.env`；推理使用 xiaok DeepSeek，嵌入使用百炼。
 4. 开发完成后总结经验，形成下一次新增 Agent / 题库 / 评测任务可复用的操作指南。
-5. 用户已授权在隔离 worktree 开发、执行真实模型测试及页面验证，并由开发者负责本次 rubric/题库审核。只使用合成数据和所属隔离环境；未提交、推送或生产部署。
+5. 用户已授权在隔离 worktree 开发、执行真实模型测试及页面验证，并由开发者负责本次 rubric/题库审核。只使用合成数据和所属隔离环境；Git提交、合并推送与测试环境销毁已获本轮明确授权，生产未部署。
 
 ## 开发授权补充（2026-11-13，优先于原方案）
 
@@ -36,7 +36,7 @@
 - 用户不设真实模型测试累计费用上限，按开发需要执行；仍保留单请求超时、步数和有限重试，防止失控。
 - 用户将本次业务完成标准、审批场景与题库审核全权授权给开发者；不再等待额外人工题库审核。
 - 已授权创建 worktree 并完成可开发、可验证的全部范围；页面验证使用 browser-skill，关键步骤保存截图。
-- 两仓库开发目录：~/.codex/worktrees/agent-evaluation/{ai-agent-platform,mlflow-eval-platform}；分支均为 feat/agent-evaluation-system。未授权 Git 提交/推送及生产发布。
+- 两仓库开发目录：~/.codex/worktrees/agent-evaluation/{ai-agent-platform,mlflow-eval-platform}；分支均为 feat/agent-evaluation-system。开发时未授权Git操作；2026-11-13后续用户明确授权提交、推送、合并与清理，生产发布仍不在范围。
 - 这里授权的是隔离环境的测试业务判定，不扩展成修改生产权限政策的授权。
 
 ## 首期交付范围
@@ -62,10 +62,14 @@
 
 ## 后续页面入口（2026-11-13）
 
-复用 EvalFlow 原生评估运行列表、详情和双Run比较；仅补创建启动弹窗、进度/取消控件，后台执行均在 EvalFlow 仓库实现，未新增 Agent 平台评测中心。专项方案和验收位于关联 `mlflow-eval-platform` Worktree 的 `docs/projects/20261113-evaluation-task-ui/`。本地入口：`http://127.0.0.1:9138/#/experiments/3/evaluation-runs`。
+复用 EvalFlow 原生评估运行列表、详情和双Run比较；仅补创建启动弹窗、进度/取消控件，后台执行均在 EvalFlow 仓库实现，未新增 Agent 平台评测中心。专项方案和验收位于关联 `mlflow-eval-platform` 仓库 的 `docs/projects/20261113-evaluation-task-ui/`。历史验收入口（本轮停机清理后不可访问）：`http://127.0.0.1:9138/#/experiments/3/evaluation-runs`。
 
 ## 评测集与具名配置扩展（已完成）
 
 D01–D06已完成本地实现与验证。复用集中实验的原生数据集页面管理草稿、冻结发布和新版本；任务绑定题库版本与同一dearflow_agent的具名参数配置，支持原生双Run比较和条件差异警告。无业务库迁移，不将配置变体当作多个Agent实例。
 
-[方案及用户批准修订](plan.md) · [任务](tasks.md) · [独立扩展Final](verification.md)。真实模型4次执行共8个用例通过，另验证取消、篡改/配置漂移拒绝、重启幂等；完整证据在EvalFlow页面专项implementation/27-dataset-profiles.md。评测集目录入口：`http://localhost:9138/#/experiments/3/datasets`。生产、真实CI仍后置，首次基线质量局限不变。
+[方案及用户批准修订](plan.md) · [任务](tasks.md) · [独立扩展Final](verification.md)。真实模型4次执行共8个用例通过，另验证取消、篡改/配置漂移拒绝、重启幂等；完整证据在EvalFlow页面专项implementation/27-dataset-profiles.md。历史评测集目录入口（环境已停止）：`http://localhost:9138/#/experiments/3/datasets`。生产、真实CI仍后置，首次基线质量局限不变。
+
+## 主分支集成与环境回收（2026-11-13）
+
+代码与经验已合入main，两个feature分支保留远端。主仓复验后端64项、前端39项及类型检查通过；两个测试Worktree、专属数据库和服务均已清理。旧本地入口/Run链接不再有效；保留Git内截图、脱敏证据和操作手册，重新实测需准备新隔离环境。生产未部署。[收尾记录](implementation/12-merge-closeout.md)。

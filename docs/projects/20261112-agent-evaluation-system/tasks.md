@@ -256,5 +256,12 @@
 
 ## M01 合并与测试环境清理（2026-11-13用户批准）
 
-- [ ] 经验沉淀、Worktree提交推送、保护主工作区改动并合并、合并后验证、推送main、停止并销毁本次Worktree专属资源。
+- [x] 经验沉淀、Worktree提交推送、保护主工作区改动并合并、合并后验证、推送main、停止并销毁本次Worktree专属资源。
 - 范围：两个agent-evaluation Worktree；Agent环境wt_3a133f065724及两个同前缀数据库；EvalFlow所属SQLite与测试产物。保留其他Worktree、主库和生产服务。
+
+### M01 完成卡
+- 代码：Agent早期方案9b14605留史、交付分支9ffef6d、整合539c112；EvalFlow交付9929e0180快进合main。保留远端feature分支。
+- 验证：主仓64项后端、39项前端、主/shared TypeScript、Ruff、guard通过；与已验收分支代码一致。旧业务源码/上游核心未改，主目录独立指南SHA256一致。
+- 清理：仅两个agent-evaluation Worktree、wt_3a133f065724所属两库/角色、Redis/Workspace和EvalFlow SQLite；所有其他DB/角色清单一致，其他Worktree保留。
+- 合规：经验已确认沉淀；README/CONTEXT/FEATURES与独立M01验收同步；生产未部署。
+- 状态：done；详见implementation/12-merge-closeout.md。最终收尾提交随main推送并核验远端一致。

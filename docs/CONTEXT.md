@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-13（评测集与具名配置扩展本地完成）
+> **最后更新：** 2026-11-13（评测交付合并main并清理测试资源）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -11,7 +11,7 @@
 
 ## 评测集与具名配置扩展
 
-2026-11-13：D01–D06本地done。专用执行项目、集中MLflow实验、原生版本化评测集与任务绑定已实现；同一dearflow_agent的温度0/0.3具名配置真实比较通过。64项后端、25项前端及4次真实模型运行8个用例通过，构建通过（关闭既有全局ESLint插件）；详见Agent仓项目verification.md扩展Final及EvalFlow implementation/27-dataset-profiles.md。用户已批准提交推送、合并main及销毁本次隔离测试环境，当前进行合并收尾；生产未部署。新增配置身份/审批恢复/题库冻结经验已确认沉淀至EvalFlow经验库。
+2026-11-13：D01–D06本地done。专用执行项目、集中MLflow实验、原生版本化评测集与任务绑定已实现；同一dearflow_agent的温度0/0.3具名配置真实比较通过。64项后端、25项前端及4次真实模型运行8个用例通过，构建通过（关闭既有全局ESLint插件）；详见Agent仓项目verification.md扩展Final及EvalFlow implementation/27-dataset-profiles.md。已合入main；两个feature分支已推送。主仓复验后端64/前端39项、主/shared类型检查与Ruff通过；两个Worktree、专属PG库/角色和EvalFlow SQLite已清理，7个端口释放，其他数据库/Worktree未变。生产未部署。新增配置身份/审批恢复/题库冻结经验已确认沉淀至EvalFlow经验库。
 
 ## 最近改动
 
@@ -46,7 +46,7 @@
 
 ## 活跃项目
 
-- [Agent 自动化评测体系](projects/20261112-agent-evaluation-system/README.md)：本地首期已完成；EvalFlow执行器、20题、真实基线、门禁、Badcase审核与页面验证通过。Agent仍有KnowledgeRetention质量失败；真实CI、生产发布、新盲测集后置。
+- [Agent 自动化评测体系](projects/20261112-agent-evaluation-system/README.md)：done，已合main并清理测试Worktree/专属数据库；EvalFlow执行器、20题、真实基线、门禁、Badcase审核与页面验证通过。Agent仍有KnowledgeRetention质量失败；真实CI、生产发布、新盲测集后置。
 - [MLflow 链路追踪与会话评测适配](projects/20261108-mlflow-tracing-adaptation/README.md)：`done`；全栈完成 MLflow / EvalFlow 平台平滑接入，支持动态环境变量热切换（langfuse/mlflow/both/none）。落地三大场景：1) 前端安全防御守护（none 模式下追踪 UI 彻底消失零报错）；2) Project 维度项目物理隔离（动态自动创建 `project-{project_id}` 独立实验）；3) 超级链接原生直达线程 ID（直接进入 `#/experiments/{id}/chat-sessions/{sessionId}` 全景对话卡片）。单测 153 项全绿、Vue-tsc 0 报错、browser-skill 真实浏览器端到端实测验证通过。
 - [Runtime Agent 开发指南与入口纠偏](projects/20261108-runtime-development-harness-governance/README.md)：done（文档范围，2026-11-08 用户人工验收通过）；52 篇全文审查完成，经验已沉淀；文档提交 5ea9ea8c、整合提交 2b434585 已推送并合入 main，主干原有功能保留，f335 Worktree 已清理，无所属服务/测试数据库。CI 不在本期，产品测试未重跑。
 - [工作区总览工业级重构与信息密度治理](projects/20261108-workspace-overview-refactor/README.md)：`done`；针对工作区总览废话文案、空洞留白与狗皮膏药治理入口立项工业级重构全栈交付，4 联指标看板、紧凑 Header、主辅双栏高能工作流已落地，单测全绿。
@@ -114,6 +114,6 @@
 | runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。 |
 | platform-api | 2026-11-08 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。 |
 | platform-web | 2026-11-08 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。 |
-| AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent 自动化评测首期本地交付完成；详见项目记录。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。 |
+| AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent 自动化评测首期与D01–D06已合main，测试资源已回收；详见项目记录。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。
