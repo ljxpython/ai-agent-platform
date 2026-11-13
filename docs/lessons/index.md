@@ -9,6 +9,8 @@
 | [runtime-service.md](runtime-service.md) | runtime-service 服务内部、模块导入、工具治理、审批/回调恢复、迁移链保留、混合测试环境、聚合负载、Docker日志、全链路性能验收、同快照脏记录清理、远端文件路由与容器/数据分开回收、零隧道单向自治与LLM空内容防护 | 19 |
 | [platform-web.md](platform-web.md) | 权限状态、刷新作用域、组件 watch 响应式解构防崩与撤权回归 | 2 |
 
+评测开发经验维护在关联 `mlflow-eval-platform` 仓库的 `docs/lessons/eval-architecture.md`（2026-11-13用户确认），覆盖原生页面复用、结果契约、取消与幂等、Agent配置身份/审批恢复参数、原生Dataset冻结；不在业务仓重复维护。
+
 ## 新增经验的流程
 
 1. AI 犯了错，用户纠正
