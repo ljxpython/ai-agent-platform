@@ -14,6 +14,10 @@ from platform_api.modules.iam.domain.roles import PlatformRole, ProjectRole
 
 
 class PermissionCode(StrEnum):
+    PROJECT_EVALUATION_READ = "project.evaluation.read"
+    PROJECT_EVALUATION_EXECUTE = "project.evaluation.execute"
+    PROJECT_EVALUATION_REVIEW = "project.evaluation.review"
+    PROJECT_EVALUATION_MANAGE = "project.evaluation.manage"
     PLATFORM_USER_READ = "platform.user.read"
     PLATFORM_USER_WRITE = "platform.user.write"
     PLATFORM_USER_CREATE = "platform.user.create"
@@ -126,6 +130,16 @@ PLATFORM_PERMISSION_MAP: dict[PermissionCode, frozenset[PlatformRole]] = {
 }
 
 PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
+    PermissionCode.PROJECT_EVALUATION_READ: frozenset(
+        {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
+    ),
+    PermissionCode.PROJECT_EVALUATION_EXECUTE: frozenset(
+        {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
+    ),
+    PermissionCode.PROJECT_EVALUATION_REVIEW: frozenset(
+        {ProjectRole.ADMIN, ProjectRole.EDITOR}
+    ),
+    PermissionCode.PROJECT_EVALUATION_MANAGE: frozenset({ProjectRole.ADMIN}),
     PermissionCode.PROJECT_USAGE_READ: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR}
     ),

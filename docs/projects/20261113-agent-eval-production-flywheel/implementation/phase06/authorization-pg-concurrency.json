@@ -1,0 +1,8 @@
+{
+  "database": "worktree_344c_only",
+  "concurrent_clients": 3,
+  "validations": 36,
+  "grant_order": "forward_and_reverse",
+  "errors": 0,
+  "persistent_writes": 0
+}

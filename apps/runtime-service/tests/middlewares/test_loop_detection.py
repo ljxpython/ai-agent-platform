@@ -124,6 +124,95 @@ def test_complete_batch_preserves_multiset_and_result_pairing():
     assert signature(original) == signature([original[0], *reversed(original[1:])])
 
 
+@pytest.mark.parametrize("asynchronous", [False, True])
+@pytest.mark.parametrize("alternating", [False, True])
+@pytest.mark.parametrize("sink_failure", [False, True])
+def test_observation_never_changes_model_or_stops_tools(
+    monkeypatch, asynchronous, alternating, sink_failure
+):
+    from runtime_service.middlewares import loop_detection as module
+
+    seen, calls, prompts = [], [], []
+
+    def diagnostic(event, fields):
+        if sink_failure:
+            raise OSError("telemetry unavailable")
+        seen.append((event, fields))
+
+    monkeypatch.setattr(module, "log_diagnostic", diagnostic)
+    monkeypatch.setattr(module, "record_diagnostic_event", lambda *_: None)
+
+    @tool
+    def read_file(file_path: str) -> str:
+        """Read a synthetic fixture."""
+        calls.append(file_path)
+        return "unchanged"
+
+    class Capture(AgentMiddleware):
+        def wrap_model_call(self, request, handler):
+            prompts.append(str(request.system_message))
+            return handler(request)
+
+        async def awrap_model_call(self, request, handler):
+            prompts.append(str(request.system_message))
+            return await handler(request)
+
+    responses = [
+        AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "id": f"c{i}",
+                    "name": "read_file",
+                    "args": {"file_path": f"/fixture-{i % 2 if alternating else 0}"},
+                }
+            ],
+        )
+        for i in range(7)
+    ] + [AIMessage(content="finished normally")]
+    graph = create_agent(
+        BindableFakeMessagesChatModel(responses=responses),
+        tools=[read_file],
+        middleware=[
+            LoopDetectionMiddleware(["read_file"], observe_only=True),
+            Capture(),
+        ],
+    )
+    payload = {"messages": [("user", "Synthetic bounded observation")]}
+    result = (
+        asyncio.run(graph.ainvoke(payload, {"recursion_limit": 100}))
+        if asynchronous
+        else graph.invoke(payload, {"recursion_limit": 100})
+    )
+    assert result["messages"][-1].content == "finished normally"
+    assert len(calls) == 7 and all(
+        WRAPUP_INSTRUCTION not in prompt for prompt in prompts
+    )
+    if not sink_failure:
+        signals = [
+            fields for event, fields in seen if event == "runtime.loop.observation"
+        ]
+        assert signals and all(fields["outcome"] == "suspected" for fields in signals)
+        assert [event for event, _ in seen].count(
+            "runtime.loop.observation.started"
+        ) == 1
+        summary = [fields for event, fields in seen if event.endswith(".completed")]
+        assert len(summary) == 1
+        assert summary[0]["eligible_batches"] == 7
+        assert summary[0]["signals"] == 1
+        assert len({fields["event_id"] for _, fields in seen}) == len(seen)
+        assert "/fixture" not in json.dumps(seen)
+        assert any(
+            fields["code"]
+            == (
+                "tool_alternation_suspected"
+                if alternating
+                else "tool_no_progress_suspected"
+            )
+            for fields in signals
+        )
+
+
 @pytest.mark.parametrize(
     "change", [{"offset": 100}, {"limit": 50}, {"file_path": "/b"}]
 )

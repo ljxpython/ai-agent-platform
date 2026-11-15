@@ -1,0 +1,31 @@
+{
+  "task_id": "3c567d4b-e464-4de9-abd9-00137d2fa02d",
+  "session": "07eda074-35c3-48c1-bb4d-3f75cc01295d",
+  "run_ids": [
+    "b28389ee-e853-43e0-9af2-66be3714453a",
+    "95e73ac0-9d2f-4fa0-a3b1-4cb4c96288f4",
+    "751d57ea-3234-4d90-8b61-7d0fd6bbfd1c",
+    "c9477d87-074e-49c8-aa15-25fc0cebcce1"
+  ],
+  "turn_run_ids": [
+    [
+      "b28389ee-e853-43e0-9af2-66be3714453a"
+    ],
+    [
+      "95e73ac0-9d2f-4fa0-a3b1-4cb4c96288f4"
+    ],
+    [
+      "751d57ea-3234-4d90-8b61-7d0fd6bbfd1c",
+      "c9477d87-074e-49c8-aa15-25fc0cebcce1"
+    ]
+  ],
+  "report": "销售：1800\n退款：300\n净收入：1500",
+  "initial_files": [
+    "/workspace/uploads/fe17cc9c6b7130d165f3e7a237b24e211091137556898fcc791282005c09d404.txt",
+    "/workspace/uploads/f6c459e89a82e168fb52ec95764e6746c530cb79062a06e3c002e0b02dce18c3.txt"
+  ],
+  "errors": [],
+  "approval_count": 1,
+  "actual_execution_runs": 4,
+  "source_runs": 4
+}

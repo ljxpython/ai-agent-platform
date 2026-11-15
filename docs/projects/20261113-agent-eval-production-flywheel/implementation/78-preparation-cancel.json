@@ -1,0 +1,29 @@
+{
+  "id": "427ad3a3-51a3-4080-ac2d-9e32712d2e93",
+  "revision": 5,
+  "content_hash": "2236da6e979b1eac78674b4d8363d12b16bdfd0d21100cf78a715e439b721c14",
+  "selected_case_ids": [
+    "C1",
+    "C2",
+    "C3",
+    "C4",
+    "C5",
+    "C6"
+  ],
+  "selection_hash": "fad06f480e80990e8f41f0e7aa2fae0c86ee91d9e0c269c5ebab4302fb91f9a9",
+  "source_task_id": null,
+  "excluded_case_ids": [],
+  "stage": "cancelled",
+  "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+  "created_at": 1794678939.027925,
+  "approved_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+  "approved_at": 1794678939.027926,
+  "grants": {
+    "evaluation_assistance": "7a19f8c5-da04-42f5-b5f1-9dc407e365b9",
+    "regression": "9a482ed3-a121-4ae6-910b-6b6ea733f2bb"
+  },
+  "receipts": {},
+  "dataset_id": "d-6f1d99abc57b45d8af4bed80659cdaa5",
+  "dataset_version": 1,
+  "dataset_hash": "43d0b1aaca905a46ee9a0285ad2f7d7f8c60e9f4e0246a9c1b76630986cae49b"
+}

@@ -1,0 +1,91 @@
+{
+  "entry": "/Users/lijiaxin/Desktop/评测演示/打开演示.html",
+  "date": "2026-11-15",
+  "videos": [
+    {
+      "file": "/Users/lijiaxin/Desktop/评测演示/录像/01-新建与AI生成题库.mp4",
+      "sha256": "f55dafac4dae758efcec0d378515140fb3ef8e41099a8412dc356b383f35ca31",
+      "bytes": 11479569,
+      "duration_seconds": 289.469288,
+      "width": 1384,
+      "height": 902,
+      "full_decode": "passed"
+    },
+    {
+      "file": "/Users/lijiaxin/Desktop/评测演示/录像/02-真实运行与结果定位.mp4",
+      "sha256": "1d12648e206b19532e0a89b599ad4d8ea5b7afb0857347301834a7cd9c2990fc",
+      "bytes": 4218732,
+      "duration_seconds": 131.085503,
+      "width": 1384,
+      "height": 902,
+      "full_decode": "passed"
+    },
+    {
+      "file": "/Users/lijiaxin/Desktop/评测演示/录像/03-会话来源与复杂结果证据.mp4",
+      "sha256": "c3d117bb561569e7192b1272f74e882288b405896fe56c4e52f35a6d740550fa",
+      "bytes": 16370964,
+      "duration_seconds": 297.980503,
+      "width": 1384,
+      "height": 902,
+      "full_decode": "passed"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "01-描述测试目标.png",
+      "sha256": "ba37fd57f9e76ec3c16ddaeb8e1d1aa31d2d10773c840b3f5d08599980a3b95f"
+    },
+    {
+      "file": "02-让AI整理建议.png",
+      "sha256": "8ec28d9a362ca6762a1483eb053fa2dec515fafd69d2bea344a0ec16bb06f7bf"
+    },
+    {
+      "file": "03-AI生成两轮与预期.png",
+      "sha256": "f2796b7846b361ab9089818f4ee4aa3203a736812f74470962719741651f06d9"
+    },
+    {
+      "file": "04-已发布但尚未运行.png",
+      "sha256": "3bc351422fd2c2a18c1c22aee3cf489ff229d6837581a7df77ec735980738bc9"
+    },
+    {
+      "file": "05-真实两轮回答与通过.png",
+      "sha256": "e2b30d162c2533c64d8f04148b737ed4c21efa1ee9d90d2bdc6b72e59bfcb097"
+    },
+    {
+      "file": "06-展开评分依据.png",
+      "sha256": "c8c410db2caca07d7d13d2e3f4e0d7da913973acddde13139bb3c91805b96568"
+    },
+    {
+      "file": "07-定位本轮执行时间线.png",
+      "sha256": "22d7b058c7f72316a8ecb33b2867c81b46d28db0b180096e2f3d218ff54b4d58"
+    },
+    {
+      "file": "08-定位实际模型节点.png",
+      "sha256": "061e756c059e3e257e7c07ab0e4b9ae221e49734ff1264bf7e7d518c09d65df7"
+    },
+    {
+      "file": "09-已有会话作为来源.png",
+      "sha256": "e048c5d14e67b293dbb860c74517798bbf775f576f631b742a3a99bd4f3e8562"
+    },
+    {
+      "file": "10-失败仍保留正确报告.png",
+      "sha256": "628091eea2729dcada41764b4378d76a9f8f58bd730c27a2205e7166b28a587d"
+    },
+    {
+      "file": "11-明确说明停止原因.png",
+      "sha256": "bad3432ef58e9a7939f48ac4385ce63050999e305e6a3672412d8b2293057d90"
+    },
+    {
+      "file": "12-查看模型裁判调用.png",
+      "sha256": "3e4db879fc1b2bd592354a4c746d9d9fa3cf01cdf46fbeca4e54a36ee1feb93b"
+    }
+  ],
+  "new_task": "56c1ac12-c9b9-4ad5-b125-39511f919676",
+  "limitations": [
+    "第三段复杂场景为查看历史结果",
+    "第2段截取前131秒；完整原片保存在工作区",
+    "file URL自动化不可用；同一HTML通过本机HTTP验证，三段视频实际播放时间推进",
+    "原26个视频移入废纸篓，未永久删除"
+  ],
+  "browser_video_playback": "passed after selecting the player tab"
+}

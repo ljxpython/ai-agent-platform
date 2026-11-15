@@ -11,6 +11,7 @@ from langchain.agents.middleware import AgentMiddleware, ModelRequest, ToolCallR
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, RemoveMessage, ToolMessage
 from langchain_core.tools import BaseTool
+from langgraph.config import get_config
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
 from runtime_service.background_tasks.capabilities import query_enabled, start_enabled
@@ -18,6 +19,7 @@ from runtime_service.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
+from runtime_service.observability.diagnostics import uuid_string
 from runtime_service.runtime import (
     AgentDefaults,
     ResolvedRuntimeConfig,
@@ -462,8 +464,26 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         for i, message in enumerate(messages):
             if isinstance(message, AIMessage):
                 message = repair_model_tool_calls(message)
+                try:
+                    run_id = uuid_string(
+                        (get_config().get("metadata") or {}).get("run_id")
+                    )
+                except RuntimeError:
+                    run_id = None
+                if run_id:
+                    # The enclosing server Run is distinct from the provider/callback run ID.
+                    message = message.model_copy(
+                        update={
+                            "response_metadata": {
+                                **message.response_metadata,
+                                "runtime_run_id": run_id,
+                            }
+                        }
+                    )
                 if hasattr(response, "result") and isinstance(response.result, list):
                     response.result[i] = message
+                elif isinstance(response, AIMessage):
+                    response = message
             for tool_call in getattr(message, "tool_calls", []):
                 name = tool_call.get("name")
                 if not isinstance(name, str) or name not in allowed:

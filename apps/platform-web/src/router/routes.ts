@@ -2,6 +2,26 @@ import type { RouteRecordRaw } from "vue-router";
 
 const workspaceChildren: RouteRecordRaw[] = [
   {
+    path: "projects/:projectId/evaluation",
+    name: "workspace-evaluation",
+    component: () => import("@/modules/evaluation/EvaluationPage.vue"),
+    meta: {
+      title: "评测与改进",
+      requiredPermissions: ["project.evaluation.read"],
+      permissionProjectSource: "route",
+    },
+  },
+  {
+    path: "projects/:projectId/evaluation/:itemId",
+    name: "workspace-evaluation-detail",
+    component: () => import("@/modules/evaluation/EvaluationDetail.vue"),
+    meta: {
+      title: "改进工作项",
+      requiredPermissions: ["project.evaluation.read"],
+      permissionProjectSource: "route",
+    },
+  },
+  {
     path: "thread-governance",
     name: "workspace-thread-governance",
     component: () => import("@/modules/chat/pages/ThreadGovernancePage.vue"),
@@ -389,6 +409,11 @@ const navigation: Record<
   "workspace-projects": { group: "工作区", label: "项目", icon: "folder" },
   "workspace-agents": { group: "项目管理", label: "Agents", icon: "assistant" },
   "workspace-chat": { group: "项目管理", label: "Chat", icon: "chat" },
+  "workspace-evaluation": {
+    group: "项目管理",
+    label: "评测与改进",
+    icon: "activity",
+  },
   "workspace-dear-agent": {
     group: "Dear Agent",
     label: "对话工作台",

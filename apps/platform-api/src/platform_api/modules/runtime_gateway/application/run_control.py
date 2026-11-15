@@ -166,6 +166,18 @@ def authorize_and_audit_stop(factory, payload):
     data = payload.model_dump(mode="json")
     assert_project_scope(factory, payload)
     owner = data["owner_id"]
+    from platform_api.modules.evaluation.assistant_control import (
+        SUBJECT,
+        control_allowed,
+    )
+
+    if owner == SUBJECT:
+        allowed = data["credential_id"] is None and control_allowed(
+            factory, data["project_id"], data["thread_id"]
+        )
+        if not payload.authorize:
+            record_stop_phase(factory, payload)
+        return {"allowed": allowed}
     actor = (
         load_service_account_actor(
             session_factory=factory,

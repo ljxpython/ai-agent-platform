@@ -44,6 +44,19 @@ class KnowledgeConnection(BaseModel):
 
 
 class Settings(BaseSettings):
+    evaluation_feedback_enabled: bool = False
+    evaluation_workbench_enabled: bool = False
+    evaluation_assistant_model_route: str = ""
+    evaluation_synthetic_export_enabled: bool = False
+    evaluation_inspection_enabled: bool = False
+    evaluation_inspection_judge_route: str = ""
+    evaluation_inspection_budget_version: str = ""
+    evaluation_project_id: str = ""
+    evaluation_receiver_url: str = ""
+    evaluation_web_url: str = ""
+    evaluation_receiver_username: str = ""
+    evaluation_receiver_password: str = ""
+    evaluation_source_token: str = ""
     app_name: str = "Platform API"
     app_version: str = "0.1.2"
     app_env: str = "local"

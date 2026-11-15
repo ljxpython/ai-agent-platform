@@ -245,6 +245,28 @@ def _record_metrics_event(event: str, fields: Mapping[str, Any]) -> None:
 
 def record_diagnostic_event(event: str, fields: Mapping[str, Any]) -> None:
     _record_metrics_event(event, fields)
+    if event in {
+        "runtime.loop.observation",
+        "runtime.loop.observation.started",
+        "runtime.loop.observation.completed",
+    }:
+        try:
+            from runtime_service.observability.mlflow_tracer import is_mlflow_enabled
+
+            if is_mlflow_enabled():
+                import mlflow
+                from mlflow.entities import SpanEvent
+
+                span = mlflow.get_current_active_span()
+                if span is not None:
+                    span.add_event(
+                        SpanEvent(
+                            name=event,
+                            attributes={"schema_version": 1, **safe_fields(fields)},
+                        )
+                    )
+        except Exception as error:
+            _record_export_error(error)
     trace_id = trace_id_for(fields)
     if _client is None or trace_id is None:
         return
@@ -575,7 +597,9 @@ def with_langfuse_tracing(
         is_mlflow_enabled,
     )
 
-    if is_langfuse_enabled():
+    # Assistant material stays in the revocable Runtime store, never a shared trace project.
+    export_content = graph_id != "evaluation_assistant"
+    if export_content and is_langfuse_enabled():
         try:
             callback = (
                 _new_callback(trace_context={"trace_id": trace_id})
@@ -589,7 +613,7 @@ def with_langfuse_tracing(
         except Exception as error:
             _record_export_error(error)
 
-    if is_mlflow_enabled():
+    if export_content and is_mlflow_enabled():
         mlflow_cb = create_mlflow_callback(
             graph_id=graph_id,
             bound_metadata=bound_metadata,

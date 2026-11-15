@@ -1,0 +1,50 @@
+{
+  "scope": "isolated_local_multistore_restore",
+  "directory": "/Users/lijiaxin/.codex/worktrees/344c/mlflow-eval-platform/.local-stack/managed-restores/64327ecf81dc4df0bf5a787a34eb9c9e",
+  "closed_grants": [
+    "c16f32fd-02f0-40ce-8558-68593698c2cd",
+    "4b6c257c-6163-470b-91f1-f85102242ee7",
+    "74e9c115-f100-4e7f-adf5-25d8f3924ada",
+    "59eb6f44-fbbc-4b72-999f-8120f5501a26",
+    "5573a88d-a5f4-41b1-b9e3-932fcf1b6d6d"
+  ],
+  "postgres_tables_verified": {
+    "platform": 28,
+    "runtime": 39
+  },
+  "source_current_revocation_applied": true,
+  "workspace_files_verified": 9843,
+  "redis_restored_keys": 10,
+  "redis_no_workers_started": true,
+  "restored_assistant_access_matrix": {
+    "62af3284-9950-4686-acd0-68a8629f00fc": 403,
+    "62af3284-9950-4686-acd0-68a8629f00fc/state": 403,
+    "62af3284-9950-4686-acd0-68a8629f00fc/history": 403,
+    "62af3284-9950-4686-acd0-68a8629f00fc/state/checkpoint": 403,
+    "62af3284-9950-4686-acd0-68a8629f00fc/runs": 403,
+    "62af3284-9950-4686-acd0-68a8629f00fc/files/content?path=/workspace/uploads/test.csv": 403,
+    "80010899-4bb4-508e-bde1-8ea3f043d9b4": 403,
+    "80010899-4bb4-508e-bde1-8ea3f043d9b4/state": 403,
+    "80010899-4bb4-508e-bde1-8ea3f043d9b4/history": 403,
+    "80010899-4bb4-508e-bde1-8ea3f043d9b4/state/checkpoint": 403,
+    "80010899-4bb4-508e-bde1-8ea3f043d9b4/runs": 403,
+    "80010899-4bb4-508e-bde1-8ea3f043d9b4/files/content?path=/workspace/uploads/test.csv": 403,
+    "a4266dcb-5ad7-5151-979e-9c725ffdfdb8": 403,
+    "a4266dcb-5ad7-5151-979e-9c725ffdfdb8/state": 403,
+    "a4266dcb-5ad7-5151-979e-9c725ffdfdb8/history": 403,
+    "a4266dcb-5ad7-5151-979e-9c725ffdfdb8/state/checkpoint": 403,
+    "a4266dcb-5ad7-5151-979e-9c725ffdfdb8/runs": 403,
+    "a4266dcb-5ad7-5151-979e-9c725ffdfdb8/files/content?path=/workspace/uploads/test.csv": 403
+  },
+  "restored_assistant_cleanup": {
+    "cleaned_threads": 3
+  },
+  "restored_runtime_workers": 0,
+  "unreconciled_http_start_rejected": true,
+  "revoked_native_content_purged_before_serving": true,
+  "base_experiment_status": 200,
+  "revoked_experiment_status": 403,
+  "revoked_dataset_hidden": true,
+  "model_calls": 0,
+  "owned_processes_stopped": true
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "task_id": "4b0d852a-42d7-472e-bb07-28ab20db51c6",
+    "status": "passed",
+    "source_task_id": null,
+    "run_ids": [
+      "0cffc762-1b4f-45ac-b4bd-b3e51807850e",
+      "1b867f8e-b786-4d2b-98a2-b9292b62b6f5"
+    ],
+    "outputs": [
+      "\n55",
+      "\n45"
+    ],
+    "comparison_key": "8d831f37f7735898a78e5e4ca78548cf5ebecc2728d0fb93811255f008b60b42",
+    "report_sha256": "68ebcfcd4ee73ba205d55f2ac743c34a07a142d9661f5be5875e1bc2f1bc6a1b"
+  },
+  {
+    "task_id": "1f21019b-a906-4dff-9aa6-4f032a21b544",
+    "status": "passed",
+    "source_task_id": "4b0d852a-42d7-472e-bb07-28ab20db51c6",
+    "run_ids": [
+      "0cffc762-1b4f-45ac-b4bd-b3e51807850e",
+      "1b867f8e-b786-4d2b-98a2-b9292b62b6f5"
+    ],
+    "outputs": [
+      "\n55",
+      "\n45"
+    ],
+    "comparison_key": "72ee58b93cc4d068eb22e9c2e7d7d505cc81009ef3e90f811fda8d8b4a983fe0",
+    "report_sha256": "a45f4b885b30a37475ce27d737e88fdf10394c5977f33ed4fcb17dbae2d81211"
+  }
+]

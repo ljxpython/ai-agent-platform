@@ -43,6 +43,7 @@ const emit = defineEmits<{
   "select-thread": [threadId: string];
   "delete-thread": [threadId: string];
   "batch-delete": [threadIds: string[]];
+  "send-evaluation": [threadIds: string[]];
   "rename-thread": [threadId: string, newTitle: string];
   "ai-summarize-title": [threadId: string];
   collapse: [];
@@ -54,6 +55,9 @@ const editingThreadId = ref<string | null>(null);
 const editingTitle = ref("");
 const isBatchMode = ref(false);
 const selectedThreadIds = ref<string[]>([]);
+const selectableThreadIds = computed(() =>
+  props.groups.flatMap((g) => g.items.map((i) => i.id)),
+);
 
 const deletableThreadIds = computed(() => {
   return props.groups
@@ -62,8 +66,8 @@ const deletableThreadIds = computed(() => {
 });
 
 const isAllSelected = computed(() => {
-  if (deletableThreadIds.value.length === 0) return false;
-  return deletableThreadIds.value.every((id) =>
+  if (selectableThreadIds.value.length === 0) return false;
+  return selectableThreadIds.value.every((id) =>
     selectedThreadIds.value.includes(id),
   );
 });
@@ -74,7 +78,6 @@ function toggleBatchMode() {
 }
 
 function toggleSelectThread(threadId: string) {
-  if (props.canDeleteThread && !props.canDeleteThread(threadId)) return;
   const index = selectedThreadIds.value.indexOf(threadId);
   if (index >= 0) {
     selectedThreadIds.value.splice(index, 1);
@@ -87,12 +90,16 @@ function toggleSelectAll() {
   if (isAllSelected.value) {
     selectedThreadIds.value = [];
   } else {
-    selectedThreadIds.value = [...deletableThreadIds.value];
+    selectedThreadIds.value = [...selectableThreadIds.value];
   }
 }
 
 function handleRequestBatchDelete() {
-  if (selectedThreadIds.value.length === 0) return;
+  if (
+    selectedThreadIds.value.length === 0 ||
+    selectedThreadIds.value.some((id) => !deletableThreadIds.value.includes(id))
+  )
+    return;
   emit("batch-delete", [...selectedThreadIds.value]);
 }
 
@@ -354,9 +361,6 @@ function jumpToPage() {
                     <input
                       type="checkbox"
                       :checked="selectedThreadIds.includes(item.id)"
-                      :disabled="
-                        canDeleteThread ? !canDeleteThread(item.id) : false
-                      "
                       class="h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-800 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                     />
                   </div>
@@ -505,10 +509,21 @@ function jumpToPage() {
         <button
           type="button"
           class="px-2.5 py-1 text-xs rounded bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-colors"
-          :disabled="selectedThreadIds.length === 0"
+          :disabled="
+            selectedThreadIds.length === 0 ||
+            selectedThreadIds.some((id) => !deletableThreadIds.includes(id))
+          "
           @click="handleRequestBatchDelete"
         >
           删除 ({{ selectedThreadIds.length }})
+        </button>
+        <button
+          type="button"
+          class="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-40"
+          :disabled="selectedThreadIds.length === 0"
+          @click="emit('send-evaluation', [...selectedThreadIds])"
+        >
+          转为评测集
         </button>
       </div>
     </div>

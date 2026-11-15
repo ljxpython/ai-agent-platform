@@ -6,9 +6,11 @@ import { renderMarkdown } from "@/utils/markdown";
 const props = withDefaults(
   defineProps<{
     content: string;
+    disableImages?: boolean;
   }>(),
   {
     content: "",
+    disableImages: false,
   },
 );
 
@@ -16,7 +18,9 @@ const emit = defineEmits<{
   (e: "artifact-click", artifactId: string, event: MouseEvent): void;
 }>();
 
-const renderedHtml = computed(() => renderMarkdown(props.content));
+const renderedHtml = computed(() =>
+  renderMarkdown(props.content, props.disableImages),
+);
 
 async function handleClick(event: MouseEvent) {
   const target = event.target as HTMLElement | null;

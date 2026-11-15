@@ -1,0 +1,23 @@
+# Disabled preparation only. Not mounted by the existing stack.
+global:
+  scrape_interval: 60s
+  evaluation_interval: 60s
+scrape_configs: []
+rule_files: []
+alerting:
+  alertmanagers: []
+
+# After access/retention approval, configure an isolated Prometheus/Grafana audience.
+# Never add this job to the existing anonymous-Editor Grafana datasource.
+# scrape_configs:
+#   - job_name: evalflow-inspection
+#     scheme: https
+#     metrics_path: /ajax-api/evalflow/inspection/metrics
+#     basic_auth:
+#       username: REPLACE_WITH_APPROVED_READ_ONLY_PRINCIPAL
+#       password_file: /run/secrets/evalflow-inspection-password
+#     static_configs:
+#       - targets: [REPLACE_WITH_APPROVED_HOST]
+# rule_files:
+#   - /etc/prometheus/evalflow-inspection.rules.yml
+# Contact Point / Alertmanager receiver routing is intentionally unconfigured.

@@ -1,0 +1,24 @@
+{
+  "item_id": "db093548-d48d-4703-980b-5fbdc59b06da",
+  "task_id": "efe20f72-519a-4c58-8e4e-e485568abae9",
+  "thread_id": "ed5d364f-5769-4dbe-9a23-27699c5cb1f4",
+  "trace_ids": [
+    "tr-826b7746f20708c04c50a8ac52966cd3",
+    "tr-885f195bd1c7618b07b1e25afd6f050e"
+  ],
+  "experiment_id": "27",
+  "checks": {
+    "native_experiment": 403,
+    "native_run": 403,
+    "native_dataset": 403,
+    "native_trace_0": 403,
+    "native_trace_1": 403,
+    "authorized_session": 200,
+    "authorized_item": 200
+  },
+  "session_summary": {
+    "status": null,
+    "missing_run_ids": null
+  },
+  "visible_versions": 1
+}

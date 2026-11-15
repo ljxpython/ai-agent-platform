@@ -1,0 +1,107 @@
+[
+  {
+    "order": 1,
+    "file": "06验收-C-编辑版本与动态场景草稿-20261115.mp4",
+    "description": "无源Session创建后编辑题目、版本及动态草稿；草稿不等于运行",
+    "duration_seconds": 362.649201,
+    "size_bytes": 7933419
+  },
+  {
+    "order": 2,
+    "file": "06验收-C-真实多轮运行与证据-20261115.mp4",
+    "description": "固定两轮55/45、真实Agent与完整执行记录，通过",
+    "duration_seconds": 381.855208,
+    "size_bytes": 8771416
+  },
+  {
+    "order": 3,
+    "file": "06验收-A-当前会话与批量交付-20261115.mp4",
+    "description": "当前Session及两段完整会话交给EvalFlow；Agent端只交资料",
+    "duration_seconds": 223.812604,
+    "size_bytes": 9243243
+  },
+  {
+    "order": 4,
+    "file": "06验收-A-历史评分与完整会话-20261115.mp4",
+    "description": "用原会话评分，不重新执行Agent，来源仍2次运行",
+    "duration_seconds": 134.394583,
+    "size_bytes": 3232850
+  },
+  {
+    "order": 5,
+    "file": "06验收-B-创建资料与AI整理-20261115.mp4",
+    "description": "两份合成CSV、AI整理；保留超时与配置失败，不是一次生成必成功",
+    "duration_seconds": 330.030799,
+    "size_bytes": 8459910
+  },
+  {
+    "order": 6,
+    "file": "06验收-B-三轮AI修订与部分采纳-20261115.mp4",
+    "description": "退款按发生月份、不扣成本、第三轮新增字段及部分采纳",
+    "duration_seconds": 308.723403,
+    "size_bytes": 10798158
+  },
+  {
+    "order": 7,
+    "file": "06验收-B-真实回归与两次审批-20261115.mp4",
+    "description": "批准分支两次在线审批；业务轮次与恢复Run区分",
+    "duration_seconds": 405.008889,
+    "size_bytes": 12746206
+  },
+  {
+    "order": 8,
+    "file": "06验收-B-表单评分与动态场景修订-20261115.mp4",
+    "description": "缺文件用真实request_information提问，GEval为1；动态场景修订",
+    "duration_seconds": 274.768299,
+    "size_bytes": 10219849
+  },
+  {
+    "order": 9,
+    "file": "06验收-C-动态运行评分与转固定草稿-20261115.mp4",
+    "description": "模拟用户改数，真实回答55/45，评分0.9；新增固定回归草稿",
+    "duration_seconds": 242.884097,
+    "size_bytes": 4552465
+  },
+  {
+    "order": 10,
+    "file": "06验收-B-原始文件会话与审批交付-20261115.mp4",
+    "description": "原始文件Session的审批及资料交付；文件准备通过真实API，不冒称录通原生文件选择器",
+    "duration_seconds": 282.615799,
+    "size_bytes": 17408186
+  },
+  {
+    "order": 11,
+    "file": "06验收-源文件回归审批恢复与四项通过-20261115.mp4",
+    "description": "S01待审批时重启后恢复，三业务轮四Run，文件及保护等四项通过；本段从恢复阶段开始",
+    "duration_seconds": 208.48099,
+    "size_bytes": 6057056
+  },
+  {
+    "order": 12,
+    "file": "06验收-Trace缺失提示与真实补收-20261115.mp4",
+    "description": "明确标注的受控夹具隐藏真实2Run中的1条Trace；已有记录可看，补收恢复真实两条，不重跑",
+    "duration_seconds": 100.567101,
+    "size_bytes": 3271262
+  },
+  {
+    "order": 13,
+    "file": "06验收-动态会话裁判与撤权封闭-20261115.mp4",
+    "description": "动态评分两次裁判调用、撤权、页面清空；专用样本不再可读",
+    "duration_seconds": 97.114705,
+    "size_bytes": 1912357
+  },
+  {
+    "order": 14,
+    "file": "评测验收录屏-20261115/06验收-B-动态停止仍保留报告与执行记录-20261115.mp4",
+    "description": "B04已写三行报告后请求未授权execute，被拦；文件检查通过，总体仍为error",
+    "duration_seconds": 63.701198,
+    "size_bytes": 3202372
+  },
+  {
+    "order": 15,
+    "file": "06验收-取消评测与停止回执边界-20261115.mp4",
+    "description": "停止评测，第二/三轮不再启动。初始停止回执暂不可确认，随后只读核实为无活跃运行；后续回执确认不在视频内，见证据",
+    "duration_seconds": 160.583212,
+    "size_bytes": 7615764
+  }
+]

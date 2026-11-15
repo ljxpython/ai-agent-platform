@@ -185,6 +185,35 @@ def test_workspace_dto_limits_and_model_error_separation():
         )
 
 
+def test_execution_evidence_requires_matching_authorized_run():
+    upstream = SimpleNamespace(
+        get_thread_run=AsyncMock(return_value={"thread_id": THREAD, "run_id": RUN}),
+        get_execution_evidence=AsyncMock(return_value={"run_id": RUN}),
+    )
+    service = RuntimeGatewayService(session_factory=None, upstream=upstream)
+    service._load_thread = AsyncMock(return_value={"thread_id": THREAD})
+    service._thread_upstream = AsyncMock(return_value=upstream)
+    kwargs = dict(
+        actor=ActorContext(user_id="owner"),
+        project_id="project",
+        thread_id=THREAD,
+        run_id=RUN,
+    )
+    assert asyncio.run(service.get_thread_execution_evidence(**kwargs)) == {
+        "run_id": RUN
+    }
+    assert service._thread_upstream.await_args.kwargs["operation"] == "diagnostics-read"
+    upstream.get_execution_evidence.reset_mock()
+    upstream.get_thread_run.return_value = {"thread_id": str(uuid4()), "run_id": RUN}
+    with pytest.raises(NotFoundError):
+        asyncio.run(service.get_thread_execution_evidence(**kwargs))
+    upstream.get_execution_evidence.assert_not_awaited()
+    service._load_thread.side_effect = ForbiddenError()
+    with pytest.raises(ForbiddenError):
+        asyncio.run(service.get_thread_execution_evidence(**kwargs))
+    upstream.get_execution_evidence.assert_not_awaited()
+
+
 def test_service_run_authorization_and_safe_projection():
     upstream = SimpleNamespace(
         get_thread_run=AsyncMock(

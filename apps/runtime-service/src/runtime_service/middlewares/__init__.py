@@ -17,6 +17,7 @@ from runtime_service.middlewares.filesystem import (
 from runtime_service.middlewares.loop_detection import (
     LoopDetectionMiddleware,
     loop_detection_enabled,
+    loop_observation_enabled,
 )
 from runtime_service.middlewares.message_queue import MessageQueueMiddleware
 from runtime_service.middlewares.model_call_timeout import (
@@ -53,6 +54,7 @@ __all__ = [
     "ExecutionBudgetMiddleware",
     "LoopDetectionMiddleware",
     "loop_detection_enabled",
+    "loop_observation_enabled",
     "TimeoutWrapupMiddleware",
     "resolve_wrapup_after_seconds",
     "ModelCallTimeoutMiddleware",

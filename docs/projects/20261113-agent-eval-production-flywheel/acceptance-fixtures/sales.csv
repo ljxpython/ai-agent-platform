@@ -1,0 +1,6 @@
+order_id,order_date,region,amount,status
+O100,2026-10-03,华东,120.00,paid
+O101,2026-10-12,华南,80.00,paid
+O102,2026-10-20,华东,50.00,cancelled
+O103,2026-09-28,华东,200.00,paid
+O104,2026-10-25,华东,100.00,paid

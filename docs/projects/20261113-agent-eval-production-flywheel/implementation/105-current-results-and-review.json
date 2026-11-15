@@ -1,0 +1,1626 @@
+{
+  "item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+  "operations": [
+    {
+      "id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+      "revision": 1,
+      "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9",
+      "selected_case_ids": [
+        "arith-2turn-pause-resume-001"
+      ],
+      "selection_hash": "19ff7106110270c0c6ce3a19a86e9ffd572726f18fb95673b9ffab600a61e9a5",
+      "source_task_id": null,
+      "excluded_case_ids": [],
+      "stage": "error",
+      "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "created_at": 1794709227.730019,
+      "approved_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "approved_at": 1794709227.73002,
+      "grants": {
+        "evaluation_assistance": "aa4b6c5c-e608-475e-91d9-4e38b2c92526",
+        "regression": "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+      },
+      "receipts": {},
+      "dataset_id": "d-016ac29c20224ebaa1fd1748c7a45637",
+      "dataset_version": 1,
+      "dataset_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894",
+      "task_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+      "task_status": "error"
+    },
+    {
+      "id": "2e20f1a4-33ba-4c76-95a5-e151edfa4ede",
+      "revision": 1,
+      "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9",
+      "selected_case_ids": [
+        "arith-2turn-pause-resume-001"
+      ],
+      "selection_hash": "19ff7106110270c0c6ce3a19a86e9ffd572726f18fb95673b9ffab600a61e9a5",
+      "source_task_id": null,
+      "excluded_case_ids": [],
+      "stage": "completed",
+      "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "created_at": 1794709398.092454,
+      "approved_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "approved_at": 1794709227.73002,
+      "grants": {
+        "evaluation_assistance": "aa4b6c5c-e608-475e-91d9-4e38b2c92526",
+        "regression": "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+      },
+      "receipts": {},
+      "dataset_id": "d-016ac29c20224ebaa1fd1748c7a45637",
+      "dataset_version": 1,
+      "dataset_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894",
+      "task_id": "2e20f1a4-33ba-4c76-95a5-e151edfa4ede",
+      "task_status": "passed"
+    },
+    {
+      "id": "6d9267ba-4d29-43b3-9f21-b8a4679b55fa",
+      "revision": 1,
+      "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9",
+      "selected_case_ids": [
+        "arith-2turn-pause-resume-001"
+      ],
+      "selection_hash": "19ff7106110270c0c6ce3a19a86e9ffd572726f18fb95673b9ffab600a61e9a5",
+      "source_task_id": null,
+      "excluded_case_ids": [],
+      "stage": "error",
+      "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "created_at": 1794709514.2161212,
+      "approved_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "approved_at": 1794709227.73002,
+      "grants": {
+        "evaluation_assistance": "aa4b6c5c-e608-475e-91d9-4e38b2c92526",
+        "regression": "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+      },
+      "receipts": {},
+      "dataset_id": "d-016ac29c20224ebaa1fd1748c7a45637",
+      "dataset_version": 1,
+      "dataset_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894",
+      "task_id": "6d9267ba-4d29-43b3-9f21-b8a4679b55fa",
+      "task_status": "error"
+    },
+    {
+      "id": "3b3a3844-aefc-420e-b5a9-5f8396b5eb45",
+      "revision": 1,
+      "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9",
+      "selected_case_ids": [
+        "arith-2turn-pause-resume-001"
+      ],
+      "selection_hash": "19ff7106110270c0c6ce3a19a86e9ffd572726f18fb95673b9ffab600a61e9a5",
+      "source_task_id": null,
+      "excluded_case_ids": [],
+      "stage": "completed",
+      "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "created_at": 1794709677.317195,
+      "approved_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "approved_at": 1794709227.73002,
+      "grants": {
+        "evaluation_assistance": "aa4b6c5c-e608-475e-91d9-4e38b2c92526",
+        "regression": "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+      },
+      "receipts": {},
+      "dataset_id": "d-016ac29c20224ebaa1fd1748c7a45637",
+      "dataset_version": 1,
+      "dataset_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894",
+      "task_id": "3b3a3844-aefc-420e-b5a9-5f8396b5eb45",
+      "task_status": "passed"
+    },
+    {
+      "id": "b376ae7e-dbc2-4f8d-9250-ca1aaf4af984",
+      "revision": 1,
+      "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9",
+      "selected_case_ids": [
+        "arith-2turn-pause-resume-001"
+      ],
+      "selection_hash": "19ff7106110270c0c6ce3a19a86e9ffd572726f18fb95673b9ffab600a61e9a5",
+      "source_task_id": null,
+      "excluded_case_ids": [],
+      "stage": "completed",
+      "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "created_at": 1794709758.317941,
+      "approved_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "approved_at": 1794709227.73002,
+      "grants": {
+        "evaluation_assistance": "aa4b6c5c-e608-475e-91d9-4e38b2c92526",
+        "regression": "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+      },
+      "receipts": {},
+      "dataset_id": "d-016ac29c20224ebaa1fd1748c7a45637",
+      "dataset_version": 1,
+      "dataset_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894",
+      "task_id": "b376ae7e-dbc2-4f8d-9250-ca1aaf4af984",
+      "task_status": "passed"
+    }
+  ],
+  "results": [
+    {
+      "task_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+      "name": "05验收·暂停恢复与同题比较 · 验证",
+      "status": "error",
+      "completed": 0,
+      "total": 1,
+      "created_at": 1794709235.8549519,
+      "finished_at": 1794709315.6303291,
+      "error": "评测执行异常：ValueError",
+      "dataset": {
+        "logical_id": "0d797a91-39f8-546c-8ea8-fe656fd6c214",
+        "version": 1,
+        "name": "05验收·暂停恢复与同题比较",
+        "description": "由平台真实用户评审的合成回归方案",
+        "owner": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+        "capabilities": [],
+        "purpose": "regression",
+        "blind_eligible": false,
+        "exposure": "Imported through developer-visible evaluation workflow",
+        "status": "published",
+        "count": 1,
+        "requirements": {
+          "graph_id": "dearflow_agent"
+        },
+        "authorization_batch": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+        "experiment_id": "18",
+        "platform_review": {
+          "work_item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+          "operation_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+          "revision": 1,
+          "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9"
+        },
+        "source_exports": [
+          "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+        ],
+        "id": "d-016ac29c20224ebaa1fd1748c7a45637",
+        "content_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894"
+      },
+      "target": {
+        "profile_id": "local-dearflow",
+        "name": "Dearflow · 确定性基准",
+        "agent": {
+          "id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+          "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+          "name": "dearflow_agent",
+          "graph_id": "dearflow_agent",
+          "status": "active",
+          "context": {},
+          "model_resilience": {
+            "enabled": false,
+            "fallback_model_id": null,
+            "max_attempts": 3,
+            "attempt_timeout_seconds": 600.0,
+            "total_timeout_seconds": 900.0
+          }
+        },
+        "agent_hash": "df0b2974a6404508d949900c60a6ad93d6a61270b36a591bdd02dd2619ffaf8f",
+        "resources": {
+          "model": {
+            "catalog_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "display_name": "Evaluation xiaok DeepSeek",
+            "policy": {
+              "is_enabled": true,
+              "is_default_for_project": true,
+              "temperature_default": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "graph": {
+            "catalog_id": "b413522d-f758-43a6-abee-a3044a030616",
+            "graph_id": "dearflow_agent",
+            "display_name": "dearflow_agent",
+            "description": "",
+            "source_type": "default_assistant",
+            "sync_status": "ready",
+            "last_synced_at": "2026-11-15T00:39:30.593767+08:00",
+            "policy": {
+              "is_enabled": true,
+              "display_order": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "tool_restrictions": [],
+          "runtime_source_hash": "2b3d0ce30cdb2dec52feeaea66a92ca5467b09db6da6061f000d1b2106304861"
+        },
+        "resource_hash": "7504f468d4db29be27c2e8125c420d43eb35fd6ad6835d68fea7eb3e1294cbba",
+        "context": {
+          "temperature": 0,
+          "max_tokens": 4096,
+          "top_p": 1,
+          "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+          "execution_mode": "standard"
+        },
+        "source": null,
+        "differences": "通用能力评测；使用专用项目合成资源，不代表生产业务验收。",
+        "config_hash": "d70c569a0f44f9bbd21210b1ed72cf978d4ccd3e5ca497896fc466f51f98ccec"
+      },
+      "gate": {
+        "gate_policy_version": "3",
+        "exit_code": 2,
+        "status": "error",
+        "planned_cases": 1,
+        "recorded_cases": 0,
+        "errors": [
+          "arith-2turn-pause-resume-001:missing_case"
+        ],
+        "failures": [],
+        "warnings": [
+          "budget_policy_not_configured"
+        ],
+        "comparisons": [],
+        "metrics": {},
+        "applicable_counts": {},
+        "budget": {
+          "status": "not_configured",
+          "errors": [],
+          "failures": [],
+          "cases": {}
+        }
+      },
+      "comparison_key": "87e00e62146e16cd0c04a3e2363f05ac08133c6f8252d296486e83db7de61673",
+      "evidence_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "evidence": {},
+      "cases": [],
+      "pending_actions": []
+    },
+    {
+      "task_id": "2e20f1a4-33ba-4c76-95a5-e151edfa4ede",
+      "name": "05验收·暂停恢复与同题比较 · 验证",
+      "status": "passed",
+      "completed": 1,
+      "total": 1,
+      "created_at": 1794709403.092179,
+      "finished_at": 1794709461.021091,
+      "error": null,
+      "dataset": {
+        "logical_id": "0d797a91-39f8-546c-8ea8-fe656fd6c214",
+        "version": 1,
+        "name": "05验收·暂停恢复与同题比较",
+        "description": "由平台真实用户评审的合成回归方案",
+        "owner": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+        "capabilities": [],
+        "purpose": "regression",
+        "blind_eligible": false,
+        "exposure": "Imported through developer-visible evaluation workflow",
+        "status": "published",
+        "count": 1,
+        "requirements": {
+          "graph_id": "dearflow_agent"
+        },
+        "authorization_batch": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+        "experiment_id": "18",
+        "platform_review": {
+          "work_item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+          "operation_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+          "revision": 1,
+          "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9"
+        },
+        "source_exports": [
+          "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+        ],
+        "id": "d-016ac29c20224ebaa1fd1748c7a45637",
+        "content_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894"
+      },
+      "target": {
+        "profile_id": "local-dearflow",
+        "name": "Dearflow · 确定性基准",
+        "agent": {
+          "id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+          "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+          "name": "dearflow_agent",
+          "graph_id": "dearflow_agent",
+          "status": "active",
+          "context": {},
+          "model_resilience": {
+            "enabled": false,
+            "fallback_model_id": null,
+            "max_attempts": 3,
+            "attempt_timeout_seconds": 600.0,
+            "total_timeout_seconds": 900.0
+          }
+        },
+        "agent_hash": "df0b2974a6404508d949900c60a6ad93d6a61270b36a591bdd02dd2619ffaf8f",
+        "resources": {
+          "model": {
+            "catalog_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "display_name": "Evaluation xiaok DeepSeek",
+            "policy": {
+              "is_enabled": true,
+              "is_default_for_project": true,
+              "temperature_default": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "graph": {
+            "catalog_id": "b413522d-f758-43a6-abee-a3044a030616",
+            "graph_id": "dearflow_agent",
+            "display_name": "dearflow_agent",
+            "description": "",
+            "source_type": "default_assistant",
+            "sync_status": "ready",
+            "last_synced_at": "2026-11-15T00:39:30.593767+08:00",
+            "policy": {
+              "is_enabled": true,
+              "display_order": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "tool_restrictions": [],
+          "runtime_source_hash": "2b3d0ce30cdb2dec52feeaea66a92ca5467b09db6da6061f000d1b2106304861"
+        },
+        "resource_hash": "7504f468d4db29be27c2e8125c420d43eb35fd6ad6835d68fea7eb3e1294cbba",
+        "context": {
+          "temperature": 0,
+          "max_tokens": 4096,
+          "top_p": 1,
+          "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+          "execution_mode": "standard"
+        },
+        "source": null,
+        "differences": "通用能力评测；使用专用项目合成资源，不代表生产业务验收。",
+        "config_hash": "d70c569a0f44f9bbd21210b1ed72cf978d4ccd3e5ca497896fc466f51f98ccec"
+      },
+      "gate": {
+        "gate_policy_version": "3",
+        "exit_code": 0,
+        "status": "pass",
+        "planned_cases": 1,
+        "recorded_cases": 1,
+        "errors": [],
+        "failures": [],
+        "warnings": [
+          "budget_policy_not_configured"
+        ],
+        "comparisons": [],
+        "metrics": {
+          "turn_expectations": 1.0,
+          "tool_budget": 1.0
+        },
+        "applicable_counts": {
+          "turn_expectations": 1,
+          "tool_budget": 1
+        },
+        "budget": {
+          "status": "not_configured",
+          "errors": [],
+          "failures": [],
+          "cases": {}
+        }
+      },
+      "comparison_key": "87e00e62146e16cd0c04a3e2363f05ac08133c6f8252d296486e83db7de61673",
+      "evidence_hash": "ecfbddaa9520c8ece93c66962c643b2d6124ad8a21d9c791d75d5b723a18bd4c",
+      "evidence": {
+        "approved_standard": {
+          "dataset_name": "05验收·暂停恢复与同题比较",
+          "version": 1,
+          "cases": [
+            {
+              "schema_version": "3",
+              "case_id": "arith-2turn-pause-resume-001",
+              "turns": [
+                {
+                  "content": "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+                  "approval": null
+                },
+                {
+                  "content": "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+                  "approval": null
+                }
+              ],
+              "fixture": {},
+              "provenance": {
+                "source_type": "curated",
+                "source_ref": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+                "family_id": "b5ff001a-26d0-5356-a000-00be2a24572b.arith-2turn-pause-resume-001",
+                "parent_case_ref": null,
+                "transformation_version": "workbench-v1"
+              },
+              "access_policy": "workspace_write",
+              "reviewer": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+              "reviewed_at": "2026-11-15",
+              "business_rules": [
+                "第一轮为纯算术31加24，第二轮必须以第一轮答案为基数减10。",
+                "每轮只输出数字，不输出解释、单位或过程。",
+                "两轮都不得调用任何工具，不得读写文件。"
+              ],
+              "rubric_version": "arithmetic-multiturn-v1",
+              "expectations": {
+                "max_tool_calls": 0,
+                "rubric": "两轮都只输出数字，去除首尾空白后第一轮必须精确等于55、第二轮必须精确等于45；两轮工具调用总数必须为0（max_tool_calls=0，tool_budget核查）。",
+                "status": "completed",
+                "tool_order": "any"
+              },
+              "turn_expectations": [
+                {
+                  "index": 0,
+                  "answer_equals": "55",
+                  "answer_contains": [],
+                  "answer_excludes": [],
+                  "artifacts": {}
+                },
+                {
+                  "index": 1,
+                  "answer_equals": "45",
+                  "answer_contains": [],
+                  "answer_excludes": [],
+                  "artifacts": {}
+                }
+              ],
+              "metrics": [
+                {
+                  "name": "turn_expectations",
+                  "threshold": 1.0,
+                  "hard_gate": true
+                },
+                {
+                  "name": "tool_budget",
+                  "threshold": 1.0,
+                  "hard_gate": true
+                }
+              ]
+            }
+          ],
+          "review_note": "此为执行时的批准记录；平台批准不等于独立盲测或独立人审。",
+          "evidence_notes": [
+            "二元规则检查的结果阈值固定为1；原方案threshold不改变全部断言须通过的规则。",
+            "逐轮预期中的计数是答案和文件断言组数，不是对话轮数。",
+            "run_ids包含同一Thread从审批中断续跑的Run，不代表重跑整个用例。",
+            "trace_ids仅用于定位；本工具可读取的证据编号是approved_standard和case:<case_id>。"
+          ]
+        },
+        "case:arith-2turn-pause-resume-001": {
+          "case_id": "arith-2turn-pause-resume-001",
+          "status": "completed",
+          "inputs": [
+            "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+            "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。"
+          ],
+          "outputs": [
+            "55",
+            "\n45"
+          ],
+          "errors": [],
+          "results": [
+            {
+              "name": "turn_expectations",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "逐轮预期检查：2/2",
+              "evidence_refs": [
+                "tr-d8fc3de84d8059f9e3392689d7fa3169",
+                "tr-8d98829bb16bcbf2233c8f0c49926324"
+              ],
+              "error_code": null
+            },
+            {
+              "name": "tool_budget",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "Tool calls: 0",
+              "evidence_refs": [
+                "tr-d8fc3de84d8059f9e3392689d7fa3169",
+                "tr-8d98829bb16bcbf2233c8f0c49926324"
+              ],
+              "error_code": null
+            }
+          ],
+          "run_ids": [
+            "e0f25ce9-e39e-4abb-90a8-1851e2785ae8",
+            "323e4cba-ec59-498c-b638-9d980c33d7e5"
+          ],
+          "trace_ids": [
+            "tr-d8fc3de84d8059f9e3392689d7fa3169",
+            "tr-8d98829bb16bcbf2233c8f0c49926324"
+          ],
+          "tool_names": [],
+          "approvals": [],
+          "artifacts": {}
+        }
+      },
+      "cases": [
+        {
+          "case_id": "arith-2turn-pause-resume-001",
+          "status": "completed",
+          "inputs": [
+            "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+            "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。"
+          ],
+          "outputs": [
+            "55",
+            "\n45"
+          ],
+          "errors": [],
+          "results": [
+            {
+              "name": "turn_expectations",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "逐轮预期检查：2/2",
+              "evidence_refs": [
+                "tr-d8fc3de84d8059f9e3392689d7fa3169",
+                "tr-8d98829bb16bcbf2233c8f0c49926324"
+              ],
+              "error_code": null
+            },
+            {
+              "name": "tool_budget",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "Tool calls: 0",
+              "evidence_refs": [
+                "tr-d8fc3de84d8059f9e3392689d7fa3169",
+                "tr-8d98829bb16bcbf2233c8f0c49926324"
+              ],
+              "error_code": null
+            }
+          ],
+          "run_ids": [
+            "e0f25ce9-e39e-4abb-90a8-1851e2785ae8",
+            "323e4cba-ec59-498c-b638-9d980c33d7e5"
+          ],
+          "trace_ids": [
+            "tr-d8fc3de84d8059f9e3392689d7fa3169",
+            "tr-8d98829bb16bcbf2233c8f0c49926324"
+          ],
+          "tool_names": [],
+          "approvals": [],
+          "artifacts": {},
+          "evidence_ref": "case:arith-2turn-pause-resume-001"
+        }
+      ],
+      "pending_actions": []
+    },
+    {
+      "task_id": "6d9267ba-4d29-43b3-9f21-b8a4679b55fa",
+      "name": "05验收·暂停恢复与同题比较 · 验证",
+      "status": "error",
+      "completed": 0,
+      "total": 1,
+      "created_at": 1794709517.270516,
+      "finished_at": 1794709534.643874,
+      "error": "评测执行异常：ValueError",
+      "dataset": {
+        "logical_id": "0d797a91-39f8-546c-8ea8-fe656fd6c214",
+        "version": 1,
+        "name": "05验收·暂停恢复与同题比较",
+        "description": "由平台真实用户评审的合成回归方案",
+        "owner": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+        "capabilities": [],
+        "purpose": "regression",
+        "blind_eligible": false,
+        "exposure": "Imported through developer-visible evaluation workflow",
+        "status": "published",
+        "count": 1,
+        "requirements": {
+          "graph_id": "dearflow_agent"
+        },
+        "authorization_batch": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+        "experiment_id": "18",
+        "platform_review": {
+          "work_item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+          "operation_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+          "revision": 1,
+          "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9"
+        },
+        "source_exports": [
+          "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+        ],
+        "id": "d-016ac29c20224ebaa1fd1748c7a45637",
+        "content_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894"
+      },
+      "target": {
+        "profile_id": "local-dearflow",
+        "name": "Dearflow · 确定性基准",
+        "agent": {
+          "id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+          "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+          "name": "dearflow_agent",
+          "graph_id": "dearflow_agent",
+          "status": "active",
+          "context": {},
+          "model_resilience": {
+            "enabled": false,
+            "fallback_model_id": null,
+            "max_attempts": 3,
+            "attempt_timeout_seconds": 600.0,
+            "total_timeout_seconds": 900.0
+          }
+        },
+        "agent_hash": "df0b2974a6404508d949900c60a6ad93d6a61270b36a591bdd02dd2619ffaf8f",
+        "resources": {
+          "model": {
+            "catalog_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "display_name": "Evaluation xiaok DeepSeek",
+            "policy": {
+              "is_enabled": true,
+              "is_default_for_project": true,
+              "temperature_default": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "graph": {
+            "catalog_id": "b413522d-f758-43a6-abee-a3044a030616",
+            "graph_id": "dearflow_agent",
+            "display_name": "dearflow_agent",
+            "description": "",
+            "source_type": "default_assistant",
+            "sync_status": "ready",
+            "last_synced_at": "2026-11-15T00:39:30.593767+08:00",
+            "policy": {
+              "is_enabled": true,
+              "display_order": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "tool_restrictions": [],
+          "runtime_source_hash": "2b3d0ce30cdb2dec52feeaea66a92ca5467b09db6da6061f000d1b2106304861"
+        },
+        "resource_hash": "7504f468d4db29be27c2e8125c420d43eb35fd6ad6835d68fea7eb3e1294cbba",
+        "context": {
+          "temperature": 0,
+          "max_tokens": 4096,
+          "top_p": 1,
+          "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+          "execution_mode": "standard"
+        },
+        "source": null,
+        "differences": "通用能力评测；使用专用项目合成资源，不代表生产业务验收。",
+        "config_hash": "d70c569a0f44f9bbd21210b1ed72cf978d4ccd3e5ca497896fc466f51f98ccec"
+      },
+      "gate": null,
+      "comparison_key": null,
+      "evidence_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "evidence": {},
+      "cases": [],
+      "pending_actions": []
+    },
+    {
+      "task_id": "3b3a3844-aefc-420e-b5a9-5f8396b5eb45",
+      "name": "05验收·暂停恢复与同题比较 · 验证",
+      "status": "passed",
+      "completed": 1,
+      "total": 1,
+      "created_at": 1794709681.046289,
+      "finished_at": 1794709749.677351,
+      "error": null,
+      "dataset": {
+        "logical_id": "0d797a91-39f8-546c-8ea8-fe656fd6c214",
+        "version": 1,
+        "name": "05验收·暂停恢复与同题比较",
+        "description": "由平台真实用户评审的合成回归方案",
+        "owner": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+        "capabilities": [],
+        "purpose": "regression",
+        "blind_eligible": false,
+        "exposure": "Imported through developer-visible evaluation workflow",
+        "status": "published",
+        "count": 1,
+        "requirements": {
+          "graph_id": "dearflow_agent"
+        },
+        "authorization_batch": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+        "experiment_id": "18",
+        "platform_review": {
+          "work_item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+          "operation_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+          "revision": 1,
+          "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9"
+        },
+        "source_exports": [
+          "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+        ],
+        "id": "d-016ac29c20224ebaa1fd1748c7a45637",
+        "content_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894"
+      },
+      "target": {
+        "profile_id": "local-dearflow",
+        "name": "Dearflow · 确定性基准",
+        "agent": {
+          "id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+          "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+          "name": "dearflow_agent",
+          "graph_id": "dearflow_agent",
+          "status": "active",
+          "context": {},
+          "model_resilience": {
+            "enabled": false,
+            "fallback_model_id": null,
+            "max_attempts": 3,
+            "attempt_timeout_seconds": 600.0,
+            "total_timeout_seconds": 900.0
+          }
+        },
+        "agent_hash": "df0b2974a6404508d949900c60a6ad93d6a61270b36a591bdd02dd2619ffaf8f",
+        "resources": {
+          "model": {
+            "catalog_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "display_name": "Evaluation xiaok DeepSeek",
+            "policy": {
+              "is_enabled": true,
+              "is_default_for_project": true,
+              "temperature_default": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "graph": {
+            "catalog_id": "b413522d-f758-43a6-abee-a3044a030616",
+            "graph_id": "dearflow_agent",
+            "display_name": "dearflow_agent",
+            "description": "",
+            "source_type": "default_assistant",
+            "sync_status": "ready",
+            "last_synced_at": "2026-11-15T00:39:30.593767+08:00",
+            "policy": {
+              "is_enabled": true,
+              "display_order": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "tool_restrictions": [],
+          "runtime_source_hash": "2b3d0ce30cdb2dec52feeaea66a92ca5467b09db6da6061f000d1b2106304861"
+        },
+        "resource_hash": "7504f468d4db29be27c2e8125c420d43eb35fd6ad6835d68fea7eb3e1294cbba",
+        "context": {
+          "temperature": 0,
+          "max_tokens": 4096,
+          "top_p": 1,
+          "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+          "execution_mode": "standard"
+        },
+        "source": null,
+        "differences": "通用能力评测；使用专用项目合成资源，不代表生产业务验收。",
+        "config_hash": "d70c569a0f44f9bbd21210b1ed72cf978d4ccd3e5ca497896fc466f51f98ccec"
+      },
+      "gate": {
+        "gate_policy_version": "3",
+        "exit_code": 0,
+        "status": "pass",
+        "planned_cases": 1,
+        "recorded_cases": 1,
+        "errors": [],
+        "failures": [],
+        "warnings": [
+          "budget_policy_not_configured"
+        ],
+        "comparisons": [],
+        "metrics": {
+          "turn_expectations": 1.0,
+          "tool_budget": 1.0
+        },
+        "applicable_counts": {
+          "turn_expectations": 1,
+          "tool_budget": 1
+        },
+        "budget": {
+          "status": "not_configured",
+          "errors": [],
+          "failures": [],
+          "cases": {}
+        }
+      },
+      "comparison_key": "ab0d5b8273bc13eeabe60205e8f3b0f767a6eb08fbc94be05447152267f46cd2",
+      "evidence_hash": "7ef5ebd6566fb71d437e96fe476a39a0228e8a6b1bacbf9b8b5c9b06b48c8561",
+      "evidence": {
+        "approved_standard": {
+          "dataset_name": "05验收·暂停恢复与同题比较",
+          "version": 1,
+          "cases": [
+            {
+              "schema_version": "3",
+              "case_id": "arith-2turn-pause-resume-001",
+              "turns": [
+                {
+                  "content": "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+                  "approval": null
+                },
+                {
+                  "content": "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+                  "approval": null
+                }
+              ],
+              "fixture": {},
+              "provenance": {
+                "source_type": "curated",
+                "source_ref": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+                "family_id": "b5ff001a-26d0-5356-a000-00be2a24572b.arith-2turn-pause-resume-001",
+                "parent_case_ref": null,
+                "transformation_version": "workbench-v1"
+              },
+              "access_policy": "workspace_write",
+              "reviewer": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+              "reviewed_at": "2026-11-15",
+              "business_rules": [
+                "第一轮为纯算术31加24，第二轮必须以第一轮答案为基数减10。",
+                "每轮只输出数字，不输出解释、单位或过程。",
+                "两轮都不得调用任何工具，不得读写文件。"
+              ],
+              "rubric_version": "arithmetic-multiturn-v1",
+              "expectations": {
+                "max_tool_calls": 0,
+                "rubric": "两轮都只输出数字，去除首尾空白后第一轮必须精确等于55、第二轮必须精确等于45；两轮工具调用总数必须为0（max_tool_calls=0，tool_budget核查）。",
+                "status": "completed",
+                "tool_order": "any"
+              },
+              "turn_expectations": [
+                {
+                  "index": 0,
+                  "answer_equals": "55",
+                  "answer_contains": [],
+                  "answer_excludes": [],
+                  "artifacts": {}
+                },
+                {
+                  "index": 1,
+                  "answer_equals": "45",
+                  "answer_contains": [],
+                  "answer_excludes": [],
+                  "artifacts": {}
+                }
+              ],
+              "metrics": [
+                {
+                  "name": "turn_expectations",
+                  "threshold": 1.0,
+                  "hard_gate": true
+                },
+                {
+                  "name": "tool_budget",
+                  "threshold": 1.0,
+                  "hard_gate": true
+                }
+              ]
+            }
+          ],
+          "review_note": "此为执行时的批准记录；平台批准不等于独立盲测或独立人审。",
+          "evidence_notes": [
+            "二元规则检查的结果阈值固定为1；原方案threshold不改变全部断言须通过的规则。",
+            "逐轮预期中的计数是答案和文件断言组数，不是对话轮数。",
+            "run_ids包含同一Thread从审批中断续跑的Run，不代表重跑整个用例。",
+            "trace_ids仅用于定位；本工具可读取的证据编号是approved_standard和case:<case_id>。"
+          ]
+        },
+        "case:arith-2turn-pause-resume-001": {
+          "case_id": "arith-2turn-pause-resume-001",
+          "status": "completed",
+          "inputs": [
+            "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+            "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。"
+          ],
+          "outputs": [
+            "55",
+            "\n45"
+          ],
+          "errors": [],
+          "results": [
+            {
+              "name": "turn_expectations",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "逐轮预期检查：2/2",
+              "evidence_refs": [
+                "tr-25858c14496091cf13115c9379c8179f",
+                "tr-1aa83f5d0c7a64e454e0736aa96ca355"
+              ],
+              "error_code": null
+            },
+            {
+              "name": "tool_budget",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "Tool calls: 0",
+              "evidence_refs": [
+                "tr-25858c14496091cf13115c9379c8179f",
+                "tr-1aa83f5d0c7a64e454e0736aa96ca355"
+              ],
+              "error_code": null
+            }
+          ],
+          "run_ids": [
+            "88eee605-1f48-42b1-9031-10c903bf4881",
+            "3e8e29e4-3eb5-4980-9985-7a499b04f499"
+          ],
+          "trace_ids": [
+            "tr-25858c14496091cf13115c9379c8179f",
+            "tr-1aa83f5d0c7a64e454e0736aa96ca355"
+          ],
+          "tool_names": [],
+          "approvals": [],
+          "artifacts": {}
+        }
+      },
+      "cases": [
+        {
+          "case_id": "arith-2turn-pause-resume-001",
+          "status": "completed",
+          "inputs": [
+            "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+            "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。"
+          ],
+          "outputs": [
+            "55",
+            "\n45"
+          ],
+          "errors": [],
+          "results": [
+            {
+              "name": "turn_expectations",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "逐轮预期检查：2/2",
+              "evidence_refs": [
+                "tr-25858c14496091cf13115c9379c8179f",
+                "tr-1aa83f5d0c7a64e454e0736aa96ca355"
+              ],
+              "error_code": null
+            },
+            {
+              "name": "tool_budget",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "Tool calls: 0",
+              "evidence_refs": [
+                "tr-25858c14496091cf13115c9379c8179f",
+                "tr-1aa83f5d0c7a64e454e0736aa96ca355"
+              ],
+              "error_code": null
+            }
+          ],
+          "run_ids": [
+            "88eee605-1f48-42b1-9031-10c903bf4881",
+            "3e8e29e4-3eb5-4980-9985-7a499b04f499"
+          ],
+          "trace_ids": [
+            "tr-25858c14496091cf13115c9379c8179f",
+            "tr-1aa83f5d0c7a64e454e0736aa96ca355"
+          ],
+          "tool_names": [],
+          "approvals": [],
+          "artifacts": {},
+          "evidence_ref": "case:arith-2turn-pause-resume-001"
+        }
+      ],
+      "pending_actions": []
+    },
+    {
+      "task_id": "b376ae7e-dbc2-4f8d-9250-ca1aaf4af984",
+      "name": "05验收·暂停恢复与同题比较 · 验证",
+      "status": "passed",
+      "completed": 1,
+      "total": 1,
+      "created_at": 1794709763.2941718,
+      "finished_at": 1794709861.5812612,
+      "error": null,
+      "dataset": {
+        "logical_id": "0d797a91-39f8-546c-8ea8-fe656fd6c214",
+        "version": 1,
+        "name": "05验收·暂停恢复与同题比较",
+        "description": "由平台真实用户评审的合成回归方案",
+        "owner": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+        "capabilities": [],
+        "purpose": "regression",
+        "blind_eligible": false,
+        "exposure": "Imported through developer-visible evaluation workflow",
+        "status": "published",
+        "count": 1,
+        "requirements": {
+          "graph_id": "dearflow_agent"
+        },
+        "authorization_batch": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+        "experiment_id": "18",
+        "platform_review": {
+          "work_item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+          "operation_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+          "revision": 1,
+          "content_hash": "9bde4a095c03e40c0dd60f33eebd3a0cad204c53c7f78ab55ab84fcef2c884f9"
+        },
+        "source_exports": [
+          "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+        ],
+        "id": "d-016ac29c20224ebaa1fd1748c7a45637",
+        "content_hash": "a0d6e8781c5601e1c9687ac0d75eb3d07f0d0e5d9bed4605f7fd935e14b4b894"
+      },
+      "target": {
+        "profile_id": "local-dearflow",
+        "name": "Dearflow · 确定性基准",
+        "agent": {
+          "id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+          "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+          "name": "dearflow_agent",
+          "graph_id": "dearflow_agent",
+          "status": "active",
+          "context": {},
+          "model_resilience": {
+            "enabled": false,
+            "fallback_model_id": null,
+            "max_attempts": 3,
+            "attempt_timeout_seconds": 600.0,
+            "total_timeout_seconds": 900.0
+          }
+        },
+        "agent_hash": "df0b2974a6404508d949900c60a6ad93d6a61270b36a591bdd02dd2619ffaf8f",
+        "resources": {
+          "model": {
+            "catalog_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "display_name": "Evaluation xiaok DeepSeek",
+            "policy": {
+              "is_enabled": true,
+              "is_default_for_project": true,
+              "temperature_default": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "graph": {
+            "catalog_id": "b413522d-f758-43a6-abee-a3044a030616",
+            "graph_id": "dearflow_agent",
+            "display_name": "dearflow_agent",
+            "description": "",
+            "source_type": "default_assistant",
+            "sync_status": "ready",
+            "last_synced_at": "2026-11-15T00:39:30.593767+08:00",
+            "policy": {
+              "is_enabled": true,
+              "display_order": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "tool_restrictions": [],
+          "runtime_source_hash": "2b3d0ce30cdb2dec52feeaea66a92ca5467b09db6da6061f000d1b2106304861"
+        },
+        "resource_hash": "7504f468d4db29be27c2e8125c420d43eb35fd6ad6835d68fea7eb3e1294cbba",
+        "context": {
+          "temperature": 0,
+          "max_tokens": 4096,
+          "top_p": 1,
+          "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+          "execution_mode": "standard"
+        },
+        "source": null,
+        "differences": "通用能力评测；使用专用项目合成资源，不代表生产业务验收。",
+        "config_hash": "d70c569a0f44f9bbd21210b1ed72cf978d4ccd3e5ca497896fc466f51f98ccec"
+      },
+      "gate": {
+        "gate_policy_version": "3",
+        "exit_code": 0,
+        "status": "pass",
+        "planned_cases": 1,
+        "recorded_cases": 1,
+        "errors": [],
+        "failures": [],
+        "warnings": [
+          "budget_policy_not_configured"
+        ],
+        "comparisons": [],
+        "metrics": {
+          "turn_expectations": 1.0,
+          "tool_budget": 1.0
+        },
+        "applicable_counts": {
+          "turn_expectations": 1,
+          "tool_budget": 1
+        },
+        "budget": {
+          "status": "not_configured",
+          "errors": [],
+          "failures": [],
+          "cases": {}
+        }
+      },
+      "comparison_key": "ab0d5b8273bc13eeabe60205e8f3b0f767a6eb08fbc94be05447152267f46cd2",
+      "evidence_hash": "1a67123a546c386b6e4f246126377ea6f1efea52e1a00fc458987b8c3718b41c",
+      "evidence": {
+        "approved_standard": {
+          "dataset_name": "05验收·暂停恢复与同题比较",
+          "version": 1,
+          "cases": [
+            {
+              "schema_version": "3",
+              "case_id": "arith-2turn-pause-resume-001",
+              "turns": [
+                {
+                  "content": "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+                  "approval": null
+                },
+                {
+                  "content": "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+                  "approval": null
+                }
+              ],
+              "fixture": {},
+              "provenance": {
+                "source_type": "curated",
+                "source_ref": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+                "family_id": "b5ff001a-26d0-5356-a000-00be2a24572b.arith-2turn-pause-resume-001",
+                "parent_case_ref": null,
+                "transformation_version": "workbench-v1"
+              },
+              "access_policy": "workspace_write",
+              "reviewer": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+              "reviewed_at": "2026-11-15",
+              "business_rules": [
+                "第一轮为纯算术31加24，第二轮必须以第一轮答案为基数减10。",
+                "每轮只输出数字，不输出解释、单位或过程。",
+                "两轮都不得调用任何工具，不得读写文件。"
+              ],
+              "rubric_version": "arithmetic-multiturn-v1",
+              "expectations": {
+                "max_tool_calls": 0,
+                "rubric": "两轮都只输出数字，去除首尾空白后第一轮必须精确等于55、第二轮必须精确等于45；两轮工具调用总数必须为0（max_tool_calls=0，tool_budget核查）。",
+                "status": "completed",
+                "tool_order": "any"
+              },
+              "turn_expectations": [
+                {
+                  "index": 0,
+                  "answer_equals": "55",
+                  "answer_contains": [],
+                  "answer_excludes": [],
+                  "artifacts": {}
+                },
+                {
+                  "index": 1,
+                  "answer_equals": "45",
+                  "answer_contains": [],
+                  "answer_excludes": [],
+                  "artifacts": {}
+                }
+              ],
+              "metrics": [
+                {
+                  "name": "turn_expectations",
+                  "threshold": 1.0,
+                  "hard_gate": true
+                },
+                {
+                  "name": "tool_budget",
+                  "threshold": 1.0,
+                  "hard_gate": true
+                }
+              ]
+            }
+          ],
+          "review_note": "此为执行时的批准记录；平台批准不等于独立盲测或独立人审。",
+          "evidence_notes": [
+            "二元规则检查的结果阈值固定为1；原方案threshold不改变全部断言须通过的规则。",
+            "逐轮预期中的计数是答案和文件断言组数，不是对话轮数。",
+            "run_ids包含同一Thread从审批中断续跑的Run，不代表重跑整个用例。",
+            "trace_ids仅用于定位；本工具可读取的证据编号是approved_standard和case:<case_id>。"
+          ]
+        },
+        "case:arith-2turn-pause-resume-001": {
+          "case_id": "arith-2turn-pause-resume-001",
+          "status": "completed",
+          "inputs": [
+            "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+            "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。"
+          ],
+          "outputs": [
+            "55",
+            "\n45"
+          ],
+          "errors": [],
+          "results": [
+            {
+              "name": "turn_expectations",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "逐轮预期检查：2/2",
+              "evidence_refs": [
+                "tr-c1f8a16352bc2b490e6b4c25e1e69c66",
+                "tr-d13a41cb381818cdaa53e1353caf51ea"
+              ],
+              "error_code": null
+            },
+            {
+              "name": "tool_budget",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "Tool calls: 0",
+              "evidence_refs": [
+                "tr-c1f8a16352bc2b490e6b4c25e1e69c66",
+                "tr-d13a41cb381818cdaa53e1353caf51ea"
+              ],
+              "error_code": null
+            }
+          ],
+          "run_ids": [
+            "35d5919a-fab9-4a02-a870-a8a0ca334166",
+            "4951a691-88d3-429a-84ad-e6845e490b95"
+          ],
+          "trace_ids": [
+            "tr-c1f8a16352bc2b490e6b4c25e1e69c66",
+            "tr-d13a41cb381818cdaa53e1353caf51ea"
+          ],
+          "tool_names": [],
+          "approvals": [],
+          "artifacts": {}
+        }
+      },
+      "cases": [
+        {
+          "case_id": "arith-2turn-pause-resume-001",
+          "status": "completed",
+          "inputs": [
+            "请计算31加24，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。",
+            "请在上一个答案的基础上减10，只输出数字结果，不要任何解释。不要调用任何工具，不要读写文件。"
+          ],
+          "outputs": [
+            "55",
+            "\n45"
+          ],
+          "errors": [],
+          "results": [
+            {
+              "name": "turn_expectations",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "逐轮预期检查：2/2",
+              "evidence_refs": [
+                "tr-c1f8a16352bc2b490e6b4c25e1e69c66",
+                "tr-d13a41cb381818cdaa53e1353caf51ea"
+              ],
+              "error_code": null
+            },
+            {
+              "name": "tool_budget",
+              "version": "1",
+              "status": "pass",
+              "score": 1.0,
+              "threshold": 1.0,
+              "reason": "Tool calls: 0",
+              "evidence_refs": [
+                "tr-c1f8a16352bc2b490e6b4c25e1e69c66",
+                "tr-d13a41cb381818cdaa53e1353caf51ea"
+              ],
+              "error_code": null
+            }
+          ],
+          "run_ids": [
+            "35d5919a-fab9-4a02-a870-a8a0ca334166",
+            "4951a691-88d3-429a-84ad-e6845e490b95"
+          ],
+          "trace_ids": [
+            "tr-c1f8a16352bc2b490e6b4c25e1e69c66",
+            "tr-d13a41cb381818cdaa53e1353caf51ea"
+          ],
+          "tool_names": [],
+          "approvals": [],
+          "artifacts": {},
+          "evidence_ref": "case:arith-2turn-pause-resume-001"
+        }
+      ],
+      "pending_actions": []
+    }
+  ],
+  "comparison": {
+    "compatible": true,
+    "cases": [
+      {
+        "case_id": "arith-2turn-pause-resume-001",
+        "before": [
+          {
+            "name": "turn_expectations",
+            "version": "1",
+            "status": "pass",
+            "score": 1.0,
+            "threshold": 1.0,
+            "reason": "逐轮预期检查：2/2",
+            "evidence_refs": [
+              "tr-25858c14496091cf13115c9379c8179f",
+              "tr-1aa83f5d0c7a64e454e0736aa96ca355"
+            ],
+            "error_code": null
+          },
+          {
+            "name": "tool_budget",
+            "version": "1",
+            "status": "pass",
+            "score": 1.0,
+            "threshold": 1.0,
+            "reason": "Tool calls: 0",
+            "evidence_refs": [
+              "tr-25858c14496091cf13115c9379c8179f",
+              "tr-1aa83f5d0c7a64e454e0736aa96ca355"
+            ],
+            "error_code": null
+          }
+        ],
+        "after": [
+          {
+            "name": "turn_expectations",
+            "version": "1",
+            "status": "pass",
+            "score": 1.0,
+            "threshold": 1.0,
+            "reason": "逐轮预期检查：2/2",
+            "evidence_refs": [
+              "tr-c1f8a16352bc2b490e6b4c25e1e69c66",
+              "tr-d13a41cb381818cdaa53e1353caf51ea"
+            ],
+            "error_code": null
+          },
+          {
+            "name": "tool_budget",
+            "version": "1",
+            "status": "pass",
+            "score": 1.0,
+            "threshold": 1.0,
+            "reason": "Tool calls: 0",
+            "evidence_refs": [
+              "tr-c1f8a16352bc2b490e6b4c25e1e69c66",
+              "tr-d13a41cb381818cdaa53e1353caf51ea"
+            ],
+            "error_code": null
+          }
+        ]
+      }
+    ],
+    "before_gate": {
+      "gate_policy_version": "3",
+      "exit_code": 0,
+      "status": "pass",
+      "planned_cases": 1,
+      "recorded_cases": 1,
+      "errors": [],
+      "failures": [],
+      "warnings": [
+        "budget_policy_not_configured"
+      ],
+      "comparisons": [],
+      "metrics": {
+        "turn_expectations": 1.0,
+        "tool_budget": 1.0
+      },
+      "applicable_counts": {
+        "turn_expectations": 1,
+        "tool_budget": 1
+      },
+      "budget": {
+        "status": "not_configured",
+        "errors": [],
+        "failures": [],
+        "cases": {}
+      }
+    },
+    "after_gate": {
+      "gate_policy_version": "3",
+      "exit_code": 0,
+      "status": "pass",
+      "planned_cases": 1,
+      "recorded_cases": 1,
+      "errors": [],
+      "failures": [],
+      "warnings": [
+        "budget_policy_not_configured"
+      ],
+      "comparisons": [],
+      "metrics": {
+        "turn_expectations": 1.0,
+        "tool_budget": 1.0
+      },
+      "applicable_counts": {
+        "turn_expectations": 1,
+        "tool_budget": 1
+      },
+      "budget": {
+        "status": "not_configured",
+        "errors": [],
+        "failures": [],
+        "cases": {}
+      }
+    }
+  },
+  "judgments": [
+    {
+      "revision": 1,
+      "task_id": "2e20f1a4-33ba-4c76-95a5-e151edfa4ede",
+      "kind": "explain",
+      "source": "ai",
+      "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "job_id": "8e770afd-974e-5d4c-856e-0837935119fc",
+      "evidence_hash": "ecfbddaa9520c8ece93c66962c643b2d6124ad8a21d9c791d75d5b723a18bd4c",
+      "explanation": {
+        "summary": "本次只解释既有执行结果，不生成或批准任何新方案。事实层面：标准只包含一个两轮算式用例，断言是第一轮去首尾空白后精确等于55、第二轮精确等于45，执行输出分别为\"55\"和\"\\n45\"，逐轮精确匹配为2/2通过；工具名为空、执行器报告Tool calls: 0。我用decimal_calculate独立复核31+24=55、55-10=45，与标准断言一致，说明第二轮确实以第一轮答案为基数承接。主要问题有三点：一是标准用tool_budget指标加expectations.max_tool_calls=0且设hard_gate来表达“不得调用工具”，当前规范不允许这样用，而且会让一个不合规指标成为整案成败的硬门；二是run_ids有两个而approvals为空，按证据说明这只代表同一Thread从审批中断处续跑的Run，现有证据没有中断点和恢复点的时间线，无法判断暂停是否落在两轮之间；三是reviewer字段填的是UUID而非“AI建议待确认”约定值。下一步建议只做口径收敛：把工具调用改为在rubric中作为执行器提供的证据说明，去掉tool_budget指标与max_tool_calls=0，断言阈值和预期数字一个字不改；若确需验证暂停恢复发生在轮间，需补充平台侧的Run时间线证据，而不是放宽或改写断言。",
+        "findings": [
+          "【事实】标准断言（approved_standard）：turn_expectations index 0 为 answer_equals \"55\"，index 1 为 answer_equals \"45\"，均为去首尾空白后的精确相等；index 从0连续覆盖两轮，metrics含turn_expectations且hard_gate=true，符合多轮v3的结构要求。",
+          "【事实】执行结果（case:arith-2turn-pause-resume-001）：outputs为[\"55\", \"\\n45\"]，逐轮预期2/2通过、score=1.0。第二轮原文带前导换行，trim后精确等于45，属于answer_equals的正常归一化，不等于退化为包含匹配。",
+          "【事实+独立计算】decimal_calculate：31+24=55，55-10=45。两轮数字与标准完全一致，且第二轮只有承接第一轮答案才得45，说明跨轮上下文传递有效，不是各自独立作答凑巧正确。",
+          "【事实】执行证据中tool_names为空数组，tool_budget结果为pass、reason为\"Tool calls: 0\"，errors为空、artifacts为空，即两轮既没有工具调用也没有文件读写痕迹。",
+          "【问题1·口径合规】标准把“两轮都不得调用任何工具”落成metrics里的tool_budget（hard_gate）加expectations.max_tool_calls=0，rubric里还写了“tool_budget核查”。按当前规范，禁止调用工具不得用tool_budget指标及expectations.max_tool_calls=0表达，工具调用与文件证据应由执行器提供。这不影响本次“数字答对”的结论，但该指标一旦hard_gate生效，会让一个不合规口径单独决定整案成败。建议：保留两条answer_equals不动，把工具要求改写为rubric中的执行器证据说明，删除tool_budget指标条目与max_tool_calls字段。",
+          "【问题2·无法判断暂停恢复位置】case证据里run_ids有两个（e0f25ce9…、323e4cba…）、approvals为空，而证据说明明确“run_ids包含同一Thread从审批中断续跑的Run，不代表重跑整个用例”。因此“发生了中断后续跑”只能视为平台侧记录，现有证据没有给出中断点与恢复点的轮次时间线，无法判断中断是否恰好落在两轮之间，也无法据此断言恢复后的第二轮独立取到了第一轮结果。此处不做推测，需执行器/平台的Run元数据才能确认。",
+          "【问题3·字段约定】标准中reviewer为UUID（c277dbea-…）而非“AI建议待确认”，reviewed_at=2026-11-15与输入日期一致。作为既有批准记录本次不追溯改动，但下次修订时应按约定填写，避免把执行期账号ID误当作人工复核人。",
+          "【问题4·标题与数据范围】数据集标题含“同题比较”，但approved_standard只含1个case，没有可比对的第二个用例，本次无法产出同题比较结论；单题单案例这一点与“只生成一个两轮算式用例”的要求本身一致。",
+          "【结论边界】两条硬门显示pass、errors为空，只能说明在本次执行证据范围内数字断言与执行器记录无失败；review_note已写明平台批准不等于独立盲测或独立人审，我的判断也不是独立人审，不能把本次pass表述为已通过人工复核。",
+          "【不适用项】本用例要求每轮只输出数字、禁止解释，故不存在可评的解释文本，不应给BusinessFacts/EvidenceBoundary/RecommendationGrounding三维打分，也不能用TaskCompletion单项替代；同时用例无附件，算式题不属于缺资料，不需登记missing_information。"
+        ],
+        "limitations": [
+          "我只有approved_standard与case:arith-2turn-pause-resume-001两份只读证据；trace_ids（tr-d8fc3de…、tr-8d98829…）仅用于定位，其内部轨迹我无法展开核验，工具零调用这一结论依赖执行器报告。",
+          "没有平台侧Run时间线（中断时刻、恢复时刻、每轮归属哪个Run），所以暂停恢复是否发生在两轮之间无法判断，任何关于“恢复后是否正确复用上一轮答案”的机制性断言都超出证据。",
+          "approvals为空且两轮turn的approval均为null，我无法区分预设批准、预设拒绝与在线等待这三种情形，也不具备批准权限，相关真实待办应由平台处理。",
+          "数据集仅一个用例、无同题对照与重复执行，无法评估该题在多次运行下的稳定性，也无法做同题比较；本次pass只能按单次执行记录解读。",
+          "本说明不构成发布批准、标准变更或失败抹除；上述口径修订建议（去掉tool_budget与max_tool_calls、按约定填写reviewer）属于待确认的改进项，需由有权限的流程采纳后才能生效。"
+        ],
+        "evidence_refs": [
+          "approved_standard",
+          "case:arith-2turn-pause-resume-001"
+        ]
+      },
+      "model": {
+        "route": "336d36a9-560f-4146-93ad-610c374f8c7e",
+        "prompt_version": "evaluation-assistant-v1"
+      },
+      "at": 1794709491.989068
+    },
+    {
+      "revision": 2,
+      "task_id": "3b3a3844-aefc-420e-b5a9-5f8396b5eb45",
+      "kind": "explain",
+      "source": "ai",
+      "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "job_id": "37ae9fff-9f8d-5133-9f6c-7c61c8edb115",
+      "evidence_hash": "7ef5ebd6566fb71d437e96fe476a39a0228e8a6b1bacbf9b8b5c9b06b48c8561",
+      "explanation": {
+        "summary": "本次只对 05验收·暂停恢复与同题比较 的单个两轮算式用例做解释性复核，不改动标准。独立计算确认 31+24=55、55-10=45，与被测实际输出「55」「\\n45」一致；逐轮精确匹配（answer_equals，去除首尾空白）为 2/2 pass，工具调用计数为 0。功能层面两轮答案均正确，第二轮也确实以第一轮答案 55 为基数。但标准本身存在一处平台规则缺陷：使用了 tool_budget 指标与 expectations.max_tool_calls=0，而平台禁止用 tool_budget 作指标、禁止设置 max_tool_calls=0，工具与文件证据应由执行器提供。因此本次 score=1.0 只能说明「在该缺陷标准下执行未观察到异常」，不能作为「该标准可以批准或复用」的依据，规则问题也不能被 AI 高分抵消。结论：结果可读为「答案正确、本轮未观察到工具调用」，标准需在后续修订请求中整改，本次不修改、不覆盖原版本。",
+        "findings": [
+          "事实（算式，独立计算）：decimal_calculate 得 31+24=55，再算 55-10=45，与 turn_expectations 中 index=0 answer_equals=\"55\"、index=1 answer_equals=\"45\" 一致，未用被测答案倒推标准。",
+          "事实（逐轮严格检查）：被测 outputs 为 [\"55\", \"\\n45\"]，第二轮带前导换行；rubric 明确「去除首尾空白后精确等于」，故 answer_equals 判 2/2 pass 与所写口径自洽，不属于用 answer_contains 冒充严格检查。",
+          "事实（多轮覆盖）：turn_expectations 按 index 0、1 连续覆盖两轮，无跳号；schema_version=3，business_rules、rubric_version（arithmetic-multiturn-v1）、provenance（source_type=curated、family_id 与 source_ref 齐全）非空，多轮结构要素齐备。",
+          "事实（工具计数）：case 证据显示 tool_names 为空、tool_budget 结果 reason=\"Tool calls: 0\"、score=1.0，即本次执行未观察到工具调用，与题面「不调用工具、不读写文件」方向一致。",
+          "事实（暂停恢复）：run_ids 为 88eee605… 与 3e8e29e4… 两个 Run，按 evidence_notes 属同一 Thread 在审批中断后续跑的 Run，不代表重跑整个用例；approvals 为空，证据中没有额外逐条批准记录。",
+          "问题（标准合规缺陷，需修订但本次不改）：标准以 metrics 含 tool_budget、expectations 含 max_tool_calls=0 表达「不调用工具」，平台规则禁止这两项用法；rubric 文本「（max_tool_calls=0，tool_budget核查）」同样需改写。",
+          "问题（可观测性）：trace tr-25858c14… 与 tr-1aa83f5d… 被同时挂到 turn_expectations 与 tool_budget 两个结果上，仅凭现有证据无法把某条输出归属到某个 Run，「暂停后在原答案基础上续算」只能由两个 run_id 间接支持，不能逐轮强证。",
+          "问题（断言强度与业务规则的轻微张力）：business_rules 写「每轮只输出数字」，而第二轮实际含前导换行。按当前 rubric 判 pass 合理；若严格核验字面要求，需另加非空白字符检查，当前标准没有这一层。",
+          "问题（题名与覆盖范围）：标题含「同题比较」，但证据中只有 1 个 case、1 个 version，没有同题对照基线或其他版本结果，「同题比较」在本证据范围内未被验证。",
+          "事实（阈值语义）：按 evidence_notes，二元规则检查结果阈值固定为 1，标准里的 threshold 不改变「全部断言须通过」的语义；两项均为 hard_gate 且 score=1.0，不存在靠放宽阈值取得通过的情况。",
+          "边界：review_note 已声明平台批准不等于独立盲测或独立人审，故本解释不构成对标准的批准、发布或对被测 Agent 的放行。"
+        ],
+        "limitations": [
+          "本输出为 AI 辅助判断，不是独立人审，也不是盲测；不改变任何已记录的 pass/fail 结论。",
+          "证据只含 1 个 case 与 1 个 version，样本量为 1，无法评估该类用例的稳定性或与同题基线的相对表现。",
+          "证据未提供逐 Run、逐轮的完整 trace 内容（仅 trace 编号与汇总指标），故「暂停—恢复后第二轮是否真正使用第一轮答案」只能由输出数值正确性间接推断。",
+          "工具与文件行为由执行器提供；我只能读取本次授权的 approved_standard 与 case:arith-2turn-pause-resume-001，无法核对更底层执行日志或工作区文件状态。",
+          "标准中 tool_budget / max_tool_calls=0 的合规缺陷已识别，但本次为解释请求未做修订；如需整改须另发修改请求并保留原版本。",
+          "无关键业务口径缺失：该算式题不依赖附件或外部资料，故无 missing_information 项。"
+        ],
+        "evidence_refs": [
+          "approved_standard",
+          "case:arith-2turn-pause-resume-001"
+        ]
+      },
+      "model": {
+        "route": "336d36a9-560f-4146-93ad-610c374f8c7e",
+        "prompt_version": "evaluation-assistant-v1"
+      },
+      "at": 1794709786.6388521
+    },
+    {
+      "revision": 3,
+      "task_id": "b376ae7e-dbc2-4f8d-9250-ca1aaf4af984",
+      "kind": "explain",
+      "source": "ai",
+      "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "job_id": "be3f3cf4-d72e-540e-bf16-69d7e344be23",
+      "evidence_hash": "1a67123a546c386b6e4f246126377ea6f1efea52e1a00fc458987b8c3718b41c",
+      "explanation": {
+        "summary": "本次仅对已批准方案 approved_standard（dataset 05验收·暂停恢复与同题比较，version 1）中唯一用例 arith-2turn-pause-resume-001 的执行记录作解释，不新增、不修改、不批准任何方案。执行侧两条结果均为 pass：turn_expectations 2/2（score 1.0，阈值 1.0），tool_budget 记录 Tool calls: 0（score 1.0），errors 为空，artifacts 为空。标准答案侧我用 decimal_calculate 独立核对：31+24=55，55-10=45，与被测输出 55 与（含前导换行的）45 在去除首尾空白后一致，逐轮 answer_equals 属精确匹配而非 answer_contains 代替，因此本轮两轮答案判定成立。主要问题有两类：其一，方案把“不得调用工具”写成 metrics 中的 tool_budget 与 expectations.max_tool_calls=0，与当前平台约束（禁止以 tool_budget 作为指标、禁止 expectations.max_tool_calls=0）冲突，且该约束本应由 rubric 文字与执行器提供的工具调用证据来核查；其二，用例设计不具区分度：第二轮 31+24-10=45 在不引用上一轮答案的情况下也能独立算出，即使发生上下文丢失或跨 Run 未续接，仍会判为通过，因而这次通过并不能证明“暂停恢复后继承上一轮答案”这一目标能力。下一步建议以新版本（例如 v2）另提 Proposal 修订，而不是覆盖本版本或据此抹掉本次失败/通过记录。",
+        "findings": [
+          "执行结果成立且自洽：case 状态 completed，errors 为空；turn_expectations 为 pass、score 1.0、reason“逐轮预期检查：2/2”；tool_budget 为 pass、score 1.0、reason“Tool calls: 0”；tool_names 为空、artifacts 为空，没有需要额外归因的失败项。",
+          "标准答案经独立计算确认：31 加 24 得 55，55 减 10 得 45（decimal_calculate 分别返回 55、45），与 approved_standard 中 turn_expectations 的 answer_equals 55/45 一致；被测输出为 \"55\" 与 \"\\n45\"，去除首尾空白后精确相等，故 2/2 判定正确。",
+          "严格性方面符合要求：两轮均以 answer_equals 做逐轮精确匹配，answer_contains/answer_excludes 为空，未出现用包含式断言冒充严格检查的情况；expectations.rubric 文字也写明了“去除首尾空白后必须精确等于”。",
+          "方案结构对 schema_version=3 的多轮要求基本齐备：business_rules 三条非空（第一轮纯算术、第二轮以第一轮答案为基数、每轮只输出数字、两轮均不调用工具不读写文件），rubric_version 为 arithmetic-multiturn-v1，provenance 为 curated 且带 source_ref/family_id/transformation_version，turn_expectations 的 index 从 0 连续覆盖到 1，metrics 含 turn_expectations，fixture 为空（属纯算式题，不属于缺附件资料）。",
+          "口径冲突（需在后续版本修正）：方案把“不调用工具”落地为 metrics 里的 tool_budget 指标和 expectations.max_tool_calls=0，这属于平台明确禁止的用法；同一约束应以 rubric 文字规则加执行器提供的工具调用/文件证据来表达，不应自造或沿用 tool_budget 作为评分指标。执行记录的 tool_budget 条目只能作为执行器给出的观察结果引用，不能当作本方案合规的证明。",
+          "设计缺陷（比口径问题更实质）：第二轮的正确答案 45 可以完全由第一轮题面独立推出（31+24-10），因此本题无法区分“真的继承了上一轮答案”和“丢了上下文自己重算”。若上下文未续接、或第二次 Run 是空上下文启动，本题仍会 2/2 通过，目标的“暂停恢复”能力实际未被验证。",
+          "暂停恢复的覆盖范围：case 只有一条，但 run_ids 有两个（35d5919a…、4951a691…），trace_ids 为两条；按 evidence_notes，run_ids 包含同一 Thread 从审批中断续跑的 Run，不代表重跑整个用例。因此本次记录可以说明“同一用例在续跑形态下执行完成且持平通过”，但不能从这些编号看出两轮之间上下文如何传递。",
+          "审批性质需如实标注：该 approved_standard 的 review_note 写明“此为执行时的批准记录；平台批准不等于独立盲测或独立人审”。因此本次 pass 只能读作一次已批准方案的执行结果，不能作为质量达标结论或独立人审结论的替代。",
+          "对比性结论的边界：标题含“同题比较”，但本次证据只有单一用例的一条执行记录（两个 Run、两条 trace），没有第二个模型、第二个版本或同题不同条件的结果，无法做任何跨条件比较；任何“优于/劣于”的表述目前都缺乏证据。",
+          "trace 与 run 编号仅用于定位，我未读到其内部内容；两轮 answers 之外的过程信息（是否真的把第一轮答案作为第二轮输入）在现有证据中不可得，故对该点只能写为无法判断，而不能推定通过。",
+          "改进方向（建议按新版本另提 Proposal，并先经 validate_test_plan 校验）：一是移除 tool_budget 指标与 expectations.max_tool_calls=0，把“两轮不调用工具、不读写文件”写成 rubric 明确规则条款并要求执行器证据核查；二是把第二轮改成依赖不可预先推出的第一轮数字（例如使用 {{合成文件}} 中的合成基数，或让第一轮给出无法由题面独立重算的值），使“上下文丢失”能被判失败；三是保留每轮 answer_equals 精确匹配，并可在 rubric 中增加“第二轮须引用第一轮答案”的可核查描述。"
+        ],
+        "limitations": [
+          "可读证据只有 approved_standard 与 case:arith-2turn-pause-resume-001 两条，trace_ids（tr-c1f8a1…、tr-d13a41…）仅用于定位，我未读取其内容；因此无法核对每轮的实际输入上下文、也无法独立复核“Tool calls: 0”之外的执行细节。",
+          "本轮请求为解释既有结果，我未新建或修订方案，也未调用 validate_test_plan；上面的修正建议尚未经过 schema 校验，属待确认建议而非已批准口径。",
+          "无法从现有证据判断第二次 Run 是否真正继承了第一轮答案；结合本题可独立重算的特性，这次 pass 不足以支撑“暂停恢复能力已验证”的结论。",
+          "本次结论只针对这一条合成用例的一次执行记录，不外推到其他模型、其他版本或其他算术/多轮场景，也不构成对被测 Agent 整体质量的评价。",
+          "AI 的解释不构成独立人审，也不能抵消方案层面的口径违规（tool_budget 指标、max_tool_calls=0）；规则问题需在后续版本中另行修正并复核。",
+          "该数据集自述为虚构测试、数据类别为 synthetic，不涉及真实业务资料；本回复未做金额归月、筛选范围等业务口径推断，因为没有相关数据。"
+        ],
+        "evidence_refs": [
+          "approved_standard",
+          "case:arith-2turn-pause-resume-001"
+        ]
+      },
+      "model": {
+        "route": "336d36a9-560f-4146-93ad-610c374f8c7e",
+        "prompt_version": "evaluation-assistant-v1"
+      },
+      "at": 1794709892.8794858
+    },
+    {
+      "reason": "请复核你对零工具规则的解释：已批准标准使用tool_budget和max_tool_calls=0来验证不调用工具，这是一条合法规则。请核对原始证据并纠正“平台禁止该指标”的说法；保持原规则评分和运行不变，分别说明规则结果与方案区分度局限。",
+      "kind": "evidence_review",
+      "task_id": "b376ae7e-dbc2-4f8d-9250-ca1aaf4af984",
+      "judgment_revision": 3,
+      "revision": 4,
+      "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "source": "human",
+      "at": 1794710001.467337
+    },
+    {
+      "revision": 5,
+      "task_id": "b376ae7e-dbc2-4f8d-9250-ca1aaf4af984",
+      "kind": "evidence_review",
+      "source": "ai",
+      "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "job_id": "526fd4cd-7c9b-49a7-a559-2a7c91b1a72a",
+      "evidence_hash": "1a67123a546c386b6e4f246126377ea6f1efea52e1a00fc458987b8c3718b41c",
+      "explanation": {
+        "summary": "经复核原始证据，此前“平台禁止把 tool_budget 与 max_tool_calls=0 用作零工具调用检查”的解释不成立，应予纠正：approved_standard 中该用例明确以 metrics 中的 tool_budget（threshold=1.0，hard_gate=true）配合 expectations.max_tool_calls=0 来核验“两轮均不调用任何工具”，这是合法的零工具调用检查。按已确认标准和正式执行结果，本案规则评分维持不变：turn_expectations 通过（2/2），tool_budget 通过（Tool calls: 0），两项均为 hard_gate；本轮不改动标准、不覆盖原版本，也没有为了得到通过结果而调整任何断言。独立用 decimal_calculate 核算：31+24=55，55-10=45，与逐轮 answer_equals 的预期一致（第二轮输出为“\\n45”，去除首尾空白后等于45，符合既定口径）。规则通过结论与方案区分度方面的局限是两件分开评价的事：规则确实通过；但该用例对能力的区分力有限。",
+        "findings": [
+          "【事实·标准】approved_standard 的 expectations 写明“两轮工具调用总数必须为0（max_tool_calls=0，tool_budget核查）”，metrics 中列出 tool_budget，threshold=1.0、hard_gate=true；用例 schema_version=3，business_rules、rubric_version（arithmetic-multiturn-v1）与 provenance 均非空，满足多轮用例的基本要求。",
+          "【事实·纠正】因此“平台禁止用 tool_budget 验证零工具调用”的说法与原始证据冲突，应撤回；零工具调用检查由 tool_budget + expectations.max_tool_calls=0 表达，属于标准内的合法规则，不应被描述为无效或违规做法。",
+          "【事实·算术】独立计算（decimal_calculate）：31 + 24 = 55；55 - 10 = 45。两轮答案归属清楚，第二轮以第一轮答案55为基数减10，不涉及退款月份或筛选范围等金额口径问题。",
+          "【事实·执行】case:arith-2turn-pause-resume-001 状态 completed，errors 为空；turn_expectations 为 pass、score 1.0、reason“逐轮预期检查：2/2”；tool_budget 为 pass、score 1.0、reason“Tool calls: 0”；tool_names 为空，approvals 为空。",
+          "【事实·输出】实际输出为 \"55\" 与 \"\\n45\"；逐轮 answer_equals 按去首尾空白后精确比较，分别等于55和45，与标准一致，第二轮的前导换行不构成失败。",
+          "【事实·证据说明】证据备注指出：二元规则检查结果阈值固定为1，原方案 threshold 不改变“全部断言须通过”的规则；run_ids 包含同一 Thread 从审批中断续跑的 Run，不代表重跑整个用例；trace_ids 仅用于定位。故不能把两个 run_id 解读为用例被完整重跑两次。",
+          "【判断】本案无规则失败、无安全违规，因此不存在“用 AI 高分抵消失败”的情形；也没有需要抹掉的旧失败记录。本轮仅纠正对零工具规则的解释，规则评分与运行记录保持原样。",
+          "【判断·区分度】该方案仅有 1 个用例、2 轮极简算术，且要求只输出数字并零工具调用，预期结果高度可猜中（55/45 对两轮算式几乎唯一），存在明显天花板效应；它能有效校验“暂停恢复后是否能基于上一轮答案续算”和“是否守约不调用工具”，但对模型能力的横向区分力弱。此结论与规则是否通过无关，不构成对通过的否定。",
+          "【判断·人审边界】批准的 review_note 明确“平台批准不等于独立盲测或独立人审”，本轮为 AI 复核，不替代独立人工评审，也不构成新的批准动作。",
+          "【建议·不改标准前提下】若要提升区分度，可另行提出新用例（例如加入需要跨轮保持中间量的三步算式、或加入“禁止读取文件但允许纯计算”的对照题），作为新提案评审；不得为本用例追加或修改断言以求更“好看”的结果。"
+        ],
+        "limitations": [
+          "只能依据本次授权可读的 approved_standard 与 case:arith-2turn-pause-resume-001 两份证据；trace_ids 仅用于定位，无法据此展开逐 token 的推理过程审阅。",
+          "tool_budget 的 0 次调用覆盖的是工具调用通道；若存在不经过工具调用的文件访问路径，本指标不直接证明其未发生，仅能说明未记录任何工具调用（tool_names 为空）。",
+          "执行证据只显示每个 run 的最终输出，无法从证据判断模型是真正“暂停恢复”续用了上一轮答案，还是恰好独立算出45；暂停/恢复机制本身的正确性超出这两份证据的证明范围。",
+          "单用例、单一口径（精确匹配 + 零工具调用）无法支撑数据集层面的通过率或稳定性结论；run_ids 中的两个 Run 属同一 Thread 的续跑，不构成重复测量。",
+          "本轮为 AI 复核，不是独立人审，也不是新的平台批准；如需正式结论，仍需按平台流程由人工处理。"
+        ],
+        "evidence_refs": [
+          "approved_standard",
+          "case:arith-2turn-pause-resume-001"
+        ]
+      },
+      "model": {
+        "route": "336d36a9-560f-4146-93ad-610c374f8c7e",
+        "prompt_version": "evaluation-assistant-v1"
+      },
+      "at": 1794710023.089731
+    }
+  ],
+  "assertions": {
+    "no_new_execution": true,
+    "original_results_unchanged": true,
+    "same_standard_comparison": true
+  }
+}

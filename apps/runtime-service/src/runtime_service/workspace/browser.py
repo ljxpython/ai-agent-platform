@@ -174,11 +174,21 @@ class WorkspaceBrowser:
             and not parts[1].startswith(".")
             and Path(parts[1]).suffix[1:].lower() in ARTIFACT_MIMES
         ):
-            return ArtifactWorkspace(self.root).read(path)
+            try:
+                return ArtifactWorkspace(self.root).read(path)
+            except DocumentError as exc:
+                if exc.code == "artifact_not_found":
+                    raise DocumentError("file_not_found", 404) from None
+                raise
         try:
             data = self.io.read(path)
-        except ToolException:
-            raise DocumentError("workspace_file_unavailable", 404) from None
+        except ToolException as exc:
+            code = (
+                "file_not_found"
+                if isinstance(exc.__cause__, FileNotFoundError)
+                else "workspace_file_unavailable"
+            )
+            raise DocumentError(code, 404) from None
         if len(data) > MAX_FILE_BYTES:
             raise DocumentError("file_too_large", 413)
         mime = ARTIFACT_MIMES.get(

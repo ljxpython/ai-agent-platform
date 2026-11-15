@@ -1,0 +1,324 @@
+{
+  "scope": "synthetic_browser_upload_human_selected_file",
+  "item_id": "ced00583-e9e7-5021-b0f4-b4488f1b6bf4",
+  "same_assistant_run_after_worker_restart": true,
+  "version_count": 1,
+  "operation_count": 1,
+  "operation": {
+    "id": "2c702539-b642-41ac-9b36-efbddc5991d0",
+    "revision": 1,
+    "content_hash": "e098c3ff1e199ef404eb725fc0c27e210d95c55d00f40923fc317ebce15c5678",
+    "selected_case_ids": [
+      "sales-oct-paid-total-001"
+    ],
+    "selection_hash": "ab05a1ae37e8eac4da9152fb5a170dee10ac4db71d88559f163fc176c26ce595",
+    "source_task_id": null,
+    "excluded_case_ids": [
+      "sales-oct-paid-south-001"
+    ],
+    "stage": "completed",
+    "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+    "created_at": 1794707666.0030239,
+    "approved_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+    "approved_at": 1794707666.0030248,
+    "grants": {
+      "evaluation_assistance": "7d3b8b62-1088-43d2-82ac-08d42bc0e44d",
+      "regression": "369ab822-ff4c-42af-aa80-9b54e2d58b37"
+    },
+    "receipts": {},
+    "dataset_id": "d-d5d7df4247da4b1a857bce58999681b1",
+    "dataset_version": 1,
+    "dataset_hash": "214367eaba01aaf59459435754e3cc88e1d895a978031fcfaa157436242f23c0",
+    "task_id": "2c702539-b642-41ac-9b36-efbddc5991d0",
+    "task_status": "failed"
+  },
+  "results": [
+    {
+      "task_id": "2c702539-b642-41ac-9b36-efbddc5991d0",
+      "name": "05验收·上传文件与部分采纳 · 验证",
+      "status": "failed",
+      "completed": 1,
+      "total": 1,
+      "created_at": 1794707674.982611,
+      "finished_at": 1794707743.638415,
+      "error": null,
+      "dataset": {
+        "logical_id": "fe6a81c6-a521-5ae4-933d-237f58fc787c",
+        "version": 1,
+        "name": "05验收·上传文件与部分采纳",
+        "description": "由平台真实用户评审的合成回归方案",
+        "owner": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+        "capabilities": [],
+        "purpose": "regression",
+        "blind_eligible": false,
+        "exposure": "Imported through developer-visible evaluation workflow",
+        "status": "published",
+        "count": 1,
+        "requirements": {
+          "graph_id": "dearflow_agent"
+        },
+        "authorization_batch": "369ab822-ff4c-42af-aa80-9b54e2d58b37",
+        "experiment_id": "15",
+        "platform_review": {
+          "work_item_id": "ced00583-e9e7-5021-b0f4-b4488f1b6bf4",
+          "operation_id": "2c702539-b642-41ac-9b36-efbddc5991d0",
+          "revision": 1,
+          "content_hash": "e098c3ff1e199ef404eb725fc0c27e210d95c55d00f40923fc317ebce15c5678"
+        },
+        "source_exports": [
+          "369ab822-ff4c-42af-aa80-9b54e2d58b37"
+        ],
+        "id": "d-d5d7df4247da4b1a857bce58999681b1",
+        "content_hash": "214367eaba01aaf59459435754e3cc88e1d895a978031fcfaa157436242f23c0"
+      },
+      "target": {
+        "profile_id": "local-dearflow",
+        "name": "Dearflow · 确定性基准",
+        "agent": {
+          "id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+          "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+          "name": "dearflow_agent",
+          "graph_id": "dearflow_agent",
+          "status": "active",
+          "context": {},
+          "model_resilience": {
+            "enabled": false,
+            "fallback_model_id": null,
+            "max_attempts": 3,
+            "attempt_timeout_seconds": 600.0,
+            "total_timeout_seconds": 900.0
+          }
+        },
+        "agent_hash": "df0b2974a6404508d949900c60a6ad93d6a61270b36a591bdd02dd2619ffaf8f",
+        "resources": {
+          "model": {
+            "catalog_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "display_name": "Evaluation xiaok DeepSeek",
+            "policy": {
+              "is_enabled": true,
+              "is_default_for_project": true,
+              "temperature_default": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "graph": {
+            "catalog_id": "b413522d-f758-43a6-abee-a3044a030616",
+            "graph_id": "dearflow_agent",
+            "display_name": "dearflow_agent",
+            "description": "",
+            "source_type": "default_assistant",
+            "sync_status": "ready",
+            "last_synced_at": "2026-11-15T00:39:30.593767+08:00",
+            "policy": {
+              "is_enabled": true,
+              "display_order": null,
+              "note": null,
+              "updated_at": null
+            }
+          },
+          "tool_restrictions": [],
+          "runtime_source_hash": "2b3d0ce30cdb2dec52feeaea66a92ca5467b09db6da6061f000d1b2106304861"
+        },
+        "resource_hash": "7504f468d4db29be27c2e8125c420d43eb35fd6ad6835d68fea7eb3e1294cbba",
+        "context": {
+          "temperature": 0,
+          "max_tokens": 4096,
+          "top_p": 1,
+          "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+          "execution_mode": "standard"
+        },
+        "source": null,
+        "differences": "通用能力评测；使用专用项目合成资源，不代表生产业务验收。",
+        "config_hash": "d70c569a0f44f9bbd21210b1ed72cf978d4ccd3e5ca497896fc466f51f98ccec"
+      },
+      "gate": {
+        "gate_policy_version": "3",
+        "exit_code": 1,
+        "status": "fail",
+        "planned_cases": 1,
+        "recorded_cases": 1,
+        "errors": [],
+        "failures": [
+          "sales-oct-paid-total-001:turn_expectations"
+        ],
+        "warnings": [
+          "budget_policy_not_configured"
+        ],
+        "comparisons": [],
+        "metrics": {
+          "turn_expectations": 0.0
+        },
+        "applicable_counts": {
+          "turn_expectations": 1
+        },
+        "budget": {
+          "status": "not_configured",
+          "errors": [],
+          "failures": [],
+          "cases": {}
+        }
+      },
+      "comparison_key": "145f4e907d86700a9c1dafa5eeb4440949fbafa05b711868c0bca7c5d8742742",
+      "evidence_hash": "c9b2d29e0498dced7c7e74780b4d874fb3c064c19606b1d1c65f6dc2a7c756c2",
+      "evidence": {
+        "approved_standard": {
+          "dataset_name": "05验收·上传文件与部分采纳",
+          "version": 1,
+          "cases": [
+            {
+              "schema_version": "3",
+              "case_id": "sales-oct-paid-total-001",
+              "turns": [
+                {
+                  "content": "附件为 {{sales.csv}}（合成数据，字段：order_id、order_date、region、paid_amount、status）。请仅使用该附件，不联网、不调用外部服务。筛选 order_date 在 2026-10-01 至 2026-10-31（含首尾）、status 精确等于 paid 的订单，对 paid_amount 求和；不扣退款、不扣折扣，不按其他状态或月份调整。结果只输出一个纯数字，保留两位小数，不要单位、千分位或任何解释。",
+                  "approval": null
+                }
+              ],
+              "fixture": {
+                "sales.csv": "order_id,order_date,region,paid_amount,status\nO100,2026-10-03,华东,120.00,paid\nO101,2026-10-12,华南,80.00,paid\nO102,2026-10-20,华东,50.00,cancelled\nO103,2026-09-28,华东,200.00,paid\nO104,2026-10-25,华东,100.00,paid\n"
+              },
+              "provenance": {
+                "source_type": "curated",
+                "source_ref": "369ab822-ff4c-42af-aa80-9b54e2d58b37",
+                "family_id": "ced00583-e9e7-5021-b0f4-b4488f1b6bf4.sales-oct-paid-total-001",
+                "parent_case_ref": null,
+                "transformation_version": "workbench-v1"
+              },
+              "access_policy": "review",
+              "reviewer": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+              "reviewed_at": "2026-11-15",
+              "business_rules": [
+                "order_date按日历月筛选，2026年10月为2026-10-01至2026-10-31（含首尾）。",
+                "仅汇总status精确等于paid的订单，cancelled等其他状态不计。",
+                "销售额指标为paid_amount求和，金额保留两位小数；本夹具不扣退款或折扣。",
+                "仅输出数字，不输出解释、单位、千分位或工具说明。",
+                "附件为合成文件 {{sales.csv}}，不得使用外部数据或外部服务。"
+              ],
+              "rubric_version": "sales-v1",
+              "expectations": {
+                "max_tool_calls": 20,
+                "rubric": "已确认标准：order_date按日历月筛选，2026年10月范围为2026-10-01至2026-10-31（含首尾）；仅status==paid参与；销售额为paid_amount求和；不扣退款或折扣；答案只含数字并保留两位小数。去除首尾空白后精确等于300.00才通过，出现单位、千分位、附加说明或其他金额均不通过。",
+                "status": "completed"
+              },
+              "turn_expectations": [
+                {
+                  "index": 0,
+                  "answer_equals": "300.00",
+                  "answer_contains": [],
+                  "answer_excludes": [],
+                  "artifacts": {}
+                }
+              ],
+              "metrics": [
+                {
+                  "name": "turn_expectations",
+                  "threshold": 1.0,
+                  "hard_gate": true
+                }
+              ]
+            }
+          ],
+          "review_note": "此为执行时的批准记录；平台批准不等于独立盲测或独立人审。",
+          "evidence_notes": [
+            "二元规则检查的结果阈值固定为1；原方案threshold不改变全部断言须通过的规则。",
+            "逐轮预期中的计数是答案和文件断言组数，不是对话轮数。",
+            "run_ids包含同一Thread从审批中断续跑的Run，不代表重跑整个用例。",
+            "trace_ids仅用于定位；本工具可读取的证据编号是approved_standard和case:<case_id>。"
+          ]
+        },
+        "case:sales-oct-paid-total-001": {
+          "case_id": "sales-oct-paid-total-001",
+          "status": "interrupted",
+          "inputs": [
+            "附件为 /workspace/uploads/f0c5aa902103b19949a2785c5e834e00c257b86ab975a15becf51f00528dbc72.txt（合成数据，字段：order_id、order_date、region、paid_amount、status）。请仅使用该附件，不联网、不调用外部服务。筛选 order_date 在 2026-10-01 至 2026-10-31（含首尾）、status 精确等于 paid 的订单，对 paid_amount 求和；不扣退款、不扣折扣，不按其他状态或月份调整。结果只输出一个纯数字，保留两位小数，不要单位、千分位或任何解释。"
+          ],
+          "outputs": [
+            ""
+          ],
+          "errors": [],
+          "results": [
+            {
+              "name": "turn_expectations",
+              "version": "1",
+              "status": "fail",
+              "score": 0.0,
+              "threshold": 1.0,
+              "reason": "逐轮预期检查：0/1",
+              "evidence_refs": [
+                "tr-3e5e1b0dbbcea45f18921244215cf200"
+              ],
+              "error_code": null
+            }
+          ],
+          "run_ids": [
+            "8bfc7ca9-0d0c-4e35-9b1e-5ae00a35be05"
+          ],
+          "trace_ids": [
+            "tr-3e5e1b0dbbcea45f18921244215cf200"
+          ],
+          "tool_names": [
+            "read_file",
+            "execute"
+          ],
+          "approvals": [],
+          "artifacts": {}
+        }
+      },
+      "cases": [
+        {
+          "case_id": "sales-oct-paid-total-001",
+          "status": "interrupted",
+          "inputs": [
+            "附件为 /workspace/uploads/f0c5aa902103b19949a2785c5e834e00c257b86ab975a15becf51f00528dbc72.txt（合成数据，字段：order_id、order_date、region、paid_amount、status）。请仅使用该附件，不联网、不调用外部服务。筛选 order_date 在 2026-10-01 至 2026-10-31（含首尾）、status 精确等于 paid 的订单，对 paid_amount 求和；不扣退款、不扣折扣，不按其他状态或月份调整。结果只输出一个纯数字，保留两位小数，不要单位、千分位或任何解释。"
+          ],
+          "outputs": [
+            ""
+          ],
+          "errors": [],
+          "results": [
+            {
+              "name": "turn_expectations",
+              "version": "1",
+              "status": "fail",
+              "score": 0.0,
+              "threshold": 1.0,
+              "reason": "逐轮预期检查：0/1",
+              "evidence_refs": [
+                "tr-3e5e1b0dbbcea45f18921244215cf200"
+              ],
+              "error_code": null
+            }
+          ],
+          "run_ids": [
+            "8bfc7ca9-0d0c-4e35-9b1e-5ae00a35be05"
+          ],
+          "trace_ids": [
+            "tr-3e5e1b0dbbcea45f18921244215cf200"
+          ],
+          "tool_names": [
+            "read_file",
+            "execute"
+          ],
+          "approvals": [],
+          "artifacts": {},
+          "evidence_ref": "case:sales-oct-paid-total-001"
+        }
+      ],
+      "pending_actions": []
+    }
+  ],
+  "risk_acceptance": {
+    "reason": "本轮只验证上传文件和部分采纳链路。被测Agent在工具审批处中断，金额未作答，保留未通过结果；不据此宣布业务能力通过。",
+    "kind": "accept_risk",
+    "task_id": "2c702539-b642-41ac-9b36-efbddc5991d0",
+    "judgment_revision": 0,
+    "revision": 1,
+    "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+    "source": "human",
+    "at": 1794707943.2998452
+  },
+  "original_failure_preserved": true,
+  "frozen_case_count": 1
+}

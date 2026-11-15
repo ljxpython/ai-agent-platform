@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { renderMarkdown } from "./markdown";
 
 describe("renderMarkdown", () => {
+  it("评测证据预览不加载正文引用的图片，且不改变普通预览", () => {
+    const md =
+      "![外部图片](https://example.com/track)\n\n| A | B |\n|---|---|\n| 1 | 2 |";
+    const html = renderMarkdown(md, true);
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("src=");
+    expect(html).toContain("图片未加载");
+    expect(html).toContain("<table>");
+    expect(renderMarkdown(md)).toContain("<img");
+  });
   it("应当保留安全的 http 和 https 链接及图片", () => {
     const md =
       "[Google](https://google.com) ![Logo](http://example.com/logo.png)";

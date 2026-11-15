@@ -43,6 +43,9 @@ from runtime_service.observability import (
     initialize_langfuse,
     runtime_metrics,
 )
+from runtime_service.observability.evaluation_environment import (
+    environment_retention_lifespan,
+)
 from runtime_service.observability.query import diagnostics_client_lifespan
 from runtime_service.observability.usage_projection import usage_projection_lifespan
 from runtime_service.run_control.service import run_control_lifespan
@@ -69,6 +72,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             diagnostics_client_lifespan(),
             run_control_lifespan(),
             usage_projection_lifespan(),
+            environment_retention_lifespan(),
             background_tasks_lifespan(),
         ):
             yield

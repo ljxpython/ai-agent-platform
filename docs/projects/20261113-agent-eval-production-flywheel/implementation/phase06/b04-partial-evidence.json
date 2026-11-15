@@ -1,0 +1,84 @@
+{
+  "thread_id": "d552a664-0954-463d-aa76-1ed7a2bba4db",
+  "status": "error",
+  "errors": [
+    "approval_tool_not_authorized",
+    "simulation_InterruptedError"
+  ],
+  "run_ids": [
+    "de7524d5-2226-4d92-8f54-00605ae85ef9",
+    "a97b7edb-74e9-49df-8619-16269236610e",
+    "0e357c50-a3c7-44aa-b55d-6824e176eddd"
+  ],
+  "trace_ids": [
+    "tr-ce36ba7762fc1939aa8174402abf0f47",
+    "tr-aebfc55ba10117e0b60b713e9e8f93e7",
+    "tr-f0e844ea62411974f6a17389e7ce7f09"
+  ],
+  "tools": [
+    {
+      "name": "read_file",
+      "args": {
+        "file_path": "/workspace/uploads/1bd3460c991732b220fde596a74c8d421472a4308692374682ad740f97e067f9.txt"
+      },
+      "id": "call_00_ZzkIlaK4uL6SlQGvJ6Ey0780"
+    },
+    {
+      "name": "read_file",
+      "args": {
+        "file_path": "/workspace/uploads/7cc76f4e8feea553704168e9b32a8390ad22d309ae0f9c837f6cf3b76c1e4828.txt"
+      },
+      "id": "call_01_t7d0F3lib6rZohyrHye46023"
+    },
+    {
+      "name": "write_file",
+      "args": {
+        "file_path": "/workspace/work/reports/report.md",
+        "content": "销售：1800\n退款：300\n净收入：1500"
+      },
+      "id": "call_00_3ij2IqQshYEKQyTR48XY8650"
+    },
+    {
+      "name": "execute",
+      "args": {
+        "command": "wc -c < /workspace/work/reports/report.md; od -c /workspace/work/reports/report.md | tail -4"
+      },
+      "id": "call_00_ET_wDboI5zMdCwNhJU9vZdT1018"
+    }
+  ],
+  "artifacts": {
+    "/workspace/uploads/1bd3460c991732b220fde596a74c8d421472a4308692374682ad740f97e067f9.txt": "order_id,sale_date,amount\nS1,2026-09-20,600\nS2,2026-10-02,1000\nS3,2026-10-15,800",
+    "/workspace/work/reports/report.md": "销售：1800\n退款：300\n净收入：1500",
+    "/workspace/uploads/7cc76f4e8feea553704168e9b32a8390ad22d309ae0f9c837f6cf3b76c1e4828.txt": "refund_id,order_id,refund_date,amount\nR1,S1,2026-10-05,100\nR2,S2,2026-10-18,200\nR3,S3,2026-11-02,50"
+  },
+  "pending_approval": {
+    "turn_index": 1,
+    "run_id": "0e357c50-a3c7-44aa-b55d-6824e176eddd",
+    "interrupts": [
+      {
+        "value": {
+          "action_requests": [
+            {
+              "name": "execute",
+              "args": {
+                "command": "wc -c < /workspace/work/reports/report.md; od -c /workspace/work/reports/report.md | tail -4"
+              },
+              "description": "Tool execution requires approval\n\nTool: execute\nArgs: {'command': 'wc -c < /workspace/work/reports/report.md; od -c /workspace/work/reports/report.md | tail -4'}"
+            }
+          ],
+          "review_configs": [
+            {
+              "action_name": "execute",
+              "allowed_decisions": [
+                "approve",
+                "edit",
+                "reject"
+              ]
+            }
+          ]
+        },
+        "id": "ff48d38e6da90574acf397043d524d12"
+      }
+    ]
+  }
+}

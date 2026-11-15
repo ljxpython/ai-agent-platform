@@ -1,0 +1,130 @@
+{
+  "checked_at": "2026-11-15T02:41:22.808877+00:00",
+  "scope": "344c local synthetic only",
+  "platform_workbench_enabled": true,
+  "evalflow_workbench_enabled": "1",
+  "sample_rate": 0.0,
+  "context_bound_verified": false,
+  "old_experiment_8_status": 200,
+  "authenticated_catalog_status": 200,
+  "work_item": {
+    "id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+    "latest_task_id": "b376ae7e-dbc2-4f8d-9250-ca1aaf4af984",
+    "latest_status": "passed"
+  },
+  "summary": {
+    "work_items": 14,
+    "runs": 5,
+    "statuses": {
+      "error": 2,
+      "passed": 3
+    },
+    "completed_runs": 3,
+    "failure_metrics": {},
+    "trend": [
+      {
+        "task_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+        "created_at": 1794709235.8549519,
+        "status": "error",
+        "completed": 0,
+        "total": 1
+      },
+      {
+        "task_id": "2e20f1a4-33ba-4c76-95a5-e151edfa4ede",
+        "created_at": 1794709403.092179,
+        "status": "passed",
+        "completed": 1,
+        "total": 1
+      },
+      {
+        "task_id": "6d9267ba-4d29-43b3-9f21-b8a4679b55fa",
+        "created_at": 1794709517.270516,
+        "status": "error",
+        "completed": 0,
+        "total": 1
+      },
+      {
+        "task_id": "3b3a3844-aefc-420e-b5a9-5f8396b5eb45",
+        "created_at": 1794709681.046289,
+        "status": "passed",
+        "completed": 1,
+        "total": 1
+      },
+      {
+        "task_id": "b376ae7e-dbc2-4f8d-9250-ca1aaf4af984",
+        "created_at": 1794709763.2941718,
+        "status": "passed",
+        "completed": 1,
+        "total": 1
+      }
+    ],
+    "notes": [
+      "仅统计你当前有权读取且资料有效的运行。",
+      "取消、错误、未完成均单列；没有反馈不代表满意。",
+      "不同题库和标准不合并均分。"
+    ],
+    "inspection": {
+      "enabled": false,
+      "sample_rate": 0,
+      "reason": "真实自动抽样尚未启用；独立巡检授权不会随回归授权自动开启。",
+      "results": [],
+      "notes": "仅展示当前仍获准的已评分合成巡检；分数不代表根因或全项目质量。转为建议后仍需独立授权。"
+    }
+  },
+  "logs": [
+    {
+      "repository": "ai-agent-platform",
+      "path": "/Users/lijiaxin/.codex/worktrees/344c/ai-agent-platform/.local-stack/phase05-post-rollback-platform.log",
+      "sha256": "d577b7d6666935ee5790e367eb828800acd4c64b90b881a7ebfabc8ecba69014",
+      "result": [
+        "70 passed in 11.00s"
+      ]
+    },
+    {
+      "repository": "ai-agent-platform",
+      "path": "/Users/lijiaxin/.codex/worktrees/344c/ai-agent-platform/.local-stack/phase05-final-runtime-recheck.log",
+      "sha256": "24ebe1eb465c6e815eca2ba53a5a6cf6ab02146c83f3ccbfd972acef82550e86",
+      "result": [
+        "34 passed, 5 warnings in 6.38s"
+      ]
+    },
+    {
+      "repository": "ai-agent-platform",
+      "path": "/Users/lijiaxin/.codex/worktrees/344c/ai-agent-platform/.local-stack/phase05-final-ui-tests.log",
+      "sha256": "4c88afbf0d7d5f7e0f43493526ae34715f573dc24fba4e53cc4753d4fc067f58",
+      "result": [
+        "Test Files  4 passed (4)",
+        "Tests  19 passed (19)"
+      ]
+    },
+    {
+      "repository": "ai-agent-platform",
+      "path": "/Users/lijiaxin/.codex/worktrees/344c/ai-agent-platform/.local-stack/phase05-final-web-build.log",
+      "sha256": "34d9ab670a2332082a01ae28899a431a854b35f0e6882ae12d2cd712c6932d09",
+      "result": [
+        "✓ built in 22.12s"
+      ]
+    },
+    {
+      "repository": "mlflow-eval-platform",
+      "path": "/Users/lijiaxin/.codex/worktrees/344c/mlflow-eval-platform/.local-stack/phase05-final-complete-tests.log",
+      "sha256": "95ce7b3a3f30deeaaa8e27b1805d0e2cc68a3065d88812995a2276e1158cfb07",
+      "result": [
+        "======================= 415 passed, 6 warnings in 41.85s ======================="
+      ]
+    }
+  ],
+  "initial_probe_errors": {
+    "wrong_catalog_path": "/api/evaluation/catalog",
+    "wrong_dataset_version": "/ajax-api/2.0/mlflow/datasets/...",
+    "status": 403,
+    "correction": "Inspected actual routes; native dataset API is v3, catalog is /ajax-api/evalflow/tasks/catalog. No permissions changed."
+  },
+  "authenticated_catalog_path": "/ajax-api/evalflow/tasks/catalog",
+  "old_dataset": {
+    "id": "d-33f42c7770fe4083b751f582b3f85c02",
+    "native_api_version": 3,
+    "status": 200,
+    "name": "回流 · curated.097c00f5 · v1"
+  }
+}

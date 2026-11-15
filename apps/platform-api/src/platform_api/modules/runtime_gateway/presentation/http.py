@@ -2113,6 +2113,24 @@ async def get_thread_run_diagnostics(
     )
 
 
+@router.get("/threads/{thread_id}/runs/{run_id}/execution-evidence")
+async def get_thread_execution_evidence(
+    request: Request,
+    thread_id: UUID,
+    run_id: UUID,
+    response: Response,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    response.headers["Cache-Control"] = "no-store"
+    return await service.get_thread_execution_evidence(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        run_id=str(run_id),
+    )
+
+
 @router.get("/threads/{thread_id}/runs/{run_id}/usage", response_model=RunUsage)
 async def get_thread_run_usage(
     request: Request,

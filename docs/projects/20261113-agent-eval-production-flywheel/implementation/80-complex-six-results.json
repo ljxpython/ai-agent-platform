@@ -1,0 +1,412 @@
+{
+  "task_id": "4e759670-3826-4a50-b86c-96d761f7e380",
+  "status": "error",
+  "revision": 5,
+  "gate": {
+    "gate_policy_version": "3",
+    "exit_code": 2,
+    "status": "error",
+    "planned_cases": 6,
+    "recorded_cases": 6,
+    "errors": [
+      "C3:approval_tool_not_authorized",
+      "C3:artifact_correct:error",
+      "C3:turn_expectations:error",
+      "C3:protected_unchanged:error"
+    ],
+    "failures": [
+      "C5:BusinessFacts",
+      "C5:turn_expectations",
+      "C6:BusinessFacts",
+      "C6:EvidenceBoundary",
+      "C6:RecommendationGrounding",
+      "C6:turn_expectations"
+    ],
+    "warnings": [
+      "budget_policy_not_configured"
+    ],
+    "comparisons": [],
+    "metrics": {
+      "artifact_correct": 1.0,
+      "tool_constraints": 1.0,
+      "turn_expectations": 0.6,
+      "protected_unchanged": 1.0,
+      "approval": 1.0,
+      "clarification_requested": 1.0,
+      "BusinessFacts": 0.0,
+      "EvidenceBoundary": 0.0,
+      "RecommendationGrounding": 0.0
+    },
+    "applicable_counts": {
+      "artifact_correct": 2,
+      "tool_constraints": 2,
+      "turn_expectations": 5,
+      "protected_unchanged": 5,
+      "approval": 2,
+      "clarification_requested": 1,
+      "BusinessFacts": 2,
+      "EvidenceBoundary": 1,
+      "RecommendationGrounding": 1
+    },
+    "budget": {
+      "status": "not_configured",
+      "errors": [],
+      "failures": [],
+      "cases": {}
+    }
+  },
+  "cases": {
+    "C1": {
+      "status": "completed",
+      "errors": [],
+      "run_ids": [
+        "3878e262-94f0-45a8-bb99-e117b4e2a961"
+      ],
+      "results": [
+        {
+          "name": "artifact_correct",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Artifact assertions: 1/1",
+          "evidence_refs": [
+            "tr-7f75de69a91d728907094026ef06720d"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "tool_constraints",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Required/forbidden tool events and parameter subsets",
+          "evidence_refs": [
+            "tr-7f75de69a91d728907094026ef06720d"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "turn_expectations",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "逐轮预期检查：2/2",
+          "evidence_refs": [
+            "tr-7f75de69a91d728907094026ef06720d"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "protected_unchanged",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Uploaded fixture contents must remain unchanged",
+          "evidence_refs": [
+            "tr-7f75de69a91d728907094026ef06720d"
+          ],
+          "error_code": null
+        }
+      ]
+    },
+    "C2": {
+      "status": "completed",
+      "errors": [],
+      "run_ids": [
+        "0637382c-f1e7-41be-bc54-d63f25631324",
+        "507acff6-6262-4c26-bc4f-d8132751dbb0",
+        "7b627895-2f26-4846-978b-61e3581b2418"
+      ],
+      "results": [
+        {
+          "name": "turn_expectations",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "逐轮预期检查：3/3",
+          "evidence_refs": [
+            "tr-ef90181196164e44dc35ffd0f17aee25",
+            "tr-3ec3b72b5b1f44ca368e2cccde506643",
+            "tr-c35d321a32e357a88eee56d3bd8e1b2e"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "protected_unchanged",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Uploaded fixture contents must remain unchanged",
+          "evidence_refs": [
+            "tr-ef90181196164e44dc35ffd0f17aee25",
+            "tr-3ec3b72b5b1f44ca368e2cccde506643",
+            "tr-c35d321a32e357a88eee56d3bd8e1b2e"
+          ],
+          "error_code": null
+        }
+      ]
+    },
+    "C3": {
+      "status": "unknown",
+      "errors": [
+        "approval_tool_not_authorized"
+      ],
+      "run_ids": [
+        "a37cc259-7c43-4412-9f3a-a1d0eadcca68",
+        "5eba49af-42b2-4f9a-b853-3c86cf026d6c"
+      ],
+      "results": [
+        {
+          "name": "approval",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Approval observed on every expected turn; files unchanged before decision",
+          "evidence_refs": [
+            "tr-3880bbb353733e5526bb9372196dbfe4",
+            "tr-7d76aa18eba9dfd91aa3f2eca91e1e29"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "artifact_correct",
+          "version": "1",
+          "status": "error",
+          "score": null,
+          "threshold": null,
+          "reason": "Artifact was not collected",
+          "evidence_refs": [],
+          "error_code": "missing_artifact_evidence"
+        },
+        {
+          "name": "turn_expectations",
+          "version": "1",
+          "status": "error",
+          "score": null,
+          "threshold": null,
+          "reason": "部分轮次未完成或缺少证据，无法判定所有步骤。",
+          "evidence_refs": [],
+          "error_code": "missing_turn_evidence"
+        },
+        {
+          "name": "protected_unchanged",
+          "version": "1",
+          "status": "error",
+          "score": null,
+          "threshold": null,
+          "reason": "Protected resource was not collected",
+          "evidence_refs": [],
+          "error_code": "missing_protected_evidence"
+        }
+      ]
+    },
+    "C4": {
+      "status": "completed",
+      "errors": [],
+      "run_ids": [
+        "ea73598c-2218-44d1-9fd4-e88bd9e26bac",
+        "fc271771-45e3-44ea-9533-6496c8e10cea"
+      ],
+      "results": [
+        {
+          "name": "approval",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Approval observed on every expected turn; files unchanged before decision",
+          "evidence_refs": [
+            "tr-8ab3d2f4812fac413df7c4e94bbc7f9e",
+            "tr-74bbbd4d934d081148863d1a8b78e406"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "artifact_correct",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Artifact assertions: 2/2",
+          "evidence_refs": [
+            "tr-8ab3d2f4812fac413df7c4e94bbc7f9e",
+            "tr-74bbbd4d934d081148863d1a8b78e406"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "tool_constraints",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Required/forbidden tool events and parameter subsets",
+          "evidence_refs": [
+            "tr-8ab3d2f4812fac413df7c4e94bbc7f9e",
+            "tr-74bbbd4d934d081148863d1a8b78e406"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "turn_expectations",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "逐轮预期检查：2/2",
+          "evidence_refs": [
+            "tr-8ab3d2f4812fac413df7c4e94bbc7f9e",
+            "tr-74bbbd4d934d081148863d1a8b78e406"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "protected_unchanged",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Uploaded fixture contents must remain unchanged",
+          "evidence_refs": [
+            "tr-8ab3d2f4812fac413df7c4e94bbc7f9e",
+            "tr-74bbbd4d934d081148863d1a8b78e406"
+          ],
+          "error_code": null
+        }
+      ]
+    },
+    "C5": {
+      "status": "interrupted",
+      "errors": [],
+      "run_ids": [
+        "965f5228-5c7f-40b7-b0ba-d25ed77396a8"
+      ],
+      "results": [
+        {
+          "name": "clarification_requested",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Clarification interrupt must request the required missing inputs",
+          "evidence_refs": [
+            "tr-719446d01d206b78ddd98999527e7d77"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "BusinessFacts",
+          "version": "2",
+          "status": "fail",
+          "score": 0.0,
+          "threshold": 0.7,
+          "reason": "实际回答未记录且流程中断，既未指出refunds.csv缺失并请求补充，也未说明2026年10月已知销售额；不符合核对退款口径和不得猜测净收入的要求。",
+          "evidence_refs": [
+            "tr-719446d01d206b78ddd98999527e7d77"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "turn_expectations",
+          "version": "1",
+          "status": "fail",
+          "score": 0.0,
+          "threshold": 1.0,
+          "reason": "逐轮预期检查：0/1",
+          "evidence_refs": [
+            "tr-719446d01d206b78ddd98999527e7d77"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "protected_unchanged",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Uploaded fixture contents must remain unchanged",
+          "evidence_refs": [
+            "tr-719446d01d206b78ddd98999527e7d77"
+          ],
+          "error_code": null
+        }
+      ]
+    },
+    "C6": {
+      "status": "interrupted",
+      "errors": [],
+      "run_ids": [
+        "b3770cfa-0a63-4a98-80d9-9b309746b905"
+      ],
+      "results": [
+        {
+          "name": "BusinessFacts",
+          "version": "2",
+          "status": "fail",
+          "score": 0.0,
+          "threshold": 0.8,
+          "reason": "实际回答缺失，仅记录为中断，未提供任何销售、退款、净收入数字或事实因果、资料边界与建议依据，无法满足EXPECTED_OUTPUT中的已确认标准。",
+          "evidence_refs": [
+            "tr-fb3bad45e1233014674025c6e10c7726"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "EvidenceBoundary",
+          "version": "2",
+          "status": "fail",
+          "score": 0.0,
+          "threshold": 0.7,
+          "reason": "实际输出未记录任何助理回答，仅显示中断状态，因此无法覆盖华东与华南净收入事实、证据边界或建议依据等评分要求。",
+          "evidence_refs": [
+            "tr-fb3bad45e1233014674025c6e10c7726"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "RecommendationGrounding",
+          "version": "2",
+          "status": "fail",
+          "score": 0.0,
+          "threshold": 0.7,
+          "reason": "实际回答缺失，仅有中断状态，未提供全国及两地区净收入、差异原因、数据事实与待核实边界，也未给出有依据的下一步建议，无法满足三维评分标准。",
+          "evidence_refs": [
+            "tr-fb3bad45e1233014674025c6e10c7726"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "turn_expectations",
+          "version": "1",
+          "status": "fail",
+          "score": 0.0,
+          "threshold": 1.0,
+          "reason": "逐轮预期检查：0/1",
+          "evidence_refs": [
+            "tr-fb3bad45e1233014674025c6e10c7726"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "protected_unchanged",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Uploaded fixture contents must remain unchanged",
+          "evidence_refs": [
+            "tr-fb3bad45e1233014674025c6e10c7726"
+          ],
+          "error_code": null
+        }
+      ]
+    }
+  }
+}

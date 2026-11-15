@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-15",
+  "checked_files": [
+    "docs/projects/20261113-agent-eval-production-flywheel/README.md",
+    "docs/projects/20261113-agent-eval-production-flywheel/05-ai-assisted-evaluation-workflow.md",
+    "docs/projects/20261113-agent-eval-production-flywheel/manual-acceptance.md",
+    "docs/projects/20261113-agent-eval-production-flywheel/ai-workflow-scenarios.md",
+    "docs/projects/20261113-agent-eval-production-flywheel/implementation/13-ai-workbench.md",
+    "docs/CONTEXT.md",
+    "docs/FEATURES.md",
+    "docs/CHANGELOG.md",
+    "../mlflow-eval-platform/docs/CONTEXT.md"
+  ],
+  "tasks": [
+    {
+      "task": "5.1",
+      "done": true
+    },
+    {
+      "task": "5.2",
+      "done": true
+    },
+    {
+      "task": "5.3",
+      "done": true
+    },
+    {
+      "task": "5.4",
+      "done": true
+    },
+    {
+      "task": "5.5",
+      "done": true
+    },
+    {
+      "task": "5.6",
+      "done": true
+    },
+    {
+      "task": "5.7",
+      "done": true
+    },
+    {
+      "task": "5.8",
+      "done": true
+    },
+    {
+      "task": "5.9",
+      "done": true
+    },
+    {
+      "task": "5.10",
+      "done": true
+    },
+    {
+      "task": "5.11",
+      "done": true
+    },
+    {
+      "task": "5.12",
+      "done": true
+    }
+  ],
+  "local_link_count": 81,
+  "errors": [],
+  "scope": "Current 05 task states and newly delivered documents; historical phase statements remain explicitly historical."
+}

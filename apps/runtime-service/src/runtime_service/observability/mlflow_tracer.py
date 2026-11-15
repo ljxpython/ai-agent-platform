@@ -10,6 +10,8 @@ from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
 
+from runtime_service.build_info import STARTUP_PACKAGE_DIGEST
+
 logger = logging.getLogger(__name__)
 
 _DEFAULT_EXPERIMENT_NAME = "ai-agent-platform-traces"
@@ -96,6 +98,8 @@ class MLflowFailSoftCallback(BaseCallbackHandler):
         self._metadata = dict(bound_metadata or {})
         self._tracer = None
         self.raise_error = False
+        # Observation events need the caller's active span, not an executor-thread context.
+        self.run_inline = os.getenv("AGENT_LOOP_OBSERVATION_ENABLED") == "1"
 
         try:
             import mlflow
@@ -113,7 +117,7 @@ class MLflowFailSoftCallback(BaseCallbackHandler):
 
             from mlflow.langchain.langchain_tracer import MlflowLangchainTracer
 
-            self._tracer = MlflowLangchainTracer()
+            self._tracer = MlflowLangchainTracer(run_inline=self.run_inline)
         except Exception as err:
             logger.warning(
                 "runtime_mlflow_tracer_creation_failed", extra={"error": str(err)}
@@ -181,7 +185,8 @@ class MLflowFailSoftCallback(BaseCallbackHandler):
                 client_request_id=trace_id if trace_id else None,
                 tags=custom_tags,
                 metadata={
-                    k: str(v) for k, v in self._metadata.items() if v is not None
+                    **{k: str(v) for k, v in self._metadata.items() if v is not None},
+                    "runtime.package_sha256": STARTUP_PACKAGE_DIGEST,
                 },
             )
         except Exception as err:

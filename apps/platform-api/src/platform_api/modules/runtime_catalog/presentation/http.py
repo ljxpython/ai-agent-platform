@@ -373,6 +373,23 @@ def authorize_runtime_threads(
             code="runtime_acl_signature_invalid", message="Invalid Runtime signature"
         )
     factory = request.app.state.db_session_factory
+    from platform_api.modules.evaluation.assistant_control import (
+        SUBJECT,
+        control_allowed,
+    )
+
+    if user_id == SUBJECT:
+        return {
+            "allowed_thread_ids": [
+                thread
+                for thread in targets
+                if credential_id is None
+                and action in {"read", "edit", "delete"}
+                and control_allowed(
+                    factory, project_id, thread, delete=action == "delete"
+                )
+            ]
+        }
     if user_id.startswith("service-account:"):
         actor = load_service_account_actor(
             session_factory=factory,
@@ -403,6 +420,15 @@ def authorize_runtime_threads(
                 actor, project_id, thread_access.get(factory, thread_id), action
             )
         if permitted:
+            if action not in {"create", "reconcile", "delete"}:
+                from platform_api.modules.evaluation.workbench_grants import (
+                    check_assistant_thread,
+                )
+
+                try:
+                    check_assistant_thread(factory, project_id, thread_id)
+                except ForbiddenError:
+                    continue
             allowed.append(thread_id)
     execution = payload.get("execution")
     result = {"allowed_thread_ids": allowed}

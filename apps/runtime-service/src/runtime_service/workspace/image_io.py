@@ -96,7 +96,7 @@ class ImageWorkspace:
                 and exc.errno not in (2, 20, 40)
             ):
                 raise RuntimeWorkspaceError("runtime.workspace.unavailable") from exc
-            raise ToolException("Workspace path is unavailable or unsafe.") from None
+            raise ToolException("Workspace path is unavailable or unsafe.") from exc
 
     def read(self, path: str) -> bytes:
         from runtime_service.workspace.target import RemoteWorkspace
@@ -120,8 +120,8 @@ class ImageWorkspace:
                 if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
                     raise ValueError("Not a file")
                 return source.read(MAX_BYTES + 1)
-        except (OSError, ValueError):
-            raise ToolException("Image file is unavailable or unsafe.") from None
+        except (OSError, ValueError) as exc:
+            raise ToolException("Image file is unavailable or unsafe.") from exc
         finally:
             os.close(directory)
 

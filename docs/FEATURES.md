@@ -9,6 +9,9 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| AI协作评测旧流程：提出问题、反馈修订、确认运行与结果复核 | 05本地范围12项关闭：10项原验证，5.3/5.7由06新流程修复承接；旧A1入口不做兼容升级，旧失败/评分保留，当前操作使用06手册 | [05任务](projects/20261113-agent-eval-production-flywheel/05-ai-assisted-evaluation-workflow.md) · [验收手册](projects/20261113-agent-eval-production-flywheel/manual-acceptance.md) |
+| EvalFlow正式评测集入口与页面登录 | 已完成本地07共4项：列表/新建/详情接入平台导航，保留历史运行定位与未保存保护，原生页面登录替代认证弹窗；182前端/52后端及浏览器关键场景通过。保持两套身份与既有权限，用户已确认验收通过，未上线 | [07方案与验证](projects/20261113-agent-eval-production-flywheel/07-native-platform-integration.md) |
+| EvalFlow评测Agent、Session资料转题库与全链路诊断 | 06本地16/16 done：获准业务会话直接转换并自动生成首版，可读来源、AI修订/扩题/指标、版本发布运行、完整Session/裁判/文件证据、原证据重评及撤权。四轮真实对话→2题→运行→重评已验；16张图/5段录像交付。首轮提前计算与裁判局限保留，用户已于2026-11-16确认验收通过，生产及原暂缓范围不变 | [06方案与任务](projects/20261113-agent-eval-production-flywheel/06-session-to-dataset-and-ai-authoring.md) |
 | 工作区总览工业级重构与信息密度治理 | 已完成：彻底清除“从当前项目继续工作。”废话副标题；收纳平台治理按钮；实装 4 联项目指标看板（Agents、对话数、工具数、运行时健康）；主辅双栏高能工作流（最近对话相对时间流 + Agent 矩阵模型 Tag 与一键对话直达）；补齐 OverviewPage.spec.ts，单测、vue-tsc 与生产构建全绿 | [项目概览](projects/20261108-workspace-overview-refactor/README.md) · [实现记录](projects/20261108-workspace-overview-refactor/implementation/01-overview-refactor.md) |
 | 会话侧边栏三段式工业级重构与批量删除、顶栏 Tooltip 交互优化 | 已完成：落实方案 A 三段式纯净排版（标头聚合操作、全宽搜索、单行永不断行分类胶囊），实装并发度 3 纯前端批量删除队列与进度响应，顶栏毛玻璃 Tooltip 接入并根治压缩撞车重合；全仓单测 159 套件 945 项 100% 绿灯，线上部署验证通过 | [变更记录](../apps/platform-web/docs/changes/20261107-chat-sidebar-redesign-and-batch-delete.md) |
 | 新会话快照优先展示与媒体按需加载 | 本地功能已完成：首屏依赖 SDK 权威快照，历史抽屉按需读取；真实刷新恢复通过；性能/竞态治理证据待补 | [项目概览](projects/20261107-session-hydration-and-artifact-offloading/README.md) |
@@ -183,6 +186,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 生产评测飞轮：反馈、合成回流与审核回归 | 本轮批准范围done：22 done / 3 deferred；反馈→授权→AI审核→固定版本→真实回归→撤权清理及隔离恢复通过。原联合后端354/前端37/API68/Runtime82、默认构建通过；追加任务历史/批次题库导航/材料入口修复，前端28项及浏览器复验通过；自动采样0，停止循环、性能、CI、独立盲测、Grafana/通知及生产暂缓 | [项目概览](projects/20261113-agent-eval-production-flywheel/README.md) |
 | Agent 自动化评测体系（DeepEval + EvalFlow） | 本地首期已完成；当前主环境扩展A01–A03完成、A04待远端沙箱准入：EvalFlow 执行器、20题、真实基线、门禁、Badcase审核；另已复用EvalFlow原生页实现创建/启动/取消、版本化评测集导入/冻结/新版本、同一Agent具名参数配置及双Run比较；Agent仍有KnowledgeRetention质量失败，真实CI/生产发布/新盲测集后置 | [项目概览](projects/20261112-agent-evaluation-system/README.md) · [任务与验证](projects/20261112-agent-evaluation-system/tasks.md) |
 | Native Systemd 生产部署与运维 Runbook | 已完成：实装 Nginx 边缘网关、Systemd 三进程常驻守护（Runtime API / Worker / Platform API）及 7 步标准发布流水线与应急回滚手册 | [Native Runbook](runbooks/native-systemd-deployment-runbook.md) · [变更记录](changes/20261016-native-systemd-deployment-runbook.md) |
 | Worktree 本地联调资源隔离 | 已完成：首次随机登记端口并稳定复用，独立配置/数据/进程，共享依赖缓存及 E2E 地址接线；继承 app 配置、默认 admin/admin123456、首次只读复制基础数据并重加密模型凭据（自动对齐 miaomiaoai `deepseek-v4.1-flash` 为默认模型），排除历史/令牌/定时任务；三栈、真实 Worker/Workspace、浏览器登录和重启验收通过；新增外部知识MCP/独立Ollama登记、所属启停及冲突自检已验 | [规范](standards/worktree-development.md) · [专项](projects/20261010-worktree-local-stack/README.md) |
@@ -205,7 +209,7 @@
 | 本地 PostgreSQL 密码认证 | 本地已完成：SCRAM、18 项认证检查、9 项兼容检查、重连和回退通过；云端交接更新因 SSH 超时待补 | [认证记录](projects/20260920-local-postgres-password/README.md) |
 | 本地项目清理 | 已支持：按 UUID 保留项目；显式历史清理先备份，支持失效令牌、会话/审计及指定测试库；测试退出回收项目 | [运维规范](guides/database-operations.md#本地项目清理) |
 | 本地栈进程启停 | 已优化：进程/端口归属隔离；Runtime 单服务重启在停进程前预检，恢复 audience 配置后真实审批通过；隔离Worktree新增Redis旧数据加载的有界等待并通过3项探针及真实启动 | [Redis加载等待](changes/20261029-local-stack-redis-loading-probe.md) · [重启预检修复](changes/20260922-local-stack-runtime-preflight.md) · `docs/changes/20260913-local-stack-real-process-management.md` |
-| 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成；整单任务持续推进至 done 或需用户行动的 blocked，阶段进度写入任务文档且不作为最终交付 | [Harness 完成与汇报规则](changes/20260926-harness-completion-reporting.md) |
+| 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已更新：三个Skills分别负责规划、实施、验证；统一两种模板与状态口径，汇报前先更新文档。文档先讲业务过程，每个任务独立说明背景、预期行为、进度与下一步；验证先写结果和限制，再给复核链接；未据此扩大提交或生产授权 | [Harness 完成与汇报规则](changes/20260926-harness-completion-reporting.md) · [任务进度与阅读体验](changes/20261114-progress-before-reporting.md) |
 | 文档一致性检查（`scripts/check_docs.py`） | 已完成 | `scripts/check_docs.py` |
 
 - Platform API：Agent/Profile ORM 已合并，空库静态基线已通过 SQLite/PostgreSQL 往返验证；完整控制面重构仍为 partial，见 [实现记录](projects/20260910-platform-api-refactor/implementation/08-agent-single-table.md)。

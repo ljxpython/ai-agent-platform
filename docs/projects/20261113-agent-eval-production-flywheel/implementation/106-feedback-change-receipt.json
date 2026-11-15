@@ -1,0 +1,859 @@
+{
+  "modified": {
+    "view": {
+      "id": "9b778f3a-a5be-5b35-bf1d-9a26c752b903",
+      "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+      "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "assignee": null,
+      "title": "05验收·回答反馈修改与撤回",
+      "description": "这是合成算式回答的改进需求。请生成一个测试：问31加24，只输出数字，不调用工具，预期55使用精确匹配检查。请使用工具次数上限0，不需要文件，不需要任何额外业务口径。",
+      "agent_id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+      "profile": "local-dearflow",
+      "fixture": {},
+      "source_thread_id": "aa4b640b-e606-48fa-9cb1-58d63dac76d4",
+      "source_message_id": "lc_run--01a1dd04-909b-7ee0-9ac2-1f0e21f092eb",
+      "source_inspection_id": null,
+      "synthetic_attestation": true,
+      "share_with_project_reviewers": true,
+      "material_hash": "4134f8030d37bed390cd8a4ea2f977c06b5d84e3f047b2168527bd393812efd9",
+      "status": "awaiting_review",
+      "revision": 1,
+      "grants": {
+        "evaluation_assistance": "c21d0163-0f97-40d3-81b1-8f3582b41947",
+        "regression": "7b367002-96b7-4780-869b-646440454d89"
+      },
+      "versions": [
+        {
+          "revision": 1,
+          "base_revision": 0,
+          "proposal": {
+            "summary": "为「31 加 24，只输出数字」生成 1 条可直接执行的核心用例：独立精确计算 31+24=55，用每轮 answer_equals=\"55\" 做严格等值检查；单轮、无附件、无写入、无审批。反馈原文要求的「工具次数上限 0」按平台规则不可编码（禁用 tool_budget 指标与 expectations.max_tool_calls=0），因此该用例不写工具维度断言，改由 answer_equals 精确检查承担判定，并在 excluded 中说明；不引入真实资料，无影响全部测试的业务缺口。",
+            "facts": [
+              "31 + 24 经 decimal_calculate 独立计算为 55，未参考任何被测答案。",
+              "该用例为单轮纯算式，无附件、无文件写入、无审批需求，access_policy 用 workspace_write 即可。",
+              "平台规则禁止用 tool_budget 指标和 expectations.max_tool_calls=0 表达「不调用工具」，故该用例不写工具断言。",
+              "本次资料未提供获准证据编号，read_evidence 返回未找到，因此无执行证据可引用。"
+            ],
+            "hypotheses": [
+              "被测 Agent 若严格遵守「只输出数字」，回答去除首尾空白后应为 55；若输出「55。」「五十五」「答案是55」将判不通过，这是有意的严格输出约束。",
+              "若后续拿到被测 Agent 的真实工具清单，可用 forbidden_tools（phase=executed）配合 tool_constraints 指标补上「不得调用工具」断言，无需改动用例主体。"
+            ],
+            "changes": [
+              "新增用例 answer-feedback-arith-31plus24-v1（core/dev，单轮），turns.content 只含题面与输出格式约束，不含预期答案 55。",
+              "turn_expectations[0].answer_equals 设为 \"55\"（去除首尾空白后完全等值），metrics 含 turn_expectations（硬门禁）与 completion。",
+              "business_rules 声明结果以独立精确计算为准、不接受附加文字；rubric_version=arith-only-v1；provenance 标注 synthetic。",
+              "未采纳反馈原文的 max_tool_calls=0 / tool_budget 写法，理由记入 excluded；标准未放宽，输出仍为严格等值。",
+              "风险说明：该题风险在于「格式即正确性」的严格性可能误伤等价的合法表述（如中文数字），故题面已明确禁止解释、单位与标点，使判定边界与题面一致。"
+            ],
+            "missing_information": [],
+            "case_missing_information": {},
+            "cases": [
+              {
+                "schema_version": "3",
+                "case_id": "answer-feedback-arith-31plus24-v1",
+                "suite": "core",
+                "split": "dev",
+                "turns": [
+                  {
+                    "content": "请计算 31 加 24，只输出一个数字，不要输出解释、单位或标点。",
+                    "approval": null
+                  }
+                ],
+                "fixture": {},
+                "expectations": {
+                  "answer_contains": [],
+                  "rubric": "仅判定最终回答：去除首尾空白后必须恰好等于 55。允许的唯一形式是不带解释、单位、标点的数值；出现任何附加文字、中文数字或标点均判为不通过。该用例不检查工具调用与文件。",
+                  "status": "completed"
+                },
+                "metrics": [
+                  {
+                    "name": "turn_expectations",
+                    "threshold": 1.0,
+                    "hard_gate": true
+                  },
+                  {
+                    "name": "completion",
+                    "threshold": 1.0,
+                    "hard_gate": false
+                  }
+                ],
+                "access_policy": "workspace_write",
+                "cancel_after_seconds": null,
+                "reviewer": "AI建议待确认",
+                "reviewed_at": "2026-11-15",
+                "provenance": {
+                  "source_type": "synthetic",
+                  "source_ref": "synthetic://arith/add/31-24",
+                  "family_id": "arith-exact-single-output",
+                  "parent_case_ref": null,
+                  "transformation_version": "v1"
+                },
+                "business_rules": [
+                  "算术结果以独立精确计算为准，不得由被测回答倒推标准。",
+                  "本题只允许输出单个数值，不接受解释性文字、单位或标点。"
+                ],
+                "rubric_version": "arith-only-v1",
+                "turn_expectations": [
+                  {
+                    "index": 0,
+                    "answer_equals": "55",
+                    "answer_contains": [],
+                    "answer_excludes": [],
+                    "artifacts": {}
+                  }
+                ]
+              }
+            ],
+            "excluded": [
+              "expectations.max_tool_calls=0 与 tool_budget 指标：平台明确禁用，未采用；待获得真实工具清单后再用 forbidden_tools 表达。",
+              "artifact_correct / protected_unchanged：该用例无附件与 fixture，且反馈声明不需要文件，无法使用这些指标。",
+              "BusinessFacts / EvidenceBoundary / RecommendationGrounding：本题只要求输出一个数字，无解释与建议对象，强行评分会把格式检查误当作解释质量；如需三维评分应另立含说明要求的题目。",
+              "多轮修改与撤回场景：本次请求只要求这一条单轮算式题，未提供多轮业务口径，不自行扩展。"
+            ]
+          },
+          "content_hash": "4e3b64b8896885157d69b5e040ed2df503691ace4523d799f161d7005d3c8d35",
+          "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "ai",
+          "model": {
+            "route": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "prompt_version": "evaluation-assistant-v1"
+          },
+          "grants": {
+            "evaluation_assistance": "c21d0163-0f97-40d3-81b1-8f3582b41947",
+            "regression": "7b367002-96b7-4780-869b-646440454d89"
+          },
+          "source_feedback_revision": 1,
+          "created_at": 1794709828.0606878
+        }
+      ],
+      "history": [
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "create",
+          "at": 1794709716.068175,
+          "request_id": "526f59f6-6c57-4079-aa49-3414109b803e",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "grant",
+          "at": 1794709757.3214898,
+          "request_id": "88e3daef-631f-46d9-8916-fb82e6246486",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "grant",
+          "at": 1794709758.293212,
+          "request_id": "80a961f7-d4e1-42bd-8fde-dbf1130c9555",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "generate",
+          "at": 1794709787.925714,
+          "request_id": "d1c291ef-9106-4b84-823a-62923e8ced42",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "assistant_bind",
+          "at": 1794709788.439211,
+          "request_id": "89c46aed-4c08-5600-ad75-5c3e361a599c",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "assistant_bind",
+          "at": 1794709789.284411,
+          "request_id": "7e0f242c-a000-53b6-b76f-c6d37608c075",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "ai",
+          "action": "assistant_result",
+          "at": 1794709828.060699,
+          "request_id": "b3254bc1-7a71-5da4-9458-d1c0fad64e96",
+          "revision": 1
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "source_changed",
+          "at": 1794710182.442219,
+          "revision": 2
+        }
+      ],
+      "operations": [],
+      "assistant_jobs": [
+        {
+          "id": "d1c291ef-9106-4b84-823a-62923e8ced42",
+          "base_revision": 0,
+          "source_feedback_revision": 1,
+          "feedback": "请根据问题及合成材料提出一小组有代表性的测试，明确正确预期和缺失口径。",
+          "status": "completed",
+          "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "intent": "draft",
+          "created_at": 1794709787.925704,
+          "thread_id": "40acf29d-327d-5afd-a678-44b5f7f152df",
+          "run_id": "d4a46055-b65b-4694-bbc2-208d05bc62d8",
+          "result_revision": 1,
+          "completed_at": 1794709828.060693
+        }
+      ],
+      "judgments": [],
+      "regression_set": false,
+      "created_at": 1794709716.038372,
+      "next_action": "来源反馈已修改或撤回，请说明是否继续并让AI重新整理；旧运行保留。",
+      "source_feedback_revision": 2,
+      "updated_at": 1794710182.4422212,
+      "source_changed": true,
+      "results": []
+    },
+    "stale_approval_status": 409,
+    "response": {
+      "error": {
+        "code": "evaluation_workbench_conflict",
+        "message": "来源反馈已变化，请修订方案后重新确认；历史运行不会删除。",
+        "details": []
+      },
+      "request_id": "17e52c7460ab4cb0b54db25eeed382a4"
+    },
+    "original_version_preserved": true,
+    "no_execution_created": true,
+    "grants_unchanged": true
+  },
+  "withdrawn": {
+    "view": {
+      "id": "9b778f3a-a5be-5b35-bf1d-9a26c752b903",
+      "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+      "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "assignee": null,
+      "title": "05验收·回答反馈修改与撤回",
+      "description": "这是合成算式回答的改进需求。请生成一个测试：问31加24，只输出数字，不调用工具，预期55使用精确匹配检查。请使用工具次数上限0，不需要文件，不需要任何额外业务口径。",
+      "agent_id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+      "profile": "local-dearflow",
+      "fixture": {},
+      "source_thread_id": "aa4b640b-e606-48fa-9cb1-58d63dac76d4",
+      "source_message_id": "lc_run--01a1dd04-909b-7ee0-9ac2-1f0e21f092eb",
+      "source_inspection_id": null,
+      "synthetic_attestation": true,
+      "share_with_project_reviewers": true,
+      "material_hash": "4134f8030d37bed390cd8a4ea2f977c06b5d84e3f047b2168527bd393812efd9",
+      "status": "awaiting_review",
+      "revision": 1,
+      "grants": {
+        "evaluation_assistance": "c21d0163-0f97-40d3-81b1-8f3582b41947",
+        "regression": "7b367002-96b7-4780-869b-646440454d89"
+      },
+      "versions": [
+        {
+          "revision": 1,
+          "base_revision": 0,
+          "proposal": {
+            "summary": "为「31 加 24，只输出数字」生成 1 条可直接执行的核心用例：独立精确计算 31+24=55，用每轮 answer_equals=\"55\" 做严格等值检查；单轮、无附件、无写入、无审批。反馈原文要求的「工具次数上限 0」按平台规则不可编码（禁用 tool_budget 指标与 expectations.max_tool_calls=0），因此该用例不写工具维度断言，改由 answer_equals 精确检查承担判定，并在 excluded 中说明；不引入真实资料，无影响全部测试的业务缺口。",
+            "facts": [
+              "31 + 24 经 decimal_calculate 独立计算为 55，未参考任何被测答案。",
+              "该用例为单轮纯算式，无附件、无文件写入、无审批需求，access_policy 用 workspace_write 即可。",
+              "平台规则禁止用 tool_budget 指标和 expectations.max_tool_calls=0 表达「不调用工具」，故该用例不写工具断言。",
+              "本次资料未提供获准证据编号，read_evidence 返回未找到，因此无执行证据可引用。"
+            ],
+            "hypotheses": [
+              "被测 Agent 若严格遵守「只输出数字」，回答去除首尾空白后应为 55；若输出「55。」「五十五」「答案是55」将判不通过，这是有意的严格输出约束。",
+              "若后续拿到被测 Agent 的真实工具清单，可用 forbidden_tools（phase=executed）配合 tool_constraints 指标补上「不得调用工具」断言，无需改动用例主体。"
+            ],
+            "changes": [
+              "新增用例 answer-feedback-arith-31plus24-v1（core/dev，单轮），turns.content 只含题面与输出格式约束，不含预期答案 55。",
+              "turn_expectations[0].answer_equals 设为 \"55\"（去除首尾空白后完全等值），metrics 含 turn_expectations（硬门禁）与 completion。",
+              "business_rules 声明结果以独立精确计算为准、不接受附加文字；rubric_version=arith-only-v1；provenance 标注 synthetic。",
+              "未采纳反馈原文的 max_tool_calls=0 / tool_budget 写法，理由记入 excluded；标准未放宽，输出仍为严格等值。",
+              "风险说明：该题风险在于「格式即正确性」的严格性可能误伤等价的合法表述（如中文数字），故题面已明确禁止解释、单位与标点，使判定边界与题面一致。"
+            ],
+            "missing_information": [],
+            "case_missing_information": {},
+            "cases": [
+              {
+                "schema_version": "3",
+                "case_id": "answer-feedback-arith-31plus24-v1",
+                "suite": "core",
+                "split": "dev",
+                "turns": [
+                  {
+                    "content": "请计算 31 加 24，只输出一个数字，不要输出解释、单位或标点。",
+                    "approval": null
+                  }
+                ],
+                "fixture": {},
+                "expectations": {
+                  "answer_contains": [],
+                  "rubric": "仅判定最终回答：去除首尾空白后必须恰好等于 55。允许的唯一形式是不带解释、单位、标点的数值；出现任何附加文字、中文数字或标点均判为不通过。该用例不检查工具调用与文件。",
+                  "status": "completed"
+                },
+                "metrics": [
+                  {
+                    "name": "turn_expectations",
+                    "threshold": 1.0,
+                    "hard_gate": true
+                  },
+                  {
+                    "name": "completion",
+                    "threshold": 1.0,
+                    "hard_gate": false
+                  }
+                ],
+                "access_policy": "workspace_write",
+                "cancel_after_seconds": null,
+                "reviewer": "AI建议待确认",
+                "reviewed_at": "2026-11-15",
+                "provenance": {
+                  "source_type": "synthetic",
+                  "source_ref": "synthetic://arith/add/31-24",
+                  "family_id": "arith-exact-single-output",
+                  "parent_case_ref": null,
+                  "transformation_version": "v1"
+                },
+                "business_rules": [
+                  "算术结果以独立精确计算为准，不得由被测回答倒推标准。",
+                  "本题只允许输出单个数值，不接受解释性文字、单位或标点。"
+                ],
+                "rubric_version": "arith-only-v1",
+                "turn_expectations": [
+                  {
+                    "index": 0,
+                    "answer_equals": "55",
+                    "answer_contains": [],
+                    "answer_excludes": [],
+                    "artifacts": {}
+                  }
+                ]
+              }
+            ],
+            "excluded": [
+              "expectations.max_tool_calls=0 与 tool_budget 指标：平台明确禁用，未采用；待获得真实工具清单后再用 forbidden_tools 表达。",
+              "artifact_correct / protected_unchanged：该用例无附件与 fixture，且反馈声明不需要文件，无法使用这些指标。",
+              "BusinessFacts / EvidenceBoundary / RecommendationGrounding：本题只要求输出一个数字，无解释与建议对象，强行评分会把格式检查误当作解释质量；如需三维评分应另立含说明要求的题目。",
+              "多轮修改与撤回场景：本次请求只要求这一条单轮算式题，未提供多轮业务口径，不自行扩展。"
+            ]
+          },
+          "content_hash": "4e3b64b8896885157d69b5e040ed2df503691ace4523d799f161d7005d3c8d35",
+          "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "ai",
+          "model": {
+            "route": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "prompt_version": "evaluation-assistant-v1"
+          },
+          "grants": {
+            "evaluation_assistance": "c21d0163-0f97-40d3-81b1-8f3582b41947",
+            "regression": "7b367002-96b7-4780-869b-646440454d89"
+          },
+          "source_feedback_revision": 1,
+          "created_at": 1794709828.0606878
+        }
+      ],
+      "history": [
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "create",
+          "at": 1794709716.068175,
+          "request_id": "526f59f6-6c57-4079-aa49-3414109b803e",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "grant",
+          "at": 1794709757.3214898,
+          "request_id": "88e3daef-631f-46d9-8916-fb82e6246486",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "grant",
+          "at": 1794709758.293212,
+          "request_id": "80a961f7-d4e1-42bd-8fde-dbf1130c9555",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "generate",
+          "at": 1794709787.925714,
+          "request_id": "d1c291ef-9106-4b84-823a-62923e8ced42",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "assistant_bind",
+          "at": 1794709788.439211,
+          "request_id": "89c46aed-4c08-5600-ad75-5c3e361a599c",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "assistant_bind",
+          "at": 1794709789.284411,
+          "request_id": "7e0f242c-a000-53b6-b76f-c6d37608c075",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "ai",
+          "action": "assistant_result",
+          "at": 1794709828.060699,
+          "request_id": "b3254bc1-7a71-5da4-9458-d1c0fad64e96",
+          "revision": 1
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "source_changed",
+          "at": 1794710182.442219,
+          "revision": 2
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "source_changed",
+          "at": 1794710200.6348212,
+          "revision": 3
+        }
+      ],
+      "operations": [],
+      "assistant_jobs": [
+        {
+          "id": "d1c291ef-9106-4b84-823a-62923e8ced42",
+          "base_revision": 0,
+          "source_feedback_revision": 1,
+          "feedback": "请根据问题及合成材料提出一小组有代表性的测试，明确正确预期和缺失口径。",
+          "status": "completed",
+          "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "intent": "draft",
+          "created_at": 1794709787.925704,
+          "thread_id": "40acf29d-327d-5afd-a678-44b5f7f152df",
+          "run_id": "d4a46055-b65b-4694-bbc2-208d05bc62d8",
+          "result_revision": 1,
+          "completed_at": 1794709828.060693
+        }
+      ],
+      "judgments": [],
+      "regression_set": false,
+      "created_at": 1794709716.038372,
+      "next_action": "来源反馈已修改或撤回，请说明是否继续并让AI重新整理；旧运行保留。",
+      "source_feedback_revision": 3,
+      "updated_at": 1794710200.634824,
+      "source_changed": true,
+      "results": []
+    },
+    "stale_approval_status": 409,
+    "response": {
+      "error": {
+        "code": "evaluation_workbench_conflict",
+        "message": "来源反馈已变化，请修订方案后重新确认；历史运行不会删除。",
+        "details": []
+      },
+      "request_id": "8302abb4081e41dd82460c4295e34ad5"
+    },
+    "original_version_preserved": true,
+    "no_execution_created": true,
+    "grants_unchanged": true,
+    "source_run_and_parent_readable": true
+  },
+  "revised": {
+    "view": {
+      "id": "9b778f3a-a5be-5b35-bf1d-9a26c752b903",
+      "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+      "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "assignee": null,
+      "title": "05验收·回答反馈修改与撤回",
+      "description": "这是合成算式回答的改进需求。请生成一个测试：问31加24，只输出数字，不调用工具，预期55使用精确匹配检查。请使用工具次数上限0，不需要文件，不需要任何额外业务口径。",
+      "agent_id": "6bb7d0af-a1a3-457a-aea1-2b6dc4c89920",
+      "profile": "local-dearflow",
+      "fixture": {},
+      "source_thread_id": "aa4b640b-e606-48fa-9cb1-58d63dac76d4",
+      "source_message_id": "lc_run--01a1dd04-909b-7ee0-9ac2-1f0e21f092eb",
+      "source_inspection_id": null,
+      "synthetic_attestation": true,
+      "share_with_project_reviewers": true,
+      "material_hash": "4134f8030d37bed390cd8a4ea2f977c06b5d84e3f047b2168527bd393812efd9",
+      "status": "awaiting_review",
+      "revision": 2,
+      "grants": {
+        "evaluation_assistance": "c21d0163-0f97-40d3-81b1-8f3582b41947",
+        "regression": "7b367002-96b7-4780-869b-646440454d89"
+      },
+      "versions": [
+        {
+          "revision": 1,
+          "base_revision": 0,
+          "proposal": {
+            "summary": "为「31 加 24，只输出数字」生成 1 条可直接执行的核心用例：独立精确计算 31+24=55，用每轮 answer_equals=\"55\" 做严格等值检查；单轮、无附件、无写入、无审批。反馈原文要求的「工具次数上限 0」按平台规则不可编码（禁用 tool_budget 指标与 expectations.max_tool_calls=0），因此该用例不写工具维度断言，改由 answer_equals 精确检查承担判定，并在 excluded 中说明；不引入真实资料，无影响全部测试的业务缺口。",
+            "facts": [
+              "31 + 24 经 decimal_calculate 独立计算为 55，未参考任何被测答案。",
+              "该用例为单轮纯算式，无附件、无文件写入、无审批需求，access_policy 用 workspace_write 即可。",
+              "平台规则禁止用 tool_budget 指标和 expectations.max_tool_calls=0 表达「不调用工具」，故该用例不写工具断言。",
+              "本次资料未提供获准证据编号，read_evidence 返回未找到，因此无执行证据可引用。"
+            ],
+            "hypotheses": [
+              "被测 Agent 若严格遵守「只输出数字」，回答去除首尾空白后应为 55；若输出「55。」「五十五」「答案是55」将判不通过，这是有意的严格输出约束。",
+              "若后续拿到被测 Agent 的真实工具清单，可用 forbidden_tools（phase=executed）配合 tool_constraints 指标补上「不得调用工具」断言，无需改动用例主体。"
+            ],
+            "changes": [
+              "新增用例 answer-feedback-arith-31plus24-v1（core/dev，单轮），turns.content 只含题面与输出格式约束，不含预期答案 55。",
+              "turn_expectations[0].answer_equals 设为 \"55\"（去除首尾空白后完全等值），metrics 含 turn_expectations（硬门禁）与 completion。",
+              "business_rules 声明结果以独立精确计算为准、不接受附加文字；rubric_version=arith-only-v1；provenance 标注 synthetic。",
+              "未采纳反馈原文的 max_tool_calls=0 / tool_budget 写法，理由记入 excluded；标准未放宽，输出仍为严格等值。",
+              "风险说明：该题风险在于「格式即正确性」的严格性可能误伤等价的合法表述（如中文数字），故题面已明确禁止解释、单位与标点，使判定边界与题面一致。"
+            ],
+            "missing_information": [],
+            "case_missing_information": {},
+            "cases": [
+              {
+                "schema_version": "3",
+                "case_id": "answer-feedback-arith-31plus24-v1",
+                "suite": "core",
+                "split": "dev",
+                "turns": [
+                  {
+                    "content": "请计算 31 加 24，只输出一个数字，不要输出解释、单位或标点。",
+                    "approval": null
+                  }
+                ],
+                "fixture": {},
+                "expectations": {
+                  "answer_contains": [],
+                  "rubric": "仅判定最终回答：去除首尾空白后必须恰好等于 55。允许的唯一形式是不带解释、单位、标点的数值；出现任何附加文字、中文数字或标点均判为不通过。该用例不检查工具调用与文件。",
+                  "status": "completed"
+                },
+                "metrics": [
+                  {
+                    "name": "turn_expectations",
+                    "threshold": 1.0,
+                    "hard_gate": true
+                  },
+                  {
+                    "name": "completion",
+                    "threshold": 1.0,
+                    "hard_gate": false
+                  }
+                ],
+                "access_policy": "workspace_write",
+                "cancel_after_seconds": null,
+                "reviewer": "AI建议待确认",
+                "reviewed_at": "2026-11-15",
+                "provenance": {
+                  "source_type": "synthetic",
+                  "source_ref": "synthetic://arith/add/31-24",
+                  "family_id": "arith-exact-single-output",
+                  "parent_case_ref": null,
+                  "transformation_version": "v1"
+                },
+                "business_rules": [
+                  "算术结果以独立精确计算为准，不得由被测回答倒推标准。",
+                  "本题只允许输出单个数值，不接受解释性文字、单位或标点。"
+                ],
+                "rubric_version": "arith-only-v1",
+                "turn_expectations": [
+                  {
+                    "index": 0,
+                    "answer_equals": "55",
+                    "answer_contains": [],
+                    "answer_excludes": [],
+                    "artifacts": {}
+                  }
+                ]
+              }
+            ],
+            "excluded": [
+              "expectations.max_tool_calls=0 与 tool_budget 指标：平台明确禁用，未采用；待获得真实工具清单后再用 forbidden_tools 表达。",
+              "artifact_correct / protected_unchanged：该用例无附件与 fixture，且反馈声明不需要文件，无法使用这些指标。",
+              "BusinessFacts / EvidenceBoundary / RecommendationGrounding：本题只要求输出一个数字，无解释与建议对象，强行评分会把格式检查误当作解释质量；如需三维评分应另立含说明要求的题目。",
+              "多轮修改与撤回场景：本次请求只要求这一条单轮算式题，未提供多轮业务口径，不自行扩展。"
+            ]
+          },
+          "content_hash": "4e3b64b8896885157d69b5e040ed2df503691ace4523d799f161d7005d3c8d35",
+          "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "ai",
+          "model": {
+            "route": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "prompt_version": "evaluation-assistant-v1"
+          },
+          "grants": {
+            "evaluation_assistance": "c21d0163-0f97-40d3-81b1-8f3582b41947",
+            "regression": "7b367002-96b7-4780-869b-646440454d89"
+          },
+          "source_feedback_revision": 1,
+          "created_at": 1794709828.0606878
+        },
+        {
+          "revision": 2,
+          "base_revision": 1,
+          "proposal": {
+            "summary": "为「31 加 24，只输出数字」重新整理 1 条可直接执行的核心用例：31+24 经独立精确计算为 55，单轮 answer_equals=\"55\" 做严格等值检查；并按平台规则加入合法的零工具调用硬约束——metrics 使用 tool_budget，expectations.max_tool_calls=0。旧版把 tool_budget 与 max_tool_calls=0 误称为平台禁用，本版已纠正该口径；不引入真实资料、不需文件、无审批，也未扩展到多轮撤回场景。",
+            "facts": [
+              "31 + 24 经 decimal_calculate 独立计算为 55，未参考任何被测答案。",
+              "平台允许用 tool_budget 指标配合 expectations.max_tool_calls=0 表达「不调用任何工具」的零工具调用检查；旧版称该写法被平台禁用属于误读，本版已纠正。",
+              "该用例为单轮纯算式，无附件、无文件写入、无审批需求，access_policy 使用 workspace_write 即可。",
+              "本次资料未提供获准证据编号，因此没有可引用的执行证据。",
+              "本题无影响全部测试的关键业务缺口，也无需补充文件或额外业务口径。"
+            ],
+            "hypotheses": [
+              "被测 Agent 若严格遵守「只输出数字」，回答去除首尾空白后应恰好为 55；输出「55。」「五十五」「答案是55」等会判不通过，这是有意保留的严格输出约束。",
+              "若被测 Agent 发起任何工具调用，max_tool_calls=0 将触发 tool_budget 硬门禁失败；该风险正是本次新增检查的目标。"
+            ],
+            "changes": [
+              "纠正上一版对平台规则的误读：删除「tool_budget 与 max_tool_calls=0 被禁用」的错误表述，改为将其作为合法的零工具调用硬规则加入本用例。",
+              "新增 metrics 项 tool_budget（threshold=1.0，hard_gate=true），并在 expectations 中设置 max_tool_calls=0。",
+              "将用例升级为 answer-feedback-arith-31plus24-v2，保留 turns.content 中的 31 加 24 题面与「只输出数字」约束，保留 turn_expectations[0].answer_equals=\"55\" 的精确匹配。",
+              "保留单轮、无附件、无写入、无审批的设置；不扩展多轮修改/撤回场景，不引入真实资料。",
+              "其余口径不变：business_rules 声明结果以独立精确计算为准、不接受附加文字；rubric_version 与 synthetic provenance 保持非空。"
+            ],
+            "missing_information": [],
+            "case_missing_information": {},
+            "cases": [
+              {
+                "schema_version": "3",
+                "case_id": "answer-feedback-arith-31plus24-v2",
+                "suite": "core",
+                "split": "dev",
+                "turns": [
+                  {
+                    "content": "请计算 31 加 24，只输出一个数字，不要输出解释、单位或标点，也不要调用任何工具。",
+                    "approval": null
+                  }
+                ],
+                "fixture": {},
+                "expectations": {
+                  "answer_contains": [],
+                  "max_tool_calls": 0,
+                  "rubric": "仅判定最终回答：去除首尾空白后必须恰好等于 55。允许的唯一形式是不带解释、单位、标点的数值；出现任何附加文字、中文数字或标点均判为不通过。同时检查零工具调用：max_tool_calls=0，任何工具调用均使 tool_budget 硬门禁失败。该用例不检查文件写入。",
+                  "status": "completed"
+                },
+                "metrics": [
+                  {
+                    "name": "turn_expectations",
+                    "threshold": 1.0,
+                    "hard_gate": true
+                  },
+                  {
+                    "name": "tool_budget",
+                    "threshold": 1.0,
+                    "hard_gate": true
+                  },
+                  {
+                    "name": "completion",
+                    "threshold": 1.0,
+                    "hard_gate": false
+                  }
+                ],
+                "access_policy": "workspace_write",
+                "cancel_after_seconds": null,
+                "reviewer": "AI建议待确认",
+                "reviewed_at": "2026-11-15",
+                "provenance": {
+                  "source_type": "synthetic",
+                  "source_ref": "synthetic://arith/add/31-24",
+                  "family_id": "arith-exact-single-output",
+                  "parent_case_ref": "answer-feedback-arith-31plus24-v1",
+                  "transformation_version": "v2"
+                },
+                "business_rules": [
+                  "算术结果以独立精确计算为准，不得由被测回答倒推标准。",
+                  "本题只允许输出单个数值，不接受解释性文字、单位或标点。",
+                  "本题要求零工具调用，任何工具调用均判定不通过。"
+                ],
+                "rubric_version": "arith-only-v2",
+                "turn_expectations": [
+                  {
+                    "index": 0,
+                    "answer_equals": "55",
+                    "answer_contains": [],
+                    "answer_excludes": [],
+                    "artifacts": {}
+                  }
+                ]
+              }
+            ],
+            "excluded": [
+              "artifact_correct / protected_unchanged：该用例无附件与 fixture，且需求明确不需要文件，无法使用这些指标。",
+              "BusinessFacts / EvidenceBoundary / RecommendationGrounding：本题只要求输出一个数字，无解释与建议对象，强行评分会把格式检查误当作解释质量；如需三维评分应另立含说明要求的题目。",
+              "多轮修改与撤回场景：本次请求只要求这一条单轮算式题，未提供多轮业务口径，不自行扩展。",
+              "预设批准、预设拒绝与在线等待：本题无审批轮次，均不涉及。"
+            ]
+          },
+          "content_hash": "5a798b436125e6027d8e3582d747c4de66352fb2a7fc7f04794304828da814dd",
+          "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "ai",
+          "model": {
+            "route": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "prompt_version": "evaluation-assistant-v1"
+          },
+          "grants": {
+            "evaluation_assistance": "c21d0163-0f97-40d3-81b1-8f3582b41947",
+            "regression": "7b367002-96b7-4780-869b-646440454d89"
+          },
+          "source_feedback_revision": 3,
+          "created_at": 1794710271.137901
+        }
+      ],
+      "history": [
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "create",
+          "at": 1794709716.068175,
+          "request_id": "526f59f6-6c57-4079-aa49-3414109b803e",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "grant",
+          "at": 1794709757.3214898,
+          "request_id": "88e3daef-631f-46d9-8916-fb82e6246486",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "grant",
+          "at": 1794709758.293212,
+          "request_id": "80a961f7-d4e1-42bd-8fde-dbf1130c9555",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "generate",
+          "at": 1794709787.925714,
+          "request_id": "d1c291ef-9106-4b84-823a-62923e8ced42",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "assistant_bind",
+          "at": 1794709788.439211,
+          "request_id": "89c46aed-4c08-5600-ad75-5c3e361a599c",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "assistant_bind",
+          "at": 1794709789.284411,
+          "request_id": "7e0f242c-a000-53b6-b76f-c6d37608c075",
+          "revision": 0
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "ai",
+          "action": "assistant_result",
+          "at": 1794709828.060699,
+          "request_id": "b3254bc1-7a71-5da4-9458-d1c0fad64e96",
+          "revision": 1
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "source_changed",
+          "at": 1794710182.442219,
+          "revision": 2
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "source_changed",
+          "at": 1794710200.6348212,
+          "revision": 3
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "human",
+          "action": "revise",
+          "at": 1794710240.664243,
+          "request_id": "3a21d06e-f464-4c81-94f5-90c343c50b8c",
+          "revision": 1
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "assistant_bind",
+          "at": 1794710240.992832,
+          "request_id": "598c6a3f-1cbf-5e9d-8daf-672ac4f095c9",
+          "revision": 1
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "system",
+          "action": "assistant_bind",
+          "at": 1794710241.636844,
+          "request_id": "c5229e68-640b-580d-995d-72433d7b81c8",
+          "revision": 1
+        },
+        {
+          "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "source": "ai",
+          "action": "assistant_result",
+          "at": 1794710271.137912,
+          "request_id": "e56c3bfe-07a2-5c22-bfe4-24dcc9149d98",
+          "revision": 2
+        }
+      ],
+      "operations": [],
+      "assistant_jobs": [
+        {
+          "id": "d1c291ef-9106-4b84-823a-62923e8ced42",
+          "base_revision": 0,
+          "source_feedback_revision": 1,
+          "feedback": "请根据问题及合成材料提出一小组有代表性的测试，明确正确预期和缺失口径。",
+          "status": "completed",
+          "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "intent": "draft",
+          "created_at": 1794709787.925704,
+          "thread_id": "40acf29d-327d-5afd-a678-44b5f7f152df",
+          "run_id": "d4a46055-b65b-4694-bbc2-208d05bc62d8",
+          "result_revision": 1,
+          "completed_at": 1794709828.060693
+        },
+        {
+          "id": "3a21d06e-f464-4c81-94f5-90c343c50b8c",
+          "base_revision": 1,
+          "source_feedback_revision": 3,
+          "feedback": "来源反馈已撤回，但我仍希望保留这个合成算式测试。请重新整理新版，保留31加24和精确答案55。纠正上一版对平台规则的误读：tool_budget指标与expectations.max_tool_calls=0是合法的零工具检查，请加入此项硬规则，明确新旧差异，不要扩大范围。",
+          "status": "completed",
+          "created_by": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+          "intent": "revise",
+          "created_at": 1794710240.664235,
+          "thread_id": "162f0548-511b-5853-a136-b3f50e6dcde7",
+          "run_id": "d4a2c5a6-7689-408d-861f-8114c82fdf16",
+          "result_revision": 2,
+          "completed_at": 1794710271.137905
+        }
+      ],
+      "judgments": [],
+      "regression_set": false,
+      "created_at": 1794709716.038372,
+      "next_action": "请评审方案，认可后同意并验证",
+      "source_feedback_revision": 3,
+      "updated_at": 1794710271.1379142,
+      "source_changed": false,
+      "results": []
+    },
+    "new_revision": 2,
+    "original_version_preserved": true,
+    "source_revision": 3,
+    "zero_tool_rule_restored": true,
+    "no_execution_created": true
+  }
+}

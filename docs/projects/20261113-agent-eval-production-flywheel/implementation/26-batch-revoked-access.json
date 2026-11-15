@@ -1,0 +1,68 @@
+{
+  "date": "2026-11-14",
+  "identity": "flywheel-reviewer",
+  "scope": "registered Worktree; browser same-origin reads after frontend revocation and backend recovery",
+  "export_id": "59eb6f44-fbbc-4b72-999f-8120f5501a26",
+  "checks": [
+    {
+      "containsBatch": false,
+      "error": "Permission denied",
+      "name": "trace",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "error": "Permission denied",
+      "name": "trace_artifact",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "error": "Permission denied",
+      "name": "dataset",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "error": "Permission denied",
+      "name": "dataset_records",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "error": "Permission denied",
+      "name": "run",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "error": "Permission denied",
+      "name": "run_artifact",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "error": "Permission denied",
+      "name": "source_experiment",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "error": "{\"detail\":\"评测任务不存在。\"}",
+      "name": "task",
+      "status": 404
+    },
+    {
+      "containsBatch": false,
+      "error": null,
+      "name": "catalog",
+      "status": 200
+    },
+    {
+      "containsBatch": false,
+      "error": null,
+      "name": "tasks",
+      "status": 200
+    }
+  ]
+}

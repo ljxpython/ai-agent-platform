@@ -1,0 +1,23 @@
+{
+  "scope": "manual_synthetic_acceptance_fixture",
+  "automatic_sampling": false,
+  "gateway_bound_verified": false,
+  "inspection_id": "5cc29b6f7a643b775648c02e81948e43ffdcebe212bf5e4c96a099f9b628aed9",
+  "export_id": "73375686-38c7-4282-8357-d766fdeb7b04",
+  "result": {
+    "score": 1.0,
+    "total_tokens": 1407
+  },
+  "mlflow_run_id": "1e6c5d0520d04678830445332a77a575",
+  "policy_version": "inspection-local-v1",
+  "item_id": "fa619102-9535-549a-850c-f8cadd8fe547",
+  "source_inspection_id": "5cc29b6f7a643b775648c02e81948e43ffdcebe212bf5e4c96a099f9b628aed9",
+  "derived_grants": {
+    "evaluation_assistance": "79ac8604-c7ab-4857-a6d1-dece3b313c51",
+    "regression": "14a1dab7-71c1-4b04-b0a7-eabe4914938f"
+  },
+  "assistant_run_id": "a8e095e9-4064-461b-9ca8-a85b2e46327a",
+  "version_count": 1,
+  "after_source_revoke": "materials_unavailable",
+  "assistant_state_after_revoke": 403
+}
