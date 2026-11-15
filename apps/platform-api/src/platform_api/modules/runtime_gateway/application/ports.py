@@ -131,6 +131,10 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         self, thread_id: str, run_id: str
     ) -> dict[str, Any]: ...
 
+    async def get_execution_evidence(
+        self, thread_id: str, run_id: str
+    ) -> dict[str, Any]: ...
+
     async def get_run_usage(
         self, thread_id: str, run_id: str, params: dict
     ) -> dict[str, Any]: ...

@@ -24,6 +24,8 @@ import {
   type ChatThread,
 } from "@/services/threads/session.service";
 import BaseDialog from "@/components/base/BaseDialog.vue";
+import SendSessionMaterials from "@/modules/evaluation/components/SendSessionMaterials.vue";
+import PickSessionMaterials from "@/modules/evaluation/components/PickSessionMaterials.vue";
 import ThreadAccessControl from "@/modules/chat/components/ThreadAccessControl.vue";
 import ThreadActionsMenu from "@/modules/chat/components/ThreadActionsMenu.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
@@ -76,6 +78,8 @@ const canTakeover = computed(
     can("platform.super_admin.manage"),
 );
 const accessRevision = ref(0);
+const evaluationThreads = ref<string[]>([]);
+const pickEvaluationMaterials = ref(false);
 type ChatTarget = {
   graphId: string;
   agentId?: string;
@@ -995,6 +999,23 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
         : ''
     "
   >
+    <SendSessionMaterials
+      :show="evaluationThreads.length > 0"
+      :thread-ids="evaluationThreads"
+      :project-id="activeProjectId"
+      :can-authorize="can('project.evaluation.manage', activeProjectId)"
+      @close="evaluationThreads = []"
+    />
+    <PickSessionMaterials
+      :show="pickEvaluationMaterials"
+      :project-id="activeProjectId"
+      :agent-id="target?.agentId || ''"
+      @close="pickEvaluationMaterials = false"
+      @select="
+        evaluationThreads = $event;
+        pickEvaluationMaterials = false;
+      "
+    />
     <EmptyState
       v-if="!activeProject"
       icon="project"
@@ -1072,6 +1093,7 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
           @select-thread="openThread"
           @delete-thread="requestDelete"
           @batch-delete="requestBatchDelete"
+          @send-evaluation="evaluationThreads = $event"
           @rename-thread="handleRenameThread"
           @ai-summarize-title="handleAiSummarizeTitle"
           @collapse="sidebarCollapsed = true"
@@ -1117,6 +1139,24 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
           </template>
           <template #actions>
             <div class="flex shrink-0 items-center gap-1.5">
+              <BaseButton
+                v-if="
+                  selectedThread &&
+                  can('project.evaluation.execute', activeProjectId)
+                "
+                size="sm"
+                @click="evaluationThreads = [selectedThread]"
+                >转为评测集</BaseButton
+              >
+              <BaseButton
+                v-if="
+                  target?.agentId &&
+                  can('project.evaluation.execute', activeProjectId)
+                "
+                size="sm"
+                @click="pickEvaluationMaterials = true"
+                >从历史会话建评测集</BaseButton
+              >
               <button
                 class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
                 :disabled="!target"

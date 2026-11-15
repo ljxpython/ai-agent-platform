@@ -24,6 +24,10 @@
     "dearflow_agent": {
       "path": "./src/runtime_service/graphs/dearflow_agent.py:get_agent",
       "description": "Dear Agent Standard: scoped TXT workspace, clarification, approvals and immutable artifacts."
+    },
+    "evaluation_assistant": {
+      "path": "./src/runtime_service/graphs/evaluation_assistant.py:get_agent",
+      "description": "Managed evaluation assistant: authorized evidence, test proposals and review explanations."
     }
   },
   "env": ".env",

@@ -1,0 +1,247 @@
+{
+  "task_id": "2ad5f06b-8e35-4320-a582-53b688b0a841",
+  "status": "passed",
+  "completed": 1,
+  "total": 1,
+  "cases": [
+    {
+      "case_id": "C3_live",
+      "status": "completed",
+      "inputs": [
+        "销售文件：/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt。退款文件：/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt。已确认业务口径：销售按order_date筛选2026年10月且只计paid；退款按refund_date筛选2026年10月，退款所属区域按原订单关联。请读取两份CSV，计算销售、退款、全国净收入和华东华南净收入，将简报写入/workspace/work/reports/oct-summary.md。金额保留两位小数。不修改源CSV，不联网，不写其他文件。此需求已经确认，无需再提交计划；直接使用write_file申请工具写入审批，并等待在线决定。"
+      ],
+      "outputs": [
+        "已按你确认的业务规则完成计算，简报已写入 `/workspace/work/reports/oct-summary.md`。我没有修改源 CSV，也没有联网，没有写其他文件。发布到产物区的操作你拒绝了，因此没有重试。\n\n**计算结果**\n\n| 指标 | 金额 |\n|---|---:|\n| 10 月销售（paid） | 300.00 |\n| 10 月退款 | 170.00 |\n| 全国净收入 | 130.00 |\n| 华东净收入 | 50.00 |\n| 华南净收入 | 80.00 |\n| 华东 + 华南净收入合计 | 130.00 |\n\n**计算依据**\n- 销售：O100（华东 120.00）、O101（华南 80.00）、O104（华东 100.00）。不包含 O102（cancelled）和 O103（order_date 为 2026-09-28）。\n- 退款：R01（O100→华东 20.00）、R03（O103→华东 150.00）。不包含 R02（refund_date 为 2026-11-02）。\n- 区域净收入：华东 = 220.00 − 170.00 = 50.00；华南 = 80.00 − 0.00 = 80.00。\n- 注意：R03 的 150.00 对应 9 月已付订单，按既定规则只以退款发生日期归入 10 月，并未追溯调整 9 月销售，因此全额冲减 10 月华东收入。"
+      ],
+      "errors": [],
+      "results": [
+        {
+          "name": "approval",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Approval observed on every expected turn; files unchanged before decision",
+          "evidence_refs": [
+            "tr-832fc0b3e5a84b817b218e86ca7c5c88",
+            "tr-ffefb274235d849521ebef0745493be8",
+            "tr-2cb21a78085a7bc3d57b5eb56a8bc7d7"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "artifact_correct",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Artifact assertions: 1/1",
+          "evidence_refs": [
+            "tr-832fc0b3e5a84b817b218e86ca7c5c88",
+            "tr-ffefb274235d849521ebef0745493be8",
+            "tr-2cb21a78085a7bc3d57b5eb56a8bc7d7"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "turn_expectations",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "逐轮预期检查：2/2",
+          "evidence_refs": [
+            "tr-832fc0b3e5a84b817b218e86ca7c5c88",
+            "tr-ffefb274235d849521ebef0745493be8",
+            "tr-2cb21a78085a7bc3d57b5eb56a8bc7d7"
+          ],
+          "error_code": null
+        },
+        {
+          "name": "protected_unchanged",
+          "version": "1",
+          "status": "pass",
+          "score": 1.0,
+          "threshold": 1.0,
+          "reason": "Uploaded fixture contents must remain unchanged",
+          "evidence_refs": [
+            "tr-832fc0b3e5a84b817b218e86ca7c5c88",
+            "tr-ffefb274235d849521ebef0745493be8",
+            "tr-2cb21a78085a7bc3d57b5eb56a8bc7d7"
+          ],
+          "error_code": null
+        }
+      ],
+      "run_ids": [
+        "909f721b-43e2-439e-a867-d2d01e7485cd",
+        "226f2961-543a-44ab-9a96-c26b3dd5912b",
+        "ca644990-2423-43a5-8d42-f94cca8ab0df"
+      ],
+      "trace_ids": [
+        "tr-832fc0b3e5a84b817b218e86ca7c5c88",
+        "tr-ffefb274235d849521ebef0745493be8",
+        "tr-2cb21a78085a7bc3d57b5eb56a8bc7d7"
+      ],
+      "tool_names": [
+        "read_file",
+        "read_file",
+        "write_file",
+        "present_artifacts"
+      ],
+      "artifacts": {
+        "/workspace/work/reports/oct-summary.md": {
+          "content": "# 2026 年 10 月销售与退款简报\n\n**口径说明**：销售按 `order_date` 归属 2026 年 10 月，且仅统计 `status = paid` 的订单；退款按 `refund_date` 归属 2026 年 10 月，退款所属区域按原订单（`order_id`）关联。金额单位与源文件一致，保留两位小数。\n\n## 一、核心指标\n\n| 指标 | 金额 |\n|---|---:|\n| 10 月销售（paid，含税口径同源文件） | 300.00 |\n| 10 月退款 | 170.00 |\n| 全国净收入（销售 − 退款） | 130.00 |\n| 华东净收入 | 50.00 |\n| 华南净收入 | 80.00 |\n| 华东 + 华南净收入合计 | 130.00 |\n\n## 二、销售明细（2026-10，paid）\n\n| order_id | order_date | region | amount | 计入 |\n|---|---|---|---|---:|\n| O100 | 2026-10-03 | 华东 | 120.00 | 是 |\n| O101 | 2026-10-12 | 华南 | 80.00 | 是 |\n| O102 | 2026-10-20 | 华东 | 50.00 | 否（status = cancelled） |\n| O103 | 2026-09-28 | 华东 | 200.00 | 否（9 月订单，仅其退款计入 10 月） |\n| O104 | 2026-10-25 | 华东 | 100.00 | 是 |\n\n- 计入销售合计：120.00 + 80.00 + 100.00 = **300.00**\n- 分区域销售：华东 220.00（O100、O104）；华南 80.00（O101）\n\n## 三、退款明细（2026-10）\n\n| refund_id | order_id | 关联区域 | refund_date | amount | 计入 |\n|---|---|---|---|---|---:|\n| R01 | O100 | 华东 | 2026-10-16 | 20.00 | 是 |\n| R02 | O101 | 华南 | 2026-11-02 | 10.00 | 否（11 月退款） |\n| R03 | O103 | 华东 | 2026-10-18 | 150.00 | 是 |\n\n- 计入退款合计：20.00 + 150.00 = **170.00**\n- 分区域退款：华东 170.00（R01、R03）；华南 0.00（R02 属 11 月，不计入）\n\n## 四、净收入计算\n\n| 区域 | 销售 | 退款 | 净收入 |\n|---|---:|---:|---:|\n| 华东 | 220.00 | 170.00 | 50.00 |\n| 华南 | 80.00 | 0.00 | 80.00 |\n| 合计（全国） | 300.00 | 170.00 | 130.00 |\n\n## 五、口径提示\n\n1. R03 的退款 150.00 关联 9 月已付订单 O103。按既定口径，退款只按 `refund_date` 归期，不追溯调整 9 月销售，因此该笔全额冲减 10 月华东净收入。\n2. 退款区域一律取原订单区域，不单独维护退款区域字段。本批数据中 R02 因落在 11 月被排除；若纳入，则华南净收入为 70.00、全国净收入为 120.00。\n3. 源 CSV 未被修改，仅读取计算。\n",
+          "truncated": false
+        }
+      },
+      "evidence_ref": "case:C3_live"
+    }
+  ],
+  "pending_actions": [
+    {
+      "thread_id": "14a68165-47c3-4536-9472-090a651ca936",
+      "run_id": "226f2961-543a-44ab-9a96-c26b3dd5912b",
+      "turn_index": 0,
+      "case_id": "C3_live",
+      "interrupts": [
+        {
+          "value": {
+            "action_requests": [
+              {
+                "name": "present_artifacts",
+                "args": {
+                  "file_path": "/workspace/work/reports/oct-summary.md"
+                },
+                "description": "Tool execution requires approval\n\nTool: present_artifacts\nArgs: {'file_path': '/workspace/work/reports/oct-summary.md'}"
+              }
+            ],
+            "review_configs": [
+              {
+                "action_name": "present_artifacts",
+                "allowed_decisions": [
+                  "approve",
+                  "edit",
+                  "reject"
+                ]
+              }
+            ]
+          },
+          "id": "412381202b90d9b1e81017b32b5ffcdb"
+        }
+      ],
+      "revision": 2,
+      "task_id": "2ad5f06b-8e35-4320-a582-53b688b0a841",
+      "work_item_id": "1e2e4533-b897-57d4-8411-12dada6be1a8",
+      "id": "7da07ee9-d055-5808-abf9-c76e10723269",
+      "parameters_hash": "18191226ae31115ef151e39089261ab0fb7f8ed64774884a061d503c22edd92a",
+      "expires_at": 1794680742.291435,
+      "status": "resumed",
+      "assignee": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "created_at": 1794678942.291438,
+      "decision": "reject",
+      "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "request_id": "1483ce9a-d318-494f-8e79-4249323049b5",
+      "decided_at": 1794679067.312386,
+      "runs_before_resume": [
+        "226f2961-543a-44ab-9a96-c26b3dd5912b",
+        "909f721b-43e2-439e-a867-d2d01e7485cd"
+      ],
+      "resume_sending": true,
+      "resume_run_id": "ca644990-2423-43a5-8d42-f94cca8ab0df"
+    },
+    {
+      "thread_id": "14a68165-47c3-4536-9472-090a651ca936",
+      "run_id": "909f721b-43e2-439e-a867-d2d01e7485cd",
+      "turn_index": 0,
+      "case_id": "C3_live",
+      "interrupts": [
+        {
+          "value": {
+            "action_requests": [
+              {
+                "name": "write_file",
+                "args": {
+                  "file_path": "/workspace/work/reports/oct-summary.md",
+                  "content": "# 2026 年 10 月销售与退款简报\n\n**口径说明**：销售按 `order_date` 归属 2026 年 10 月，且仅统计 `status = paid` 的订单；退款按 `refund_date` 归属 2026 年 10 月，退款所属区域按原订单（`order_id`）关联。金额单位与源文件一致，保留两位小数。\n\n## 一、核心指标\n\n| 指标 | 金额 |\n|---|---:|\n| 10 月销售（paid，含税口径同源文件） | 300.00 |\n| 10 月退款 | 170.00 |\n| 全国净收入（销售 − 退款） | 130.00 |\n| 华东净收入 | 50.00 |\n| 华南净收入 | 80.00 |\n| 华东 + 华南净收入合计 | 130.00 |\n\n## 二、销售明细（2026-10，paid）\n\n| order_id | order_date | region | amount | 计入 |\n|---|---|---|---|---:|\n| O100 | 2026-10-03 | 华东 | 120.00 | 是 |\n| O101 | 2026-10-12 | 华南 | 80.00 | 是 |\n| O102 | 2026-10-20 | 华东 | 50.00 | 否（status = cancelled） |\n| O103 | 2026-09-28 | 华东 | 200.00 | 否（9 月订单，仅其退款计入 10 月） |\n| O104 | 2026-10-25 | 华东 | 100.00 | 是 |\n\n- 计入销售合计：120.00 + 80.00 + 100.00 = **300.00**\n- 分区域销售：华东 220.00（O100、O104）；华南 80.00（O101）\n\n## 三、退款明细（2026-10）\n\n| refund_id | order_id | 关联区域 | refund_date | amount | 计入 |\n|---|---|---|---|---|---:|\n| R01 | O100 | 华东 | 2026-10-16 | 20.00 | 是 |\n| R02 | O101 | 华南 | 2026-11-02 | 10.00 | 否（11 月退款） |\n| R03 | O103 | 华东 | 2026-10-18 | 150.00 | 是 |\n\n- 计入退款合计：20.00 + 150.00 = **170.00**\n- 分区域退款：华东 170.00（R01、R03）；华南 0.00（R02 属 11 月，不计入）\n\n## 四、净收入计算\n\n| 区域 | 销售 | 退款 | 净收入 |\n|---|---:|---:|---:|\n| 华东 | 220.00 | 170.00 | 50.00 |\n| 华南 | 80.00 | 0.00 | 80.00 |\n| 合计（全国） | 300.00 | 170.00 | 130.00 |\n\n## 五、口径提示\n\n1. R03 的退款 150.00 关联 9 月已付订单 O103。按既定口径，退款只按 `refund_date` 归期，不追溯调整 9 月销售，因此该笔全额冲减 10 月华东净收入。\n2. 退款区域一律取原订单区域，不单独维护退款区域字段。本批数据中 R02 因落在 11 月被排除；若纳入，则华南净收入为 70.00、全国净收入为 120.00。\n3. 源 CSV 未被修改，仅读取计算。\n"
+                },
+                "description": "Tool execution requires approval\n\nTool: write_file\nArgs: {'file_path': '/workspace/work/reports/oct-summary.md', 'content': '# 2026 年 10 月销售与退款简报\\n\\n**口径说明**：销售按 `order_date` 归属 2026 年 10 月，且仅统计 `status = paid` 的订单；退款按 `refund_date` 归属 2026 年 10 月，退款所属区域按原订单（`order_id`）关联。金额单位与源文件一致，保留两位小数。\\n\\n## 一、核心指标\\n\\n| 指标 | 金额 |\\n|---|---:|\\n| 10 月销售（paid，含税口径同源文件） | 300.00 |\\n| 10 月退款 | 170.00 |\\n| 全国净收入（销售 − 退款） | 130.00 |\\n| 华东净收入 | 50.00 |\\n| 华南净收入 | 80.00 |\\n| 华东 + 华南净收入合计 | 130.00 |\\n\\n## 二、销售明细（2026-10，paid）\\n\\n| order_id | order_date | region | amount | 计入 |\\n|---|---|---|---|---:|\\n| O100 | 2026-10-03 | 华东 | 120.00 | 是 |\\n| O101 | 2026-10-12 | 华南 | 80.00 | 是 |\\n| O102 | 2026-10-20 | 华东 | 50.00 | 否（status = cancelled） |\\n| O103 | 2026-09-28 | 华东 | 200.00 | 否（9 月订单，仅其退款计入 10 月） |\\n| O104 | 2026-10-25 | 华东 | 100.00 | 是 |\\n\\n- 计入销售合计：120.00 + 80.00 + 100.00 = **300.00**\\n- 分区域销售：华东 220.00（O100、O104）；华南 80.00（O101）\\n\\n## 三、退款明细（2026-10）\\n\\n| refund_id | order_id | 关联区域 | refund_date | amount | 计入 |\\n|---|---|---|---|---|---:|\\n| R01 | O100 | 华东 | 2026-10-16 | 20.00 | 是 |\\n| R02 | O101 | 华南 | 2026-11-02 | 10.00 | 否（11 月退款） |\\n| R03 | O103 | 华东 | 2026-10-18 | 150.00 | 是 |\\n\\n- 计入退款合计：20.00 + 150.00 = **170.00**\\n- 分区域退款：华东 170.00（R01、R03）；华南 0.00（R02 属 11 月，不计入）\\n\\n## 四、净收入计算\\n\\n| 区域 | 销售 | 退款 | 净收入 |\\n|---|---:|---:|---:|\\n| 华东 | 220.00 | 170.00 | 50.00 |\\n| 华南 | 80.00 | 0.00 | 80.00 |\\n| 合计（全国） | 300.00 | 170.00 | 130.00 |\\n\\n## 五、口径提示\\n\\n1. R03 的退款 150.00 关联 9 月已付订单 O103。按既定口径，退款只按 `refund_date` 归期，不追溯调整 9 月销售，因此该笔全额冲减 10 月华东净收入。\\n2. 退款区域一律取原订单区域，不单独维护退款区域字段。本批数据中 R02 因落在 11 月被排除；若纳入，则华南净收入为 70.00、全国净收入为 120.00。\\n3. 源 CSV 未被修改，仅读取计算。\\n'}"
+              }
+            ],
+            "review_configs": [
+              {
+                "action_name": "write_file",
+                "allowed_decisions": [
+                  "approve",
+                  "edit",
+                  "reject"
+                ]
+              }
+            ]
+          },
+          "id": "32406964ee39ab49b6c74edb5da977cb"
+        }
+      ],
+      "revision": 2,
+      "task_id": "2ad5f06b-8e35-4320-a582-53b688b0a841",
+      "work_item_id": "1e2e4533-b897-57d4-8411-12dada6be1a8",
+      "id": "e0f6b169-3a3d-5097-8b19-fb412d896b54",
+      "parameters_hash": "26cb694b6345d7eefc6853338214652dc9aa8180e17324916316ee6f8f29507e",
+      "expires_at": 1794680609.6560378,
+      "status": "resumed",
+      "assignee": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "created_at": 1794678809.656041,
+      "decision": "approve",
+      "actor_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+      "request_id": "a50fde1e-1910-419f-a0e8-2cded8fd2697",
+      "decided_at": 1794678896.594487,
+      "runs_before_resume": [
+        "909f721b-43e2-439e-a867-d2d01e7485cd"
+      ],
+      "resume_sending": true,
+      "resume_run_id": "226f2961-543a-44ab-9a96-c26b3dd5912b"
+    }
+  ],
+  "before_restart": {
+    "thread_id": "14a68165-47c3-4536-9472-090a651ca936",
+    "run_id": "909f721b-43e2-439e-a867-d2d01e7485cd",
+    "turn_index": 0,
+    "case_id": "C3_live",
+    "interrupts": [
+      {
+        "value": {
+          "action_requests": [
+            {
+              "name": "write_file",
+              "args": {
+                "file_path": "/workspace/work/reports/oct-summary.md",
+                "content": "# 2026 年 10 月销售与退款简报\n\n**口径说明**：销售按 `order_date` 归属 2026 年 10 月，且仅统计 `status = paid` 的订单；退款按 `refund_date` 归属 2026 年 10 月，退款所属区域按原订单（`order_id`）关联。金额单位与源文件一致，保留两位小数。\n\n## 一、核心指标\n\n| 指标 | 金额 |\n|---|---:|\n| 10 月销售（paid，含税口径同源文件） | 300.00 |\n| 10 月退款 | 170.00 |\n| 全国净收入（销售 − 退款） | 130.00 |\n| 华东净收入 | 50.00 |\n| 华南净收入 | 80.00 |\n| 华东 + 华南净收入合计 | 130.00 |\n\n## 二、销售明细（2026-10，paid）\n\n| order_id | order_date | region | amount | 计入 |\n|---|---|---|---|---:|\n| O100 | 2026-10-03 | 华东 | 120.00 | 是 |\n| O101 | 2026-10-12 | 华南 | 80.00 | 是 |\n| O102 | 2026-10-20 | 华东 | 50.00 | 否（status = cancelled） |\n| O103 | 2026-09-28 | 华东 | 200.00 | 否（9 月订单，仅其退款计入 10 月） |\n| O104 | 2026-10-25 | 华东 | 100.00 | 是 |\n\n- 计入销售合计：120.00 + 80.00 + 100.00 = **300.00**\n- 分区域销售：华东 220.00（O100、O104）；华南 80.00（O101）\n\n## 三、退款明细（2026-10）\n\n| refund_id | order_id | 关联区域 | refund_date | amount | 计入 |\n|---|---|---|---|---|---:|\n| R01 | O100 | 华东 | 2026-10-16 | 20.00 | 是 |\n| R02 | O101 | 华南 | 2026-11-02 | 10.00 | 否（11 月退款） |\n| R03 | O103 | 华东 | 2026-10-18 | 150.00 | 是 |\n\n- 计入退款合计：20.00 + 150.00 = **170.00**\n- 分区域退款：华东 170.00（R01、R03）；华南 0.00（R02 属 11 月，不计入）\n\n## 四、净收入计算\n\n| 区域 | 销售 | 退款 | 净收入 |\n|---|---:|---:|---:|\n| 华东 | 220.00 | 170.00 | 50.00 |\n| 华南 | 80.00 | 0.00 | 80.00 |\n| 合计（全国） | 300.00 | 170.00 | 130.00 |\n\n## 五、口径提示\n\n1. R03 的退款 150.00 关联 9 月已付订单 O103。按既定口径，退款只按 `refund_date` 归期，不追溯调整 9 月销售，因此该笔全额冲减 10 月华东净收入。\n2. 退款区域一律取原订单区域，不单独维护退款区域字段。本批数据中 R02 因落在 11 月被排除；若纳入，则华南净收入为 70.00、全国净收入为 120.00。\n3. 源 CSV 未被修改，仅读取计算。\n"
+              },
+              "description": "Tool execution requires approval\n\nTool: write_file\nArgs: {'file_path': '/workspace/work/reports/oct-summary.md', 'content': '# 2026 年 10 月销售与退款简报\\n\\n**口径说明**：销售按 `order_date` 归属 2026 年 10 月，且仅统计 `status = paid` 的订单；退款按 `refund_date` 归属 2026 年 10 月，退款所属区域按原订单（`order_id`）关联。金额单位与源文件一致，保留两位小数。\\n\\n## 一、核心指标\\n\\n| 指标 | 金额 |\\n|---|---:|\\n| 10 月销售（paid，含税口径同源文件） | 300.00 |\\n| 10 月退款 | 170.00 |\\n| 全国净收入（销售 − 退款） | 130.00 |\\n| 华东净收入 | 50.00 |\\n| 华南净收入 | 80.00 |\\n| 华东 + 华南净收入合计 | 130.00 |\\n\\n## 二、销售明细（2026-10，paid）\\n\\n| order_id | order_date | region | amount | 计入 |\\n|---|---|---|---|---:|\\n| O100 | 2026-10-03 | 华东 | 120.00 | 是 |\\n| O101 | 2026-10-12 | 华南 | 80.00 | 是 |\\n| O102 | 2026-10-20 | 华东 | 50.00 | 否（status = cancelled） |\\n| O103 | 2026-09-28 | 华东 | 200.00 | 否（9 月订单，仅其退款计入 10 月） |\\n| O104 | 2026-10-25 | 华东 | 100.00 | 是 |\\n\\n- 计入销售合计：120.00 + 80.00 + 100.00 = **300.00**\\n- 分区域销售：华东 220.00（O100、O104）；华南 80.00（O101）\\n\\n## 三、退款明细（2026-10）\\n\\n| refund_id | order_id | 关联区域 | refund_date | amount | 计入 |\\n|---|---|---|---|---|---:|\\n| R01 | O100 | 华东 | 2026-10-16 | 20.00 | 是 |\\n| R02 | O101 | 华南 | 2026-11-02 | 10.00 | 否（11 月退款） |\\n| R03 | O103 | 华东 | 2026-10-18 | 150.00 | 是 |\\n\\n- 计入退款合计：20.00 + 150.00 = **170.00**\\n- 分区域退款：华东 170.00（R01、R03）；华南 0.00（R02 属 11 月，不计入）\\n\\n## 四、净收入计算\\n\\n| 区域 | 销售 | 退款 | 净收入 |\\n|---|---:|---:|---:|\\n| 华东 | 220.00 | 170.00 | 50.00 |\\n| 华南 | 80.00 | 0.00 | 80.00 |\\n| 合计（全国） | 300.00 | 170.00 | 130.00 |\\n\\n## 五、口径提示\\n\\n1. R03 的退款 150.00 关联 9 月已付订单 O103。按既定口径，退款只按 `refund_date` 归期，不追溯调整 9 月销售，因此该笔全额冲减 10 月华东净收入。\\n2. 退款区域一律取原订单区域，不单独维护退款区域字段。本批数据中 R02 因落在 11 月被排除；若纳入，则华南净收入为 70.00、全国净收入为 120.00。\\n3. 源 CSV 未被修改，仅读取计算。\\n'}"
+            }
+          ],
+          "review_configs": [
+            {
+              "action_name": "write_file",
+              "allowed_decisions": [
+                "approve",
+                "edit",
+                "reject"
+              ]
+            }
+          ]
+        },
+        "id": "32406964ee39ab49b6c74edb5da977cb"
+      }
+    ],
+    "revision": 2,
+    "task_id": "2ad5f06b-8e35-4320-a582-53b688b0a841",
+    "work_item_id": "1e2e4533-b897-57d4-8411-12dada6be1a8",
+    "id": "e0f6b169-3a3d-5097-8b19-fb412d896b54",
+    "parameters_hash": "26cb694b6345d7eefc6853338214652dc9aa8180e17324916316ee6f8f29507e",
+    "expires_at": 1794680609.6560378,
+    "status": "pending",
+    "assignee": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+    "created_at": 1794678809.656041
+  },
+  "worker_restarted": true
+}

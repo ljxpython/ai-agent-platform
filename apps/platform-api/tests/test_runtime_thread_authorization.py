@@ -67,6 +67,9 @@ def test_batch_endpoint_rebuilds_actor_and_checks_platform_acl() -> None:
             "platform_api.modules.runtime_catalog.presentation.http.thread_access.allowed",
             side_effect=[True, False],
         ) as allowed,
+        patch(
+            "platform_api.modules.evaluation.workbench_grants.check_assistant_thread",
+        ) as check_assistant,
     ):
         result = authorize_runtime_threads(request, payload)
 
@@ -77,6 +80,9 @@ def test_batch_endpoint_rebuilds_actor_and_checks_platform_acl() -> None:
         project_id="p1",
     )
     assert get_access.call_count == 2
+    check_assistant.assert_called_once_with(
+        request.app.state.db_session_factory, "p1", "t1"
+    )
     assert [call.args[3] for call in allowed.call_args_list] == ["read", "read"]
 
 
@@ -103,6 +109,9 @@ def test_batch_endpoint_rechecks_service_credential() -> None:
             "platform_api.modules.runtime_catalog.presentation.http.thread_access.allowed",
             return_value=True,
         ),
+        patch(
+            "platform_api.modules.evaluation.workbench_grants.check_assistant_thread",
+        ) as check_assistant,
     ):
         assert authorize_runtime_threads(request, payload) == {
             "allowed_thread_ids": ["t1"]
@@ -112,6 +121,9 @@ def test_batch_endpoint_rechecks_service_credential() -> None:
         subject="service-account:account-1",
         credential_id="credential-1",
         project_id="p1",
+    )
+    check_assistant.assert_called_once_with(
+        request.app.state.db_session_factory, "p1", "t1"
     )
     with patch(
         "platform_api.modules.runtime_catalog.presentation.http.load_service_account_actor",

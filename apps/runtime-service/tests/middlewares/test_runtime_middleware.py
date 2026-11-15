@@ -92,6 +92,37 @@ def test_runtime_middleware_resolves_context_and_rebuilds_override_model() -> No
     assert called[0].model is not request.model
 
 
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_model_messages_keep_trusted_business_run_link(monkeypatch, wrapped):
+    from langchain.agents.middleware import ModelResponse
+
+    run_id = "c26fe936-7823-4d47-849a-f2a88ca67f57"
+    monkeypatch.setattr(
+        "runtime_service.middlewares.runtime_config.get_config",
+        lambda: {"metadata": {"run_id": run_id}},
+    )
+    original = AIMessage(
+        content="answer", id="message", response_metadata={"run_id": "provider-id"}
+    )
+    request = ModelRequest(
+        model=FakeListChatModel(responses=["unused"]),
+        messages=[HumanMessage(content="hello")],
+        runtime=Runtime(context=RuntimeContext()),
+    )
+
+    async def handler(_request):
+        return ModelResponse(result=[original]) if wrapped else original
+
+    response = asyncio.run(_middleware().awrap_model_call(request, handler))
+    message = response.result[0] if wrapped else response
+    assert message.id == original.id and message.content == original.content
+    assert message.response_metadata == {
+        "run_id": "provider-id",
+        "runtime_run_id": run_id,
+    }
+    assert original.response_metadata == {"run_id": "provider-id"}
+
+
 def test_runtime_middleware_rejects_unknown_tool_before_handler() -> None:
     middleware = _middleware()
     request = ToolCallRequest(

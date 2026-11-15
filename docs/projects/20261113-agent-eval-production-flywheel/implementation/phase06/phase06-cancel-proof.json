@@ -1,0 +1,74 @@
+{
+  "task_id": "cbfc78f3-94a6-4fd3-8c01-748016c55aef",
+  "session_id": "d6a22a42-3923-43fe-8403-499eb2758fb6",
+  "initial_receipt": {
+    "version": 1,
+    "stop_id": "3f3886e6-9195-48e5-835b-2d3108df5452",
+    "thread_id": "d6a22a42-3923-43fe-8403-499eb2758fb6",
+    "phase": "confirmation_unavailable",
+    "requested_at": "2026-11-15T18:50:33.776673+08:00",
+    "accepted_at": null,
+    "confirmed_at": null,
+    "target_count": null,
+    "execution_stopped": null,
+    "resource_cleanup": "pending",
+    "has_pending_interrupts": null,
+    "queue": {
+      "pending_cancelled_count": null,
+      "inbox_consumed_count": null,
+      "inbox_not_consumed_count": null
+    },
+    "report": null,
+    "reason_code": "stop_confirmation_unavailable",
+    "request_id": "dbeaf7885de5427ca7740e62eb6097f7"
+  },
+  "confirmed_receipt": {
+    "version": 1,
+    "stop_id": "3f3886e6-9195-48e5-835b-2d3108df5452",
+    "thread_id": "d6a22a42-3923-43fe-8403-499eb2758fb6",
+    "phase": "no_active_run",
+    "requested_at": "2026-11-15T18:50:33.776673+08:00",
+    "accepted_at": "2026-11-15T18:50:37.359450+08:00",
+    "confirmed_at": "2026-11-15T18:50:37.520427+08:00",
+    "target_count": 0,
+    "execution_stopped": true,
+    "resource_cleanup": "not_required",
+    "has_pending_interrupts": false,
+    "queue": {
+      "pending_cancelled_count": 0,
+      "inbox_consumed_count": 0,
+      "inbox_not_consumed_count": 0
+    },
+    "report": {
+      "version": 1,
+      "source": "checkpoint_and_receipts",
+      "checkpoint_id": null,
+      "checkpoint_at": null,
+      "checkpoints": [],
+      "progress": [],
+      "artifacts": [],
+      "uncertainties": [
+        "checkpoint_unavailable",
+        "progress_unavailable"
+      ],
+      "truncated": false,
+      "background_tasks": {
+        "target_count": 0,
+        "cleanup_confirmed_count": 0,
+        "cleanup_unconfirmed_count": 0,
+        "notifications_suppressed_count": 0,
+        "truncated": false
+      }
+    },
+    "reason_code": null,
+    "request_id": "1b2e73ef2b44429489ef43d717bad589"
+  },
+  "runs": [
+    {
+      "run_id": "fd0cad03-f0ca-4538-b828-6e93ba85040c",
+      "status": "success"
+    }
+  ],
+  "report_content": null,
+  "original_evidence_unchanged": true
+}

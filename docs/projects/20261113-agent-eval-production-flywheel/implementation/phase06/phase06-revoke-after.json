@@ -1,0 +1,20 @@
+{
+  "item_id": "db093548-d48d-4703-980b-5fbdc59b06da",
+  "task_id": "efe20f72-519a-4c58-8e4e-e485568abae9",
+  "checks": {
+    "session_collect_False": 409,
+    "session_collect_True": 409,
+    "generate_after_revoke": 409,
+    "platform_thread": 403,
+    "platform_state": 403,
+    "platform_runs": 403,
+    "platform_history": 403,
+    "platform_workspace": 403,
+    "native_experiment": 403,
+    "native_run": 403,
+    "native_dataset": 403,
+    "native_trace_0": 403,
+    "native_trace_1": 403
+  },
+  "body_hidden": true
+}

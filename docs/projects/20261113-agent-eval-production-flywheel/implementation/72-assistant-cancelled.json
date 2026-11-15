@@ -1,0 +1,50 @@
+{
+  "item_id": "83be366d-72d6-54de-ba0b-98381058ae3c",
+  "job_id": "2c7549d7-5123-470d-95c1-849c9b91c260",
+  "thread_id": "a60cb9ad-e444-5b6f-859f-cbc3e6ad4d33",
+  "run_id": "622dab2a-aae9-4047-8687-42d93820046a",
+  "initial": "running",
+  "recovery": "503 during EvalFlow restart reconciled existing job, no replay",
+  "final_status": "cancelled",
+  "stop_receipt": {
+    "version": 1,
+    "stop_id": "361d8a56-b758-4f06-a2d1-6e9e5db7249a",
+    "thread_id": "a60cb9ad-e444-5b6f-859f-cbc3e6ad4d33",
+    "phase": "stopped",
+    "requested_at": "2026-11-15T01:31:30.975621+08:00",
+    "accepted_at": "2026-11-15T01:31:31.907778+08:00",
+    "confirmed_at": "2026-11-15T01:31:32.173072+08:00",
+    "target_count": 1,
+    "execution_stopped": true,
+    "resource_cleanup": "not_required",
+    "has_pending_interrupts": false,
+    "queue": {
+      "inbox_consumed_count": 0,
+      "pending_cancelled_count": 1,
+      "inbox_not_consumed_count": 0
+    },
+    "report": {
+      "source": "checkpoint_and_receipts",
+      "version": 1,
+      "progress": [],
+      "artifacts": [],
+      "truncated": false,
+      "checkpoints": [],
+      "checkpoint_at": null,
+      "checkpoint_id": null,
+      "uncertainties": [
+        "checkpoint_unavailable",
+        "progress_unavailable"
+      ],
+      "background_tasks": {
+        "truncated": false,
+        "target_count": 0,
+        "cleanup_confirmed_count": 0,
+        "cleanup_unconfirmed_count": 0,
+        "notifications_suppressed_count": 0
+      }
+    },
+    "reason_code": null
+  },
+  "versions": 0
+}

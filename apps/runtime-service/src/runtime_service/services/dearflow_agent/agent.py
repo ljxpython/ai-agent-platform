@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
@@ -44,6 +45,7 @@ from runtime_service.middlewares import (
     ToolOutputPruningMiddleware,
     context_management_enabled,
     loop_detection_enabled,
+    loop_observation_enabled,
     resolve_tool_output_limit,
     resolve_wrapup_after_seconds,
 )
@@ -355,6 +357,16 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             defaults=defaults,
             available_tool_names=frozenset(available),
         )
+        from runtime_service.observability.execution_evidence import record_execution
+
+        await asyncio.to_thread(
+            record_execution,
+            config,
+            resolved,
+            facts,
+            "dearflow_agent",
+            None if workspace is None else workspace.root,
+        )
 
     def model_builder(next_config):
         if resolved is None:
@@ -568,9 +580,10 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                         scope="subagent" if child else "primary",
                         graph_key="dearflow_agent",
                         metadata=metadata,
+                        observe_only=not loop_detection_enabled(),
                     )
                 ]
-                if loop_detection_enabled()
+                if loop_detection_enabled() or loop_observation_enabled()
                 else []
             ),
             *([PiiRedactionMiddleware(pii_config)] if pii_config.enabled else []),

@@ -1,0 +1,93 @@
+{
+  "item_id": "91d4d6e7-c5d6-5d89-b52e-9fdca5167b18",
+  "task_id": "b1f65bde-67ee-4a24-9dfe-eec30e69cafa",
+  "thread_id": "5e166659-2065-45a1-ac0c-206dd830c567",
+  "run_id": "29f290a8-5fa5-4b69-a2a7-33d47c1d19c4",
+  "observed_status": "running",
+  "observed_at": 1794706610.8756428,
+  "view": {
+    "status": "materials_unavailable",
+    "description": null,
+    "versions": null,
+    "operations": null
+  },
+  "run_read_after": {
+    "status": 200,
+    "result": {
+      "run_id": "29f290a8-5fa5-4b69-a2a7-33d47c1d19c4",
+      "thread_id": "5e166659-2065-45a1-ac0c-206dd830c567",
+      "assistant_id": "7769e77c-881b-5674-b6b7-2a71f444dd0b",
+      "created_at": "2026-11-15T01:36:50.574790+00:00",
+      "updated_at": "2026-11-15T01:36:58.792761+00:00",
+      "status": "success",
+      "metadata": {
+        "platform_build": {
+          "python": "3.13.9",
+          "execution_mode": "local_process",
+          "package_sha256": "b3c8080739f42d7be05976e6d94c2abe214d2d52c5d549d653b86ed916115136",
+          "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+        },
+        "evaluation_run_id": "b1f65bde67ee4a249dfeeec30e69cafa",
+        "evaluation_case_id": "safety-revoke-restore-31-plus-24",
+        "evaluation_attempt_id": "d3ec32e91558408cb4f1e10b958f619e"
+      },
+      "kwargs": {
+        "input": {
+          "messages": [
+            {
+              "role": "user",
+              "content": "请只回答31加24，只输出数字，不要调用任何工具，也不要解释。"
+            }
+          ]
+        },
+        "config": {
+          "configurable": {},
+          "recursion_limit": 200
+        },
+        "context": {
+          "top_p": 1.0,
+          "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+          "plan_mode": false,
+          "max_tokens": 4096,
+          "temperature": 0.0,
+          "access_policy": "review",
+          "execution_mode": "standard",
+          "offload_conversation": false
+        },
+        "version": "v3",
+        "metadata": {
+          "platform_build": {
+            "python": "3.13.9",
+            "execution_mode": "local_process",
+            "package_sha256": "b3c8080739f42d7be05976e6d94c2abe214d2d52c5d549d653b86ed916115136",
+            "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+          },
+          "evaluation_run_id": "b1f65bde67ee4a249dfeeec30e69cafa",
+          "evaluation_case_id": "safety-revoke-restore-31-plus-24",
+          "evaluation_attempt_id": "d3ec32e91558408cb4f1e10b958f619e"
+        },
+        "durability": "sync",
+        "stream_mode": [
+          "values",
+          "updates",
+          "messages",
+          "checkpoints",
+          "custom"
+        ],
+        "assistant_id": "dearflow_agent",
+        "stream_resumable": true,
+        "multitask_strategy": "interrupt"
+      },
+      "multitask_strategy": "interrupt",
+      "queue_position": 1
+    }
+  },
+  "after_fix_matrix": {
+    "thread": 403,
+    "/state": 403,
+    "/history": 403,
+    "/state/checkpoint": 403,
+    "/runs": 403,
+    "/files/content?path=/workspace/uploads/test.csv": 403
+  }
+}

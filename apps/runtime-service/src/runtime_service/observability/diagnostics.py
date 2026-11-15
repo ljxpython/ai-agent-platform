@@ -58,6 +58,14 @@ _FIELDS = frozenset(
         "decision",
         "repetitions",
         "threshold",
+        "event_id",
+        "observation_id",
+        "detector_version",
+        "signal_source",
+        "confirmation_status",
+        "eligible_batches",
+        "ineligible_batches",
+        "signals",
     }
 )
 

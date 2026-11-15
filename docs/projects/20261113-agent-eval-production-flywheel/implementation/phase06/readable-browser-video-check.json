@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "tab_id": 794185397,
+  "value": [
+    {
+      "error": null,
+      "hidden": false,
+      "paused": false,
+      "source": "录像/01-新建与AI生成题库.mp4",
+      "time": 26.7968
+    },
+    {
+      "error": null,
+      "hidden": false,
+      "paused": false,
+      "source": "录像/02-真实运行与结果定位.mp4",
+      "time": 1.1804
+    },
+    {
+      "error": null,
+      "hidden": false,
+      "paused": false,
+      "source": "录像/03-会话来源与复杂结果证据.mp4",
+      "time": 1.1335
+    }
+  ]
+}

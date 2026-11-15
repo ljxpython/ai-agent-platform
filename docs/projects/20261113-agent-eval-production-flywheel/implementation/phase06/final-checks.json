@@ -1,0 +1,105 @@
+{
+  "date": "2026-11-15",
+  "environment": "344c isolated worktrees; synthetic data only",
+  "task_status": {
+    "06_done": 12,
+    "06_partial": 0,
+    "05_closed_via_06": [
+      "5.3",
+      "5.7"
+    ],
+    "original_done": 22,
+    "original_deferred": 3
+  },
+  "tests": {
+    "evalflow_backend": {
+      "passed": 465,
+      "warnings": 16,
+      "log": "EvalFlow:.local-stack/phase06-final-verified-backend.log"
+    },
+    "evalflow_frontend": {
+      "passed": 18,
+      "suites": 5
+    },
+    "agent_authorization": {
+      "passed": 70
+    },
+    "agent_materials": {
+      "passed": 27,
+      "overlap_with_authorization_possible": true
+    },
+    "runtime": {
+      "passed": 6,
+      "warnings": 5
+    },
+    "postgres_concurrency": {
+      "checks": 36,
+      "deadlocks": 0
+    }
+  },
+  "gates": {
+    "build_exit": 0,
+    "types_exit": 0,
+    "direct_eslint_exit": 0,
+    "ruff_0_16_8_exit": 0,
+    "yarn_lint": {
+      "exit": 1,
+      "lint_executed": false,
+      "reason": "Node 22.22.2 differs from package ^24.14.0; direct installed ESLint passed"
+    },
+    "old_ruff_0_12_8": {
+      "exit": 2,
+      "lint_executed": false,
+      "reason": "RUF068 unsupported; Worktree 0.16.8 passed"
+    },
+    "agent_diff_check_exit": 0,
+    "evalflow_diff_check_exit": 0,
+    "mlflow_guard_exit": 0
+  },
+  "documentation": {
+    "files_checked": 9,
+    "local_links_checked": 444,
+    "new_broken_links": 0,
+    "preexisting_unrelated_broken_links_in_FEATURES": 4,
+    "unbalanced_fences": 0,
+    "tasks_contiguous": true,
+    "unchecked_06": 0,
+    "user_acceptance_filled": false
+  },
+  "evidence": {
+    "json_files_scanned": 10,
+    "credential_key_or_pattern_findings": 0,
+    "videos_verified": 15,
+    "video_total_minutes": 59.6,
+    "browser_final_screenshot_visually_reviewed": true,
+    "active_browser_skill_sessions": 0
+  },
+  "services": {
+    "agent_web": 28808,
+    "agent_api": 25087,
+    "runtime": 26645,
+    "runtime_ready": true,
+    "platform_api_ready": true,
+    "evalflow_web": {
+      "port": 9138,
+      "http": 200
+    },
+    "evalflow_api": {
+      "port": 5011,
+      "active": true,
+      "unauthenticated_http": 401,
+      "authenticated_browser_read_verified": true
+    }
+  },
+  "limitations": [
+    "Not whole-repository or MLflow upstream test suite",
+    "Node 24 standard toolchain not verified",
+    "Native browser file picker not recorded; upload API and text-file entry verified",
+    "Batch example delivered, not itself published or run",
+    "Dynamic user supports text and preset file approvals, not arbitrary forms or live human approval",
+    "B04 remains error after unauthorized execute; successful report retained",
+    "Trace-missing browser scenario is a controlled fixture",
+    "05 isolated restore reused, not repeated production disaster recovery",
+    "No git commit/push/merge or production deployment"
+  ]
+}

@@ -10,6 +10,7 @@ def import_core_models() -> None:
     import platform_api.modules.agents.infra.sqlalchemy.models  # noqa: F401
     import platform_api.modules.announcements.models  # noqa: F401
     import platform_api.modules.audit.models  # noqa: F401
+    import platform_api.modules.evaluation.models  # noqa: F401
     import platform_api.modules.identity.models  # noqa: F401
     import platform_api.modules.platform_config.models  # noqa: F401
     import platform_api.modules.projects.models  # noqa: F401

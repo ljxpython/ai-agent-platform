@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-14",
+  "identity": "flywheel-reviewer",
+  "export_id": "59eb6f44-fbbc-4b72-999f-8120f5501a26",
+  "search": [
+    {
+      "containsBatch": false,
+      "name": "batch_trace_search",
+      "status": 403
+    },
+    {
+      "body": "{}",
+      "containsBatch": false,
+      "name": "batch_run_search",
+      "status": 200
+    },
+    {
+      "containsBatch": false,
+      "name": "batch_dataset_search",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "name": "central_run_search",
+      "status": 200
+    }
+  ],
+  "after_second_backend_restart": [
+    {
+      "containsBatch": false,
+      "name": "trace",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "name": "trace_artifact",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "name": "dataset",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "name": "dataset_records",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "name": "run",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "name": "run_artifact",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "name": "source_experiment",
+      "status": 403
+    },
+    {
+      "containsBatch": false,
+      "name": "task",
+      "status": 404
+    },
+    {
+      "containsBatch": false,
+      "name": "catalog",
+      "status": 200
+    },
+    {
+      "containsBatch": false,
+      "name": "tasks",
+      "status": 200
+    },
+    {
+      "body": "{\"detail\":\"该授权批次已关闭或无权访问。\"}",
+      "name": "retry_original_revoked_request",
+      "status": 403
+    }
+  ],
+  "notes": [
+    "Browser same-origin requests; no credential extraction.",
+    "Original request_id reused for rejected POST; no new model run requested."
+  ]
+}

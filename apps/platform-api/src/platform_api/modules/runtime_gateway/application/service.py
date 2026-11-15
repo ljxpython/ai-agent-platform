@@ -1063,6 +1063,18 @@ class RuntimeGatewayService:
         ):
             access = {"project_id": project_id}
         thread_access.require_action(actor, project_id, access, action)
+        evaluation_assistant = False
+        if action != "delete":
+            from platform_api.modules.evaluation.workbench_grants import (
+                check_assistant_thread,
+            )
+
+            evaluation_assistant = await run_in_threadpool(
+                check_assistant_thread,
+                self._require_session_factory(),
+                project_id,
+                thread_id,
+            )
         if (
             action == "read"
             and not thread_access.is_owner(actor, access)
@@ -1081,6 +1093,15 @@ class RuntimeGatewayService:
             )
         thread = await self._upstream.get_thread(thread_id)
         self._assert_thread_project_scope(project_id=project_id, thread=thread)
+        if evaluation_assistant and not _thread_graph_id(thread):
+            # Legacy assistant threads omitted graph metadata; use the verified grant registry.
+            thread = {
+                **thread,
+                "metadata": {
+                    **_thread_metadata(thread),
+                    "graph_id": "evaluation_assistant",
+                },
+            }
         return self._thread_with_access(actor, project_id, thread, access)
 
     @staticmethod
@@ -2440,6 +2461,12 @@ class RuntimeGatewayService:
             await run_in_threadpool(mark_validated)
 
         payload = dict(upstream_payload)
+        from platform_api.build_info import STARTUP_MANIFEST
+
+        payload["metadata"] = {
+            **ensure_dict(payload.get("metadata")),
+            "platform_build": dict(STARTUP_MANIFEST),
+        }
         payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
         payload.setdefault("version", "v3")
         payload.setdefault("stream_resumable", True)
@@ -2882,6 +2909,20 @@ class RuntimeGatewayService:
             if key not in thread_access.ACL_KEYS
         }
         next_payload["thread_id"] = reserved_thread_id or str(uuid4())
+        if "evaluation_grants" in metadata:
+            from platform_api.modules.evaluation.workbench_grants import (
+                bind_execution_thread,
+            )
+
+            await run_in_threadpool(
+                bind_execution_thread,
+                self._require_session_factory(),
+                project_id,
+                metadata["evaluation_grants"],
+                next_payload["thread_id"],
+                metadata.get("agent_id"),
+                clean_str(raw.get("graph_id")) or metadata.get("graph_id"),
+            )
         binding = build_knowledge_binding(
             self._knowledge_mcp_bindings,
             self._tenant_id,
@@ -3112,10 +3153,18 @@ class RuntimeGatewayService:
             project_id=project_id,
         )
         requested_ids = payload.get("ids")
+        from platform_api.modules.evaluation.workbench_grants import (
+            assistant_thread_ids,
+        )
+
+        assistant_ids = await run_in_threadpool(
+            assistant_thread_ids, self._require_session_factory(), project_id
+        )
         ids = [
             thread_id
             for thread_id in records
-            if requested_ids is None or thread_id in requested_ids
+            if thread_id not in assistant_ids
+            and (requested_ids is None or thread_id in requested_ids)
         ]
         metadata = {
             key: value
@@ -3322,6 +3371,18 @@ class RuntimeGatewayService:
             actor=actor, project_id=project_id, thread_id=thread_id, write=True
         )
         graph_id = _thread_graph_id(source)
+        from platform_api.modules.evaluation.workbench_grants import (
+            assistant_thread_ids,
+        )
+
+        controlled = await run_in_threadpool(
+            assistant_thread_ids, self._require_session_factory(), project_id
+        )
+        if graph_id == "evaluation_assistant" or thread_id in controlled:
+            raise ForbiddenError(
+                code="evaluation_fork_denied",
+                message="评测助手资料只能在对应工作项内修订，不能复制为普通会话。",
+            )
         if not graph_id:
             raise BadRequestError(
                 code="graph_id_required", message="Thread graph is missing"
@@ -3538,6 +3599,18 @@ class RuntimeGatewayService:
             project_id=project_id,
             thread_id=thread_id,
         )
+
+    async def set_evaluation_capture(self, *, actor, project_id, thread_id, capture):
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+        )
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="thread-edit"
+        )
+        await upstream.update_thread(
+            thread_id, {"metadata": {"evaluation_material_capture": capture}}
+        )
+        return {"thread_id": thread_id, "capture": capture}
 
     async def update_thread(
         self,
@@ -4292,6 +4365,16 @@ class RuntimeGatewayService:
                 )
             resume_payload = {
                 "assistant_id": parent.agent_key,
+                "metadata": {
+                    key: value
+                    for key, value in ensure_dict(parent_run.get("metadata")).items()
+                    if key
+                    in {
+                        "evaluation_run_id",
+                        "evaluation_case_id",
+                        "evaluation_attempt_id",
+                    }
+                },
                 "command": {"resume": resumes},
                 "version": ensure_dict(ensure_dict(parent_run).get("kwargs")).get(
                     "version", "v3"
@@ -4403,6 +4486,36 @@ class RuntimeGatewayService:
         )
         snapshot = await self._upstream.get_thread_run(thread_id, run_id)
         return snapshot
+
+    async def get_thread_execution_evidence(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        run_id: str,
+    ) -> dict[str, Any]:
+        thread_id = str(parse_uuid(thread_id, code="invalid_thread_id"))
+        run_id = str(parse_uuid(run_id, code="invalid_run_id"))
+        thread = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=False,
+        )
+        snapshot = await self._upstream.get_thread_run(thread_id, run_id)
+        if (
+            not isinstance(snapshot, dict)
+            or snapshot.get("thread_id") != thread_id
+            or snapshot.get("run_id") != run_id
+        ):
+            raise NotFoundError(code="run_not_found", message="Run not found")
+        upstream = await self._thread_upstream(
+            project_id=project_id,
+            thread=thread,
+            operation="diagnostics-read",
+        )
+        return await upstream.get_execution_evidence(thread_id, run_id)
 
     async def get_thread_run_diagnostics(
         self,

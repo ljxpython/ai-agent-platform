@@ -12,6 +12,7 @@ from runtime_service.services.dearflow_agent.capabilities import (
 )
 
 REFERENCE_TOOLS = ("read_reference", *PLAN_TOOL_NAMES)
+EVALUATION_TOOLS = ("decimal_calculate", "read_evidence", "validate_test_plan")
 SHOWCASE_TOOLS = (
     *PLAN_TOOL_NAMES,
     *WORK_TOOLS,
@@ -42,6 +43,7 @@ def graph_tools(graph_id: str) -> tuple[str, ...]:
         "workflow_demo": REFERENCE_TOOLS,
         "showcase_demo": (*SHOWCASE_TOOLS, *configured_mcp_names()),
         "dearflow_agent": (*DEAR_TOOLS, *configured_mcp_names()),
+        "evaluation_assistant": EVALUATION_TOOLS,
     }[graph_id]
 
 
@@ -52,6 +54,7 @@ def tool_catalog() -> dict:
         "workflow_demo",
         "showcase_demo",
         "dearflow_agent",
+        "evaluation_assistant",
     ):
         for name in graph_tools(graph):
             item = tools.setdefault(

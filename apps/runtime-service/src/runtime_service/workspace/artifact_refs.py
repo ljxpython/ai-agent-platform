@@ -105,7 +105,12 @@ class ArtifactWorkspace:
         try:
             data = self.io.read(path)
         except ToolException as exc:
-            raise DocumentError("artifact_not_found", 404) from exc
+            code = (
+                "artifact_not_found"
+                if isinstance(exc.__cause__, FileNotFoundError)
+                else "artifact_source_unavailable"
+            )
+            raise DocumentError(code, 404) from exc
         # Shell can mutate the backing directory: verify both digest and format on read.
         if len(data) > MAX_FILE_BYTES:
             raise DocumentError("file_too_large", 413)

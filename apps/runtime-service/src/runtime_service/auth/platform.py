@@ -138,6 +138,53 @@ async def deny_image_scope_on_server_resources(
 
     if is_completion_cleanup(ctx.user):
         return await authorize_completion_cleanup(ctx, value)
+    if _user_value(ctx.user, "identity") == "platform-evaluation-maintenance":
+        from runtime_service.run_control.authorization import cancellation_context_hash
+
+        operation = scope.get("operation") if isinstance(scope, dict) else None
+        native_stop = operation in {"run-cancel", "run-cancellation-read"}
+        permitted = (
+            _user_value(ctx.user, "role") == "platform_maintenance"
+            and isinstance(scope, dict)
+            and scope.get("assistant_id") in {"evaluation_assistant", "dearflow_agent"}
+            and str(ctx.resource) == "threads"
+            and str(value.get("thread_id")) == scope.get("thread_id")
+            and (
+                (
+                    operation == "thread-delete"
+                    and str(ctx.action) == "delete"
+                    and set(value) == {"thread_id"}
+                )
+                or (
+                    operation == "run-cancel"
+                    and str(ctx.action) == "update"
+                    and value.get("cancel_active") is True
+                )
+                or (
+                    operation == "run-cancellation-read"
+                    and str(ctx.action) == "read"
+                    and value.get("cancellation_receipt") is True
+                )
+            )
+        )
+        if native_stop:
+            try:
+                permitted = permitted and _user_value(
+                    ctx.user, "runtime_context_hash"
+                ) == cancellation_context_hash(value.get("cancellation_id"))
+            except (ValueError, TypeError):
+                permitted = False
+        if not permitted:
+            raise Auth.exceptions.HTTPException(
+                status_code=403,
+                detail="Evaluation maintenance permits only fixed-thread stop/delete",
+            )
+        await authorize_thread_targets(
+            ctx.user,
+            [scope["thread_id"]],
+            action="delete" if operation == "thread-delete" else "edit",
+        )
+        return {"project_id": scope["project_id"]}
     if isinstance(scope, dict) and scope.get("operation") == "thread-retention":
         if (
             _user_value(ctx.user, "identity") != "platform-retention-maintenance"

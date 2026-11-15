@@ -88,6 +88,9 @@ const defaultImage: RenderRule =
 
 markdownRenderer.renderer.rules.image = (tokens, index, options, env, self) => {
   const token = tokens[index];
+  if (env?.disableImages) {
+    return markdownRenderer.utils.escapeHtml(`[图片未加载：${token.content}]`);
+  }
   const srcIndex = token.attrIndex("src");
   if (srcIndex >= 0 && token.attrs) {
     const rawSrc = token.attrs[srcIndex][1];
@@ -120,6 +123,6 @@ markdownRenderer.renderer.rules.fence = ((tokens, index) => {
   ].join("");
 }) satisfies RenderRule;
 
-export function renderMarkdown(source: string): string {
-  return markdownRenderer.render(source || "");
+export function renderMarkdown(source: string, disableImages = false): string {
+  return markdownRenderer.render(source || "", { disableImages });
 }

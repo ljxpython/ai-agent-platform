@@ -1,0 +1,7 @@
+{
+  "comparison": {
+    "compatible": false,
+    "reason": "题库、选题、评分标准或裁判配置不同，不能直接比较均分。"
+  },
+  "reason": "same dataset and standard, evaluator identity changed; not a new-standard test"
+}

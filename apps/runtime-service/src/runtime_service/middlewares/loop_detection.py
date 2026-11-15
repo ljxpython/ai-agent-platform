@@ -48,6 +48,13 @@ def loop_detection_enabled() -> bool:
     return value == "1"
 
 
+def loop_observation_enabled() -> bool:
+    value = os.getenv("AGENT_LOOP_OBSERVATION_ENABLED", "0")
+    if value not in {"0", "1"}:
+        raise ValueError("AGENT_LOOP_OBSERVATION_ENABLED must be 0 or 1")
+    return value == "1"
+
+
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode(errors="surrogatepass")).hexdigest()
 
@@ -173,12 +180,19 @@ class LoopDetectionMiddleware(AgentMiddleware):
     state_schema = LoopDetectionState
 
     def __init__(
-        self, tool_names, *, scope="primary", graph_key="agent", metadata=None
+        self,
+        tool_names,
+        *,
+        scope="primary",
+        graph_key="agent",
+        metadata=None,
+        observe_only=False,
     ):
         self.observed_tools = READ_TOOLS.intersection(tool_names)
         self.scope = scope
         self.graph_key = graph_key
         self.metadata = dict(metadata or {})
+        self.observe_only = observe_only
 
     def _owner(self, runtime, config) -> str | None:
         info = runtime.execution_info
@@ -200,26 +214,78 @@ class LoopDetectionMiddleware(AgentMiddleware):
             return None
         messages = state.get("messages", [])
         completed = _completed_batch(messages, self.observed_tools)
-        return {
-            "runtime_loop_state": {
-                "owner": owner or uuid4().hex,
-                "cursor": completed[0]
-                if completed
-                else _message_id(messages[-1])
-                if messages
-                else None,
-                "user": _last_user(messages),
-                "signature": None,
-                "sequence": None,
-                "repetitions": 0,
-            }
+        marker = {
+            "owner": owner or _hash(uuid4().hex),
+            "cursor": completed[0]
+            if completed
+            else _message_id(messages[-1])
+            if messages
+            else None,
+            "user": _last_user(messages),
+            "signature": None,
+            "sequence": None,
+            "repetitions": 0,
         }
+        if self.observe_only:
+            marker.update(eligible_batches=0, ineligible_batches=0, signals=0)
+            self._observe("runtime.loop.observation.started", marker, get_config())
+        return {"runtime_loop_state": marker}
 
     async def abefore_agent(self, state, runtime):
         return self.before_agent(state, runtime)
 
+    def _observe(self, event, marker, config, **fields):
+        try:
+            payload = {
+                **self.metadata,
+                "run_id": (config.get("metadata") or {}).get("run_id"),
+                "scope": self.scope,
+                "observation_id": marker["owner"],
+                "event_id": _hash(
+                    f"{marker['owner']}:{event}:{fields.get('content_hash', '')}"
+                ),
+                "detector_version": "1",
+                "signal_source": "rule",
+                **fields,
+            }
+            log_diagnostic(event, payload)
+            record_diagnostic_event(event, payload)
+        except Exception:
+            pass
+
+    def after_agent(self, state, runtime):
+        if self.observe_only and not is_conversation_maintenance(runtime):
+            marker = state.get("runtime_loop_state", {})
+            if marker:
+                self._observe(
+                    "runtime.loop.observation.completed",
+                    marker,
+                    get_config(),
+                    **{
+                        key: marker.get(key, 0)
+                        for key in ("eligible_batches", "ineligible_batches", "signals")
+                    },
+                )
+
+    async def aafter_agent(self, state, runtime):
+        return self.after_agent(state, runtime)
+
     def _transition(self, marker, runtime, config):
         repetitions = marker["repetitions"]
+        if self.observe_only:
+            fields = {
+                "code": "tool_alternation_suspected"
+                if marker.get("alternating")
+                else "tool_no_progress_suspected",
+                "repetitions": repetitions,
+                "threshold": WARN_THRESHOLD,
+                "outcome": "suspected",
+                "confirmation_status": "suspected",
+                "content_hash": _hash(f"{marker['owner']}:{marker['sequence']}"),
+            }
+            # Observation failures must not change model requests or execution outcomes.
+            self._observe("runtime.loop.observation", marker, config, **fields)
+            return
         code = (
             "tool_loop_reached"
             if repetitions == HARD_LIMIT
@@ -267,9 +333,24 @@ class LoopDetectionMiddleware(AgentMiddleware):
         user = _last_user(messages)
         if user is not None and user != marker.get("user"):
             marker.update(user=user, signature=None, sequence=None, repetitions=0)
+            if self.observe_only:
+                marker.update(recent=[], alternating_signaled=False)
         batch = _completed_batch(messages, self.observed_tools)
         if batch is None:
             marker.update(signature=None, sequence=None, repetitions=0)
+            if self.observe_only:
+                marker.update(recent=[], alternating_signaled=False)
+                cursor = _message_id(messages[-1]) if messages else None
+                if (
+                    messages
+                    and isinstance(messages[-1], ToolMessage)
+                    and cursor
+                    and cursor != marker.get("ineligible_cursor")
+                ):
+                    marker["ineligible_batches"] = (
+                        marker.get("ineligible_batches", 0) + 1
+                    )
+                    marker["ineligible_cursor"] = cursor
         elif batch[0] != marker.get("cursor"):
             cursor, signature = batch
             repeated = signature == marker.get("signature")
@@ -279,9 +360,30 @@ class LoopDetectionMiddleware(AgentMiddleware):
                 sequence=marker.get("sequence") if repeated else cursor,
                 repetitions=marker["repetitions"] + 1 if repeated else 1,
             )
-            if marker["repetitions"] in {WARN_THRESHOLD, HARD_LIMIT}:
+            if self.observe_only:
+                marker["eligible_batches"] = marker.get("eligible_batches", 0) + 1
+            if marker["repetitions"] in (
+                {WARN_THRESHOLD} if self.observe_only else {WARN_THRESHOLD, HARD_LIMIT}
+            ):
+                if self.observe_only:
+                    marker["signals"] = marker.get("signals", 0) + 1
                 self._transition(marker, runtime, config)
-        if marker["repetitions"] >= HARD_LIMIT:
+            if self.observe_only:
+                recent = [*marker.get("recent", []), signature][-6:]
+                alternating = (
+                    len(recent) == 6
+                    and recent[0] != recent[1]
+                    and recent == recent[:2] * 3
+                )
+                if alternating and not marker.get("alternating_signaled"):
+                    marker["signals"] = marker.get("signals", 0) + 1
+                    self._transition(
+                        {**marker, "alternating": True, "repetitions": 3},
+                        runtime,
+                        config,
+                    )
+                marker.update(recent=recent, alternating_signaled=alternating)
+        if not self.observe_only and marker["repetitions"] >= HARD_LIMIT:
             raise RuntimeExecutionError("runtime.loop.detected")
         return (
             {"runtime_loop_state": marker}
@@ -294,17 +396,24 @@ class LoopDetectionMiddleware(AgentMiddleware):
 
     def wrap_model_call(self, request, handler):
         warned = (
-            request.state.get("runtime_loop_state", {}).get("repetitions", 0)
+            not self.observe_only
+            and request.state.get("runtime_loop_state", {}).get("repetitions", 0)
             >= WARN_THRESHOLD
         )
         return handler(add_wrapup_instruction(request) if warned else request)
 
     async def awrap_model_call(self, request, handler):
         warned = (
-            request.state.get("runtime_loop_state", {}).get("repetitions", 0)
+            not self.observe_only
+            and request.state.get("runtime_loop_state", {}).get("repetitions", 0)
             >= WARN_THRESHOLD
         )
         return await handler(add_wrapup_instruction(request) if warned else request)
 
 
-__all__ = ["LoopDetectionMiddleware", "LoopDetectionState", "loop_detection_enabled"]
+__all__ = [
+    "LoopDetectionMiddleware",
+    "LoopDetectionState",
+    "loop_detection_enabled",
+    "loop_observation_enabled",
+]

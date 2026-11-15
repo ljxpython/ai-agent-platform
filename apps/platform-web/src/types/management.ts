@@ -14,6 +14,10 @@ export type ProjectRole =
   | "project_executor";
 export type LegacyProjectRole = "admin" | "editor" | "executor";
 export type PermissionCode =
+  | "project.evaluation.read"
+  | "project.evaluation.execute"
+  | "project.evaluation.review"
+  | "project.evaluation.manage"
   | "platform.user.read"
   | "platform.user.write"
   | "platform.user.create"

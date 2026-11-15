@@ -1,0 +1,12 @@
+# Example only: no active rule_files references this file.
+groups:
+  - name: evalflow-inspection-availability
+    rules:
+      - alert: EvalflowInspectionUnavailable
+        expr: up{job="evalflow-inspection"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 巡检受控指标暂不可读取，请核对授权与源服务
+# No score/quality alert until calibration and time-window thresholds are approved.

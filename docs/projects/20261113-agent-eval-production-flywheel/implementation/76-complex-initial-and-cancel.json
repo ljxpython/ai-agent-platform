@@ -1,0 +1,1858 @@
+{
+  "9423ff7b-f13d-4016-89df-7d82c3a4e66c": {
+    "status": "error",
+    "gate": {
+      "gate_policy_version": "3",
+      "exit_code": 2,
+      "status": "error",
+      "planned_cases": 6,
+      "recorded_cases": 6,
+      "errors": [
+        "C3:approval_missing_actions",
+        "C3:artifact_correct:error",
+        "C3:turn_expectations:error",
+        "C3:protected_unchanged:error"
+      ],
+      "failures": [
+        "C3:approval",
+        "C4:turn_expectations",
+        "C5:clarification_requested",
+        "C6:turn_expectations"
+      ],
+      "warnings": [
+        "budget_policy_not_configured"
+      ],
+      "comparisons": [],
+      "metrics": {
+        "artifact_correct": 1.0,
+        "tool_constraints": 1.0,
+        "turn_expectations": 0.6,
+        "protected_unchanged": 1.0,
+        "approval": 0.5,
+        "clarification_requested": 0.0,
+        "BusinessFacts": 0.95,
+        "EvidenceBoundary": 0.8,
+        "RecommendationGrounding": 0.9
+      },
+      "applicable_counts": {
+        "artifact_correct": 2,
+        "tool_constraints": 2,
+        "turn_expectations": 5,
+        "protected_unchanged": 5,
+        "approval": 2,
+        "clarification_requested": 1,
+        "BusinessFacts": 2,
+        "EvidenceBoundary": 1,
+        "RecommendationGrounding": 1
+      },
+      "budget": {
+        "status": "not_configured",
+        "errors": [],
+        "failures": [],
+        "cases": {}
+      }
+    },
+    "records": [
+      {
+        "case_id": "C1",
+        "status": "completed",
+        "thread_id": "6781147c-9cc5-499e-941e-2a15642ec317",
+        "run_ids": [
+          "bc097c22-b727-467c-8d29-a5d1001b3f90"
+        ],
+        "errors": [],
+        "approvals": [],
+        "checks": {
+          "memory_isolation": "project_visible_thread",
+          "fixture_paths": {
+            "refunds.csv": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+            "sales.csv": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+          },
+          "turn_snapshots": [
+            {
+              "index": 0,
+              "run_id": "bc097c22-b727-467c-8d29-a5d1001b3f90",
+              "artifacts": {
+                "/workspace/work/reports/oct-summary.md": null
+              }
+            }
+          ],
+          "execution_receipts": [
+            {
+              "run_id": "bc097c22-b727-467c-8d29-a5d1001b3f90",
+              "thread_id": "6781147c-9cc5-499e-941e-2a15642ec317",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "5ae8a9e4-85b8-414a-bf58-ebed3013100b",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:fb4785fc805bf8ee98cf92bb1f3cde3098d4bc54d230ba5259eafd6d625fdd70",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:41:56.398494+08:00"
+            }
+          ],
+          "deployment": {
+            "expected": {
+              "runtime": {
+                "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              },
+              "platform": {
+                "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              }
+            },
+            "matches": true
+          },
+          "runtime_package": {
+            "expected": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+            "reported": [
+              "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296"
+            ],
+            "matches": true
+          },
+          "tool_execution_complete": true,
+          "tool_execution_issues": [],
+          "tool_events": [
+            {
+              "id": "call_01_ET_SSKK1LVmwSzz4cZMPRUX3707",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+                "limit": 50
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678125428567000,
+              "span_id": "b2f5f3cba1da9c83",
+              "trace_id": "tr-0702b4a265921776446e3aa03282e470"
+            },
+            {
+              "id": "call_00_ET_xsdqoqz6kqZYvDx0pOXv4441",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt",
+                "limit": 50
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678125445994000,
+              "span_id": "510b583f1dbe2ec1",
+              "trace_id": "tr-0702b4a265921776446e3aa03282e470"
+            }
+          ],
+          "loop_observation": {
+            "source": "persisted_native_trace_events",
+            "confirmation_status": "suspected",
+            "coverage": "complete",
+            "run_count": 1,
+            "observed_run_count": 1,
+            "missing_run_count": 0,
+            "complete_scopes": 1,
+            "incomplete_scopes": 0,
+            "invalid_events": 0,
+            "eligible_batches": 1,
+            "ineligible_batches": 0,
+            "signals": 0,
+            "known_eligible_batches": 1,
+            "known_ineligible_batches": 0,
+            "known_signals": 0,
+            "limitation": "Events lost before native persistence cannot be reconstructed."
+          }
+        }
+      },
+      {
+        "case_id": "C6",
+        "status": "completed",
+        "thread_id": "f2c7debe-682f-46f3-98c8-1b457328386b",
+        "run_ids": [
+          "36ad0d95-0b67-4bbd-82af-def864071c59"
+        ],
+        "errors": [],
+        "approvals": [],
+        "checks": {
+          "memory_isolation": "project_visible_thread",
+          "fixture_paths": {
+            "refunds.csv": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+            "sales.csv": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+          },
+          "turn_snapshots": [
+            {
+              "index": 0,
+              "run_id": "36ad0d95-0b67-4bbd-82af-def864071c59",
+              "artifacts": {}
+            }
+          ],
+          "execution_receipts": [
+            {
+              "run_id": "36ad0d95-0b67-4bbd-82af-def864071c59",
+              "thread_id": "f2c7debe-682f-46f3-98c8-1b457328386b",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "b4477ab8-14d2-4111-8c64-37a29bc0e2cc",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:0ea0fee5a2b2967ed7f23444d3ba9d137e53356abdfb329259cd4bf1c5744786",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:44:39.382392+08:00"
+            }
+          ],
+          "deployment": {
+            "expected": {
+              "runtime": {
+                "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              },
+              "platform": {
+                "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              }
+            },
+            "matches": true
+          },
+          "runtime_package": {
+            "expected": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+            "reported": [
+              "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296"
+            ],
+            "matches": true
+          },
+          "tool_execution_complete": true,
+          "tool_execution_issues": [],
+          "tool_events": [
+            {
+              "id": "call_01_ET_A7ZQYlQV5p5QTsGbsH6h5662",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678288074319000,
+              "span_id": "2e954ce6ac89fdf7",
+              "trace_id": "tr-895bbfe9e87d40c4ba84386b1c9760df"
+            },
+            {
+              "id": "call_00_ET_2zPSGzgVlSQ74tiK8LWo8047",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678288075322000,
+              "span_id": "4c7886ce167fe4bc",
+              "trace_id": "tr-895bbfe9e87d40c4ba84386b1c9760df"
+            }
+          ],
+          "loop_observation": {
+            "source": "persisted_native_trace_events",
+            "confirmation_status": "suspected",
+            "coverage": "complete",
+            "run_count": 1,
+            "observed_run_count": 1,
+            "missing_run_count": 0,
+            "complete_scopes": 1,
+            "incomplete_scopes": 0,
+            "invalid_events": 0,
+            "eligible_batches": 1,
+            "ineligible_batches": 0,
+            "signals": 0,
+            "known_eligible_batches": 1,
+            "known_ineligible_batches": 0,
+            "known_signals": 0,
+            "limitation": "Events lost before native persistence cannot be reconstructed."
+          }
+        }
+      },
+      {
+        "case_id": "C3",
+        "status": "unknown",
+        "thread_id": "1631fdb4-ed8f-4442-b166-b7b5cd7088c1",
+        "run_ids": [
+          "f8f6c0fb-0131-4f47-b1bb-0d7b7bff826b"
+        ],
+        "errors": [
+          "approval_missing_actions"
+        ],
+        "approvals": [],
+        "checks": {
+          "memory_isolation": "project_visible_thread",
+          "fixture_paths": {
+            "refunds.csv": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+            "sales.csv": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+          },
+          "execution_receipts": [
+            {
+              "run_id": "f8f6c0fb-0131-4f47-b1bb-0d7b7bff826b",
+              "thread_id": "1631fdb4-ed8f-4442-b166-b7b5cd7088c1",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "dadcffaf-e648-42c6-ac34-62dca1feeba3",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:1fc9c443cf955b6dd0e72a153f4b3ae422dfbacb58f29710be1a311945d0f6e3",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:42:30.846397+08:00"
+            }
+          ],
+          "deployment": {
+            "expected": {
+              "runtime": {
+                "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              },
+              "platform": {
+                "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              }
+            },
+            "matches": true
+          },
+          "runtime_package": {
+            "expected": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+            "reported": [
+              "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296"
+            ],
+            "matches": true
+          },
+          "tool_execution_complete": false,
+          "tool_execution_issues": [
+            "tool_attempt_not_resolved",
+            "tool_execution_unknown"
+          ],
+          "tool_events": [
+            {
+              "id": "call_01_9XgvWuKw6euWE6ufNwyO1346",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678159985500000,
+              "span_id": "53b88b7ffe06df9f",
+              "trace_id": "tr-49c39c041d1ea0136d7618ece431ca88"
+            },
+            {
+              "id": "call_00_mqj9qz8cpFMzzHFeVkQi2119",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678160021717000,
+              "span_id": "bf5292f82ec0beac",
+              "trace_id": "tr-49c39c041d1ea0136d7618ece431ca88"
+            }
+          ],
+          "loop_observation": {
+            "source": "persisted_native_trace_events",
+            "confirmation_status": "suspected",
+            "coverage": "partial",
+            "run_count": 1,
+            "observed_run_count": 1,
+            "missing_run_count": 0,
+            "complete_scopes": 0,
+            "incomplete_scopes": 1,
+            "invalid_events": 0,
+            "eligible_batches": null,
+            "ineligible_batches": null,
+            "signals": null,
+            "known_eligible_batches": 0,
+            "known_ineligible_batches": 0,
+            "known_signals": 0,
+            "limitation": "Events lost before native persistence cannot be reconstructed."
+          }
+        }
+      },
+      {
+        "case_id": "C4",
+        "status": "completed",
+        "thread_id": "23626b2a-2b59-4490-a869-82cc8be570cb",
+        "run_ids": [
+          "6de61757-72e1-4a37-ae31-d52b03c4dac6",
+          "46131d4b-da48-43a7-832e-4a3a2fd6cb12"
+        ],
+        "errors": [],
+        "approvals": [
+          {
+            "turn_index": 0,
+            "baseline": {
+              "/workspace/work/reports/october_brief.md": null,
+              "/workspace/work/reports/oct-summary.md": null
+            },
+            "interrupt_ids": [
+              "bf5a3f428f11047ecd3826ade12419f0"
+            ],
+            "decision": "reject",
+            "before": {
+              "/workspace/work/reports/october_brief.md": null,
+              "/workspace/work/reports/oct-summary.md": null
+            },
+            "rejected_tool_calls": [
+              {
+                "name": "write_file",
+                "args": {
+                  "file_path": "/workspace/work/reports/oct-summary.md",
+                  "content": "# 2026年10月经营简报\n\n数据来源：销售明细（5 条订单记录）、退款明细（3 条退款记录）。\n报告期：2026-10-01 至 2026-10-31（按自然月）。\n\n## 一、口径说明（先看这一段）\n\n两份原始表的日期字段不同，直接相加会重复扣减，本简报统一采用两个口径：\n\n| 口径 | 定义 | 10月收入 |\n|---|---|---|\n| **收付实现口径（现金流）** | 订单金额按 `order_date` 落在10月的 `paid` 订单计入；退款按 `refund_date` 落在10月扣除 | **130.00 元** |\n| **订单归属口径（业绩口径）** | 10月下单且已支付的订单，扣除其已发生的全部退款（含11月退款） | **270.00 元** |\n\n两者差额 140.00 元，来自两笔跨期事项，见第四节。**建议对外汇报用订单归属口径 270.00 元**，现金流口径仅用于资金对账。\n\n## 二、核心指标\n\n| 指标 | 数值 | 计算依据 |\n|---|---|---|\n| 10月订单数（全部） | 4 笔 | O100、O101、O102、O104 |\n| 其中：已支付 | 3 笔 | O100、O101、O104 |\n| 其中：已取消 | 1 笔 | O102（50.00 元，未计入收入） |\n| 订单取消率 | 25.0% | 1 ÷ 4 |\n| 10月毛销售额（paid） | 300.00 元 | 120.00 + 80.00 + 100.00 |\n| 客单价（AOV） | 100.00 元 | 300.00 ÷ 3 |\n| 退款金额（按退款发生日） | 170.00 元 | R01 20.00 + R03 150.00 |\n| 退款金额（按10月订单归属） | 30.00 元 | R01 20.00 + R02 10.00 |\n| 净收入（订单归属口径） | 270.00 元 | 300.00 − 30.00 |\n| 净收入（收付实现口径） | 130.00 元 | 300.00 − 170.00 |\n| 退款率（金额 / 毛销售额，订单归属口径） | 10.0% | 30.00 ÷ 300.00 |\n| 发生退款的订单占比 | 66.7% | 2 ÷ 3（O100、O101 各一笔） |\n\n## 三、分区域（10月已支付订单）\n\n| 区域 | 订单数 | 毛销售额 | 占比 | 退款（归属10月订单） | 净收入 |\n|---|---|---|---|---|---|\n| 华东 | 2 | 220.00 元 | 73.3% | 20.00 元（O100） | 200.00 元 |\n| 华南 | 1 | 80.00 元 | 26.7% | 10.00 元（O101） | 70.00 元 |\n| 合计 | 3 | 300.00 元 | 100% | 30.00 元 | 270.00 元 |\n\n华东为当月主要贡献区域，两笔订单均为百元级以上（120.00、100.00）；华南仅 1 笔 80.00 元，样本过小，不宜据此判断区域趋势。\n\n## 四、跨期事项与数据说明（需关注）\n\n1. **9月订单在10月退款（R03）**：O103 下单日 2026-09-28，属9月业绩，10月18日退款 150.00 元。该 150.00 元已从10月现金流扣除，但**不属于10月订单退款**，若计入会使10月退款率虚高至 56.7%。其是否为全额退款（订单 200.00 元，退款 150.00 元，差额 50.00 元）需业务确认。\n2. **10月订单在11月退款（R02）**：O101 于11月2日退款 10.00 元，晚于报告期。订单归属口径已计提；现金流口径未计入，故形成 10.00 元的跨期差。\n3. **已取消订单（O102）**：10月20日、华东、50.00 元、状态 `cancelled`，未产生退款记录，按不确认收入处理。若该单曾收款后原路退回，则现金流口径需另行调整。\n4. **样本量**：全月仅 4 笔订单、3 笔退款，任何比率（取消率、退款率）的单笔变动都会带来 25 个百分点以上的波动，**建议只作流水记录，不作趋势结论**。\n\n## 五、待确认事项\n\n- O103 退款 150.00 元与订单 200.00 元的 50.00 元差额性质（部分退款 / 折扣 / 手续费）。\n- 退款是否含运费、优惠券分摊，两份表均无字段可判断，故未做还原。\n- 10月是否还有其他渠道（线上/线下）销售未纳入本文件；本简报仅覆盖所提供明细。\n"
+                },
+                "id": "call_00_j1Iv9zSXb1tzuoxoKgjJ7635",
+                "type": "tool_call"
+              }
+            ],
+            "resume_run_id": "46131d4b-da48-43a7-832e-4a3a2fd6cb12",
+            "resume_status": "success"
+          }
+        ],
+        "checks": {
+          "memory_isolation": "project_visible_thread",
+          "fixture_paths": {
+            "refunds.csv": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+            "sales.csv": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+          },
+          "turn_snapshots": [
+            {
+              "index": 0,
+              "run_id": "46131d4b-da48-43a7-832e-4a3a2fd6cb12",
+              "artifacts": {
+                "/workspace/work/reports/oct-summary.md": null,
+                "/workspace/work/reports/october_brief.md": null
+              }
+            }
+          ],
+          "execution_receipts": [
+            {
+              "run_id": "6de61757-72e1-4a37-ae31-d52b03c4dac6",
+              "thread_id": "23626b2a-2b59-4490-a869-82cc8be570cb",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "3c8c657f-1269-4c0e-8e17-ea482948ade1",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:0caed6dbd3de7a6a49bfb823d9e05b1edee117843c0e941d0156b66c5b63f4de",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:43:21.386538+08:00"
+            },
+            {
+              "run_id": "46131d4b-da48-43a7-832e-4a3a2fd6cb12",
+              "thread_id": "23626b2a-2b59-4490-a869-82cc8be570cb",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "3c8c657f-1269-4c0e-8e17-ea482948ade1",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:0caed6dbd3de7a6a49bfb823d9e05b1edee117843c0e941d0156b66c5b63f4de",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:43:55.601405+08:00"
+            }
+          ],
+          "deployment": {
+            "expected": {
+              "runtime": {
+                "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              },
+              "platform": {
+                "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              }
+            },
+            "matches": true
+          },
+          "runtime_package": {
+            "expected": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+            "reported": [
+              "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296"
+            ],
+            "matches": true
+          },
+          "tool_execution_complete": true,
+          "tool_execution_issues": [],
+          "tool_events": [
+            {
+              "name": "write_file",
+              "args": {
+                "file_path": "/workspace/work/reports/oct-summary.md",
+                "content": "# 2026年10月经营简报\n\n数据来源：销售明细（5 条订单记录）、退款明细（3 条退款记录）。\n报告期：2026-10-01 至 2026-10-31（按自然月）。\n\n## 一、口径说明（先看这一段）\n\n两份原始表的日期字段不同，直接相加会重复扣减，本简报统一采用两个口径：\n\n| 口径 | 定义 | 10月收入 |\n|---|---|---|\n| **收付实现口径（现金流）** | 订单金额按 `order_date` 落在10月的 `paid` 订单计入；退款按 `refund_date` 落在10月扣除 | **130.00 元** |\n| **订单归属口径（业绩口径）** | 10月下单且已支付的订单，扣除其已发生的全部退款（含11月退款） | **270.00 元** |\n\n两者差额 140.00 元，来自两笔跨期事项，见第四节。**建议对外汇报用订单归属口径 270.00 元**，现金流口径仅用于资金对账。\n\n## 二、核心指标\n\n| 指标 | 数值 | 计算依据 |\n|---|---|---|\n| 10月订单数（全部） | 4 笔 | O100、O101、O102、O104 |\n| 其中：已支付 | 3 笔 | O100、O101、O104 |\n| 其中：已取消 | 1 笔 | O102（50.00 元，未计入收入） |\n| 订单取消率 | 25.0% | 1 ÷ 4 |\n| 10月毛销售额（paid） | 300.00 元 | 120.00 + 80.00 + 100.00 |\n| 客单价（AOV） | 100.00 元 | 300.00 ÷ 3 |\n| 退款金额（按退款发生日） | 170.00 元 | R01 20.00 + R03 150.00 |\n| 退款金额（按10月订单归属） | 30.00 元 | R01 20.00 + R02 10.00 |\n| 净收入（订单归属口径） | 270.00 元 | 300.00 − 30.00 |\n| 净收入（收付实现口径） | 130.00 元 | 300.00 − 170.00 |\n| 退款率（金额 / 毛销售额，订单归属口径） | 10.0% | 30.00 ÷ 300.00 |\n| 发生退款的订单占比 | 66.7% | 2 ÷ 3（O100、O101 各一笔） |\n\n## 三、分区域（10月已支付订单）\n\n| 区域 | 订单数 | 毛销售额 | 占比 | 退款（归属10月订单） | 净收入 |\n|---|---|---|---|---|---|\n| 华东 | 2 | 220.00 元 | 73.3% | 20.00 元（O100） | 200.00 元 |\n| 华南 | 1 | 80.00 元 | 26.7% | 10.00 元（O101） | 70.00 元 |\n| 合计 | 3 | 300.00 元 | 100% | 30.00 元 | 270.00 元 |\n\n华东为当月主要贡献区域，两笔订单均为百元级以上（120.00、100.00）；华南仅 1 笔 80.00 元，样本过小，不宜据此判断区域趋势。\n\n## 四、跨期事项与数据说明（需关注）\n\n1. **9月订单在10月退款（R03）**：O103 下单日 2026-09-28，属9月业绩，10月18日退款 150.00 元。该 150.00 元已从10月现金流扣除，但**不属于10月订单退款**，若计入会使10月退款率虚高至 56.7%。其是否为全额退款（订单 200.00 元，退款 150.00 元，差额 50.00 元）需业务确认。\n2. **10月订单在11月退款（R02）**：O101 于11月2日退款 10.00 元，晚于报告期。订单归属口径已计提；现金流口径未计入，故形成 10.00 元的跨期差。\n3. **已取消订单（O102）**：10月20日、华东、50.00 元、状态 `cancelled`，未产生退款记录，按不确认收入处理。若该单曾收款后原路退回，则现金流口径需另行调整。\n4. **样本量**：全月仅 4 笔订单、3 笔退款，任何比率（取消率、退款率）的单笔变动都会带来 25 个百分点以上的波动，**建议只作流水记录，不作趋势结论**。\n\n## 五、待确认事项\n\n- O103 退款 150.00 元与订单 200.00 元的 50.00 元差额性质（部分退款 / 折扣 / 手续费）。\n- 退款是否含运费、优惠券分摊，两份表均无字段可判断，故未做还原。\n- 10月是否还有其他渠道（线上/线下）销售未纳入本文件；本简报仅覆盖所提供明细。\n"
+              },
+              "id": "call_00_j1Iv9zSXb1tzuoxoKgjJ7635",
+              "type": "tool_call",
+              "phase": "blocked"
+            },
+            {
+              "id": "call_00_ET_vzgWj7T18Jd2h1QG4L6e5093",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678210430582000,
+              "span_id": "b43379bc32272759",
+              "trace_id": "tr-f6c40ba669ff2571c84d7a2455bfe27c"
+            },
+            {
+              "id": "call_01_ET_HJjmEFJMcuattIvwXrkh1012",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678210435874000,
+              "span_id": "3b11325f388362b7",
+              "trace_id": "tr-f6c40ba669ff2571c84d7a2455bfe27c"
+            }
+          ],
+          "loop_observation": {
+            "source": "persisted_native_trace_events",
+            "confirmation_status": "suspected",
+            "coverage": "partial",
+            "run_count": 2,
+            "observed_run_count": 2,
+            "missing_run_count": 0,
+            "complete_scopes": 1,
+            "incomplete_scopes": 1,
+            "invalid_events": 0,
+            "eligible_batches": null,
+            "ineligible_batches": null,
+            "signals": null,
+            "known_eligible_batches": 0,
+            "known_ineligible_batches": 0,
+            "known_signals": 0,
+            "limitation": "Events lost before native persistence cannot be reconstructed."
+          }
+        }
+      },
+      {
+        "case_id": "C5",
+        "status": "completed",
+        "thread_id": "03a631e2-17e5-429e-9d49-2e9f02e9b3df",
+        "run_ids": [
+          "22f454ef-65e7-47e1-9589-5510f095b224"
+        ],
+        "errors": [],
+        "approvals": [],
+        "checks": {
+          "memory_isolation": "project_visible_thread",
+          "fixture_paths": {
+            "sales.csv": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+          },
+          "turn_snapshots": [
+            {
+              "index": 0,
+              "run_id": "22f454ef-65e7-47e1-9589-5510f095b224",
+              "artifacts": {}
+            }
+          ],
+          "execution_receipts": [
+            {
+              "run_id": "22f454ef-65e7-47e1-9589-5510f095b224",
+              "thread_id": "03a631e2-17e5-429e-9d49-2e9f02e9b3df",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "0af877c5-31f2-444d-8a6c-6bee69f764b6",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:da310f90303e7387305bba10d1f71f6fe83727333d65ef1d391044445d460d8b",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:44:12.118934+08:00"
+            }
+          ],
+          "deployment": {
+            "expected": {
+              "runtime": {
+                "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              },
+              "platform": {
+                "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              }
+            },
+            "matches": true
+          },
+          "runtime_package": {
+            "expected": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+            "reported": [
+              "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296"
+            ],
+            "matches": true
+          },
+          "tool_execution_complete": true,
+          "tool_execution_issues": [],
+          "tool_events": [
+            {
+              "id": "call_00_OK85XZIAWIZknP6gDYRM5954",
+              "name": "ls",
+              "args": {
+                "path": "/workspace/uploads"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678260816656000,
+              "span_id": "4ebfdf858a52fc9b",
+              "trace_id": "tr-c259fbceb5da0af217fa32beed4521b8"
+            },
+            {
+              "id": "call_01_CvhiYRZpM8SSXAqTt5oA2766",
+              "name": "ls",
+              "args": {
+                "path": "/workspace"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678260817407000,
+              "span_id": "f409e63b6bcfe1e9",
+              "trace_id": "tr-c259fbceb5da0af217fa32beed4521b8"
+            },
+            {
+              "id": "call_00_jhfJXe5sftp5awKGgpiI8891",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678267022592000,
+              "span_id": "06184cfa8c10eea1",
+              "trace_id": "tr-c259fbceb5da0af217fa32beed4521b8"
+            }
+          ],
+          "loop_observation": {
+            "source": "persisted_native_trace_events",
+            "confirmation_status": "suspected",
+            "coverage": "complete",
+            "run_count": 1,
+            "observed_run_count": 1,
+            "missing_run_count": 0,
+            "complete_scopes": 1,
+            "incomplete_scopes": 0,
+            "invalid_events": 0,
+            "eligible_batches": 2,
+            "ineligible_batches": 0,
+            "signals": 0,
+            "known_eligible_batches": 2,
+            "known_ineligible_batches": 0,
+            "known_signals": 0,
+            "limitation": "Events lost before native persistence cannot be reconstructed."
+          }
+        }
+      },
+      {
+        "case_id": "C2",
+        "status": "completed",
+        "thread_id": "96497c0a-7696-4b0e-bf46-c746c4e00ed7",
+        "run_ids": [
+          "b8d31a41-7ecb-4c49-8a14-8d655f04fae4",
+          "c127bd60-9c1f-45b3-93b6-ed07afc935d5",
+          "84c0da82-1750-44f0-8bfb-b682617a8ffe"
+        ],
+        "errors": [],
+        "approvals": [],
+        "checks": {
+          "memory_isolation": "project_visible_thread",
+          "fixture_paths": {
+            "refunds.csv": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+            "sales.csv": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+          },
+          "turn_snapshots": [
+            {
+              "index": 0,
+              "run_id": "b8d31a41-7ecb-4c49-8a14-8d655f04fae4",
+              "artifacts": {}
+            },
+            {
+              "index": 1,
+              "run_id": "c127bd60-9c1f-45b3-93b6-ed07afc935d5",
+              "artifacts": {}
+            },
+            {
+              "index": 2,
+              "run_id": "84c0da82-1750-44f0-8bfb-b682617a8ffe",
+              "artifacts": {}
+            }
+          ],
+          "execution_receipts": [
+            {
+              "run_id": "b8d31a41-7ecb-4c49-8a14-8d655f04fae4",
+              "thread_id": "96497c0a-7696-4b0e-bf46-c746c4e00ed7",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "0ddecc6e-bd2a-4864-be0c-f7e1e3a733a4",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:7bd60f21b7401620ae9c6f6ff53b33a5884f6a3c9ad399cebab49aad36677d04",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:42:12.437513+08:00"
+            },
+            {
+              "run_id": "c127bd60-9c1f-45b3-93b6-ed07afc935d5",
+              "thread_id": "96497c0a-7696-4b0e-bf46-c746c4e00ed7",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "0ddecc6e-bd2a-4864-be0c-f7e1e3a733a4",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:5dde5ccc13915f7a115d097f21fd32b3ed7c9fee02567afef080a67257b8776e",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:43:09.305846+08:00"
+            },
+            {
+              "run_id": "84c0da82-1750-44f0-8bfb-b682617a8ffe",
+              "thread_id": "96497c0a-7696-4b0e-bf46-c746c4e00ed7",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "0ddecc6e-bd2a-4864-be0c-f7e1e3a733a4",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:3f101b8b7fdbf1ab8dcc68de6f2d3dd4b0bb98703f7d20f1f70fefcd104a84d8",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:43:46.037615+08:00"
+            }
+          ],
+          "deployment": {
+            "expected": {
+              "runtime": {
+                "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              },
+              "platform": {
+                "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458",
+                "python": "3.13.9",
+                "execution_mode": "local_process"
+              }
+            },
+            "matches": true
+          },
+          "runtime_package": {
+            "expected": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+            "reported": [
+              "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296"
+            ],
+            "matches": true
+          },
+          "tool_execution_complete": true,
+          "tool_execution_issues": [],
+          "tool_events": [
+            {
+              "id": "call_01_ET_yPyPx0uwf8xhcDIm8eop8583",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+                "limit": 30
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678142978946000,
+              "span_id": "78e0fb26a84f89dd",
+              "trace_id": "tr-1c4739aaea27316d0abfcd5258dcf7c1"
+            },
+            {
+              "id": "call_00_ET_F2zjPPn2xKWaHFo6WRzq1841",
+              "name": "read_file",
+              "args": {
+                "file_path": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt",
+                "limit": 30
+              },
+              "phase": "executed",
+              "start_time_ns": 1794678142980172000,
+              "span_id": "5847be532e7118d0",
+              "trace_id": "tr-1c4739aaea27316d0abfcd5258dcf7c1"
+            }
+          ],
+          "loop_observation": {
+            "source": "persisted_native_trace_events",
+            "confirmation_status": "suspected",
+            "coverage": "complete",
+            "run_count": 3,
+            "observed_run_count": 3,
+            "missing_run_count": 0,
+            "complete_scopes": 3,
+            "incomplete_scopes": 0,
+            "invalid_events": 0,
+            "eligible_batches": 1,
+            "ineligible_batches": 0,
+            "signals": 0,
+            "known_eligible_batches": 1,
+            "known_ineligible_batches": 0,
+            "known_signals": 0,
+            "limitation": "Events lost before native persistence cannot be reconstructed."
+          }
+        }
+      }
+    ]
+  },
+  "460ffe9c-5a00-4ff0-b1bd-df3239bc52e2": {
+    "status": "cancelled",
+    "gate": {
+      "gate_policy_version": "3",
+      "exit_code": 2,
+      "status": "error",
+      "planned_cases": 1,
+      "recorded_cases": 0,
+      "errors": [
+        "C3_live:missing_case"
+      ],
+      "failures": [],
+      "warnings": [
+        "budget_policy_not_configured"
+      ],
+      "comparisons": [],
+      "metrics": {},
+      "applicable_counts": {},
+      "budget": {
+        "status": "not_configured",
+        "errors": [],
+        "failures": [],
+        "cases": {}
+      }
+    },
+    "records": [
+      {
+        "case_id": "C3_live",
+        "status": "cancelled",
+        "thread_id": "723ebaa8-596b-4d95-b635-eb14fed4509f",
+        "run_ids": [
+          "e2f9cd1b-d84a-4058-b215-2cbdb9cd6703"
+        ],
+        "errors": [],
+        "approvals": [],
+        "checks": {
+          "memory_isolation": "project_visible_thread",
+          "fixture_paths": {
+            "refunds.csv": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+            "sales.csv": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+          },
+          "live_pending": {
+            "id": "8cd41d92-706b-54af-83a2-7f2a19afceb4",
+            "turn_index": 0,
+            "run_id": "e2f9cd1b-d84a-4058-b215-2cbdb9cd6703",
+            "baseline": {
+              "/workspace/work/reports/oct-summary.md": null
+            },
+            "approval_index": 0
+          },
+          "execution_receipts": [
+            {
+              "run_id": "e2f9cd1b-d84a-4058-b215-2cbdb9cd6703",
+              "thread_id": "723ebaa8-596b-4d95-b635-eb14fed4509f",
+              "graph_id": "dearflow_agent",
+              "attempt_id": "ef098a58-75f8-4166-8066-9226a9ac6512",
+              "manifest": {
+                "runtime": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+                  "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+                },
+                "platform": {
+                  "python": "3.13.9",
+                  "execution_mode": "local_process",
+                  "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+                  "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+                },
+                "configuration": {
+                  "top_p": 1.0,
+                  "schema": "runtime-config/v3",
+                  "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+                  "principal": {
+                    "role": "platform_super_admin",
+                    "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+                    "tenant_id": "__default",
+                    "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+                    "permissions": []
+                  },
+                  "max_tokens": 4096,
+                  "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+                  "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+                  "temperature": 0.0,
+                  "execution_mode": "standard",
+                  "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+                  "prompt_version": "dearflow-research-p2",
+                  "optional_tool_names": [
+                    "arxiv_search",
+                    "background_execute",
+                    "background_task",
+                    "cancel_background_task",
+                    "delete_skill",
+                    "edit_file",
+                    "edit_image",
+                    "enter_plan_mode",
+                    "execute",
+                    "fetch_page",
+                    "fetch_web_guidelines",
+                    "find_skills",
+                    "generate_area_chart",
+                    "generate_bar_chart",
+                    "generate_boxplot_chart",
+                    "generate_column_chart",
+                    "generate_district_map",
+                    "generate_dual_axes_chart",
+                    "generate_fishbone_diagram",
+                    "generate_flow_diagram",
+                    "generate_funnel_chart",
+                    "generate_histogram_chart",
+                    "generate_image",
+                    "generate_line_chart",
+                    "generate_liquid_chart",
+                    "generate_mind_map",
+                    "generate_network_graph",
+                    "generate_organization_chart",
+                    "generate_path_map",
+                    "generate_pie_chart",
+                    "generate_pin_map",
+                    "generate_radar_chart",
+                    "generate_sankey_chart",
+                    "generate_scatter_chart",
+                    "generate_spreadsheet",
+                    "generate_treemap_chart",
+                    "generate_venn_chart",
+                    "generate_violin_chart",
+                    "generate_word_cloud_chart",
+                    "get_media_task",
+                    "github_query",
+                    "glob",
+                    "grep",
+                    "import_skill",
+                    "list_skills",
+                    "ls",
+                    "mcp_eval_fault",
+                    "mcp_eval_search",
+                    "parse_document",
+                    "present_artifacts",
+                    "read_file",
+                    "request_information",
+                    "review_skill_package",
+                    "save_plan",
+                    "search_web",
+                    "set_skill_enabled",
+                    "submit_plan",
+                    "update_skill",
+                    "upload_skill",
+                    "write_file"
+                  ],
+                  "required_tool_names": [],
+                  "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+                  "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+                }
+              },
+              "context_hash": "sha256:e2b17e0d05c703b692b74f46bed5ab03707dccc92b7db7697ad590ce4f7f3f71",
+              "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+              "recorded_at": "2026-11-15 01:48:29.885295+08:00"
+            }
+          ],
+          "stop_receipt": {
+            "version": 1,
+            "stop_id": "7a0e8c5b-f6e6-48ee-bb29-d4eb6ec6b8a9",
+            "thread_id": "723ebaa8-596b-4d95-b635-eb14fed4509f",
+            "phase": "no_active_run",
+            "requested_at": "2026-11-15T01:49:34.091391+08:00",
+            "accepted_at": "2026-11-15T01:49:34.298339+08:00",
+            "confirmed_at": "2026-11-15T01:49:34.435939+08:00",
+            "target_count": 0,
+            "execution_stopped": true,
+            "resource_cleanup": "not_required",
+            "has_pending_interrupts": true,
+            "queue": {
+              "pending_cancelled_count": 0,
+              "inbox_consumed_count": 0,
+              "inbox_not_consumed_count": 0
+            },
+            "report": {
+              "version": 1,
+              "source": "checkpoint_and_receipts",
+              "checkpoint_id": null,
+              "checkpoint_at": null,
+              "checkpoints": [],
+              "progress": [],
+              "artifacts": [],
+              "uncertainties": [
+                "checkpoint_unavailable",
+                "progress_unavailable"
+              ],
+              "truncated": false,
+              "background_tasks": {
+                "target_count": 0,
+                "cleanup_confirmed_count": 0,
+                "cleanup_unconfirmed_count": 0,
+                "notifications_suppressed_count": 0,
+                "truncated": false
+              }
+            },
+            "reason_code": null,
+            "request_id": "050d540336b342b29074014f430625ba"
+          }
+        }
+      }
+    ]
+  }
+}

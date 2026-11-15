@@ -1,0 +1,110 @@
+{
+  "scope": "344c new synthetic work item only",
+  "failure_before_fix": "feature pause misread as revocation; old synthetic examples purged, not restored",
+  "before": {
+    "phase": "before",
+    "item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+    "revision": 1,
+    "versions_hash": "78ad813664dfb610037780f4226be2d779fe8baa7f61188b30cb2304de66cfed",
+    "grants": {
+      "evaluation_assistance": "aa4b6c5c-e608-475e-91d9-4e38b2c92526",
+      "regression": "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+    },
+    "operations": [
+      {
+        "id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+        "task_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+        "status": "running",
+        "dataset_id": "d-016ac29c20224ebaa1fd1748c7a45637",
+        "dataset_version": 1,
+        "frozen_hash": "cdecf8aef0e1083484dcb21a1ed0b55695ae0ed044b731dc8c2b5f1dcce5eefb"
+      }
+    ],
+    "batches": [
+      {
+        "id": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+        "status": "active",
+        "experiment_id": "18"
+      }
+    ],
+    "authorization_status": 200,
+    "authorizations": {
+      "aa4b6c5c-e608-475e-91d9-4e38b2c92526": true,
+      "be7dccba-4a17-4cfa-8649-6e9836f78fe4": true
+    },
+    "old_experiment_status": 200,
+    "work_item_http": 200
+  },
+  "disabled": {
+    "phase": "disabled",
+    "item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+    "revision": 1,
+    "versions_hash": "78ad813664dfb610037780f4226be2d779fe8baa7f61188b30cb2304de66cfed",
+    "grants": {
+      "evaluation_assistance": "aa4b6c5c-e608-475e-91d9-4e38b2c92526",
+      "regression": "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+    },
+    "operations": [
+      {
+        "id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+        "task_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+        "status": "running",
+        "dataset_id": "d-016ac29c20224ebaa1fd1748c7a45637",
+        "dataset_version": 1,
+        "frozen_hash": "cdecf8aef0e1083484dcb21a1ed0b55695ae0ed044b731dc8c2b5f1dcce5eefb"
+      }
+    ],
+    "batches": [
+      {
+        "id": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+        "status": "active",
+        "experiment_id": "18"
+      }
+    ],
+    "authorization_status": 503,
+    "old_experiment_status": 200,
+    "work_item_http": 503,
+    "same_materials_and_operation_ids": true
+  },
+  "restored": {
+    "phase": "restored",
+    "item_id": "b5ff001a-26d0-5356-a000-00be2a24572b",
+    "revision": 1,
+    "versions_hash": "78ad813664dfb610037780f4226be2d779fe8baa7f61188b30cb2304de66cfed",
+    "grants": {
+      "evaluation_assistance": "aa4b6c5c-e608-475e-91d9-4e38b2c92526",
+      "regression": "be7dccba-4a17-4cfa-8649-6e9836f78fe4"
+    },
+    "operations": [
+      {
+        "id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+        "task_id": "bdf24249-d086-4a4d-a07f-fade258f1d91",
+        "status": "error",
+        "dataset_id": "d-016ac29c20224ebaa1fd1748c7a45637",
+        "dataset_version": 1,
+        "frozen_hash": "cdecf8aef0e1083484dcb21a1ed0b55695ae0ed044b731dc8c2b5f1dcce5eefb"
+      }
+    ],
+    "batches": [
+      {
+        "id": "be7dccba-4a17-4cfa-8649-6e9836f78fe4",
+        "status": "active",
+        "experiment_id": "18"
+      }
+    ],
+    "authorization_status": 200,
+    "authorizations": {
+      "aa4b6c5c-e608-475e-91d9-4e38b2c92526": true,
+      "be7dccba-4a17-4cfa-8649-6e9836f78fe4": true
+    },
+    "old_experiment_status": 200,
+    "work_item_http": 200,
+    "same_materials_and_operation_ids": true
+  },
+  "interpretation": "In-flight evaluation safely errored during pause. No replay, same dataset/task and grants retained. Old native experiment stays readable.",
+  "replayed_approval": {
+    "status": 200,
+    "operation_count": 1,
+    "same_task": true
+  }
+}

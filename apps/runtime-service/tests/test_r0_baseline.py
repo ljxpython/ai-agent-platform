@@ -61,6 +61,7 @@ def test_production_config_registers_model_backed_agents() -> None:
         "workflow_demo",
         "showcase_demo",
         "dearflow_agent",
+        "evaluation_assistant",
     ]
     assert all(
         item["path"].startswith("./src/runtime_service/graphs/")
@@ -107,6 +108,7 @@ def test_docker_uses_graphharbor_production_config() -> None:
         "workflow_demo",
         "showcase_demo",
         "dearflow_agent",
+        "evaluation_assistant",
     ]
 
 

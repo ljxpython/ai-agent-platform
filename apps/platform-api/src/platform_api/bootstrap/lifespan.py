@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 import httpx
 from fastapi import FastAPI
@@ -38,6 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = app.state.settings
 
     engine = None
+    evaluation_cleanup = None
     knowledge_http = httpx.AsyncClient(
         timeout=10, trust_env=False, follow_redirects=False
     )
@@ -56,8 +58,25 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                     settings=settings, session_factory=session_factory
                 )
                 await run_in_threadpool(service.ensure_bootstrap_admin)
+            if (
+                settings.evaluation_synthetic_export_enabled
+                or settings.evaluation_workbench_enabled
+            ) and settings.evaluation_project_id:
+                from platform_api.modules.evaluation.retention import maintain, sweep
+
+                # Apply expired grants before accepting reads after a restore.
+                await run_in_threadpool(
+                    sweep, session_factory, settings.evaluation_project_id
+                )
+                evaluation_cleanup = asyncio.create_task(
+                    maintain(session_factory, settings.evaluation_project_id, settings)
+                )
         yield
     finally:
+        if evaluation_cleanup:
+            evaluation_cleanup.cancel()
+            with suppress(asyncio.CancelledError):
+                await evaluation_cleanup
         await knowledge_http.aclose()
         app.state.knowledge_http = None
         if engine is not None:

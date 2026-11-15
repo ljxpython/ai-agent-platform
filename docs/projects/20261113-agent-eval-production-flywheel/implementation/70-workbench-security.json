@@ -1,0 +1,31 @@
+{
+  "scope": "new_synthetic_work_items_only",
+  "checks": [
+    {
+      "phase": "before_model",
+      "item_id": "811cccb2-c900-5a72-8fe6-2be41be961b3",
+      "grant_id": "ec807cd4-5c9e-4f11-8d72-3d269362965b",
+      "generate_denied": 409,
+      "body_hidden": true
+    },
+    {
+      "phase": "during_model",
+      "item_id": "9894888a-d216-56f3-b54f-ea2413922bc2",
+      "grant_id": "0273f50d-6753-45b6-99c1-acd5c9414614",
+      "thread_id": "c2f53538-8da9-53af-a4f5-a63f8ab43fe5",
+      "access_matrix": {
+        "thread": 403,
+        "/state": 403,
+        "/history": 403,
+        "/state/checkpoint": 403,
+        "/runs": 403,
+        "/files/content?path=/workspace/uploads/test.csv": 403
+      },
+      "body_hidden": true,
+      "work_item_purged": true,
+      "runtime_cleaned_threads": [
+        "c2f53538-8da9-53af-a4f5-a63f8ab43fe5"
+      ]
+    }
+  ]
+}

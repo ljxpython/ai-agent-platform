@@ -1,0 +1,24 @@
+{
+  "original_report_unchanged": true,
+  "rescore_cases": {
+    "B01-refund-report-approve": {
+      "same_session": true,
+      "same_runs": true,
+      "platform_run_count": 6,
+      "no_extra_runs": true
+    },
+    "B02-refund-report-reject": {
+      "same_session": true,
+      "same_runs": true,
+      "platform_run_count": 3,
+      "no_extra_runs": true
+    },
+    "B03-refund-report-missing-file": {
+      "same_session": true,
+      "same_runs": true,
+      "platform_run_count": 1,
+      "no_extra_runs": true
+    }
+  },
+  "historical_source_run_count": 2
+}

@@ -1,0 +1,176 @@
+{
+  "task_id": "189cd415-a924-4da8-ad6c-166c5a490166",
+  "status": "cancelled",
+  "run_ids": [
+    "508f0efb-f66b-4d80-9465-c4bc0c6f95e1"
+  ],
+  "checks": {
+    "memory_isolation": "project_visible_thread",
+    "fixture_paths": {
+      "refunds.csv": "/workspace/uploads/960146472efb0fe72480c50e54530fe460dcd08e3bf1aa3fe61fec306184d759.txt",
+      "sales.csv": "/workspace/uploads/57fec7a7704c04e51317f95ed558f94d042ecbe48da4ab5c0f1e6495558e28a4.txt"
+    },
+    "live_pending": {
+      "id": "3dbb1cb3-e994-5dbb-be90-3513107f43d3",
+      "turn_index": 0,
+      "run_id": "508f0efb-f66b-4d80-9465-c4bc0c6f95e1",
+      "baseline": {
+        "/workspace/work/reports/oct-summary.md": null,
+        "/workspace/work/reports/october_brief.md": null
+      },
+      "approval_index": 0
+    },
+    "execution_receipts": [
+      {
+        "run_id": "508f0efb-f66b-4d80-9465-c4bc0c6f95e1",
+        "thread_id": "b3147932-fbda-4810-884f-a5325fe8982a",
+        "graph_id": "dearflow_agent",
+        "attempt_id": "14e037b0-0a72-4ef2-9320-02f2e68e7d8c",
+        "manifest": {
+          "runtime": {
+            "python": "3.13.9",
+            "execution_mode": "local_process",
+            "package_sha256": "db3e119eb378b6212e581e4c7df842abc96f02a2fbfda422b1bd81b5f67fd296",
+            "dependencies_sha256": "424c1b7c05be35228f6c8895175e4894c83053bec76c57741fb188861569066b"
+          },
+          "platform": {
+            "python": "3.13.9",
+            "execution_mode": "local_process",
+            "package_sha256": "cd6848d9cefa40d94aeb457892b4d1c6b9a9a17f276ee276abc2c1ef3843895a",
+            "dependencies_sha256": "1646ed5ab8c8e1bf78802d029ef4e6b935cc891db6382d8bae9cca21a9090458"
+          },
+          "configuration": {
+            "top_p": 1.0,
+            "schema": "runtime-config/v3",
+            "model_id": "336d36a9-560f-4146-93ad-610c374f8c7e",
+            "principal": {
+              "role": "platform_super_admin",
+              "user_id": "c277dbea-63c4-4289-816a-3b6b83839ea5",
+              "tenant_id": "__default",
+              "project_id": "0b8eb676-ee5f-4f3b-a451-7f235ad280ef",
+              "permissions": []
+            },
+            "max_tokens": 4096,
+            "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+            "prompt_hash": "sha256:215e2dd8140208bef67b11662b20daf4c6d72f0516592ddac0e3beb0964ff13d",
+            "temperature": 0.0,
+            "execution_mode": "standard",
+            "policy_version": "platform-policy-c2b5649e3b048098cd3adcd88207d0cf",
+            "prompt_version": "dearflow-research-p2",
+            "optional_tool_names": [
+              "arxiv_search",
+              "background_execute",
+              "background_task",
+              "cancel_background_task",
+              "delete_skill",
+              "edit_file",
+              "edit_image",
+              "enter_plan_mode",
+              "execute",
+              "fetch_page",
+              "fetch_web_guidelines",
+              "find_skills",
+              "generate_area_chart",
+              "generate_bar_chart",
+              "generate_boxplot_chart",
+              "generate_column_chart",
+              "generate_district_map",
+              "generate_dual_axes_chart",
+              "generate_fishbone_diagram",
+              "generate_flow_diagram",
+              "generate_funnel_chart",
+              "generate_histogram_chart",
+              "generate_image",
+              "generate_line_chart",
+              "generate_liquid_chart",
+              "generate_mind_map",
+              "generate_network_graph",
+              "generate_organization_chart",
+              "generate_path_map",
+              "generate_pie_chart",
+              "generate_pin_map",
+              "generate_radar_chart",
+              "generate_sankey_chart",
+              "generate_scatter_chart",
+              "generate_spreadsheet",
+              "generate_treemap_chart",
+              "generate_venn_chart",
+              "generate_violin_chart",
+              "generate_word_cloud_chart",
+              "get_media_task",
+              "github_query",
+              "glob",
+              "grep",
+              "import_skill",
+              "list_skills",
+              "ls",
+              "mcp_eval_fault",
+              "mcp_eval_search",
+              "parse_document",
+              "present_artifacts",
+              "read_file",
+              "request_information",
+              "review_skill_package",
+              "save_plan",
+              "search_web",
+              "set_skill_enabled",
+              "submit_plan",
+              "update_skill",
+              "upload_skill",
+              "write_file"
+            ],
+            "required_tool_names": [],
+            "tool_policy_version": "sha256:57b68f8c9b9086b8bde8626673f6d4509d3a12ca966f6e5cdc53377f07e1aceb",
+            "tool_declaration_version": "sha256:ed2b5b9b56bdd04912782b02128435e3b6decdd38d123da7e629ef12622ac49d"
+          }
+        },
+        "context_hash": "sha256:da45102a2429a9d2e4e7f3755f80c499157f1cbef1d91808fbce6355ff52915d",
+        "config_hash": "sha256:737b01da5fb03df194b93c9167d56ca7829799eda566778afd5fec62c18357ea",
+        "recorded_at": "2026-11-15 09:16:08.172288+08:00"
+      }
+    ],
+    "stop_receipt": {
+      "version": 1,
+      "stop_id": "51860fe9-88a4-4284-9fe3-5aedb730eb54",
+      "thread_id": "b3147932-fbda-4810-884f-a5325fe8982a",
+      "phase": "no_active_run",
+      "requested_at": "2026-11-15T09:17:05.243277+08:00",
+      "accepted_at": "2026-11-15T09:17:06.040534+08:00",
+      "confirmed_at": "2026-11-15T09:17:06.208795+08:00",
+      "target_count": 0,
+      "execution_stopped": true,
+      "resource_cleanup": "not_required",
+      "has_pending_interrupts": true,
+      "queue": {
+        "pending_cancelled_count": 0,
+        "inbox_consumed_count": 0,
+        "inbox_not_consumed_count": 0
+      },
+      "report": {
+        "version": 1,
+        "source": "checkpoint_and_receipts",
+        "checkpoint_id": null,
+        "checkpoint_at": null,
+        "checkpoints": [],
+        "progress": [],
+        "artifacts": [],
+        "uncertainties": [
+          "checkpoint_unavailable",
+          "progress_unavailable"
+        ],
+        "truncated": false,
+        "background_tasks": {
+          "target_count": 0,
+          "cleanup_confirmed_count": 0,
+          "cleanup_unconfirmed_count": 0,
+          "notifications_suppressed_count": 0,
+          "truncated": false
+        }
+      },
+      "reason_code": null,
+      "request_id": "7a87d19872914c92b05e8c955c824468"
+    }
+  },
+  "artifacts": {},
+  "errors": []
+}

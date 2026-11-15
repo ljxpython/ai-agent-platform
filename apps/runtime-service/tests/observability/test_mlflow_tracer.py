@@ -54,6 +54,7 @@ def test_mlflow_callback_binding(monkeypatch: pytest.MonkeyPatch) -> None:
         "user_id": "user-789",
         "project_id": "project-abc",
         "platform_trace_id": "trace-999",
+        "runtime.package_sha256": "caller-forged",
     }
 
     with (
@@ -100,6 +101,11 @@ def test_mlflow_callback_binding(monkeypatch: pytest.MonkeyPatch) -> None:
         assert kwargs["client_request_id"] == "trace-999"
         assert kwargs["tags"]["mlflow.session_id"] == "thread-123"
         assert kwargs["tags"]["project_id"] == "project-abc"
+        assert (
+            kwargs["metadata"]["runtime.package_sha256"]
+            == mlflow_tracer.STARTUP_PACKAGE_DIGEST
+        )
+        assert kwargs["metadata"]["runtime.package_sha256"] != "caller-forged"
 
 
 def test_mlflow_fail_soft_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
