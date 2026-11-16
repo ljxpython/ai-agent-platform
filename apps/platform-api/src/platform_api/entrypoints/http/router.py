@@ -20,6 +20,12 @@ from platform_api.modules.evaluation.workbench import (
 )
 from platform_api.modules.identity.router import router as identity_router
 from platform_api.modules.knowledge.router import router as knowledge_router
+from platform_api.modules.notifications.router import (
+    alerts_router,
+)
+from platform_api.modules.notifications.router import (
+    router as notifications_router,
+)
 from platform_api.modules.observability.router import (
     router as observability_router,
 )
@@ -74,3 +80,5 @@ api_router.include_router(runtime_completion_router)
 api_router.include_router(scheduled_tasks_router)
 api_router.include_router(usage_analytics_router)
 api_router.include_router(observability_router)
+api_router.include_router(notifications_router)
+api_router.include_router(alerts_router)

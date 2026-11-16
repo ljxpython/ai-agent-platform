@@ -16,6 +16,7 @@ dependencies = [
     "psycopg[binary]>=3.3.3",
     "pyjwt[crypto]>=2.10.1",
     "prometheus-client>=0.21.0",
+    "apprise>=1.9.0",
 ]
 
 [dependency-groups]

@@ -12,6 +12,16 @@ const workspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: "settings/notifications",
+    name: "workspace-settings-notifications",
+    component: () =>
+      import("@/modules/notifications/views/NotificationChannelsView.vue"),
+    meta: {
+      title: "告警与通知推送配置",
+      eyebrow: "平台管理",
+    },
+  },
+  {
     path: "projects/:projectId/evaluation/:itemId",
     name: "workspace-evaluation-detail",
     component: () => import("@/modules/evaluation/EvaluationDetail.vue"),
@@ -530,6 +540,10 @@ export const routes: RouteRecordRaw[] = [
   {
     path: "/chat",
     redirect: "/workspace",
+  },
+  {
+    path: "/settings/notifications",
+    redirect: "/workspace/settings/notifications",
   },
   {
     path: "/auth",
