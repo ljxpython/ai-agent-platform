@@ -15,10 +15,7 @@ def client() -> TestClient:
 
 def test_invalid_trace_id_format(client: TestClient) -> None:
     resp = client.get("/api/v1/observability/traces/short/logs")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["total"] == 0
-    assert data["error"] == "invalid_trace_id_format"
+    assert resp.status_code == 401
 
 
 @pytest.mark.anyio

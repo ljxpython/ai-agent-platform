@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-16（平台助手改为后端/Agent/前端交接交付，明确create_agent、无执行沙箱、持久历史与写操作人工确认；功能未实施）
+> **最后更新：** 2026-11-16（平台助手改为后端/Agent/前端交接交付，明确create_agent、无执行沙箱、持久历史与写操作人工确认；后端/Agent及前端交接已完成本地技术验证，待人工和前端联合验收）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -29,7 +29,7 @@
 
 ## 最近改动
 
-2026-11-16 | **平台助手技术与交付分工**：本次负责后端、Agent和[前端交接](projects/20261116-platform-assistant/frontend-handoff.md)，前端同事自行选择组件并实施。方案采用create_agent、无助手执行沙箱、持久历史/会话内记忆，SQL优先复用SQLDatabase/Toolkit由Agent生成；读免确认，写工具须逐次选择执行/不执行。已补任务与验收，尚未实施或应用验证；具体数据范围与旧日志入口治理待冻结。
+2026-11-16 | **平台助手技术与交付分工**：本次负责后端、Agent和[前端交接](projects/20261116-platform-assistant/frontend-handoff.md)，前端同事自行选择组件并实施。方案采用create_agent、无助手执行沙箱、持久历史/会话内记忆，SQL优先复用SQLDatabase/Toolkit由Agent生成；读免确认，写工具须逐次选择执行/不执行。已获Git交付和实施授权；单create_agent/API、个人项目、动态只读SQL、日志/源码、证据撤权及审批完成本地技术验证，前端交接可联调。11项8done/3partial，后者保留前端/浏览器/用户人工验收；非生产交付。
 
 ## 近期评测基础
 
@@ -62,7 +62,7 @@
 
 ## 活跃项目
 
-- [平台内置助手](projects/20261116-platform-assistant/README.md)：部分完成（partial），方案与前端交接初稿已形成，功能未实施。本次交付后端/Agent/交接，前端同事负责实现；create_agent、无执行沙箱、持久历史/会话记忆、schema驱动只读SQL、写工具人工确认；保持分层权限及源码研发授权。任务唯一来源为tasks.md。现有日志放行与具体数据范围待治理，不重复确认已获批方向。
+- [平台内置助手](projects/20261116-platform-assistant/README.md)：部分完成（partial），后端/Agent及前端交接已完成本地技术验证，待人工和前端联合验收，真实文档工具链已通过，完整交接继续补充。本次交付后端/Agent/交接，前端同事负责实现；create_agent、无执行沙箱、持久历史/会话记忆、schema驱动只读SQL、写工具人工确认；保持分层权限及源码研发授权。任务唯一来源为tasks.md。旧日志匿名放行已在本分支移除，数据库使用独立只读身份；生产未部署。
 
 - [Agent生产评测飞轮](projects/20261113-agent-eval-production-flywheel/README.md)：06本地16/16、07本地4/4 done，含业务会话转换、正式页面与登录；用户已于2026-11-16确认验收通过。原01–04为22 done/3 deferred；原失败与AI裁判局限保留。原16图/5视频与新增8图/1视频及主线手册齐备，验收通过并合并推送，测试服务和资源已回收，未生产部署。
 - [Agent 自动化评测体系](projects/20261112-agent-evaluation-system/README.md)：done，已合main并清理测试Worktree/专属数据库；EvalFlow执行器、20题、真实基线、门禁、Badcase审核与页面验证通过。Agent仍有KnowledgeRetention质量失败；真实CI、生产发布、新盲测集后置。
@@ -142,9 +142,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。2026-11-16规划补充：平台助手采用create_agent、无执行沙箱，复用持久历史/会话记忆，写工具须用户确认；本次负责后端/Agent/交接，尚未实施，现役未复验。 |
-| platform-api | 2026-11-08 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。2026-11-16规划补充：平台助手拟接schema驱动只读SQL、日志授权、查询审计及强制写审批；日志认证放行缺口已记录，未改代码或生产权限。 |
-| platform-web | 2026-11-08 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。2026-11-16规划补充：平台助手前端由同事实施并决定组件，已提供历史/审批/错误入口交接初稿；代码未改，现役未复验。 |
+| runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。2026-11-16规划补充：平台助手采用create_agent、无执行沙箱，复用持久历史/会话记忆，写工具须用户确认；本次负责后端/Agent/交接，本分支已验证真实文档/SQL/日志源码/检索、重启历史/隔离、跨进程审批和SSE/取消，前端交接完成；生产现役未复验。 |
+| platform-api | 2026-11-08 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。2026-11-16规划补充：平台助手拟接schema驱动只读SQL、日志授权、查询审计及强制写审批；本分支已完成只读SQL、日志范围、证据审计/撤权与个人项目，迁移0012仅在隔离库验证；生产权限未改。 |
+| platform-web | 2026-11-08 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。2026-11-16规划补充：平台助手前端由同事实施并决定组件，已提供可联调历史/审批/错误入口完整交接；代码未改，现役未复验。 |
 | AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent生产评测飞轮本轮批准范围已在双Worktree完成，22 done / 3 deferred，联合Final通过；未提交、合并或生产部署，主工作区服务未变更。Agent 自动化评测首期与D01–D06已合main，测试资源已回收；详见项目记录。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

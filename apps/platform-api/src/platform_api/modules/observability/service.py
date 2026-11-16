@@ -21,7 +21,9 @@ class ObservabilityService:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
 
-    async def get_trace_logs(self, trace_id: str) -> TraceLogsResponse:
+    async def get_trace_logs(
+        self, trace_id: str, *, start=None, end=None
+    ) -> TraceLogsResponse:
         trace_id = trace_id.strip()
         if not _SAFE_TRACE_ID_RE.match(trace_id):
             return TraceLogsResponse(
@@ -46,6 +48,11 @@ class ObservabilityService:
                         "query": logql,
                         "limit": 100,
                         "direction": "forward",
+                        **(
+                            {"start": start, "end": end}
+                            if start is not None and end is not None
+                            else {}
+                        ),
                     },
                 )
         except Exception as exc:
@@ -76,7 +83,10 @@ class ObservabilityService:
                 error="invalid_loki_json_response",
             )
 
-        results = data.get("data", {}).get("result", [])
+        return self.parse_results(trace_id, data.get("data", {}).get("result", []))
+
+    @staticmethod
+    def parse_results(trace_id, results):
         raw_entries: list[tuple[int, str, dict[str, str]]] = []
         for stream in results:
             stream_labels = stream.get("stream", {})

@@ -598,6 +598,7 @@ class RuntimeGatewayService:
         knowledge_secret: str | None = None,
         knowledge_gateway_url: str | None = None,
         tenant_id: str = "__default",
+        assistant_access_validator: Callable | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._upstream = upstream
@@ -620,6 +621,7 @@ class RuntimeGatewayService:
         self._knowledge_secret = knowledge_secret
         self._knowledge_gateway_url = knowledge_gateway_url
         self._tenant_id = tenant_id
+        self._assistant_access_validator = assistant_access_validator
 
     def _emit_correlation(self, event: str, **fields: Any) -> None:
         if self._on_correlation is not None:
@@ -1093,6 +1095,15 @@ class RuntimeGatewayService:
             )
         thread = await self._upstream.get_thread(thread_id)
         self._assert_thread_project_scope(project_id=project_id, thread=thread)
+        if _thread_graph_id(thread) == "platform_assistant" and action != "delete":
+            if self._assistant_access_validator is None:
+                raise ForbiddenError(
+                    code="assistant_authorization_unavailable",
+                    message="助手资料授权校验不可用。",
+                )
+            await run_in_threadpool(
+                self._assistant_access_validator, actor, project_id, thread_id, access
+            )
         if evaluation_assistant and not _thread_graph_id(thread):
             # Legacy assistant threads omitted graph metadata; use the verified grant registry.
             thread = {
@@ -2072,6 +2083,13 @@ class RuntimeGatewayService:
                 graph_id=assistant_id,
             )
             if item is None or item.status != "active":
+                return False
+            from platform_api.modules.projects.models import ProjectRecord
+
+            project = session.get(ProjectRecord, project_uuid)
+            if (project.code or "").startswith(
+                "assistant-"
+            ) and assistant_id != "platform_assistant":
                 return False
             catalog = SqlAlchemyRuntimeCatalogRepository(session)
             graph_ids = {
@@ -3218,6 +3236,19 @@ class RuntimeGatewayService:
                         message="Runtime returned an unexpected Thread",
                     )
                 self._assert_thread_project_scope(project_id=project_id, thread=row)
+                if _thread_graph_id(row) == "platform_assistant":
+                    if self._assistant_access_validator is None:
+                        continue
+                    try:
+                        await run_in_threadpool(
+                            self._assistant_access_validator,
+                            actor,
+                            project_id,
+                            thread_id,
+                            records[thread_id],
+                        )
+                    except ForbiddenError:
+                        continue
                 row.pop("values", None)
                 rows.append(
                     self._thread_with_access(actor, project_id, row, records[thread_id])
@@ -3371,6 +3402,11 @@ class RuntimeGatewayService:
             actor=actor, project_id=project_id, thread_id=thread_id, write=True
         )
         graph_id = _thread_graph_id(source)
+        if graph_id == "platform_assistant":
+            raise ForbiddenError(
+                code="assistant_fork_denied",
+                message="助手历史与资料授权绑定，请新建助手会话。",
+            )
         from platform_api.modules.evaluation.workbench_grants import (
             assistant_thread_ids,
         )

@@ -14,7 +14,7 @@
 6. 要梳理越权查询、资源关联与信息使用记录，不通过每次读取弹确认来替代系统权限。
 7. 技术方案采用create_agent，不采用DeepAgents，不为助手创建执行沙箱；数据库、日志和资料均通过工具读取。保留持久历史与会话内记忆，第一版不新增跨会话长期个人记忆。
 
-**改动级别：治理改动。** 整体涉及三服务、新的数据读取入口及日志访问边界。2026-11-16用户进一步明确本次开发交付为后端、Agent及前端交接，前端代码由同事实施。具体数据源授权、旧日志入口变更、角色映射及外部数据处理范围仍按下文定稿；不把范围决定推定为生产访问授权。
+**改动级别：治理改动。** 整体涉及三服务、新的数据读取入口及日志访问边界。2026-11-16用户进一步明确本次开发交付为后端、Agent及前端交接，前端代码由同事实施。本次具体实现与本地资源范围已按追加决定落实，详见第9节及backend-operations.md；不把本地实施授权推定为生产访问授权。
 
 **交付分工：** 本次负责Platform API、Runtime/Agent、后端联调和测试、前端交接文档；前端同事负责页面实现与组件选择。后端交付验收和全栈联合验收分别记录，不能等前端完成才确认已满足自身标准的后端任务，也不能用后端验收代替浏览器验收。交接完成要求见[frontend-handoff.md](frontend-handoff.md)。
 
@@ -56,13 +56,13 @@ Platform API 根据当前身份确认目标项目、Thread/Run 或请求的可�
 | 助手 Agent | 理解意图、选择工具、补充询问、组织证据和答复 | 新增 services/platform_assistant |
 | 数据源 | 平台数据库、运行事实、日志、产品资料和代码快照 | 各自已有存储/服务；只通过获准连接读取 |
 
-主链沿用 Web → Platform API → Runtime/GraphHarbor。Agent 工具通过受信的业务查询入口读取资源；内部调用携带服务端绑定的用户、项目、助手运行和用途，不给模型传管理凭据，也不让模型自行声明权限。具体复用哪条内部认证通道，在任务 T02 核对并冻结；若新增委托 operation 或 Context 字段，必须双端及测试同步，不扩大现有宽泛操作权限。
+主链沿用 Web → Platform API → Runtime/GraphHarbor。Agent 工具通过受信的业务查询入口读取资源；内部调用携带服务端绑定的用户、项目、助手运行和用途，不给模型传管理凭据，也不让模型自行声明权限。已采用固定路径 /api/platform-assistant/internal/read，HMAC绑定platform-assistant用途、规范JSON和30秒时间窗；服务端重新加载身份并核对助手Thread/Run与当前启用状态。没有增加Delegation operation或Context字段。
 
 单 Agent 从reference_agent的create_agent组合方式起步，复用必要中间件；不用create_deep_agent，不创建本助手的Docker/远端执行沙箱，不挂载shell或任意代码执行工具。SQL由数据库工具执行，源码由只读检索服务提供，聊天状态由现有持久化底座保存，这些能力不要求Agent拥有执行沙箱。现有Runtime服务自身的部署方式保持不变；后续若新增用户代码执行，须另行设计隔离能力。
 
 第一版不默认引入子Agent、独立服务、消息队列或通用SQL平台。若真实任务证明长日志/代码分析需要上下文隔离，再独立规划排障子Agent；本期无需先写调度框架。
 
-前端全局入口使用已有登录与执行链路。未选择项目时可以显示平台公共帮助；需执行 Agent 对话时，复用现有授权项目选择/绑定，不通过虚构项目、共享管理员 Thread 或新增隐式全局权限实现“全局”。是否需要无项目成员也能运行完整对话，由 T02 冻结实际用户覆盖方式。
+用户已明确允许无项目用户创建个人助手项目。bootstrap不带项目时幂等创建/复用仅本人加入的个人项目，带项目则沿当前成员授权；个人项目仅执行platform_assistant，不自动授予业务项目数据权限。
 
 ### 3.1 会话记忆与历史对话
 
@@ -73,9 +73,9 @@ Platform API 根据当前身份确认目标项目、Thread/Run 或请求的可�
 | 历史对话 | 必须有 | 沿用平台Thread/Run/消息与历史接口，可列出、重开、续聊及按既有规则删除；身份、项目和Agent绑定 |
 | 会话内记忆 | 必须有 | create_agent的messages/state由GraphHarbor管理的持久checkpoint承载；同一Thread接续，服务重启后可恢复 |
 | 跨会话长期记忆 | 第一版不新增 | 新Thread不自动召回其他会话或个人画像；用户显式提供的获准历史引用另按权限读取 |
-| 产品文档与数据库结构知识 | 按需查询 | 属于版本化资料，不是用户长期记忆；结构缓存绑定数据源、schema版本及授权范围 |
+| 产品文档与数据库结构知识 | 按需查询 | 属于版本化资料，不是用户长期记忆；本期不缓存结构，每次按当前数据源授权查询 |
 
-复用现有生产持久化，不为本Agent另建InMemorySaver或一套聊天数据库。受管运行的checkpointer由既有底座提供；独立测试才使用相应测试saver，不把进程内测试当重启恢复证据。历史记录保留不等于每次将全部历史塞入模型；模型上下文按现有预算/摘要机制取用，原始记录遵守既有保留与ACL。
+复用现有生产持久化，不为本Agent另建InMemorySaver或一套聊天数据库。受管运行的checkpointer由既有底座提供；独立测试才使用相应测试saver，不把进程内测试当重启恢复证据。历史记录受模型上下文窗口和既有Token预算约束；本期未另实现自动摘要或跨会话召回，原始记录遵守既有保留与ACL。
 
 同一用户不同项目、不同用户以及新Thread之间不能混入旧上下文。批准状态也需要持久化；恢复时重新核对当前权限，不能把过往“执行”选择当永久授权。
 
@@ -93,8 +93,8 @@ Platform API 根据当前身份确认目标项目、Thread/Run 或请求的可�
 | 日志解析 | apps/platform-api/src/platform_api/modules/observability/service.py | 保留查询解析能力；新旧入口授权、查询范围与脱敏需治理后接入 |
 | 普通 Agent 组合根 | apps/runtime-service/src/runtime_service/services/reference_agent/agent.py | 允许复制装配骨架，替换名称/Prompt/工具；保留探测与执行隔离、身份解析及必要恢复行为 |
 | 预算、隐私、错误与追踪 | apps/runtime-service/src/runtime_service/middlewares/；observability/；runtime/ | 引用共享实现；按本助手场景装配，不照搬 reference 的固定工具数或全部高级能力 |
-| 知识检索与 MCP | apps/runtime-service/src/runtime_service/tools/mcp.py；tools/knowledge.py | 沿现有资源绑定、工具授权和来源投影接入产品文档 |
-| 联网检索 | apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/search.py | 借鉴现有 Tavily 实现；先核对工具目录/MCP是否可直接装配；确需双服务共用时只提取必要部分，不直接依赖另一 Service 私有 helper |
+| 知识检索与 MCP | apps/runtime-service/src/runtime_service/tools/mcp.py；tools/knowledge.py | 本期选择显式发布manifest的有界文档检索；未接入项目知识MCP，不增加新RAG链路 |
+| 联网检索 | apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/search.py | 已提取最小共享tools/research.py，助手和DearFlow复用Tavily传输，不依赖另一Service私有helper |
 | 查询审计 | apps/platform-api/src/platform_api/modules/audit/；entrypoints/http/middleware/audit_log.py | 扩展已有动作和安全字段，不另建平行审计系统 |
 
 复用顺序：现有公共组件直接引用 → 复制适用的业务组合根/小块代码后适配 → 两个真实使用点确需时做最小共享提取。复制必须保留原实现的错误处理、授权和取消语义，移除原业务专有名称/工具，补当前调用点测试。不会为“先统一架构”重构整个聊天或 DearFlow 模块。
@@ -119,25 +119,25 @@ Platform API 根据当前身份确认目标项目、Thread/Run 或请求的可�
 
 **Agent自己生成SQL，开发者不为每个问题预写查询。** 执行过程为：查看允许的表清单→按需读取字段、主外键及业务说明→模型生成SQL→工具校验并用只读连接执行→将有界结果或可修正错误反馈模型→回答并引用查询证据。只在需要时查询schema，不每轮把全库结构塞入Prompt；重要业务含义可补简短数据字典，不能假定模型仅凭列名知道业务语义。
 
-**开源选型：优先复用langchain-community的SQLDatabase和SQLDatabaseToolkit。** 本仓pyproject已声明langchain-community，uv.lock锁定0.4.2；langchain锁定1.3.17。本轮核对了上游SQLDatabaseToolkit实现，包含列出表、读取schema、执行SQL、模型检查SQL四类工具；尚未验证本地锁定版本的运行兼容性。Toolkit示例里的旧create_react_agent不是本项目采用的入口，仍使用create_agent。
+**开源选型：优先复用langchain-community的SQLDatabase和SQLDatabaseToolkit。** 本仓pyproject已声明langchain-community，uv.lock锁定0.4.2；langchain锁定1.3.17。本轮核对了上游SQLDatabaseToolkit实现，包含列出表、读取schema、执行SQL、模型检查SQL四类工具；已通过锁定版本工具适配测试及真实模型生成SQL链路。Toolkit示例里的旧create_react_agent不是本项目采用的入口，仍使用create_agent。
 
 我们负责平台适配，而不是重写SQL Agent：把表/字段发现接到获准数据源，用后端只读执行器承接sql_db_query语义，加入当前用户范围、结果大小、超时和审计。query checker是模型辅助检查，不能替代权限或只读约束。不要将未经适配的Toolkit直接接到应用写连接；include_tables只约束工具可发现范围，不独自承担SQL权限控制。schema默认不附带业务样例行，确需样例时也走同一授权和脱敏路径。
 
 - 使用独立只读数据源凭据/连接池，不能复用应用写账户、迁移账户、表所有者或管理账户。数据源与凭据由平台绑定，模型只见资源标识。
 - 数据库权限、只读事务与查询校验共同执行边界；验证写入 CTE、多语句、DDL、过程/有副作用函数、文件/外部访问及角色切换不能绕过只读约束。仅检查 SELECT 开头不作为合格实现。
 - 项目/行/列访问在数据库或可信查询服务强制实施，不能依赖模型主动加 WHERE，也不能查询全库后仅靠 Prompt 不展示。普通用户的动态SQL只见获准的受限数据集，研发/运维可访问更广数据集；具体视图/行策略按真实数据源冻结。
-- 查询限制为可调的超时、行数、返回字节及并发上限；返回截断、空结果、权限拒绝和源不可用应区分。数值在容量验证前冻结，不复制示例 Agent 的任意低上限。
+- 工程默认门槛在容量验证前固定：查询2秒、锁500ms、连接3秒、每进程4并发、100行/64KB结果；结构目录和字段分批读取。当前不是动态配置或生产SLA，正式容量目标由部署负责人评审。
 - 只读规则约束助手调查业务数据。平台自身的审计落库、Thread/checkpoint 持久化属于独立系统职责，使用独立连接和代码路径；不能把它们误认为助手获得业务写权限。
 
 第一版不凭空增加未指定的业务写动作，但本次需要完成写工具人工审批的后端机制与契约测试。任何显式发布、项目启用且用户有权限的写工具，仍必须逐次取得用户“执行”的明确选择，细节见5.4。只读SQL工具不升级为通用写SQL，用户点击批准也不能使它执行UPDATE/DELETE。
 
 ### 5.2 日志读取与现有缺口
 
-当前源码事实：entrypoints/http/middleware/auth_context.py 放行 /api/v1/observability/traces/；modules/observability/router.py 未在该路由声明用户/项目授权；service.py 按 Trace ID 在日志集合做文本匹配。部署侧额外网络控制未核查，不能由此断言线上暴露范围。
+规划时发现旧日志路由认证放行、且只按Trace文本匹配。现已移除放行，新旧入口共用当前项目和结构化Trace授权；保留原URL和解析字段，新增partial/coverage。此描述是本分支实现，不代表现役生产已部署。
 
 目标是复用解析并补齐调用者和资源授权，覆盖现有诊断页面与新助手，避免只加固新工具却保留旧入口绕过。普通资源查询由服务端核实资源→Trace/请求→日志范围；平台调查使用明确的服务/环境授权。不允许知道 ID 就读取任意人的记录。
 
-保留原入口契约还是迁移调用者、是否需要新的权限项，需 T02 人工确认后实施。此处只记录差异，不擅自将当前免认证行为写成新的安全标准。
+按用户已批准的权限分层和日志治理范围保留URL，增加登录/项目校验，不新建IAM角色。唯一旧页面调用者及前端迁移步骤已列入交接；明确日志调查者使用配置授权名单，所有读取仍须当前项目成员。
 
 ### 5.3 文档、代码和外部信息
 
@@ -157,21 +157,19 @@ Platform API 根据当前身份确认目标项目、Thread/Run 或请求的可�
 
 ## 6. 工具与跨层数据
 
-以下为拟议工具语义，最终名称与 HTTP 路径在 T02 冻结，不作为已存在 API 宣传：
+已实现工具如下，HTTP、字段与示例以frontend-handoff.md为准：
 
-| 工具 | 输入与行为 | 主要结果 |
-|---|---|---|
-| get_run_diagnostics | 目标 Thread/Run，读取既有诊断投影 | 状态、模型/执行错误、重试与可用性 |
-| query_logs | 获准资源或服务/环境、时间、查询条件 | 有界日志片段、来源和关联程度 |
-| inspect_database_schema / query_database_readonly | 平台绑定的数据源和获准结构/只读分析请求 | 允许结构、行/聚合、查询状态与截断提示 |
-| get_agent_config_summary | 可访问的 Agent/配置版本 | 允许查看的模型、工具、限制摘要，无凭据 |
-| search_product_docs | 问题、产品版本和允许的知识范围 | 资料片段、章节、来源及版本 |
-| search_project_code | 获准仓库/revision、关键词或相对路径 | 片段、路径、行号和 revision |
-| search_public_info | 脱离内部敏感内容的公开问题 | 公开资料及引用 |
+| 工具 | 行为 |
+|---|---|
+| list_databases / sql_db_schema / sql_db_query | 全部获准数据源发现、分批结构、动态只读SQL |
+| read_run_diagnostics | 目标Thread/Run校验、运行诊断和安全模型配置摘要 |
+| read_run_logs / search_project_logs | 已验证关联查询/明确授权的无Run项目调查 |
+| search_documents / search_source | 版本化文档、研发源码清单与行号 |
+| search_public_web | 只使用本轮用户提供的公开关键词，复用Tavily |
 
 前端输入包含用户消息与可选页面/诊断上下文。身份和授权 scope 始终由服务端产生；客户端 ID 仅用于定位待校验资源。保留平台 Trace、模型追踪 Trace、请求 ID 和 Run ID 的类型区别，不把不同系统的 ID 相互替代。
 
-工具结果建议统一携带 source_type、source_ref、observed_at、scope、availability、truncated 和 evidence_id，业务数据仍用已有 schema。助手最终答复引用真实 evidence_id；引用无结果、超时或工具调用成功都不等于根因已确认。普通回复先复用消息与 Markdown 来源展示；只有确需结构卡片才扩展已有受管事件，不提前创建第二套 SSE 协议。
+内部资料工具统一携带 evidence_id、operation、observed_at、scope、audit_recorded及data；可用性、截断、版本在各data中。公开搜索返回sources和authorization_evidence_id，关联搜索授权及会话工具结果。助手最终答复引用真实 evidence_id；引用无结果、超时或工具调用成功都不等于根因已确认。普通回复先复用消息与 Markdown 来源展示；只有确需结构卡片才扩展已有受管事件，不提前创建第二套 SSE 协议。
 
 ## 7. 越权、关联与使用记录梳理
 
@@ -192,29 +190,22 @@ Platform API 根据当前身份确认目标项目、Thread/Run 或请求的可�
 
 ## 8. 代码组织与影响范围
 
-本次拟新增：
+本次新增代码位置：
 - apps/platform-api/src/platform_api/modules/platform_assistant/：按现有模块规范放置查询入口、service、schemas和数据源适配；按实际代码规模拆分。
 - apps/runtime-service/src/runtime_service/graphs/platform_assistant.py
-- apps/runtime-service/src/runtime_service/services/platform_assistant/agent.py、prompts.py、tools.py、README.md；确有输入/输出类型再增加 schemas.py。
+- apps/runtime-service/src/runtime_service/services/platform_assistant/agent.py、prompts.py、tools.py、approval.py、capabilities.py；运维与结构说明统一放在本项目backend-operations.md。
 
 前端目录、组件选型和文件划分由前端同事决定，本次只提供交接文档。后端必须同步诊断网关、日志接口、IAM策略与审计动作（按需要）、Runtime图配置/能力目录/工具装配及包资源；前端的壳层、错误弹窗、会话绑定、日志调用和审批消费者列入交接影响清单。测试覆盖后端调用者、夹具和图注册断言，浏览器验收由前端同事接续。未选用附件、Workspace写入或Plan Mode时不默认声明支持；工具写审批不依赖开启Plan Mode。
 
-受影响规范：权限/审计标准、Runtime网关、错误Envelope、Trace传播；如确有新增委托/SSE字段再更新对应草案。当前仅写项目方案，不修改生效标准或将草案提前标记active。
+受影响规范：权限/审计标准、Runtime网关、错误Envelope、Trace传播；如确有新增委托/SSE字段再更新对应草案。本次同步权限/审计/网关及Trace说明；未新增SSE类型或Delegation字段，原草案未满足其原门槛，不提前毕业。
 
-## 9. 批准记录与需冻结事项
+## 9. 批准记录与落实范围
 
-| 事项 | 当前状态 | 责任与下一步 |
-|---|---|---|
-| 产品目标、单Agent、组件复用、广泛读取、只读数据库、分层权限、文档优先 | 用户于2026-11-16已确认 | 沿此方向继续，不重复确认 |
-| 本次方案文档 | 用户明确授权写入 | 已形成文档，核查见verification |
-| 本次开发分工与写操作决定 | 用户于2026-11-16追加明确：本次交付后端、Agent和前端交接；前端同事自行决定组件；写工具需用户执行/不执行 | 已纳入任务与验收，不要求再次确认此分工 |
-| create_agent、无执行沙箱、历史与记忆、SQL开源组件 | 开发者技术方案：持久历史/会话内记忆，不新增长期个人记忆；SQLDatabase/Toolkit做最小适配 | 按锁定依赖验证，不因选型升级核心依赖或新建沙箱 |
-| 具体读取范围 | 待确认：环境/库/表或视图/字段/项目行/日志/仓库 | 用户或指定数据负责人批准T02形成的清单 |
-| 无项目成员的完整对话入口、研发/支持授权映射 | 待冻结，不能用管理员服务账号绕过 | 平台负责人确认映射与会话归属 |
-| 旧日志免认证入口的处理与调用者兼容 | 已发现源码差异，尚未批准具体迁移方案 | T02给出最小改法和调用点清单后人工确认 |
-| 内部资料可用的模型提供方、公开检索配置及真实验证额度 | 待核对现有授权，缺项待确认 | 数据/平台负责人提供，开发者不自行外发真实资料 |
-| 查询容量、保留与审计失败策略、性能门槛 | 待冻结 | 以现有配置和测量为基础，由平台负责人确认 |
-| 实施、真实资源访问、生产迁移/部署 | 本次开发范围为后端+Agent+前端交接；本轮先更新技术方案。未指定的真实数据范围与安全契约仍需冻结，没有生产操作授权 | 已有批准继续有效；具体未决事项按T02处理，Git/部署授权单独处理 |
+用户已批准产品方向、后端/Agent/交接分工、动态只读查询、日志治理、写工具逐次审批及功能分支Git交付。2026-11-16另明确允许个人助手项目，数据库“全部放开，都可以读”；按此前仍有效的数据权限分层落实为全部已接入且获准数据源，不采用管理员身份绕过。
+
+具体交付配置见backend-operations.md：本次PostgreSQL专用只读账号和项目视图；个人项目幂等；源码/无Run日志用显式用户授权且须当前项目成员；旧日志保留URL并鉴权；固定资料manifest；受管模型及共享公开检索。普通审计沿既有fail-soft，资料授权回执失败则不返回内容。真实模型和搜索只使用本地合成资料/公开关键词，没有外发生产业务资料。
+
+已固定的工程限制与本地测量见verification。生产连接、字段/行视图、文档发布内容、外部模型数据处理范围及生产容量由环境/数据负责人配置和评审；这些不是未完成的接线代码，也不是本轮已操作过的生产资产。用户人工交付验收和前端浏览器验收仍分别保留，开发者不代为批准。
 
 ## 10. 验证与回退
 
@@ -222,10 +213,10 @@ Platform API 根据当前身份确认目标项目、Thread/Run 或请求的可�
 
 新增必验：历史与同Thread续聊、跨进程恢复、跨用户/项目隔离、读工具无审批、写工具批准前零副作用、批准/拒绝/重放/撤权、无沙箱资源创建。本次后端交付使用真实API→Runtime→工具链并模拟前端客户端；前端同事另完成页面、浏览器与联合验收，二者分别下结论。
 
-回退关闭助手入口、图可用性和新工具挂载，终止所属调查任务，保留既有聊天/诊断页面可用。已修复的日志权限不随助手回退重新放开；只读连接凭据可撤销，已授权的系统审计按既有留存规则处理。若实施确需数据库迁移，另行补足迁移与回退方案，不在本轮预先创建数据表。
+回退关闭助手入口、图可用性和新工具挂载，终止所属调查任务，保留既有聊天/诊断页面可用。已修复的日志权限不随助手回退重新放开；只读连接凭据可撤销，已授权的系统审计按既有留存规则处理。已新增20261116_0012授权回执迁移，本地升级通过；downgrade保留表以防旧历史失去权限依据。关闭与恢复操作见backend-operations，生产不自动执行。
 
 ## 11. 框架依据与版本核对
 
 2026-11-16先查询LangChain docs/reference MCP，再核对上游源码。参考[SQL Agent指南](https://docs.langchain.com/oss/python/langchain/sql-agent)、[短期记忆](https://docs.langchain.com/oss/python/langchain/short-term-memory)、[长期记忆](https://docs.langchain.com/oss/python/langchain/long-term-memory)、[人工介入](https://docs.langchain.com/oss/python/langchain/human-in-the-loop)和[SQLDatabaseToolkit源码](https://github.com/langchain-ai/langchain-community/blob/main/libs/community/langchain_community/agent_toolkits/sql/toolkit.py)。
 
-官方最新页面可能超前于仓库锁定版本。只采用本仓已有且经验证的batched action_requests/review_configs、interrupt ID映射及approve/reject语义，不直接引入最新per_call/resume协议。SQL工具实例的实际签名、返回大小和schema样例行行为需要在本地锁定依赖验证；本轮官方资料核对不是应用验证。
+官方最新页面可能超前于仓库锁定版本。只采用本仓已有且经验证的batched action_requests/review_configs、interrupt ID映射及approve/reject语义，不直接引入最新per_call/resume协议。SQL适配签名、无样例行、有界返回及真实只读执行均已在锁定依赖验证；具体记录见verification，官方资料核对与应用验证分别留痕。

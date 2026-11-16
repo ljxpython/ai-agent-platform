@@ -89,6 +89,18 @@ def _resolve_action(
     method = request.method
     segments = _route_segments(path)
     action_override = clean_str(request.action_override)
+    if segments[:2] == ["api", "platform-assistant"]:
+        return (
+            "platform_assistant." + ".".join(segments[2:]),
+            "platform_assistant",
+            None,
+        )
+    if segments[:3] == ["api", "v1", "observability"]:
+        return (
+            "observability.logs.read",
+            "trace",
+            clean_str(segments[4]) if len(segments) > 4 else None,
+        )
     if method == "GET" and segments == ["api", "usage", "dashboard"]:
         return "platform.usage.read", "usage", None
     if (

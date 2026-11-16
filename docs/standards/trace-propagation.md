@@ -1,6 +1,6 @@
 ---
 status: active
-last_verified: 2026-10-22
+last_verified: 2026-11-16
 confidence: high
 source_project: docs/projects/20261022-trace-to-logs-distributed-observability/verification.md
 ---
@@ -67,3 +67,11 @@ close_reason, reused_submission, correlation_version=1（整数）
 ## 已发 200 后的审计状态
 
 已发送 200 后出现异常或断连：审计 `status_code` 保留实际 200，不改记 499/500；传输结果另记 `result` / `close_reason`。
+
+## 平台助手与日志读取范围（2026-11-16）
+
+平台助手分别记录助手Thread/Run与被诊断目标Thread/Run，不把目标Trace当当前用户授权。旧/api/v1/observability/traces/{trace_id}/logs已要求登录和项目范围；仅返回结构化project_id及Trace匹配的有界安全字段，新增partial/coverage，不再透传任意原始日志正文。没有Run时需明确项目日志调查授权，时间窗口最多24小时。
+
+运行诊断若未配置追踪后端，返回disabled/not_configured；不猜platform_trace_id。模型Trace与平台Trace仍按原类型区分。关闭助手不恢复旧日志匿名访问。新增接口、旧页面迁移及本地验证见[助手交接](../projects/20261116-platform-assistant/frontend-handoff.md)和[验证](../projects/20261116-platform-assistant/verification.md)。本次只补读取范围，不新增追踪头或SSE事件；未验证生产Loki。
+
+普通日志查询还逐条校验结构化thread_id的当前Thread ACL；按Run读取同时限定目标Thread/Run。客户端传播的Trace或自己的同Trace审计记录不是独立授权，缺资源关联仅供明确获准的项目日志调查者查看。

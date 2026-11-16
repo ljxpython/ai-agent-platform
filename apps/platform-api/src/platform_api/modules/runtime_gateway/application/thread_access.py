@@ -267,6 +267,18 @@ def remove(factory, *, actor: ActorContext, project_id: str, thread_id: str) -> 
             session.delete(row)
         if already_deleted:
             return
+        from sqlalchemy import delete
+
+        from platform_api.modules.platform_assistant.models import (
+            AssistantEvidenceRecord,
+        )
+
+        session.execute(
+            delete(AssistantEvidenceRecord).where(
+                AssistantEvidenceRecord.project_id == project_id,
+                AssistantEvidenceRecord.thread_id == thread_id,
+            )
+        )
         _audit(
             session,
             actor=actor,

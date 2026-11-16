@@ -44,3 +44,13 @@
 401为未认证，403为权限不足，缺项目scope为400。资源不存在和生命周期错误按用例处理，不能将所有404等同于越权。
 
 [测试目录](../../tests/)中的test_security_boundaries.py、test_iam_project_governance.py、test_service_account_project_grants.py、test_runtime_gateway_http_matrix.py与test_run_requests.py覆盖关键边界。新增接口检查未登录、角色不足、跨项目及当前撤权。当前权限枚举没有Operations权限。
+
+## 平台助手读取与历史（2026-11-16 用户批准）
+
+所有登录用户可初始化助手；没有业务项目时幂等创建本人project_executor个人项目，只能执行platform_assistant。正常读取不审批。数据源按当前项目及用户/角色映射，使用独立PostgreSQL只读角色和数据库侧行列范围；源码和无Run日志调查须显式用户授权且仍为当前项目成员。
+
+旧GET /api/v1/observability/traces/{trace_id}/logs不再匿名，按项目与可信Trace关联过滤；仅知道ID或正文包含ID不授予读取权。内部/api/platform-assistant/internal/read要求用途绑定HMAC、30秒窗口，重新加载主体并核对Thread/Run、图与工具策略；不信任模型声明身份。
+
+助手历史仅本人可读。资料/工具撤权、来源revision变化后，旧历史拒绝并从列表隐藏；禁止fork复制绕过回执校验。删除沿既有治理权限。显式业务写工具一律原生approve/reject，即使full_access也不自动执行。具体配置与证据见[助手交付](../../../../docs/projects/20261116-platform-assistant/README.md)，本分支验证不等于生产已部署。
+
+普通日志查询还逐条校验结构化thread_id的当前Thread ACL；按Run读取同时限定目标Thread/Run。客户端传播的Trace或自己的同Trace审计记录不是独立授权，缺资源关联仅供明确获准的项目日志调查者查看。

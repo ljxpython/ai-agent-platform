@@ -36,7 +36,7 @@
 ### 🔍 查历史项目 / 决策背景
 
 → **[projects/](projects/)** 所有项目文档（含各项目内的架构决策分析）
-→ **[平台内置助手方案](projects/20261116-platform-assistant/README.md)** 本次后端/Agent/前端交接：create_agent、无执行沙箱、持久历史、只读SQL与写工具人工确认（规划中，功能未实施）
+→ **[平台内置助手后端交付](projects/20261116-platform-assistant/README.md)** Agent/API与可联调前端交接已就绪；前端实现及人工/浏览器验收接续。
 → **[CHANGELOG.md](CHANGELOG.md)** 版本变更历史
 
 ---

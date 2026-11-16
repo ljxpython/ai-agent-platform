@@ -1,197 +1,282 @@
-# 平台内置助手前端开发交接
+# 平台助手前端开发交接
 
-## 1. 先理解交付目标与当前可用程度
+## 1. 交付内容与接入顺序
 
-用户在任意平台页面打开助手，可以咨询用法、聊天和查资料，也可以从错误弹窗把诊断信息交给助手。助手读取用户有权查看的数据后返回判断、证据和建议。用户可重开历史继续聊；如果助手提出有副作用的业务动作，必须由用户选择“执行/不执行”。读操作不弹确认。
+后端已提供 `platform_assistant`：用户可以咨询用法、聊天、讨论创意，也能交给助手错误信息，让它读取获准数据库、运行诊断、日志和研发源码。用户重开同一会话可继续交流；新会话不继承其他会话。普通读取不审批，业务写工具必须逐次选择“执行/不执行”。
 
-**本次开发者负责后端、Agent和本交接文档；前端同事负责前端代码、组件选型与浏览器验证。** 本文不给前端规定组件拆分，只规定必须一致的接口和行为。已有聊天组件可供参考，如何复用由前端同事决定。
+本次交付 Agent、Platform API、测试与本文。前端页面、组件选型和浏览器验收由前端同事接续。本文中的公开接口已实现；测试写工具只存在于测试，不注册生产目录。当前 `write_tools=[]`，不要给用户展示虚构的业务修复按钮。
 
-**当前为交接初稿，不是后端已就绪通知。** 现有平台的Thread、运行、历史、审批协议已做源码核对；新platform_assistant图、数据工具和写工具强制审批尚未实现/验证。前端可据此了解流程和既有协议，但正式联调前本次开发者必须补齐第9节交付项。不能把示例中的业务工具名当成已发布工具。
+建议按顺序实现：初始化 → 新建/选择会话 → 发送与流式输出 → 重开历史 → 错误现场上下文 → 证据 → 审批与故障状态。进度和验收边界见 [tasks.md](tasks.md)、[verification.md](verification.md)。
 
-进度唯一来源为[tasks.md](tasks.md)的T07；整体方案见[plan.md](plan.md)，测试要求见[verification.md](verification.md)。
+## 2. 身份、项目和初始化
 
-## 2. 用户流程与页面上下文
+使用平台现有登录态和 `platformHttpClient`/授权 fetch。公开接口需要 `Authorization: Bearer <平台访问令牌>`；进入项目后加 `x-project-id`。Origin 取当前平台配置，不能把下文隔离端口写进产品。
 
-| 场景 | 前端行为 | 后端/Agent行为 |
-|---|---|---|
-| 打开全局助手 | 显示当前用户/项目的助手会话，可新建或继续；未选择项目时提示选择 | 通过既有授权链绑定会话，不借管理员身份替用户查询 |
-| 从错误现场打开 | 展示即将发送的诊断摘要，用户发送后开始调查；仍支持粘贴诊断包 | 校验诊断目标，读取获准运行/日志/数据库 |
-| 普通聊天/使用咨询 | 正常输入与流式展示，不增加模式选择负担 | 按需查询文档/资料，普通聊天不强制用工具 |
-| 查询来源 | 展示可理解的来源与版本/时间，无权限或过期时解释 | 复核来源访问权，不能仅凭URL/证据ID开放原始内容 |
-| 待执行动作 | 显示具体动作、对象、参数、影响及执行/不执行 | 原生interrupt持久等待；批准前不调用写工具 |
-| 重开历史 | 读取已有会话和消息，继续沿原Thread | 使用持久checkpoint恢复会话；新Thread不自动继承长期记忆 |
+打开助手先调用 `POST /api/platform-assistant/bootstrap`，无请求体：
 
-助手Thread与被诊断Thread分开；原失败Run不可由打开助手自动重跑。助手会话按用户、项目和Agent绑定，切换账号/项目不能复用之前的消息、待审动作或来源缓存。全局入口不代表全局数据权限。
+- 用户已选择项目：带该项目的 `x-project-id`。
+- 用户未选择项目：不带 `x-project-id`。系统幂等创建/复用仅本人加入的“个人助手”项目，用于额度和历史归属；不会授予其他业务项目权限。
+- 返回后，助手的后续请求统一使用返回的 `project_id`，不要改变整个页面的业务项目选择。
+- 已撤销成员或停用的个人项目不会被再次初始化自动恢复。
 
-诊断上下文至少应说明：当前页面、错误发生时间、已有错误摘要，以及可获得的project/thread/run/request/trace标识。缺少字段允许发送；平台Trace和模型Trace分别保留类型。第一版可复用现有诊断Markdown作为消息正文，不要求前端推断根因，也不发送Cookie、令牌、完整环境配置或数据库凭据。若后端新增结构化字段，必须在最终交接补准确schema及兼容方式，不能在configurable中自行注入内部身份字段。
-
-## 3. 已有平台接口与接线入口
-
-以下路径来自现有API源码，前缀统一为 /api/langgraph。实际origin取平台配置，不能硬编码开发端口。平台请求使用现有授权fetch和x-project-id；新助手沿相同链路运行。
-
-| 行为 | 已有接口/入口 | 注意 |
-|---|---|---|
-| 创建助手会话 | POST /threads；session.service.ts的create | 使用真实平台Agent ID和执行graph_id；新图拟名platform_assistant，尚未注册 |
-| 列出历史会话 | SDK threads.search/count；session.service.ts的list/count | metadata筛选仅是筛选条件，权限仍由后端执行 |
-| 读取会话/状态 | GET /threads/{thread_id}、GET /threads/{thread_id}/state | 当前状态包含恢复/待审所需事实；先读再决定动作 |
-| 历史checkpoint | POST /threads/{thread_id}/history | 按需读取，不让历史快照覆盖当前实时状态 |
-| 持久消息 | GET /threads/{thread_id}/messages | 分页、排序与消息投影沿现有消息服务 |
-| 发送/恢复 | POST /threads/{thread_id}/commands，或标准runs/stream路径 | 选既有客户端支持的路径；不额外写第二套运行协议 |
-| 事件订阅 | POST /threads/{thread_id}/stream/events及既有SDK控制器 | 流状态与业务动作分开，断流不等于运行失败 |
-| 查询Run | GET /threads/{thread_id}/runs/{run_id} | 受理回执不等于已执行成功 |
-| 停止 | POST /threads/{thread_id}/cancel及stop-requests查询 | 沿现有停止回执，不把取消请求成功等同执行已终止 |
-| 运行诊断 | GET /threads/{thread_id}/runs/{run_id}/diagnostics | 这里传目标Thread/Run，不能误用助手运行ID |
-| 删除历史 | DELETE /threads/{thread_id} | 沿既有ACL/生命周期；前端不能只删本地消息 |
-| 审批恢复 | commands的input.respond或runs的command.resume | 使用真实interrupt ID，不能覆盖运行配置 |
-
-可直接阅读的源码（相对仓库根）：
-- apps/platform-web/src/services/langgraph/client.ts：授权、API base、命令幂等键。
-- apps/platform-web/src/services/threads/session.service.ts：创建、历史、列表、恢复和删除。
-- apps/platform-web/src/modules/chat/run-actions.ts：SDK命令转换与动作状态。
-- apps/platform-web/src/modules/chat/approvals.ts：action_requests/review_configs解析及决策构造。
-- apps/platform-web/src/modules/chat/composables/useChatSession.ts：现有会话控制器接线示例。
-- apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py：注册路径。
-- apps/platform-api/docs/standards/runtime-gateway-interface-standard.md：既有平台契约。
-
-这些是协议参考，不要求前端照抄整个ChatSession或采用某个抽屉。
-
-## 4. 写操作：执行/不执行
-
-写工具即使已经授权也必须暂停；正常只读SQL、日志和文档读取不触发审批。前端不允许“自动执行全部”或把full_access解释为本助手的写审批豁免。
-
-以下为**沿现有batched审批协议构造的示意报文**，不是本项目真实运行结果。example_update_setting仅用于说明写工具交互，不是已发布业务动作。真实工具名称、参数schema和影响摘要由后端交付。
-
-待审对象示意：
+实际响应结构：
 
 ```json
 {
-  "id": "interrupt-from-current-state",
-  "value": {
-    "action_requests": [
-      {
-        "name": "example_update_setting",
-        "args": {"resource_id": "example-resource", "enabled": true},
-        "description": "将指定对象的开关改为启用；等待用户决定"
-      }
-    ],
-    "review_configs": [
-      {
-        "action_name": "example_update_setting",
-        "allowed_decisions": ["approve", "reject"]
-      }
-    ]
-  }
+  "project_id": "<UUID>",
+  "personal_project": false,
+  "assistant_id": "platform_assistant",
+  "agent_id": "<平台Agent记录UUID>",
+  "model_id": "<获准模型UUID>",
+  "history": true
 }
 ```
 
-用户选择“执行”后，标准恢复正文示意：
+`assistant_id` 使用字符串 `platform_assistant`。`agent_id` 是平台配置记录；Runtime 返回的 assistant UUID 也是另一种标识，不要拿这些 UUID 替换发送请求中的图名。
+
+接着 `GET /api/platform-assistant/capabilities`，带返回项目：
+
+```json
+{
+  "enabled": true,
+  "graph_id": "platform_assistant",
+  "history": true,
+  "long_term_memory": false,
+  "sandbox": false,
+  "write_tools": [],
+  "source": false,
+  "databases": ["platform-local"]
+}
+```
+
+这是能力提示，实际每次取数仍重新校验权限和工具策略。普通用户不展示源码入口；即使按钮被手工调用，后端也会校验。
+
+## 3. 新建、发送、历史与取消
+
+以下表格路径都带 `/api/langgraph` 前缀。复用现有会话客户端，不新增另一套运行状态机。
+
+| 行为 | 方法与路径 | 关键约定 |
+|---|---|---|
+| 新建 | POST `/threads` | 保存返回的 thread_id |
+| 历史列表 | POST `/threads/search` | 按 graph_id 过滤；返回数组，无 values 消息正文 |
+| 历史数量 | POST `/threads/count` | 相同过滤条件 |
+| 会话与当前状态 | GET `/threads/{id}`、GET `/threads/{id}/state` | 后者含 values.messages、interrupts、tasks、checkpoint |
+| 历史 checkpoint | POST `/threads/{id}/history` | 如 `{ "limit": 10 }`；不要覆盖当前状态 |
+| 分页消息 | GET `/threads/{id}/messages` | 复用现有消息服务及分页投影 |
+| 非流式受理 | POST `/threads/{id}/runs` | 返回 Run 对象；pending 不代表模型完成 |
+| 发送并订阅 | POST `/threads/{id}/runs/stream` | SSE；推荐复用现有 SDK |
+| 命令入口 | POST `/threads/{id}/commands` | 既有 run.start / input.respond 协议 |
+| 恢复订阅 | POST `/threads/{id}/stream/events` | 沿 SDK 的游标和重连机制 |
+| Run 状态 | GET `/threads/{id}/runs/{run_id}` | 用于重连、结果未知和终态对账 |
+| 取消某次运行 | POST `/threads/{id}/runs/{run_id}/cancel` | `{ "action": "interrupt" }`；回执之后仍需查终态 |
+| 会话停止 | POST `/threads/{id}/cancel` | 沿现有 stop-requests 回执机制 |
+| 删除历史 | DELETE `/threads/{id}` | 后端删会话及资料授权回执；不能只删本地缓存 |
+| 目标运行诊断 | GET `/threads/{id}/runs/{run_id}/diagnostics` | 这里是被诊断对象，不是助手本身 |
+
+创建示例（已在真实 API 链验证）：
+
+```json
+{
+  "graph_id": "platform_assistant",
+  "metadata": {"graph_id": "platform_assistant", "title": "平台助手"}
+}
+```
+
+历史检索示例：
+
+```json
+{
+  "metadata": {"graph_id": "platform_assistant"},
+  "limit": 20,
+  "offset": 0,
+  "sort_by": "updated_at",
+  "sort_order": "desc"
+}
+```
+
+发送到 `/threads/{id}/runs` 或 `/runs/stream`：
 
 ```json
 {
   "assistant_id": "platform_assistant",
-  "command": {
-    "resume": {
-      "interrupt-from-current-state": {
-        "decisions": [{"type": "approve"}]
-      }
-    }
+  "input": {"messages": [{"role": "user", "content": "怎样使用平台助手？"}]},
+  "context": {"model_id": "<bootstrap返回的model_id>"}
+}
+```
+
+每个新动作使用新的 `Idempotency-Key`；同一动作网络结果未知时，保留原 key 和原正文重试。不要在 `configurable` 传身份、数据库连接、工具授权或内部回调密钥。
+
+实际流式验收收到 `metadata`、`lifecycle`、`checkpoints`、`debug`、`values`、`updates`、`messages` 事件。它们不是七种用户消息：交给已有 SDK/控制器归并，`debug/checkpoints` 不作为聊天正文直接展示。业务运行完成由 lifecycle/Run 状态确认，TCP 关闭或 SSE 结束不能单独当作成功。
+
+消息 `content` 可能是字符串，也可能是 content v1 数组。答复展示读取 `type="text"` 的块；不能对整数组做 String 转换，也不要把 `reasoning` 块混成最终答复。工具消息的 `content` 通常是 JSON 字符串，按 `type="tool"`、`name`、`tool_call_id` 与 AI 的 tool_calls 关联。
+
+## 4. 历史、错误现场与状态
+
+错误现场可直接复用现有诊断 Markdown 包作为用户消息。发送前预览页面、发生时间、摘要，以及有的话 project_id / thread_id / run_id / request_id / 平台 Trace / 模型 Trace。用户可修改或粘贴；缺字段允许发送，由助手补问或通过获准日志调查。不要上传 Cookie、令牌、数据库密码和完整环境配置。
+
+助手 Thread 与被诊断 Thread 必须分开。打开助手不能自动重跑失败 Run。页面切换不等于取消任务，关闭面板不等于批准动作。刷新先读 state/Run，再恢复流和待审卡，不重发最后一条消息。
+
+| 服务端情况 | UI 行为 |
+|---|---|
+| pending / running | 显示排队/运行，可停止 |
+| interrupted 且存在有效 interrupts | 展示等待用户决定，按真实 allowed_decisions 给按钮 |
+| interrupted 且没有 interrupts | 可能是用户停止；本次真实 cancel 即为此终态，不能当审批 |
+| success | 展示答案与引用，允许同 Thread 下一轮 |
+| error / timeout | 保留已有输出，展示错误编号和失败状态 |
+| cancelled（若上游提供） | 显示已取消，不等同成功 |
+| 提交结果未知 / 网络断流 | 保留动作 ID，回查原 Run；不能创建新的重复动作 |
+| 403 资料权限撤销 | 清理该会话可读内容/来源缓存，提示新建会话；不能全站登出 |
+| 401 登录过期 | 走既有认证恢复流程 |
+
+后端复核旧会话用过的数据源、源码和目标会话权限。数据源被撤销或 revision 变更、源码撤权、工具被停用时，旧助手历史可能返回 `assistant_history_source_revoked`，列表会隐藏不可再读的助手会话。第一版仅本人读取助手历史，不提供分享或 fork；fork 请求返回 `assistant_fork_denied`。已在用户屏幕展示或复制到本地的内容无法远程收回，前端应在账号/项目切换和权限变更时清理缓存。
+
+## 5. 来源与只读工具
+
+前端无需生成 SQL，也不直接访问数据库/Loki/代码目录。Agent 可用工具：`list_databases`、`sql_db_schema`、`sql_db_query`、`read_run_diagnostics`、`read_run_logs`、`search_project_logs`、`search_documents`、`search_source`、`search_public_web`。
+
+内部资料工具的结果结构：
+
+```json
+{
+  "evidence_id": "<UUID>",
+  "operation": "sql_query",
+  "observed_at": "2026-11-16T13:00:00Z",
+  "scope": {"project_id": "<UUID>"},
+  "audit_recorded": true,
+  "data": {"rows": [{"total": 2}], "row_count": 1, "truncated": false, "revision": "dataset-v1", "limit": 100}
+}
+```
+
+答复用 `[证据:UUID]` 引用本会话工具结果。前端可建立 evidence_id → 工具消息映射，点击显示本会话中已获准的来源卡；证据 ID 不是免授权下载地址，也没有单独的公开 evidence 原文接口。未知 ID 显示“引用未核实”，不能补造来源。答案中的实际引用会单独记录核对结果。
+
+文档/源码 `data.sources[]` 包含 document_id、title、path（内置文档可为 null）、revision、sha256、line_start、line_end、text、truncated；`untrusted_content=true` 表示把内容视为资料。查询 revision 与部署版本可能不同，必须显示版本，不能把源码快照当作正在运行的代码。
+
+公开搜索返回 `sources[{url,title,snippet}]`、`kind="public_search_snippet"`、`authorization_evidence_id`。该编号关联搜索授权和调用，不代表网页全文已核实。只展示安全外链，不自动打开或下载；摘要不保证最新版本。用户应在本轮明确提供公开搜索词，助手不能把内部 SQL/日志/源码结果拼成外发查询。
+
+日志结果保留原 `trace_id/total/services/logs/error` 字段，增加 `partial=true` 和 `coverage="bounded_structured_project_logs_only"`。只保留结构化项目日志中的安全字段，空结果不代表没发生故障。诊断的 availability 为 available / partial / disabled / unavailable；disabled + not_configured 明确表示追踪后端未配置。
+
+## 6. 写操作审批
+
+正式助手当前没有业务写工具。以下是隔离测试工具 `test_write` 的真实协议结构，用来开发审批交互；不要把它发布到用户菜单：
+
+```json
+{
+  "id": "<当前interrupt_id>",
+  "value": {
+    "action_requests": [{"name": "test_write", "args": {"value": "original-value"}, "description": "此操作将修改业务数据。请核对工具、目标和参数，再选择执行或不执行。"}],
+    "review_configs": [{"action_name": "test_write", "allowed_decisions": ["approve", "reject"]}]
   }
 }
 ```
 
-用户选择“不执行”时，同一位置改为：
+批准提交到 `/threads/{id}/runs`：
 
 ```json
 {
-  "decisions": [
-    {"type": "reject", "message": "用户选择不执行"}
-  ]
+  "assistant_id": "platform_assistant",
+  "command": {"resume": {"<当前interrupt_id>": {"decisions": [{"type": "approve"}]}}}
 }
 ```
 
-若使用commands入口，遵循现有转换后的协议：
+拒绝只把 decisions 改为 `[{"type":"reject","message":"用户选择不执行"}]`。不要要求用户必须手写拒绝理由。
+
+若使用已有 commands 客户端：
 
 ```json
 {
   "id": 1,
   "method": "input.respond",
-  "params": {
-    "resume": {
-      "interrupt-from-current-state": {
-        "decisions": [{"type": "approve"}]
-      }
-    }
-  }
+  "params": {"resume": {"<当前interrupt_id>": {"decisions": [{"type": "reject", "message": "用户选择不执行"}]}}}
 }
 ```
 
-接入要求：
-- interrupt ID必须来自当前服务端state/事件。多个interrupt按ID映射，每组decisions按该组action_requests顺序逐项对应，不能漏项或一键默认批准。
-- 只提供执行/不执行；本期不提供edit参数审批。要改变参数应重新生成动作并再次确认。
-- 不执行可使用固定拒绝文案，不强迫用户写理由；现有helper要求非空message时用上面的固定值。
-- 新决策产生新的Idempotency-Key；同一决策结果未知后的重试保留原key和原正文。协议整数id不是HTTP幂等键。
-- 等待用户选择期间不显示“执行完成”；关页面、断网、超时和重启不会批准。
-- 恢复前重新鉴权由后端完成；前端不能将approve权限按钮当后端授权。恢复可能产生新Run ID，应沿SDK刷新实际运行。
-- 恢复不得附带新的input/config/context覆盖原任务。重复/过期/异项目审批显示明确失败，并重读状态。
-- 点击执行返回受理后，继续观察工具/运行结果；结果未知时先查询，不能用新动作再次写入。
-- 用户拒绝后显示“未执行”，助手可以解释或提供替代建议，不能偷偷换工具完成同一动作。
-- pending卡片显示的参数和目标必须对应当前interrupt；禁止显示旧动作却批准新动作。
+要求：真实 interrupt_id 来自当前 state；同一组 decisions 按 action_requests 的顺序完整对应；多组按 ID 映射。本助手只支持 approve/reject，不支持 edit，不提供“自动批准全部”。full_access 也不豁免。改变参数需拒绝旧动作、让助手生成新动作再确认。
 
-若本期尚无实际业务写工具，正式用户不会看到该示例操作；前端可使用后端提供的隔离测试夹具验收协议，测试工具不得发布到正式Agent目录。
+恢复不能带新的 input/config/context。新决策用新 HTTP 幂等键，同一决策重试复用原 key。恢复可能返回新 Run，必须刷新运行事实。无选择、关闭窗口、断网、服务重启都不会批准。服务端拒绝过期/伪造 ID；若执行结果未知，先回查，禁止重新创建同一写动作。未来具体业务工具仍须在执行边界重新鉴权并处理业务幂等，不能仅靠按钮授权。
 
-## 5. 历史、记忆与状态
+## 7. 公开读取接口与错误码
 
-历史列表及重开是产品能力；同Thread多轮上下文是Agent记忆；两者都需要持久化。新会话默认不自动召回旧会话，没有新的长期个人画像入口。
+`POST /api/platform-assistant/read` 可用于联调或用户主动查来源，通常聊天过程由 Agent 内部调用。请求只能描述查询，身份取登录态。公开接口不接受 actor_id、project_id、thread_id 等内部身份字段。
 
-前端关闭面板不等于停止任务。页面刷新后先获取会话state和Run状态，再恢复流/待审展示；不重复发送最后一条用户消息。历史待审只展示当前仍有效的interrupt，不把已批准/拒绝的旧记录重新变成按钮。
+常用请求：
 
-| 状态 | 交互行为 |
+```json
+{"operation":"sql_schema","database_id":"platform-local","table_names":["runs"],"table_offset":0}
+```
+
+```json
+{"operation":"sql_query","database_id":"platform-local","query":"SELECT status, COUNT(*) FROM runs GROUP BY status"}
+```
+
+其他 operation：sql_sources、documents、source、diagnostics、logs。文档用 query / document_id / line；运行查询用 target_thread_id 和 target_run_id；无 Run 日志调查用 query（Trace，可空）、log_start/log_end（含时区）、log_service，须明确日志调查授权。authorize/authorize_search/record_citations 是 Agent 生命周期用途，前端无需主动调用。
+
+`/api/platform-assistant/internal/read` 仅供 Runtime 带用途绑定 HMAC 回调，前端不得使用，也不得保存其密钥。
+
+错误沿平台 Envelope：`error.code / error.message / error.details`，关联编号沿平台响应头。
+
+| HTTP / code | 处理方式 |
 |---|---|
-| 空会话 | 可输入，无需加载其他项目历史 |
-| 运行中/取证中 | 显示进展，可按现有协议停止 |
-| 等待用户决定 | 展示动作及执行/不执行，不能自动resume |
-| 提交结果未知 | 保留原动作标识，回查状态，不新建重复动作 |
-| 已完成 | 展示答复与证据；下一轮沿同Thread |
-| 拒绝动作 | 明确本动作未执行；后续解释不是已执行 |
-| 失败/取消 | 保留已产生内容，说明未完成和可用操作 |
-| 权限被撤销 | 停止新的取数/来源访问，清理对应作用域可操作状态 |
-| 瞬态网络故障 | 不误判为永久撤权，不清掉其他项目会话 |
+| 400 assistant_project_required | 初始化后带返回的项目 |
+| 503 assistant_disabled | 助手关闭；保留原错误复制入口 |
+| 503 assistant_catalog_unavailable / assistant_model_unavailable | 请管理员同步图目录/配置模型 |
+| 403 assistant_project_denied / assistant_identity_denied | 项目或身份不可用，不自动创建其他业务身份 |
+| 403 assistant_database_denied / assistant_source_denied / assistant_tool_denied | 未授权数据源、源码或工具；普通读不弹“绕过权限”确认 |
+| 403 assistant_history_source_revoked / assistant_private_history | 旧历史资料撤权/非本人会话，清理该会话缓存 |
+| 400 assistant_sql_denied | 非支持的只读查询；让助手修正 SQL，不能转管理员连接 |
+| 403 assistant_database_role_unsafe | 只读账号配置不合规；由管理员整改，前端按 code 识别 |
+| 503 assistant_database_unavailable / assistant_query_busy | 数据源/语法/超时或并发繁忙；可稍后重试 |
+| 400 assistant_run_required / assistant_trace_missing | 缺少可核验关联，补信息或用明确授权的项目日志调查 |
+| 403 trace_scope_denied / assistant_logs_denied | 日志范围无权；不能猜 Trace 绕过 |
+| 400 assistant_log_window_invalid | 含时区、正跨度且最多24小时 |
+| 400 assistant_document_missing / 503 assistant_source_unavailable | 资料不存在或未发布源码 |
+| assistant_public_keywords_required / assistant_public_query_private | 工具消息中的错误；补公开关键词，不自动把内部资料外发 |
 
-不能只用isLoading一个布尔值表达所有状态。现有会话SDK/控制器可作为行为来源，具体UI由前端决定。
+API schema 不合法时沿现有422响应；模型/Runtime/预算错误沿现有错误处理。HTTP200只表示成功返回，仍须查看 partial、truncated、audit_recorded、availability 和 error。
 
-## 6. 证据、数据查询与权限展示
+## 8. 旧日志页面迁移
 
-前端不直接连接数据库、Loki或源码宿主机。Agent读取schema、自行生成SQL并执行是后端工具循环；前端只展示允许公开的步骤和结果。是否展示完整SQL需按权限/脱敏决定，不能在普通用户界面泄露隐藏字段或字面值。
+原 URL `GET /api/v1/observability/traces/{trace_id}/logs` 保留，已去掉匿名放行，新旧入口共享项目与Trace授权。已核对唯一页面调用者：`apps/platform-web/src/modules/observability/pages/TraceDiagnosticsPage.vue` 的 fetchTraceLogs，当前使用 platformHttpClient。前端需保证该页面带正确 `x-project-id`；用户只有裸 Trace、没有可证明的本人操作关联时，后端会拒绝；普通用户还需逐条通过日志所关联Thread的当前权限校验，明确日志调查人员可查本项目范围。
 
-答案应能区分判断、证据、处理建议和未知项。第一版可使用消息Markdown引用；后端若增加结构化证据，最终交接必须列出准确字段、可用性和来源解析方式，不能让前端猜source_ref是可直接打开的URL。
+页面应展示 partial/coverage，区别“无记录”和“查询不可用”。原始大文本日志不再默认透传。这是有意的权限修复；本次没有修改该页面，前端同事需补浏览器回归。关闭助手也不会重新开放日志匿名访问。
 
-来源缺失、过期、权限不足与服务暂不可用分别展示。引用链接也需权限，展示过的来源不能作为今后读取授权。普通用户默认没有源码读取入口；组件隐藏不是后端安全措施。
+## 9. 联调步骤与现有代码入口
 
-## 7. 错误与降级
+先按 [后端配置与复验](backend-operations.md)准备所属 Worktree、迁移、模型和数据源。当前隔离环境 Web28074 / API28581 / Runtime25418；这些仅是2026-11-16本次环境，可能在清理后失效，实际以 `.local-stack/environment.json` 为准。凭据仅通过本地配置/现有登录取得，不放文档。
 
-统一使用平台错误Envelope及现有http-error解析。现有认证/权限/资源/冲突错误按其业务码处理，不将所有403导致全站登出，不把404统一解释成权限不足。新增助手错误码必须在最终交接逐项列明。
+最小可运行客户端，环境变量由开发者自己设置：
 
-模型、Runtime或日志后端不可用时仍保留原诊断复制入口。前端不自动再启动另一个助手排查本助手。读取工具空结果或partial应显示缺口，不能把HTTP200解释为根因查明。
+```python
+import os
+import httpx
 
-## 8. 前端验收要求（由前端同事执行）
+with httpx.Client(base_url=os.environ["API_BASE"], timeout=30,
+                  headers={"Authorization": "Bearer " + os.environ["ACCESS_TOKEN"]}) as client:
+    setup = client.post("/api/platform-assistant/bootstrap")
+    setup.raise_for_status()
+    config = setup.json()
+    client.headers["x-project-id"] = config["project_id"]
+    thread = client.post("/api/langgraph/threads", json={
+        "graph_id": "platform_assistant",
+        "metadata": {"graph_id": "platform_assistant", "title": "前端联调"}})
+    thread.raise_for_status()
+    thread_id = thread.json()["thread_id"]
+    run = client.post(f"/api/langgraph/threads/{thread_id}/runs", json={
+        "assistant_id": "platform_assistant",
+        "input": {"messages": [{"role": "user", "content": "怎样使用助手？"}]},
+        "context": {"model_id": config["model_id"]}})
+    run.raise_for_status()
+    print(thread_id, run.json()["run_id"])
+```
 
-1. 全局与错误入口可用；发送前上下文可见，粘贴路径可用，目标与助手会话分开。
-2. 正常数据库/日志/文档读取不弹审批；显式写工具必须出现执行/不执行。
-3. 批准前、拒绝后、关闭页面及断网时没有写副作用；批准后展示真实结果。
-4. 历史重开/刷新/切页不重发消息，不复活过期审批；新Thread不串旧上下文。
-5. 账号、项目和权限变化不混消息、来源或审批；拒绝和瞬态故障区分。
-6. 正常流式、停止、结果未知、错误降级、移动视口和键盘操作可用。
-7. 联合API/Runtime证据验证用户操作，不仅验证按钮点击和前端mock。
+接续用上述Run查询到终态，再取state。使用业务项目数据时初始化请求带业务项目；个人项目默认没有其他项目的数据源。
 
-## 9. 交接完成条件
+现有前端协议参考（组件是否复用由同事决定）：
 
-本次后端开发者必须在交付时补全以下内容；未具备时T07-A不能标完成：
-- 实际部署/隔离环境地址的获取方法、Graph与平台Agent启用方式、测试角色/资料准备命令；不填写真实密码或密钥。
-- 已实现接口列表、准确请求/响应/事件/错误/能力schema，清楚区分既有与新增。
-- 新建→发送→取证→答复→历史续聊，以及写工具批准/拒绝的实际报文与运行证据。
-- 服务重启恢复、撤权、结果未知、取消和故障降级的可复现步骤。
-- 新增接口契约测试、API客户端示例、已知限制、数据/模型版本及后端验收结果。
-- 若旧日志入口改变，对应前端调用者迁移方式和兼容情况。
-- 前端只需依照文档即可开发；不能要求同事翻聊天猜字段或拿未实现接口联调。
+- `apps/platform-web/src/services/langgraph/client.ts`：授权、base、命令幂等。
+- `apps/platform-web/src/services/threads/session.service.ts`：创建、列表、历史、恢复。
+- `apps/platform-web/src/modules/chat/run-actions.ts`：SDK命令与动作状态。
+- `apps/platform-web/src/modules/chat/approvals.ts`：parseReviews/buildReviewResponses。
+- `apps/platform-web/src/modules/chat/composables/useChatSession.ts`：会话控制器。
+- `apps/platform-web/src/services/observability/diagnostic-packet.ts`：诊断包。
 
-后端交付验收与全栈联合验收分别记录。本交接初稿没有执行浏览器验收，不表示新助手已经可用。
+前端交付前仍需验证：全局/错误入口、粘贴预览、切页/刷新/重连、消息/审批隔离、拒绝与结果未知、撤权清缓存、旧日志页、键盘/移动端，以及 Web→API→Runtime 的联合链。后端真实运行证据见 [验证记录](verification.md)，不能把后端 API 验收当作这些浏览器项已经通过。

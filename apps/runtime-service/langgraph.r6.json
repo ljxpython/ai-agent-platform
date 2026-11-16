@@ -50,6 +50,10 @@
     "mcp_probe": {
       "path": "./src/runtime_service/graphs/mcp_probe.py:get_agent",
       "description": "R6 deterministic Streamable HTTP MCP recovery probe."
+    },
+    "platform_assistant": {
+      "path": "./src/runtime_service/graphs/platform_assistant.py:get_agent",
+      "description": "Platform assistant: authorized SQL, diagnostics, documents and conversation; no sandbox."
     }
   },
   "env": ".env",

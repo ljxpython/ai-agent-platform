@@ -228,3 +228,9 @@ GraphHarbor 为唯一定义/调度/Run 事实源。平台 metadata 保存产品�
 Runtime 图构造前以 HMAC 调用 POST /api/runtime/internal/scheduled-authorization，每个 Run 一次聚合核验身份/凭据/项目/Agent/模型/Thread；拒绝留痕且保留定义，回查不可用拒绝。批准后刷新当前角色/模型引用/工具限制。运行中不周期重验；暂停/删除不取消已接受 Run；无人值守审批失败。平台 HMAC 与 GraphHarbor 通用生产签名的责任边界见 [方案](../../../../docs/projects/20261005-scheduled-agent-tasks/plan.md)。
 
 定时任务原post41隔离验收保留；平台Runtime当前锁定并安装GraphHarbor post42，超时/取消及匹配版本回退隔离链路通过，未部署现役或远端平台。Delegation标准整体仍为draft，消息内部Run回查的现役验收另行完成。
+
+## 平台助手接入（2026-11-16）
+
+platform_assistant沿原Thread/Run、SSE、幂等与interrupt/resume协议运行，无新SSE类型或Context字段。bootstrap/capabilities及查询桥在/api/platform-assistant；前端初始化后使用返回项目和model_id，assistant_id传platform_assistant图名。助手历史额外校验资料授权回执；fork拒绝，列表过滤不可再读的旧会话。写审批只允许approve/reject，恢复不得注入新input/config/context。
+
+准确报文、状态（包括取消后interrupted与真正待审批的区别）、来源和错误见[前端交接](../../../../docs/projects/20261116-platform-assistant/frontend-handoff.md)。本期正式write_tools为空，跨进程测试工具不发布；前端页面由同事接续。

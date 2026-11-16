@@ -30,6 +30,10 @@
     "showcase_demo": {
       "path": "./src/runtime_service/graphs/showcase_demo.py:get_agent",
       "description": "Real Python project teaching agent with thread workspace, Docker execution, Skills, Todo, subagents and approval."
+    },
+    "platform_assistant": {
+      "path": "./src/runtime_service/graphs/platform_assistant.py:get_agent",
+      "description": "Platform assistant: authorized SQL, diagnostics, documents and conversation; no sandbox."
     }
   },
   "env": ".env",
