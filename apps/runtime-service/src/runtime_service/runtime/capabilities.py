@@ -10,8 +10,12 @@ from runtime_service.services.dearflow_agent.capabilities import (
     WORK_TOOLS,
     graph_capabilities,  # noqa: F401 - public compatibility export
 )
+from runtime_service.services.platform_assistant.capabilities import (
+    TOOL_NAMES as PLATFORM_ASSISTANT_TOOLS,
+)
 
 REFERENCE_TOOLS = ("read_reference", *PLAN_TOOL_NAMES)
+
 EVALUATION_TOOLS = ("decimal_calculate", "read_evidence", "validate_test_plan")
 SHOWCASE_TOOLS = (
     *PLAN_TOOL_NAMES,
@@ -44,6 +48,7 @@ def graph_tools(graph_id: str) -> tuple[str, ...]:
         "showcase_demo": (*SHOWCASE_TOOLS, *configured_mcp_names()),
         "dearflow_agent": (*DEAR_TOOLS, *configured_mcp_names()),
         "evaluation_assistant": EVALUATION_TOOLS,
+        "platform_assistant": PLATFORM_ASSISTANT_TOOLS,
     }[graph_id]
 
 
@@ -55,6 +60,7 @@ def tool_catalog() -> dict:
         "showcase_demo",
         "dearflow_agent",
         "evaluation_assistant",
+        "platform_assistant",
     ):
         for name in graph_tools(graph):
             item = tools.setdefault(

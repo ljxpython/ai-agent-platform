@@ -10,6 +10,25 @@ from tests.thread_acl_fixture import thread_acl_factory
 
 
 class ThreadForkTest(unittest.IsolatedAsyncioTestCase):
+    async def test_assistant_history_cannot_fork_around_evidence_grants(self):
+        from platform_api.core.errors import ForbiddenError
+
+        upstream = SimpleNamespace(get_thread_state=AsyncMock())
+        service = RuntimeGatewayService(session_factory=self.factory, upstream=upstream)
+        service._load_thread = AsyncMock(
+            return_value={"metadata": {"graph_id": "platform_assistant"}}
+        )
+        with self.assertRaises(ForbiddenError) as error:
+            await service.fork_thread(
+                actor=self.actor,
+                project_id="p",
+                thread_id="source",
+                checkpoint_id="checkpoint",
+                title=None,
+            )
+        self.assertEqual(error.exception.code, "assistant_fork_denied")
+        upstream.get_thread_state.assert_not_awaited()
+
     def setUp(self):
         self.actor = ActorContext(
             user_id="owner", project_roles={"p": ("project_executor",)}

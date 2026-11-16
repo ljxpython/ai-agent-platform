@@ -650,7 +650,15 @@ def get_runtime_gateway_service(
         except Exception:
             logger.exception("runtime correlation log failed")
 
+    from platform_api.modules.platform_assistant.evidence import require_history_access
+
     return RuntimeGatewayService(
+        assistant_access_validator=lambda current_actor,
+        current_project,
+        thread_id,
+        access: require_history_access(
+            session_factory, settings, current_actor, current_project, thread_id, access
+        ),
         session_factory=session_factory,
         upstream=upstream,
         runtime_base_url=settings.langgraph_upstream_url,

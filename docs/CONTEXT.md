@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-16（原06/07已验收交付；追加主环境配置7.5完成，获批/24准入恢复，一题真实评测通过）
+> **最后更新：** 2026-11-16（平台助手全栈验收通过并合并主干，11/11 done；评测飞轮 Task 7.5 主环境配置完成并通过真实评测；本地测试服务与专属测试库已清理）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -31,13 +31,18 @@
 
 ## 最近改动
 
-2026-11-16 | **主环境评测配置与连接恢复**：Task7.5 done；env注释、登录/隔离、AI建题/发布及一题真实运行通过。用户明确批准sshmy2沙箱111.227.13.0/24准入；原配置已备份，Token/证书保留，仅重启Node。成功记录与截图齐备，未提交或部署应用。
+2026-11-16 | **平台助手全栈验收通过与交付合并**：用户已确认需求完成并授权交付。前端落地 Clean Architecture 解耦架构（`apps/platform-web/src/modules/platform-assistant/`），含全局抽屉、错误胶囊、专职审批卡、证据二级抽屉，以及首轮自动命名与 Scoped Client 作用域锁；修复 TraceDiagnosticsPage.vue 的 x-project-id 请求头、partial 覆盖警示条与 log.raw 空安全防崩溃。11 项任务全量完成（11/11 done），vue-tsc 0 报错、单测 24 项全绿、生产打包构建通过。本地测试服务已停止，专属测试数据库已删除，Worktree 分支推送并合入 main。
+
+2026-11-16 | **主环境评测配置与连接恢复**：Task7.5 done；env注释、登录/隔离、AI建题/发布及一题真实运行通过。用户明确批准sshmy2沙箱111.227.13.0/24准入；原配置已备份，Token/证书保留，仅重启Node。成功记录与截图齐备。
 
 ## 近期评测基础
 
 2026-11-13 | **Agent 自动化评测首期交付**：EvalFlow 扩展完成历史评分/主动回归、20题、真实模型基线、门禁与Badcase审核；三次开发集运行保留 KnowledgeRetention 分歧，holdout曾用于裁判诊断。真实CI、生产发布和全新盲测集后置，详见项目 Final 记录。
 
 ## 本月归并
+
+2026-11-16 | 平台助手完成后端/Agent/只读SQL/日志源码读取及前端交接文档校正，保持create_agent与分层权限。
+2026-11-16 | 评测飞轮验收交付完成，双仓已推送，344c资源回收；原暂缓与生产范围不变。
 
 2026-11-10 | 纯白系统架构拓扑交互图交付，README 彻底清理历史脱节残留并对齐生产现状。
 
@@ -61,6 +66,8 @@
 2026-10-22 | **工业级可观测性与指标大盘全栈落地与前端方案 B 内嵌**：建立 Langfuse + Prometheus 双轨制架构；彻底重构 Platform API 内存锁计数器，引入标准 prometheus-client 并提供防内存泄漏的路径归一化；在 API (2142) 与 Runtime (8123) 暴露标准 /metrics 接口；生产主机 sshmy1 成功部署 Prometheus (19.59MB) 与 Grafana (50.5MB)，常驻内存总增量仅 70.09MB，双抓取 Targets 100% UP；实装前端方案 B 内嵌大盘（`ObservabilityDashboardPage.vue`，Kiosk 沉浸式无边框、深浅色主题双向联动、全屏与独立窗口跳转、系统探测快速直达），远端 Grafana 容器安全配置 `GF_SECURITY_ALLOW_EMBEDDING=true` 与免密只读已平滑热生效，前端全量 906 项单测及构建 100% 绿灯。
 
 ## 活跃项目
+
+- [平台内置助手](projects/20261116-platform-assistant/README.md)：`done`（2026-11-16 用户验收通过并授权交付合并）；后端/Agent、只读SQL、日志/源码及前端独立模块均完成验证（11项全部done）。前端落地独立模块（`modules/platform-assistant`），含全局抽屉、错误胶囊、独立审批卡、证据二级抽屉，vue-tsc 0 报错、单测 24 项全绿，旧日志页面防御性修复通过；测试服务已停，专属数据库已删；代码已合并推送主干，生产未部署。
 
 - [Agent生产评测飞轮](projects/20261113-agent-eval-production-flywheel/README.md)：06本地16/16、07本地4/4 done，含业务会话转换、正式页面与登录；用户已于2026-11-16确认验收通过。原01–04为22 done/3 deferred；原失败与AI裁判局限保留。原16图/5视频与新增8图/1视频及主线手册齐备，验收通过并合并推送，测试服务和资源已回收，未生产部署。
 - [Agent 自动化评测体系](projects/20261112-agent-evaluation-system/README.md)：done，已合main并清理测试Worktree/专属数据库；EvalFlow执行器、20题、真实基线、门禁、Badcase审核与页面验证通过。Agent仍有KnowledgeRetention质量失败；真实CI、生产发布、新盲测集后置。
@@ -140,9 +147,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。 |
-| platform-api | 2026-11-08 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。 |
-| platform-web | 2026-11-08 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。 |
+| runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。2026-11-16规划补充：平台助手采用create_agent、无执行沙箱，复用持久历史/会话记忆，写工具须用户确认；本次负责后端/Agent/交接，本分支已验证真实文档/SQL/日志源码/检索、重启历史/隔离、跨进程审批和SSE/取消，前端交接完成；生产现役未复验。 |
+| platform-api | 2026-11-08 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。2026-11-16规划补充：平台助手拟接schema驱动只读SQL、日志授权、查询审计及强制写审批；本分支已完成只读SQL、日志范围、证据审计/撤权与个人项目，迁移0012仅在隔离库验证；生产权限未改。 |
+| platform-web | 2026-11-08 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。2026-11-16规划补充：平台助手前端由同事实施并决定组件，已提供可联调历史/审批/错误入口完整交接；代码未改，现役未复验。 |
 | AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent生产评测飞轮本轮批准范围已在双Worktree完成，22 done / 3 deferred，联合Final通过；未提交、合并或生产部署，主工作区服务未变更。Agent 自动化评测首期与D01–D06已合main，测试资源已回收；详见项目记录。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

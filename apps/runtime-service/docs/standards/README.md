@@ -9,6 +9,8 @@
 
 ## 按需专题
 
+- [平台助手实现与运维](../../../../docs/projects/20261116-platform-assistant/backend-operations.md)：单create_agent、只读查询、原生审批、持久历史，无助手执行沙箱；[前端交接](../../../../docs/projects/20261116-platform-assistant/frontend-handoff.md)。
+
 - [通用后台任务接入](background-task-integration.md)：受管 Docker、生命周期及正式启用边界。
 - [模型上下文隐私保护](model-context-privacy.md)：主/子模型、摘要及辅助调用的保护要求。
 - [项目知识 MCP](project-knowledge-mcp.md)：项目范围、来源契约、共享上传及维护。

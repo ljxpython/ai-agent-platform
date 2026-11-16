@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import TraceDiagnosticsPage from "./TraceDiagnosticsPage.vue";
 import { platformHttpClient } from "@/services/http/client";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 const mockRoute = { query: {} as Record<string, string> };
 const mockRouter = { push: vi.fn() };
@@ -125,5 +126,98 @@ describe("TraceDiagnosticsPage (Native Timeline Edition)", () => {
     expect(mockRouter.push).toHaveBeenCalledWith({
       name: "workspace-observability",
     });
+  });
+
+  it("carries x-project-id header when workspace currentProjectId is available", async () => {
+    const store = useWorkspaceStore();
+    store.currentProjectId = "proj-obs-999";
+
+    vi.mocked(platformHttpClient.get).mockResolvedValue({
+      data: {
+        trace_id: "tr-test-scoped-1",
+        total: 1,
+        services: ["platform-api"],
+        logs: [],
+      },
+    } as any);
+
+    mockRoute.query = { traceId: "tr-test-scoped-1" };
+    renderPage();
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(platformHttpClient.get).toHaveBeenCalledWith(
+      "/api/v1/observability/traces/tr-test-scoped-1/logs",
+      {
+        headers: {
+          "x-project-id": "proj-obs-999",
+        },
+      },
+    );
+  });
+
+  it("renders partial log coverage warning banner when response has partial=true", async () => {
+    vi.mocked(platformHttpClient.get).mockResolvedValue({
+      data: {
+        trace_id: "tr-test-partial-2",
+        total: 1,
+        services: ["platform-api"],
+        partial: true,
+        coverage: "bounded_structured_project_logs_only",
+        logs: [
+          {
+            timestamp: "2026-11-16T12:00:00Z",
+            nanos: "1000000000",
+            service: "platform-api",
+            level: "info",
+            event: "http.req",
+            summary: "GET /api/v1/test",
+            span_id: "span-1234",
+            payload: {},
+          },
+        ],
+      },
+    } as any);
+
+    mockRoute.query = { traceId: "tr-test-partial-2" };
+    const wrapper = renderPage();
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(wrapper.text()).toContain("当前日志查询受项目安全范围约束");
+    expect(wrapper.text()).toContain("bounded_structured_project_logs_only");
+  });
+
+  it("handles missing raw log safely without crashing when filtering keywords", async () => {
+    vi.mocked(platformHttpClient.get).mockResolvedValue({
+      data: {
+        trace_id: "tr-test-no-raw-3",
+        total: 1,
+        services: ["platform-api"],
+        logs: [
+          {
+            timestamp: "2026-11-16T12:00:00Z",
+            nanos: "2000000000",
+            service: "platform-api",
+            level: "info",
+            event: "http.req",
+            summary: "Crash Proof Summary",
+            span_id: "span-5678",
+            payload: {},
+          },
+        ],
+      },
+    } as any);
+
+    mockRoute.query = { traceId: "tr-test-no-raw-3" };
+    const wrapper = renderPage();
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(wrapper.text()).toContain("Crash Proof Summary");
+
+    const searchInput = wrapper.find(
+      'input[placeholder="按关键字/路径/错误搜索..."]',
+    );
+    expect(searchInput.exists()).toBe(true);
+    await searchInput.setValue("Crash");
+    expect(wrapper.text()).toContain("Crash Proof Summary");
   });
 });

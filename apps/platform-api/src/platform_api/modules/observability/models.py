@@ -31,3 +31,5 @@ class TraceLogsResponse(BaseModel):
     services: list[str] = Field(default_factory=list)
     logs: list[TraceLogEntry] = Field(default_factory=list)
     error: str | None = None
+    partial: bool = False
+    coverage: str | None = None

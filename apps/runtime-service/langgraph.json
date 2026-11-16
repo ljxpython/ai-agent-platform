@@ -28,6 +28,10 @@
     "evaluation_assistant": {
       "path": "./src/runtime_service/graphs/evaluation_assistant.py:get_agent",
       "description": "Managed evaluation assistant: authorized evidence, test proposals and review explanations."
+    },
+    "platform_assistant": {
+      "path": "./src/runtime_service/graphs/platform_assistant.py:get_agent",
+      "description": "Platform assistant: authorized SQL, diagnostics, documents and conversation; no sandbox."
     }
   },
   "env": ".env",

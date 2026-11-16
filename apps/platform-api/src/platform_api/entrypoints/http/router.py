@@ -29,6 +29,9 @@ from platform_api.modules.notifications.router import (
 from platform_api.modules.observability.router import (
     router as observability_router,
 )
+from platform_api.modules.platform_assistant.router import (
+    router as platform_assistant_router,
+)
 from platform_api.modules.projects.router import router as projects_router
 from platform_api.modules.runtime_catalog.presentation import (
     router as runtime_catalog_router,
@@ -82,3 +85,4 @@ api_router.include_router(usage_analytics_router)
 api_router.include_router(observability_router)
 api_router.include_router(notifications_router)
 api_router.include_router(alerts_router)
+api_router.include_router(platform_assistant_router)

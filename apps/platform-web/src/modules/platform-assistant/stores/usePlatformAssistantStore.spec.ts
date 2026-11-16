@@ -1,0 +1,83 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
+import { usePlatformAssistantStore } from "./usePlatformAssistantStore";
+import * as clientService from "../services/client";
+
+vi.mock("../services/client", () => ({
+  bootstrapAssistant: vi.fn(),
+  getAssistantCapabilities: vi.fn(),
+}));
+
+describe("usePlatformAssistantStore", () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    vi.clearAllMocks();
+  });
+
+  it("控制抽屉 open, close, toggle 状态切换", () => {
+    const store = usePlatformAssistantStore();
+    expect(store.isOpen).toBe(false);
+
+    store.open();
+    expect(store.isOpen).toBe(true);
+
+    store.close();
+    expect(store.isOpen).toBe(false);
+
+    store.toggle();
+    expect(store.isOpen).toBe(true);
+  });
+
+  it("通过 openWithDiagnostic 挂载错误上下文并自动开启抽屉", () => {
+    const store = usePlatformAssistantStore();
+    const mockContext = {
+      title: "500 Internal Server Error",
+      summary: "接口超时",
+      diagnosticMarkdown: "# 排障包\n- Trace: tr-123",
+      projectId: "proj-1",
+      traceId: "tr-123",
+    };
+
+    store.openWithDiagnostic(mockContext);
+    expect(store.isOpen).toBe(true);
+    expect(store.hasAttachedContext).toBe(true);
+    expect(store.attachedContext?.traceId).toBe("tr-123");
+
+    store.clearAttachedContext();
+    expect(store.hasAttachedContext).toBe(false);
+    expect(store.attachedContext).toBeNull();
+  });
+
+  it("ensureBootstrap 成功初始化并缓存配置", async () => {
+    const store = usePlatformAssistantStore();
+    vi.mocked(clientService.bootstrapAssistant).mockResolvedValue({
+      project_id: "proj-auto-created",
+      personal_project: true,
+      assistant_id: "platform_assistant",
+      agent_id: "agent-1",
+      model_id: "model-1",
+      history: true,
+    });
+    vi.mocked(clientService.getAssistantCapabilities).mockResolvedValue({
+      enabled: true,
+      graph_id: "platform_assistant",
+      history: true,
+      long_term_memory: false,
+      sandbox: false,
+      write_tools: [],
+      source: false,
+      databases: ["platform-local"],
+    });
+
+    const config = await store.ensureBootstrap();
+    expect(config.project_id).toBe("proj-auto-created");
+    expect(store.boundProjectId).toBe("proj-auto-created");
+    expect(store.isPersonalProject).toBe(true);
+    expect(store.currentModelId).toBe("model-1");
+    expect(store.capabilities?.enabled).toBe(true);
+
+    // 再次调用同一目标项目，复用缓存不重复请求
+    await store.ensureBootstrap("proj-auto-created");
+    expect(clientService.bootstrapAssistant).toHaveBeenCalledTimes(1);
+  });
+});

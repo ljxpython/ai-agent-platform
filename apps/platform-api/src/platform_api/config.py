@@ -44,6 +44,13 @@ class KnowledgeConnection(BaseModel):
 
 
 class Settings(BaseSettings):
+    platform_assistant_enabled: bool = False
+    assistant_databases: dict[str, Any] = Field(default_factory=dict, repr=False)
+    assistant_document_root: str = ""
+    assistant_source_root: str = ""
+    assistant_source_users: tuple[str, ...] = ()
+    assistant_log_users: tuple[str, ...] = ()
+    assistant_log_files: dict[str, str] = Field(default_factory=dict)
     evaluation_feedback_enabled: bool = False
     evaluation_workbench_enabled: bool = False
     evaluation_assistant_model_route: str = ""

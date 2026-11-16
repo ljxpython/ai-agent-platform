@@ -59,3 +59,9 @@ list/detail 记录 `runtime.background_task.read`，output 记录 `runtime.backg
 四公开GET分别记录 `project.knowledge.capabilities.read`、`project.knowledge.documents.read`、`project.knowledge.jobs.read`；jobs的list/detail共用动作，绑定当前项目和可用job目标。精确HMAC入口记录 `runtime.knowledge.authorization.checked`，校验后绑定原可信主体、tenant/project，并只保留operation/knowledge_request_id/job_id/resource_id。读取回执、HTTP成功或grant签发都不证明解析、计费或索引发布完成，RAG保留其执行事实。
 
 不记录FileRef全文、原件正文、Bearer、grant/签名、候选目录或原始上游错误。新增安全metadata经过既有允许名单，真实审计数据库断言与协议链证据见[成员上传验证](../../../../docs/projects/20261012-project-member-knowledge-upload/verification.md)。复用原HTTP短事务，不新增审计队列或跨服务原子保证。
+
+## 平台助手查询与引用（2026-11-16 用户批准）
+
+外层HTTP记录platform_assistant.*和observability.logs.read；实际工具读取另记assistant.read.<operation>，绑定可信actor/project、助手Thread/Run/tool_call、目标Thread/Run、数据源、query_fingerprint、结果和耗时。新增审计不保存SQL字面值、结果正文、源码、日志或密钥。record_citations记录核实引用ID和未核实数量，不宣称记录模型全部内部影响。
+
+普通审计仍fail-soft，工具结果audit_recorded反映本次是否写入；assistant_evidence仅存授权回执，保存失败时不返回资料，以便后续历史复核。会话删除和retention完成回调清对应回执，普通审计沿平台留存。公开搜索的回执关联授权/调用，实际URL摘要在会话工具消息中；不是对网页事实的认证。详见[助手验证](../../../../docs/projects/20261116-platform-assistant/verification.md)。

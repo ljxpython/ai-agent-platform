@@ -73,7 +73,7 @@ def graph_capabilities(graph_id: str) -> dict:
         and os.getenv("RUNTIME_TERMINAL_ENABLED", "0") == "1",
         "images": graph_id in {"showcase_demo", "dearflow_agent"},
         "message_queue": graph_id
-        in {"reference_agent", "showcase_demo", "dearflow_agent"},
+        in {"reference_agent", "showcase_demo", "dearflow_agent", "platform_assistant"},
         "conversation_offloading": graph_id in {"showcase_demo", "dearflow_agent"}
         and os.environ.get("AGENT_CONTEXT_MANAGEMENT_ENABLED") == "1",
         "execution_modes": ["flash", "standard", "pro", "ultra"]
@@ -91,7 +91,7 @@ def graph_capabilities(graph_id: str) -> dict:
         if graph_id == "dearflow_agent"
         else [],
         "research": bool(os.environ.get("TAVILY_API_KEY"))
-        if graph_id == "dearflow_agent"
+        if graph_id in {"dearflow_agent", "platform_assistant"}
         else False,
         "artifacts": sorted(set(ARTIFACT_MIMES.values()))
         if graph_id in {"dearflow_agent", "showcase_demo"}
