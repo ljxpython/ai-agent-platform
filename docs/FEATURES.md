@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 平台内置助手全局面板与错误现场入口 | 规划中：前端由同事实施及决定组件，本次提供交接；含历史、续聊、写操作执行/不执行，功能未实施 | [方案与任务](projects/20261116-platform-assistant/README.md) · [前端交接初稿](projects/20261116-platform-assistant/frontend-handoff.md) |
 | AI协作评测旧流程：提出问题、反馈修订、确认运行与结果复核 | 05本地范围12项关闭：10项原验证，5.3/5.7由06新流程修复承接；旧A1入口不做兼容升级，旧失败/评分保留，当前操作使用06手册 | [05任务](projects/20261113-agent-eval-production-flywheel/05-ai-assisted-evaluation-workflow.md) · [验收手册](projects/20261113-agent-eval-production-flywheel/manual-acceptance.md) |
 | EvalFlow正式评测集入口与页面登录 | 已完成本地07共4项：列表/新建/详情接入平台导航，保留历史运行定位与未保存保护，原生页面登录替代认证弹窗；182前端/52后端及浏览器关键场景通过。保持两套身份与既有权限，用户已确认验收通过，未上线 | [07方案与验证](projects/20261113-agent-eval-production-flywheel/07-native-platform-integration.md) |
 | EvalFlow评测Agent、Session资料转题库与全链路诊断 | 06本地16/16 done：获准业务会话直接转换并自动生成首版，可读来源、AI修订/扩题/指标、版本发布运行、完整Session/裁判/文件证据、原证据重评及撤权。四轮真实对话→2题→运行→重评已验；16张图/5段录像交付。首轮提前计算与裁判局限保留，用户已于2026-11-16确认验收通过，生产及原暂缓范围不变 | [06方案与任务](projects/20261113-agent-eval-production-flywheel/06-session-to-dataset-and-ai-authoring.md) |
@@ -96,6 +97,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 平台助手只读数据库分析、日志授权与查询审计 | 规划中：Agent读schema自行生成SQL，开源工具作平台适配；读免确认，写工具必须人工决定；具体数据范围和旧日志入口改法待确认，未实施 | [方案与任务](projects/20261116-platform-assistant/README.md) |
 | 新会话媒体引用投影与授权读取 | 本地功能已完成：复用 State/History/Workspace 与 Thread 权限，图片按引用鉴权预览；真实 state、预览和刷新恢复通过 | [项目方案](projects/20261107-session-hydration-and-artifact-offloading/plan.md) |
 | 会话与运行数据生命周期管理及自动清理治理 | 已实现并完成隔离栈验收，已提交 `5635e621` 并合并 `main`：GraphHarbor post48 执行 TTL/可靠删除；平台定义闲置 30 天、查看/发送续期；Workspace 随会话删除、未确认资源保留重试；详情 30 天/去重 90 天；维护默认预览、100 条/批、上限 1000；专属服务和测试资源已清理，未部署现役 | [项目概览](projects/20261030-session-and-runtime-retention-governance/README.md) · [运维手册](runbooks/session-retention-maintenance.md) |
 | 分布式全链路追踪与 Loki 轻量日志代理网关 | 已完成：生成与透传 W3C traceparent 协议（00-{trace_id}-{span_id}-01）、统一结构化日志打标、实现自研 Loki 轻量代理检索 API（过滤自回声日志并提取各步耗时）、免密白名单放行；单元测试全绿 | [项目概览](projects/20261022-trace-to-logs-distributed-observability/README.md) · [验证记录](projects/20261022-trace-to-logs-distributed-observability/verification.md) |
@@ -127,6 +129,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 平台多功能助手Agent | 规划中：create_agent，无助手执行沙箱，复用持久历史/会话内记忆与运行组件；源码研发授权，写工具须approve/reject，未实施 | [方案与任务](projects/20261116-platform-assistant/README.md) |
 | 新工具结果媒体外置与模型临时解析 | 本地功能已完成：平台 Runtime 在工具结果发出前引用化，模型调用时临时解析；同步/异步 read_file、真实 xiaok DeepSeek 和公开 state 无 Base64 均通过；GraphHarbor 不承担媒体业务 | [任务与验证](projects/20261107-session-hydration-and-artifact-offloading/tasks.md) |
 | 有界调研委派与模型输入治理 | 已完成并经用户人工验收（2026-10-30），已快进合并main、停止服务并清理所属Worktree/测试库：复用官方task+只读general-purpose，撤除自研报告/合成/原文校验，保留预算/PII/Usage/取消/并发，修复子额度异常穿透。扩大回归560通过/13跳过/1项local后端复验通过；正式烟测主峰31.1%、root自动整理观测值0、28/28 Usage完整。原五项明确语义覆盖3/5，不宣称稳定质量或统计收益，未发布 | [项目](projects/20261028-subagent-fanout-and-prefix-caching/README.md) |
 | Agent 代码库剖析收敛准则与高优先级预算收尾感知 | 已完成：SYSTEM_PROMPT 确立代码资产剖析 Top-Down 自顶向下原则、单轮 5~8 次探索硬约束、严禁写脚本正则遍历海量文件树；将 WRAPUP_INSTRUCTION 升级为中英双语最高优先级强制收尾指令，warning_calls 提早至 5 轮；76 项自动化单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/02-agent-convergence-and-wrapup-governance.md) |
