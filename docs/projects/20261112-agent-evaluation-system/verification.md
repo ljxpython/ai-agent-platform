@@ -193,4 +193,8 @@ browser-skill完成原生页面完整路径并保存截图18–26；原生数据
 - A04进行中：主环境真实模型/嵌入/DeepEval探针通过；browser-skill启动5题任务并查看失败证据。远端沙箱TLS受准入阻塞，真实Agent成功链路尚未通过；此为Phase记录，不是Final。
 - 证据：EvalFlow页面专项implementation/30–34；脱敏汇总34-primary-project-evidence.json。私有完整报告位于EvalFlow .local-stack/results/95fe2a8b75104c01a614f525796128a8/。
 
-A04当前blocked：75项后端测试、9项前端测试、TypeScript/范围ESLint/Prettier/Ruff/guard通过；真实模型探针和配置保留核对通过。远端抓包确认新源IP未准入，安全策略未擅自改动；无本扩展Final通过结论。
+A04在2026-11-13记录为blocked：75项后端测试、9项前端测试、TypeScript/范围ESLint/Prettier/Ruff/guard通过；真实模型探针和配置保留核对通过。远端抓包确认新源IP未准入，安全策略未擅自改动；无本扩展Final通过结论。
+
+### 2026-11-16 · A04准入条件更新（非本扩展Final）
+
+用户明确批准111.227.13.0/24沙箱准入，备份并重启已有Node后readiness通过，错误Token仍拒绝；飞轮Task7.5的单题运行62ebfb9e-4722-4226-941d-51eb81406f7e passed，Session/Run/Trace完整。本扩展原5题及完整验收尚未重跑，因此A04为partial而非继续因网络blocked，也不标done。新证据见[主环境配置记录](../20261113-agent-eval-production-flywheel/implementation/20-main-environment-configuration.md)。

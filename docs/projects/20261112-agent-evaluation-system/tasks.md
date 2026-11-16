@@ -270,7 +270,7 @@
 - [x] A01 项目缺失核查、项目复用/创建与持久配置初始化。
 - [x] A02 主环境/Worktree配置路径兼容、幂等与冲突保护测试。
 - [x] A03 项目专用fixture装配、保留其他配置与前置校验。
-- [ ] A04 主环境真实模型/browser-skill验证、项目可见性、指南与Final收尾。blocked：当前远端沙箱拒绝新出口IP，等待仅补/32准入的明确确认；其余可执行验证/指南已完成。
+- [ ] A04 主环境真实模型/browser-skill验证、项目可见性、指南与Final收尾。partial：2026-11-16用户已批准111.227.13.0/24准入并恢复，飞轮Task7.5的单题真实运行通过；本扩展原定5题/完整验收尚未重跑，不能替代Final。其余已执行验证和指南保留。
 
 ### A01 完成卡
 - 当前主库初始仅test项目；旧验收项目属于已清理测试库。创建并复用Agent评测项目352e1fdd-10c3-44a5-820c-27ca2d7a7424，用户刷新后确认可见。
@@ -292,4 +292,4 @@
 - DeepSeek真实JSON、百炼1024维嵌入、DeepEval TaskCompletion=1通过。
 - 首次5题Run因主环境远端沙箱TLS超时失败，原证据保留；服务器服务/端口正常，抓包确认当前源IP不在防火墙白名单。仅补当前/32准入已请求用户确认，尚未修改远端安全配置。
 - 修复运行器对runtime error/timeout仅视为质量失败的分类，追加明确execution error并有单测；不掩盖环境故障。
-- Agent完整成功链路待远端准入恢复，不提前记Final通过。
+- 2026-11-16补充：按用户批准追加111.227.13.0/24准入，远端连接恢复。飞轮Task7.5新任务62ebfb9e-4722-4226-941d-51eb81406f7e单题passed，Session/Run/Trace完整；本扩展原5题/完整验收未重跑，状态改partial，不提前记Final通过。详情见../20261113-agent-eval-production-flywheel/implementation/20-main-environment-configuration.md。

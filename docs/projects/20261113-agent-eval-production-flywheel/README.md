@@ -2,9 +2,28 @@
 
 > 启动：2026-11-13｜更新：2026-11-16｜当前状态：**06业务功能本地16/16项done；07平台内页面整合本地4/4项done，用户已确认验收通过（2026-11-16）**。原暂缓事项和生产边界不变。
 > 原01–04：22项done / 3项deferred。05：12项关闭，其中5.3/5.7由06新流程修复承接；不表示旧A1入口已升级。
+> 追加主环境配置：Task 7.5已完成（done）；本地登录、AI建题、题库发布及一题真实运行通过，远程沙箱准入阻塞已解除。
 > 实施位置：344c下Agent与EvalFlow两个Worktree。两个开发分支及main已提交推送，344c两个Worktree和专属测试数据库已清理；主工作区既有GenAI功能保留，未部署生产。详见[交付与清理记录](implementation/19-accepted-merge-and-cleanup.md)。
 
 这个项目解决的是：**把实际Agent会话、环境和业务规则整理成可维护的题库，再通过真实运行看清哪里需要改进。** 你不用记实验编号，也不必逐条手写测试配置；AI先整理建议，你用自然语言指出问题并确认。
+
+## 现在从主工作区使用（2026-11-16）
+
+主环境入口是 Agent `http://127.0.0.1:3000` 和 EvalFlow `http://127.0.0.1:9128/#/authoring`，选择现有的 **Agent 评测项目**。原344c环境的链接、账号和样本已失效。
+
+用户追加要求补齐主环境配置，列入07的 **Task 7.5**。平台API、Runtime和EvalFlow的私有 `.env` 已配置并逐项注释；用户已确认启用本地原生页面登录和授权批次隔离。评测集使用现有平台账号；原生实验/设置的普通本地账号为 `local-reviewer`，随机密码在EvalFlow主工作区 `.local-stack/local-accounts.txt`，不提交Git。原有12个实验保留，普通账号只获得原“Agent 评测中心”的读取权限；平台管理的批次从评测集入口查看，不向普通原生账号开放。
+
+**实际验证：** 页面登录、跨平台列表、真实AI生成、独立批次发布及最小真实运行均通过。可在列表找到 **主环境配置自检-20261116**，其中一题已发布为v1；成功运行62ebfb9e-4722-4226-941d-51eb81406f7e回答3、未调用工具，5项评分均为1，Session/Run/Trace及裁判过程可查。原失败由服务器13条UFW BLOCK确认是出口准入问题；经用户明确批准，仅在沙箱19111端口及当前调用方白名单追加111.227.13.0/24，备份并重启已有Node后恢复。证书/Token及旧规则保留，错误Token仍被拒绝；未切换执行后端或部署代码。旧失败记录保留，详见[本轮配置记录](implementation/20-main-environment-configuration.md)。
+
+日常启动不需要重新手动 `export`。在Agent主工作区执行 `bash "scripts/local-stack.sh" start`，在EvalFlow主工作区执行 `make dev`；脚本会读取各自配置。修改变量后，按所在文件重启：
+
+| 私有配置文件 | 注释说明的内容 | 修改后执行（在所属仓库根目录） |
+|---|---|---|
+| Agent `apps/platform-api/.env` | 工作台开关、获准项目/模型、EvalFlow地址、后台接收账号、共享回源密钥 | `bash "scripts/local-stack.sh" restart-one platform-api` |
+| Agent `apps/runtime-service/.env` | 评测环境/执行证据、写入本地MLflow的后台认证 | 分别执行 `bash "scripts/local-stack.sh" restart-one runtime-api` 和 `bash "scripts/local-stack.sh" restart-one runtime-worker` |
+| EvalFlow `.env` | 工作台、前后端端口、状态目录、源平台地址与密钥、原生登录、批次隔离 | `bash "scripts/local-stack.sh" restart-backend`；更改前端端口后用 `make restart` |
+
+注意：EvalFlow 的AI建题/裁判读取 `.local-stack/evaluation.json` 指向的 `resource_file`（默认 `~/.my_best/.env`，沿用已授权的xiaok DeepSeek）；根 `.env` 的 `OPENAI_*` 是另一条原生功能配置。共享回源密钥须两端一致；后台密码须平台接收方、Runtime及EvalFlow三端一致。首次创建原生账号以后，修改初始化密码变量不会自动重置已有密码。旧任务页的显式只读策略有效30天，路径见 `EVALFLOW_ACCESS_POLICY`；各评测集资料仍按逐次用途授权和24小时有效期管理。
 
 ## 验收已通过，保留操作说明与回放
 
