@@ -9,7 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 平台内置助手全局面板与错误现场入口 | 前端待同事实施：后端接口与完整交接已就绪；含个人项目、历史、证据、执行/不执行协议，页面未开发 | [前端交接](projects/20261116-platform-assistant/frontend-handoff.md) |
+| 平台内置助手全局面板与错误现场入口 | 已完成交付：Clean Architecture 独立模块（`modules/platform-assistant`），含全局抽屉、错误胶囊、独立审批卡、证据二级抽屉，vue-tsc 0 报错与 24 项单测全绿，用户验收通过并完成合并 | [前端交接](projects/20261116-platform-assistant/frontend-handoff.md) |
 | AI协作评测旧流程：提出问题、反馈修订、确认运行与结果复核 | 05本地范围12项关闭：10项原验证，5.3/5.7由06新流程修复承接；旧A1入口不做兼容升级，旧失败/评分保留，当前操作使用06手册 | [05任务](projects/20261113-agent-eval-production-flywheel/05-ai-assisted-evaluation-workflow.md) · [验收手册](projects/20261113-agent-eval-production-flywheel/manual-acceptance.md) |
 | EvalFlow正式评测集入口与页面登录 | 已完成本地07共4项：列表/新建/详情接入平台导航，保留历史运行定位与未保存保护，原生页面登录替代认证弹窗；182前端/52后端及浏览器关键场景通过。保持两套身份与既有权限，用户已确认验收通过，未上线 | [07方案与验证](projects/20261113-agent-eval-production-flywheel/07-native-platform-integration.md) |
 | EvalFlow评测Agent、Session资料转题库与全链路诊断 | 06本地16/16 done：获准业务会话直接转换并自动生成首版，可读来源、AI修订/扩题/指标、版本发布运行、完整Session/裁判/文件证据、原证据重评及撤权。四轮真实对话→2题→运行→重评已验；16张图/5段录像交付。首轮提前计算与裁判局限保留，用户已于2026-11-16确认验收通过，生产及原暂缓范围不变 | [06方案与任务](projects/20261113-agent-eval-production-flywheel/06-session-to-dataset-and-ai-authoring.md) |

@@ -3,9 +3,11 @@ import { computed, ref, shallowRef, watch } from "vue";
 import {
   copyDiagnosticPacket,
   copyToClipboard,
+  generateDiagnosticMarkdown,
   resolveReasonDetails,
   type DiagnosticContext,
 } from "@/services/observability/diagnostic-packet";
+import { usePlatformAssistantStore } from "@/modules/platform-assistant";
 import { errorRingBuffer } from "@/services/observability/error-buffer";
 import { buildTraceUrl } from "@/services/observability/langfuse-url";
 import { getRunDiagnostics } from "@/services/threads/diagnostics.service";
@@ -253,6 +255,35 @@ const handleCopyPacket = async () => {
 const handleGoToTrajectory = () => {
   handleClose();
   emit("open-trajectory");
+};
+
+const platformAssistantStore = usePlatformAssistantStore();
+
+// 一键唤起平台助手并挂载当前诊断上下文
+const handleAskAssistant = () => {
+  const context: DiagnosticContext = {
+    projectId: props.projectId,
+    threadId: props.threadId,
+    runId: props.runId || undefined,
+    requestId: props.requestId,
+    traceId: traceId.value || undefined,
+    traceUrl: traceUrl.value || undefined,
+    error: props.error,
+    customMessage: reasonInfo.value.reasonText,
+    backendDiagnostics:
+      (backendDiagnostics.value as unknown as Record<string, unknown>) ||
+      undefined,
+  };
+  const markdown = generateDiagnosticMarkdown(context);
+  handleClose();
+  platformAssistantStore.openWithDiagnostic({
+    title: props.errorCode || reasonInfo.value.reasonText || "运行异常诊断",
+    summary: reasonInfo.value.reasonText || "智能体运行异常排查",
+    diagnosticMarkdown: markdown,
+    projectId: props.projectId,
+    traceId: traceId.value || undefined,
+    runId: props.runId || undefined,
+  });
 };
 </script>
 
@@ -637,6 +668,14 @@ const handleGoToTrajectory = () => {
         <div v-else></div>
 
         <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 rounded-lg shadow-2xs transition-colors cursor-pointer"
+            data-testid="ask-platform-assistant-btn"
+            @click="handleAskAssistant"
+          >
+            <span>向平台助手求助 ↗</span>
+          </button>
           <button
             type="button"
             class="px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"

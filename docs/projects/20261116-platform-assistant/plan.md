@@ -85,12 +85,13 @@ Platform API 根据当前身份确认目标项目、Thread/Run 或请求的可�
 
 | 能力 | 已有位置（相对仓库根） | 本项目用法 |
 |---|---|---|
-| 抽屉与页面壳层 | apps/platform-web/src/components/base/BaseDrawer.vue；apps/platform-web/src/layouts/WorkspaceLayout.vue | 直接复用，补助手入口和面板挂载 |
-| 输入、消息和来源展示 | apps/platform-web/src/modules/chat/components/ChatComposer.vue；ChatMessageList.vue；Transcript.vue | 优先直接引用，使用已有 compact 等能力；业务差异确需时复制小块展示/装配代码 |
-| 会话运行与生命周期 | apps/platform-web/src/modules/chat/composables/useChatSession.ts；useChatSessionPool.ts | 复用同一 SDK controller、会话池和取消机制，不复制第二套运行状态机 |
-| 错误上下文 | apps/platform-web/src/services/observability/diagnostic-packet.ts；error-buffer.ts；modules/chat/components/DiagnosticDetailModal.vue | 复用诊断数据和脱敏逻辑，补面向助手的结构化输入；粘贴 Markdown 仍支持 |
+| 抽屉与页面壳层 | apps/platform-web/src/components/base/BaseDrawer.vue；apps/platform-web/src/layouts/WorkspaceLayout.vue | 直接复用，在 WorkspaceLayout 挂载全局右侧抽屉 PlatformAssistantDrawer |
+| 输入与消息呈现 | apps/platform-web/src/components/base/；Markdown 渲染基准 | 基础 UI 复用原子组件；在 modules/platform-assistant 下实现轻量消息流与输入框，增加 Context Pill 胶囊与 [证据:UUID] 徽章解析 |
+| 会话运行与生命周期 | @langchain/langgraph-sdk Client；createLanggraphAuthorizedFetch | 复用底座 SDK 与自动续期授权 fetch；在 modules/platform-assistant 下实现专职轻量的 usePlatformAssistantSession（约 200 行极简状态机），严格锁定 bootstrap project_id 作用域，不强行耦合主工作区 1900 行的 useChatSession.ts |
+| 审批决策处理 | modules/platform-assistant/services/approval.ts | 独立实现 buildAssistantReviewResponse，裁掉 edit 分支，拒绝自动带默认理由，避免裸调主聊天模块引发强制非空校验报错 |
+| 错误上下文 | apps/platform-web/src/services/observability/diagnostic-packet.ts；error-buffer.ts；modules/chat/components/DiagnosticDetailModal.vue | 复用诊断数据和脱敏逻辑，通过全局 usePlatformAssistantStore.openWithDiagnostic 唤起，在输入框上方以胶囊预览展示 |
 | 运行诊断 | apps/platform-web/src/services/threads/diagnostics.service.ts；apps/platform-api/src/platform_api/modules/runtime_gateway/application/diagnostics.py；service.py 的 get_thread_run_diagnostics | 复用诊断 schema、Thread/Run 校验和安全投影 |
-| 日志解析 | apps/platform-api/src/platform_api/modules/observability/service.py | 保留查询解析能力；新旧入口授权、查询范围与脱敏需治理后接入 |
+| 日志解析与修复 | apps/platform-api/src/platform_api/modules/observability/service.py；TraceDiagnosticsPage.vue | 保留查询解析能力；前端修复 TraceDiagnosticsPage 注入 x-project-id 与 log.raw 空安全保护 |
 | 普通 Agent 组合根 | apps/runtime-service/src/runtime_service/services/reference_agent/agent.py | 允许复制装配骨架，替换名称/Prompt/工具；保留探测与执行隔离、身份解析及必要恢复行为 |
 | 预算、隐私、错误与追踪 | apps/runtime-service/src/runtime_service/middlewares/；observability/；runtime/ | 引用共享实现；按本助手场景装配，不照搬 reference 的固定工具数或全部高级能力 |
 | 知识检索与 MCP | apps/runtime-service/src/runtime_service/tools/mcp.py；tools/knowledge.py | 本期选择显式发布manifest的有界文档检索；未接入项目知识MCP，不增加新RAG链路 |

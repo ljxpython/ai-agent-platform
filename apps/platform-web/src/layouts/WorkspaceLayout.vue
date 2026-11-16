@@ -16,11 +16,16 @@ import {
   provideChatSessionPool,
 } from "@/modules/chat/composables/useChatSessionPool";
 import { useChatSessionStore } from "@/modules/chat/stores/useChatSessionStore";
+import {
+  PlatformAssistantDrawer,
+  usePlatformAssistantStore,
+} from "@/modules/platform-assistant";
 
 const route = useRoute();
 const uiStore = useUiStore();
 const authStore = useAuthStore();
 const workspaceStore = useWorkspaceStore();
+const platformAssistantStore = usePlatformAssistantStore();
 const chatSessionPool = createChatSessionPool();
 const chatSessionStore = useChatSessionStore();
 provideChatSessionPool(chatSessionPool);
@@ -240,5 +245,20 @@ const isImmersive = computed(
         </div>
       </main>
     </div>
+
+    <!-- 全局平台助手唤起浮动入口 -->
+    <button
+      type="button"
+      class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-sky-600 hover:bg-sky-700 text-white shadow-lg hover:shadow-xl transition-all cursor-pointer select-none group border border-white/20"
+      title="打开平台助手 (咨询/排障/查询)"
+      data-testid="platform-assistant-toggle-btn"
+      @click="platformAssistantStore.toggle()"
+    >
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+      <span class="text-xs font-bold tracking-tight">平台助手</span>
+    </button>
+
+    <!-- 全局平台助手滑出抽屉 -->
+    <PlatformAssistantDrawer />
   </div>
 </template>

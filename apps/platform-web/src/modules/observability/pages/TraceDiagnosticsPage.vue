@@ -13,6 +13,7 @@ import {
 } from "@/services/observability/langfuse-url";
 import { env } from "@/config/env";
 import { useThemeStore } from "@/stores/theme";
+import { useWorkspaceStore } from "@/stores/workspace";
 
 interface TraceLogEntry {
   timestamp: string;
@@ -24,7 +25,7 @@ interface TraceLogEntry {
   span_id: string;
   duration_ms?: number | null;
   payload: Record<string, unknown>;
-  raw: string;
+  raw?: string;
 }
 
 interface TraceLogsData {
@@ -34,6 +35,8 @@ interface TraceLogsData {
   services: string[];
   logs: TraceLogEntry[];
   error?: string | null;
+  partial?: boolean;
+  coverage?: string;
 }
 
 type ViewTab = "native" | "grafana";
@@ -41,6 +44,7 @@ type ViewTab = "native" | "grafana";
 const route = useRoute();
 const router = useRouter();
 const themeStore = useThemeStore();
+const workspaceStore = useWorkspaceStore();
 
 // 演示用真实有效 Trace ID（对齐 EvalFlow 真实数据）
 const DEMO_TRACE_ID = "tr-e245eda13f6aa1f91f58b110f9b9014b";
@@ -197,7 +201,7 @@ const filteredLogs = computed(() => {
         log.service.toLowerCase().includes(q) ||
         log.event.toLowerCase().includes(q) ||
         log.span_id.toLowerCase().includes(q) ||
-        log.raw.toLowerCase().includes(q);
+        (log.raw ?? "").toLowerCase().includes(q);
       if (!match) return false;
     }
     return true;
@@ -210,9 +214,15 @@ async function fetchTraceLogs(traceId: string) {
     return;
   }
   loading.value = true;
+  const currentProjectId = workspaceStore.currentProjectId?.trim();
+  const headers: Record<string, string> = {};
+  if (currentProjectId) {
+    headers["x-project-id"] = currentProjectId;
+  }
   try {
     const res = await platformHttpClient.get<TraceLogsData>(
       `/api/v1/observability/traces/${encodeURIComponent(traceId)}/logs`,
+      { headers },
     );
     traceData.value = res.data;
   } catch (err: unknown) {
@@ -352,6 +362,15 @@ watch(currentTab, (tab) => {
     resetIframe();
   }
 });
+
+watch(
+  () => workspaceStore.currentProjectId,
+  (newPid, oldPid) => {
+    if (newPid && newPid !== oldPid && activeTraceId.value) {
+      void fetchTraceLogs(activeTraceId.value);
+    }
+  },
+);
 
 onMounted(() => {
   document.addEventListener("fullscreenchange", onFullscreenChange);
@@ -672,6 +691,22 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <!-- 部分日志覆盖警示条 (仅展示结构化项目日志) -->
+      <div
+        v-if="activeTraceId && traceData?.partial"
+        class="flex items-center gap-2 px-3.5 py-2.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/60 rounded-xl text-amber-800 dark:text-amber-300 text-xs shadow-2xs"
+      >
+        <BaseIcon
+          name="alert"
+          class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0"
+        />
+        <span
+          >当前日志查询受项目安全范围约束，仅展示已获准的结构化项目日志（受限覆盖模式{{
+            traceData.coverage ? ` · ${traceData.coverage}` : ""
+          }}）。</span
+        >
+      </div>
+
       <!-- 交互式排障筛选工具栏 -->
       <div
         v-if="activeTraceId && traceData && traceData.logs.length > 0"
@@ -834,7 +869,13 @@ onUnmounted(() => {
             {{
               traceData?.error === "loki_service_unavailable"
                 ? "Loki 日志服务未连接 (本地单机模式)"
-                : "未检索到关联微服务日志记录"
+                : traceData?.error?.includes("project_required") ||
+                    traceData?.error?.includes("x-project-id")
+                  ? "缺少项目授权 (需要 x-project-id)"
+                  : traceData?.error?.includes("denied") ||
+                      traceData?.error?.includes("403")
+                    ? "日志访问无权限 (当前项目无权查看该 Trace)"
+                    : "未检索到关联微服务日志记录"
             }}
           </p>
           <p
@@ -843,7 +884,13 @@ onUnmounted(() => {
             {{
               traceData?.error === "loki_service_unavailable"
                 ? "本地环境未部署或未连接 Loki 集中日志服务，极速微服务日志流不可用；但该链路已被 EvalFlow 完整采集！"
-                : "可能原因：1) 该请求未经过微服务打标；2) 本地日志尚未推入 Loki (通常有 1~2s 延迟)；3) 该日志已超过 7 天保留期被自动淘汰。"
+                : traceData?.error?.includes("project_required") ||
+                    traceData?.error?.includes("x-project-id")
+                  ? "当前后端已开启项目安全隔离鉴权，请在页面顶部选择该 Trace 所属的项目后再进行查询。"
+                  : traceData?.error?.includes("denied") ||
+                      traceData?.error?.includes("403")
+                    ? "当前账号或当前选中的项目无权访问此 Trace 的日志记录，请核实 Trace 归属。"
+                    : "可能原因：1) 该请求未经过微服务打标；2) 本地日志尚未推入 Loki (通常有 1~2s 延迟)；3) 该日志已超过 7 天保留期被自动淘汰。"
             }}
           </p>
           <div class="flex items-center gap-2.5 flex-wrap justify-center pt-1">
@@ -1096,7 +1143,9 @@ onUnmounted(() => {
                     </div>
                     <pre
                       class="p-3 bg-gray-50 dark:bg-dark-950 rounded-lg border border-gray-200/80 dark:border-dark-800 overflow-x-auto text-gray-700 dark:text-dark-300 leading-relaxed whitespace-pre-wrap break-all text-[11px]"
-                      >{{ log.raw }}</pre
+                      >{{
+                        log.raw || log.summary || "（已省略大文本日志原始行）"
+                      }}</pre
                     >
                   </div>
                 </div>

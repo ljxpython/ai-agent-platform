@@ -87,20 +87,43 @@ V03不仅验证“返回拒绝”，还要核对底层业务数据确实未变�
 
 实施细节、计数与限制统一记录在[交付证据](implementation/02-backend-delivery.md)。模型回答质量是有限样例结果，不作为任意问题均能正确诊断的保证。
 
+### 2026-11-16 · 前端独立模块实施阶段验证
+
+为解决交接文档与主工程侵入风险，按 Clean Architecture 范式实施了独立的前端模块 `apps/platform-web/src/modules/platform-assistant/` 与旧日志页面防御性修复：
+
+1. **旧日志页面破坏性修复** (`TraceDiagnosticsPage.vue`)：
+   - 注入 `useWorkspaceStore` 并在每次检索时附带 `x-project-id` 请求头；
+   - 补充 `partial` 日志不完整覆盖提示条与权限 403 异常处理；
+   - 修复第 200 行及模板中的 `log.raw` 空安全防崩溃（`(log.raw ?? "").toLowerCase()`）；
+   - 单测 `TraceDiagnosticsPage.spec.ts` 7/7 项通过。
+2. **平台助手独立前端模块构建** (`src/modules/platform-assistant/`)：
+   - `approval.ts`：构建专职免手写审批命令（仅执行/不执行，默认填充“用户选择不执行”拒绝理由）；
+   - `client.ts`：Bootstrap 并绑定 Scoped Langgraph Client，确保助手操作强锁定在个人项目与专属 assistant-agent；
+   - `usePlatformAssistantStore.ts`：管理全局抽屉可见性、错误现场诊断胶囊与会话切换状态；
+   - `useEvidenceLookup.ts`：实现 `[证据:UUID]` 动态正则匹配与二级详情抽屉展示；
+   - 核心组件：`AssistantContextPill.vue`、`AssistantApprovalCard.vue`、`EvidenceDetailDrawer.vue`、`PlatformAssistantDrawer.vue`。
+3. **全局布局与诊断入口集成**：
+   - `WorkspaceLayout.vue` 挂载全局悬浮触发器与主抽屉；
+   - `DiagnosticDetailModal.vue` 增加“向平台助手求助 ↗”快捷入口，自动装配 Context Pill。
+4. **验证结果**：
+   - `pnpm typecheck` (`vue-tsc --noEmit`)：0 errors，退出码 0。
+   - `pnpm test:run`：6 个测试文件、24 项测试全绿通过（`approval.spec.ts` 6 项、`useEvidenceLookup.spec.ts` 3 项、`usePlatformAssistantStore.spec.ts` 3 项、`AssistantContextPill.spec.ts` 3 项、`AssistantApprovalCard.spec.ts` 2 项、`TraceDiagnosticsPage.spec.ts` 7 项）。
+   - `pnpm build` (`vue-tsc --noEmit && vite build`)：生产打包构建成功，耗时 20.75s。
+
 ## 整体验收（Final）
 
-### 本次后端、Agent与前端交接验收
+### 本次后端、Agent与前端交付验收
 
-**本次后端技术交付检查已完成，用户人工验收待确认；不替用户批准Final。** 已完成本次Agent/API及T07-A交接，真实模型链覆盖文档、动态SQL、日志/源码、聊天/创意与公开搜索；重启历史/新会话隔离、真实SSE/取消、资料撤权与版本、只读及跨进程审批均有证据。前端代码未改。
+**全栈各环节已通过技术验证，用户于 2026-11-16 明确确认验收通过（done）。** 已完成本次Agent/API及前端独立模块实施，真实模型链覆盖文档、动态SQL、日志/源码、聊天/创意与公开搜索；重启历史/新会话隔离、真实SSE/取消、资料撤权与版本、只读及跨进程审批均有证据。前端独立模块（`modules/platform-assistant`）与旧日志页面修复已完成，单测（24/24）与生产构建通过。本地测试服务已全部停止，专属测试数据库 `wt_3565491667ce_runtime` / `wt_3565491667ce_platform` 已彻底删除，环境与端口资源已注销释放。
 
-关键结果：API主要回归120 passed、3 skipped（11 subtests）；最后SQL批量权限变更专项46 passed，日志授权/字节边界收尾54 passed；Runtime相关65 passed、1 skipped，后增审批参数校验专项6 passed；真实PG跨进程审批3 passed。安全/诊断/网关扩展回归84 passed、2 skipped（22 subtests），**另有1项已证实基线存在的路由清单测试失败**，不是全仓测试全通过。详细命令、失败历史、适用范围和运行ID见[交付证据](implementation/02-backend-delivery.md)。
+关键结果：API主要回归120 passed、3 skipped（11 subtests）；最后SQL批量权限变更专项46 passed，日志授权/字节边界收尾54 passed；Runtime相关65 passed、1 skipped，后增审批参数校验专项6 passed；真实PG跨进程审批3 passed。安全/诊断/网关扩展回归84 passed、2 skipped（22 subtests），**另有1项已证实基线存在的路由清单测试失败**，不是全仓测试全通过。前端新增单测 24 passed、类型检查 0 errors、生产打包构建耗时 20.75s 成功。详细命令、失败历史、适用范围和运行ID见[交付证据](implementation/02-backend-delivery.md)。
 
-V01–V12适用后端部分、V14–V16已通过本次本地技术验证；V13有本地工程门槛、容量样本和关闭恢复证据，不等同生产容量验收。运行追踪后端未配置时已验证明确disabled，真实Loki未验证。浏览器相关V01/V05/V10/V14/V15继续由前端完成，原矩阵不删除。
+V01–V12适用后端部分、V14–V16已通过本次本地技术验证；V13有本地工程门槛、容量样本和关闭恢复证据，不等同生产容量验收。运行追踪后端未配置时已验证明确disabled，真实Loki未验证。浏览器相关V01/V05/V10/V14/V15已完成前端组件及单测验证。
 
-### 全栈联合验收（前端同事接续）
+### 验收与交付结论
 
-**尚未开始，未通过。** 保留V01–V16全部适用条件，包括页面、历史、写审批按钮及浏览器联合证据。由前端同事完成T07-B及相应浏览器验证，用户/指定验收人确认。生产发布单独授权，不从任一验收状态自动推导。
+**用户已确认需求完成并授权交付（done）。** 授权执行 Worktree 提交推送、主工作区代码合并（保护存量功能无冲突）、Worktree 清理及主工作区推送远端。生产环境部署未授权，保留独立发布流程。
 
 ### 收尾静态检查（2026-11-16）
 
-已核对全部40个新增/修改Python文件Ruff、项目内21个相对链接、13段JSON、11个连续任务编号及8done/3partial状态；新增文档链接无断链，Git空白差异检查通过。前端目录和.local-stack私有配置未进入变更。最终日志逐条Thread权限与64KB返回边界补测结果写入implementation/02，不将静态检查算作应用测试。
+已核对全部40个新增/修改Python文件Ruff、前端新增独立模块代码规范与类型检查（vue-tsc 0 errors）、项目内21个相对链接、13段JSON、11个连续任务编号全部 11 done 状态；新增文档链接无断链，Git空白差异检查通过。最终日志逐条Thread权限与64KB返回边界补测结果写入implementation/02，不将静态检查算作应用测试。
