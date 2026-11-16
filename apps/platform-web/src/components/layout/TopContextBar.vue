@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import AnnouncementCenter from "@/components/layout/AnnouncementCenter.vue";
 import RunNotificationCenter from "@/components/layout/RunNotificationCenter.vue";
+import NotificationCenterDropdown from "@/modules/notifications/components/NotificationCenterDropdown.vue";
 import LocaleSwitcher from "@/components/layout/LocaleSwitcher.vue";
 import UserMenu from "@/components/layout/UserMenu.vue";
 import WorkspaceProjectSwitcher from "@/components/platform/WorkspaceProjectSwitcher.vue";
@@ -58,6 +59,7 @@ const routeEyebrow = computed(() =>
       >
         <WorkspaceProjectSwitcher />
         <LocaleSwitcher />
+        <NotificationCenterDropdown />
         <RunNotificationCenter />
         <AnnouncementCenter />
         <UserMenu />
