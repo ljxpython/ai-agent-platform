@@ -173,7 +173,7 @@ onUnmounted(() => {
               全部已读
             </button>
             <RouterLink
-              to="/settings/notifications"
+              to="/workspace/settings/notifications"
               class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
               title="配置通知与飞书机器人"
               @click="close"
@@ -284,7 +284,7 @@ onUnmounted(() => {
           class="border-t border-gray-100 bg-gray-50/50 p-2 text-center dark:border-dark-800 dark:bg-dark-900"
         >
           <RouterLink
-            to="/settings/notifications"
+            to="/workspace/settings/notifications"
             class="text-[11px] text-gray-500 hover:text-blue-600 dark:text-dark-400 dark:hover:text-blue-400 transition-colors"
             @click="close"
           >

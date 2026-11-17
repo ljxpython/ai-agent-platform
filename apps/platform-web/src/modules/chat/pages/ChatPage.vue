@@ -1139,24 +1139,6 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
           </template>
           <template #actions>
             <div class="flex shrink-0 items-center gap-1.5">
-              <BaseButton
-                v-if="
-                  selectedThread &&
-                  can('project.evaluation.execute', activeProjectId)
-                "
-                size="sm"
-                @click="evaluationThreads = [selectedThread]"
-                >转为评测集</BaseButton
-              >
-              <BaseButton
-                v-if="
-                  target?.agentId &&
-                  can('project.evaluation.execute', activeProjectId)
-                "
-                size="sm"
-                @click="pickEvaluationMaterials = true"
-                >从历史会话建评测集</BaseButton
-              >
               <button
                 class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
                 :disabled="!target"
@@ -1189,6 +1171,18 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
                 :can-delete="
                   Boolean(selectedThread && threadCan(selectedThread, 'delete'))
                 "
+                :can-evaluation="
+                  Boolean(
+                    selectedThread &&
+                    can('project.evaluation.execute', activeProjectId),
+                  )
+                "
+                :can-pick-evaluation="
+                  Boolean(
+                    target?.agentId &&
+                    can('project.evaluation.execute', activeProjectId),
+                  )
+                "
                 :offload-disabled="!sessionRef?.canOffload"
                 :offload-disabled-reason="
                   !selectedThread
@@ -1211,6 +1205,10 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
                 @open-takeover="accessControlRef?.openTakeover()"
                 @delete-thread="selectedThread && requestDelete(selectedThread)"
                 @offload-conversation="sessionRef?.offloadConversation()"
+                @send-evaluation="
+                  selectedThread && (evaluationThreads = [selectedThread])
+                "
+                @pick-evaluation="pickEvaluationMaterials = true"
               />
               <div
                 class="h-4 w-px bg-gray-200 dark:bg-dark-700 mx-1 hidden sm:block shrink-0"

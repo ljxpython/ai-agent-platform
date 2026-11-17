@@ -10,6 +10,8 @@ const props = withDefaults(
     showOffload?: boolean;
     offloadDisabled?: boolean;
     offloadDisabledReason?: string;
+    canEvaluation?: boolean;
+    canPickEvaluation?: boolean;
   }>(),
   {
     focusMode: false,
@@ -18,6 +20,8 @@ const props = withDefaults(
     showOffload: true,
     offloadDisabled: false,
     offloadDisabledReason: "",
+    canEvaluation: false,
+    canPickEvaluation: false,
   },
 );
 
@@ -28,6 +32,8 @@ const emit = defineEmits<{
   "open-takeover": [];
   "delete-thread": [];
   "offload-conversation": [];
+  "send-evaluation": [];
+  "pick-evaluation": [];
 }>();
 
 const {
@@ -47,7 +53,15 @@ const {
 });
 
 function handleAction(
-  action: "focus" | "drawer" | "options" | "takeover" | "delete" | "offload",
+  action:
+    | "focus"
+    | "drawer"
+    | "options"
+    | "takeover"
+    | "delete"
+    | "offload"
+    | "send-evaluation"
+    | "pick-evaluation",
 ) {
   if (action === "offload") {
     if (props.offloadDisabled) return;
@@ -61,6 +75,8 @@ function handleAction(
   else if (action === "options") emit("open-options");
   else if (action === "takeover") emit("open-takeover");
   else if (action === "delete") emit("delete-thread");
+  else if (action === "send-evaluation") emit("send-evaluation");
+  else if (action === "pick-evaluation") emit("pick-evaluation");
 }
 </script>
 
@@ -144,6 +160,31 @@ function handleAction(
           >
             <BaseIcon name="focus" size="xs" />
             <span>{{ focusMode ? "退出专注模式" : "进入专注模式" }}</span>
+          </button>
+
+          <div
+            v-if="canEvaluation || canPickEvaluation"
+            class="my-1 border-t border-gray-100 dark:border-dark-800"
+          />
+
+          <button
+            v-if="canEvaluation"
+            type="button"
+            class="pw-dropdown-item text-xs"
+            @click="handleAction('send-evaluation')"
+          >
+            <BaseIcon name="sparkle" size="xs" />
+            <span>转为评测集</span>
+          </button>
+
+          <button
+            v-if="canPickEvaluation"
+            type="button"
+            class="pw-dropdown-item text-xs"
+            @click="handleAction('pick-evaluation')"
+          >
+            <BaseIcon name="archive" size="xs" />
+            <span>从历史会话建评测集</span>
           </button>
 
           <button

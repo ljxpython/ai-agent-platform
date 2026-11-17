@@ -75,17 +75,29 @@ onMounted(() => {
     <div
       class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-dark-800"
     >
-      <span
-        class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5"
-      >
-        <BaseIcon name="threads" class="w-4 h-4 text-sky-500" />
-        历史对话列表
-      </span>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-sky-600 dark:text-dark-400 dark:hover:text-sky-400 font-medium transition cursor-pointer"
+          title="返回对话界面"
+          @click="store.switchView('chat')"
+        >
+          <BaseIcon name="chevron-left" class="w-4 h-4" />
+          返回对话
+        </button>
+        <span class="text-gray-300 dark:text-dark-700">|</span>
+        <span
+          class="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5"
+        >
+          <BaseIcon name="threads" class="w-3.5 h-3.5 text-sky-500" />
+          历史会话
+        </span>
+      </div>
 
       <BaseButton
         variant="primary"
         size="sm"
-        class="bg-sky-600 hover:bg-sky-700 text-white text-xs py-1 px-2.5 h-auto"
+        class="bg-sky-600 hover:bg-sky-700 text-white text-xs py-1 px-2.5 h-auto cursor-pointer"
         @click="handleNewSession"
       >
         <BaseIcon name="plus" class="w-3.5 h-3.5 mr-1" />

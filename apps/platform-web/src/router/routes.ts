@@ -518,6 +518,11 @@ const navigation: Record<
     icon: "activity",
   },
   "workspace-audit": { group: "平台管理", label: "审计", icon: "audit" },
+  "workspace-settings-notifications": {
+    group: "平台管理",
+    label: "告警与通知",
+    icon: "alert",
+  },
 };
 for (const route of workspaceChildren) {
   const item = navigation[String(route.name)];

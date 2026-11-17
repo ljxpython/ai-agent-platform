@@ -81,6 +81,8 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
         ("POST", "/api/evaluation/internal/workbench/advance"),
         ("POST", "/api/evaluation/internal/workbench/source"),
         ("POST", "/api/evaluation/internal/assistant"),
+        ("POST", "/api/alerts/incoming"),
+        ("POST", "/api/alerts/resolve"),
         ("DELETE", "/api/identity/session"),
     }
 

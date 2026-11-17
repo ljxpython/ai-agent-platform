@@ -1,90 +1,102 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import BaseIcon from '@/components/base/BaseIcon.vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import BaseIcon from "@/components/base/BaseIcon.vue";
 
-type DrawerSide = 'left' | 'right'
-type DrawerWidth = 'narrow' | 'normal' | 'wide' | 'xl' | '2xl' | 'full'
+type DrawerSide = "left" | "right";
+type DrawerWidth = "narrow" | "normal" | "wide" | "xl" | "2xl" | "full";
 
 const props = withDefaults(
   defineProps<{
-    show: boolean
-    title: string
-    side?: DrawerSide
-    width?: DrawerWidth
-    flush?: boolean
-    closeOnEscape?: boolean
-    closeOnClickOutside?: boolean
+    show: boolean;
+    title: string;
+    side?: DrawerSide;
+    width?: DrawerWidth;
+    flush?: boolean;
+    closeOnEscape?: boolean;
+    closeOnClickOutside?: boolean;
   }>(),
   {
-    side: 'right',
-    width: 'normal',
+    side: "right",
+    width: "normal",
     flush: false,
     closeOnEscape: true,
-    closeOnClickOutside: true
-  }
-)
+    closeOnClickOutside: true,
+  },
+);
 
 const emit = defineEmits<{
-  close: []
-}>()
+  close: [];
+}>();
 
-const { t } = useI18n()
-const drawerRef = ref<HTMLElement | null>(null)
-let previousActiveElement: HTMLElement | null = null
+const { t } = useI18n();
+const drawerRef = ref<HTMLElement | null>(null);
+let previousActiveElement: HTMLElement | null = null;
 
 function widthClass(width: DrawerWidth) {
   switch (width) {
-    case 'narrow':
-      return 'w-screen sm:w-[320px] sm:max-w-[92vw]'
-    case 'wide':
-      return 'w-screen sm:w-[520px] sm:max-w-[96vw]'
-    case 'xl':
-      return 'w-screen sm:w-[min(840px,96vw)]'
-    case '2xl':
-      return 'w-screen sm:w-[min(1040px,96vw)]'
-    case 'full':
-      return 'w-screen sm:w-[min(1280px,98vw)]'
+    case "narrow":
+      return "w-screen sm:w-[320px] sm:max-w-[92vw]";
+    case "wide":
+      return "w-screen sm:w-[520px] sm:max-w-[96vw]";
+    case "xl":
+      return "w-screen sm:w-[min(840px,96vw)]";
+    case "2xl":
+      return "w-screen sm:w-[min(1040px,96vw)]";
+    case "full":
+      return "w-screen sm:w-[min(1280px,98vw)]";
     default:
-      return 'w-screen sm:w-[420px] sm:max-w-[94vw]'
+      return "w-screen sm:w-[420px] sm:max-w-[94vw]";
   }
 }
 
 function panelPositionClass(side: DrawerSide) {
-  return side === 'left' ? 'left-0' : 'right-0'
+  return side === "left" ? "left-0" : "right-0";
 }
 
-function panelTransitionClass(side: DrawerSide, phase: 'from' | 'to') {
-  if (side === 'left') {
-    return phase === 'from' ? '-translate-x-full' : 'translate-x-0'
+function panelTransitionClass(side: DrawerSide, phase: "from" | "to") {
+  if (side === "left") {
+    return phase === "from" ? "-translate-x-full" : "translate-x-0";
   }
-  return phase === 'from' ? 'translate-x-full' : 'translate-x-0'
+  return phase === "from" ? "translate-x-full" : "translate-x-0";
 }
 
 function closeDrawer() {
-  emit('close')
+  emit("close");
 }
 
 function handleEscape(event: KeyboardEvent) {
-  const dialogs = document.querySelectorAll('[role="dialog"]')
-  if (!props.show || !dialogs[dialogs.length - 1]?.contains(drawerRef.value)) return
-  if (props.closeOnEscape && event.key === 'Escape') {
-    event.preventDefault()
-    emit('close')
+  const dialogs = document.querySelectorAll('[role="dialog"]');
+  if (!props.show || !dialogs[dialogs.length - 1]?.contains(drawerRef.value))
+    return;
+  if (props.closeOnEscape && event.key === "Escape") {
+    event.preventDefault();
+    emit("close");
   }
-  if (event.key === 'Tab' && drawerRef.value) {
-    const elements = [...drawerRef.value.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'
-    )].filter(element => element.getClientRects().length > 0)
-    const first = elements[0]
-    const last = elements[elements.length - 1]
-    if (!first) { event.preventDefault(); drawerRef.value.focus() }
-    else if (!drawerRef.value.contains(document.activeElement)) {
-      event.preventDefault(); (event.shiftKey ? last : first)?.focus()
-    } else if (event.shiftKey && (document.activeElement === first || document.activeElement === drawerRef.value)) {
-      event.preventDefault(); last?.focus()
+  if (event.key === "Tab" && drawerRef.value) {
+    const elements = [
+      ...drawerRef.value.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]',
+      ),
+    ].filter((element) => element.getClientRects().length > 0);
+    const first = elements[0];
+    const last = elements[elements.length - 1];
+    if (!first) {
+      event.preventDefault();
+      drawerRef.value.focus();
+    } else if (!drawerRef.value.contains(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first)?.focus();
+    } else if (
+      event.shiftKey &&
+      (document.activeElement === first ||
+        document.activeElement === drawerRef.value)
+    ) {
+      event.preventDefault();
+      last?.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault(); first.focus()
+      event.preventDefault();
+      first.focus();
     }
   }
 }
@@ -92,33 +104,33 @@ function handleEscape(event: KeyboardEvent) {
 watch(
   () => props.show,
   async (isOpen) => {
-    if (typeof document === 'undefined') {
-      return
+    if (typeof document === "undefined") {
+      return;
     }
 
     if (isOpen) {
-      previousActiveElement = document.activeElement as HTMLElement | null
-      document.body.classList.add('pw-dialog-open')
-      await nextTick()
-      drawerRef.value?.focus()
-      return
+      previousActiveElement = document.activeElement as HTMLElement | null;
+      document.body.classList.add("pw-dialog-open");
+      await nextTick();
+      drawerRef.value?.focus();
+      return;
     }
 
-    document.body.classList.remove('pw-dialog-open')
-    previousActiveElement?.focus?.()
-    previousActiveElement = null
+    document.body.classList.remove("pw-dialog-open");
+    previousActiveElement?.focus?.();
+    previousActiveElement = null;
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 onMounted(() => {
-  document.addEventListener('keydown', handleEscape)
-})
+  document.addEventListener("keydown", handleEscape);
+});
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleEscape)
-  document.body.classList.remove('pw-dialog-open')
-})
+  document.removeEventListener("keydown", handleEscape);
+  document.body.classList.remove("pw-dialog-open");
+});
 </script>
 
 <template>
@@ -155,26 +167,34 @@ onUnmounted(() => {
             class="pw-dialog-panel absolute inset-y-0 flex h-full flex-col overflow-hidden"
             :class="[panelPositionClass(side), widthClass(width)]"
           >
-            <div class="flex shrink-0 items-center justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-800">
-              <div class="text-base font-semibold text-gray-900 dark:text-white">
-                {{ title }}
-              </div>
-              <button
-                type="button"
-                class="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-                :aria-label="t('common.close')"
-                @click="closeDrawer"
+            <div
+              class="flex shrink-0 items-center justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-800"
+            >
+              <div
+                class="text-base font-semibold text-gray-900 dark:text-white flex-1 min-w-0"
               >
-                <BaseIcon
-                  name="x"
-                  size="sm"
-                />
-              </button>
+                <slot name="title">{{ title }}</slot>
+              </div>
+              <div class="flex items-center gap-2">
+                <slot name="header-actions" />
+                <button
+                  type="button"
+                  class="rounded-xl p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-800 dark:hover:text-dark-200"
+                  :aria-label="t('common.close')"
+                  @click="closeDrawer"
+                >
+                  <BaseIcon name="x" size="sm" />
+                </button>
+              </div>
             </div>
 
             <div
               class="min-h-0 flex-1"
-              :class="flush ? 'flex flex-col overflow-hidden p-0' : 'overflow-y-auto px-6 py-5'"
+              :class="
+                flush
+                  ? 'flex flex-col overflow-hidden p-0'
+                  : 'overflow-y-auto px-6 py-5'
+              "
             >
               <slot />
             </div>

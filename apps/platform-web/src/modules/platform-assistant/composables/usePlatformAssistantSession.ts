@@ -33,10 +33,18 @@ function extractTextContent(content: unknown): string {
   return "";
 }
 
-function deriveTitleFromPrompt(prompt: string): string {
-  const cleaned = prompt.replace(/\s+/g, " ").trim();
-  if (cleaned.length <= 20) return cleaned || "平台助手";
-  return cleaned.slice(0, 20) + "...";
+/**
+ * 标准化解包 SSE / JSON-RPC 格式的数据包
+ * 兼容 { method: "...", params: { data: ... } } 与原生直接返回的数据对象
+ */
+function unwrapChunkPayload(data: unknown): unknown {
+  if (data && typeof data === "object" && "params" in data) {
+    const params = (data as { params?: { data?: unknown } }).params;
+    if (params && typeof params === "object" && "data" in params) {
+      return params.data;
+    }
+  }
+  return data;
 }
 
 export function usePlatformAssistantSession() {
@@ -108,6 +116,9 @@ export function usePlatformAssistantSession() {
    */
   async function loadThread(targetThreadId: string) {
     if (!targetThreadId) return;
+    if (turnStatus.value === "running") return;
+    if (threadId.value === targetThreadId && messages.value.length > 0) return;
+
     await store.ensureBootstrap();
     const client = getClient();
 
@@ -179,10 +190,16 @@ export function usePlatformAssistantSession() {
 
     // 1. 若当前尚无 Thread，先新建 Thread
     let currentThreadId = threadId.value;
-    const isFirstTurn = !currentThreadId;
     if (!currentThreadId) {
       try {
-        const created = await client.threads.create({
+        const created = await (
+          client.threads as unknown as {
+            create: (
+              options: Record<string, unknown>,
+            ) => Promise<{ thread_id: string }>;
+          }
+        ).create({
+          graphId: "platform_assistant",
           metadata: {
             graph_id: "platform_assistant",
             title: "平台助手",
@@ -231,6 +248,7 @@ export function usePlatformAssistantSession() {
         input: {
           messages: [{ role: "user", content: actualInputContent }],
         },
+        streamMode: ["messages", "values"],
         context: {
           model_id: store.currentModelId,
         },
@@ -238,34 +256,96 @@ export function usePlatformAssistantSession() {
 
       for await (const chunk of stream) {
         if (!chunk) continue;
-        const eventName = chunk.event;
-        const data = chunk.data as Record<string, unknown> | undefined;
+        const eventName = chunk.event as string;
+        const data = chunk.data;
+        const payload = unwrapChunkPayload(data);
 
         if (
           eventName === "metadata" &&
-          data &&
-          typeof data.run_id === "string"
+          payload &&
+          typeof (payload as { run_id?: string }).run_id === "string"
         ) {
-          currentRunId.value = data.run_id;
+          currentRunId.value = (payload as { run_id: string }).run_id;
         }
 
-        if (eventName === "messages/partial" && Array.isArray(data)) {
-          const lastMsg = data[data.length - 1] as
+        // 1. 处理 messages 流式 token / delta
+        if (eventName === "messages") {
+          if (Array.isArray(payload)) {
+            for (const item of payload) {
+              if (!item || typeof item !== "object") continue;
+              const itemObj = item as {
+                event?: string;
+                delta?: { type?: string; text?: string } | string;
+                text?: string;
+                content?: unknown;
+              };
+              let chunkText = "";
+              if (
+                itemObj.delta &&
+                typeof itemObj.delta === "object" &&
+                typeof itemObj.delta.text === "string"
+              ) {
+                chunkText = itemObj.delta.text;
+              } else if (typeof itemObj.delta === "string") {
+                chunkText = itemObj.delta;
+              } else if (typeof itemObj.text === "string") {
+                chunkText = itemObj.text;
+              } else if (itemObj.content && itemObj.event !== "message-start") {
+                chunkText = extractTextContent(itemObj.content);
+              }
+
+              if (chunkText) {
+                assistantMsg.content += chunkText;
+                // 确保 messages 数组里的末尾 assistant 消息始终同步响应
+                const last = messages.value[messages.value.length - 1];
+                if (last && last.role === "assistant") {
+                  last.content = assistantMsg.content;
+                }
+              }
+            }
+          }
+        } else if (eventName === "messages/partial" && Array.isArray(payload)) {
+          const lastMsg = payload[payload.length - 1] as
             | Record<string, unknown>
             | undefined;
           if (
             lastMsg &&
             (lastMsg.role === "assistant" || lastMsg.type === "ai")
           ) {
-            assistantMsg.content = extractTextContent(lastMsg.content);
+            const extracted = extractTextContent(lastMsg.content);
+            if (extracted) {
+              assistantMsg.content = extracted;
+              const last = messages.value[messages.value.length - 1];
+              if (last && last.role === "assistant") {
+                last.content = extracted;
+              }
+            }
           }
-        } else if (
-          eventName === "values" &&
-          data &&
-          Array.isArray(data.messages)
-        ) {
-          // 同步全量 values 消息
-          messages.value = normalizeRawMessages(data.messages);
+        } else if (eventName === "values") {
+          // 处理 values 全量状态更新
+          const valuesObj = payload as { messages?: unknown[] } | undefined;
+          if (valuesObj && Array.isArray(valuesObj.messages)) {
+            const newNormalized = normalizeRawMessages(valuesObj.messages);
+            if (newNormalized.length > 0) {
+              // 检查后端是否已持久化产生了 assistant 消息
+              const backendHasAssistant = newNormalized.some(
+                (m) => m.role === "assistant" && m.content,
+              );
+
+              if (backendHasAssistant) {
+                messages.value = newNormalized;
+                const lastAsst = [...newNormalized]
+                  .reverse()
+                  .find((m) => m.role === "assistant");
+                if (lastAsst) {
+                  assistantMsg.content = lastAsst.content;
+                }
+              } else {
+                // 后端还在前置思考或中间件阶段，绝不冲掉本地思考中/流式中的 assistantMsg！
+                messages.value = [...newNormalized, assistantMsg];
+              }
+            }
+          }
         }
       }
 
@@ -290,25 +370,20 @@ export function usePlatformAssistantSession() {
         }
       }
 
-      // 7. 首轮成功问答后，自动生成并更新会话标题
-      if (isFirstTurn && trimmed) {
-        const newTitle = deriveTitleFromPrompt(trimmed);
+      // 检查运行终态，避免失败时静默吞掉
+      if (currentRunId.value) {
         try {
-          await (
-            client.threads as unknown as {
-              update: (
-                id: string,
-                body: Record<string, unknown>,
-              ) => Promise<unknown>;
-            }
-          ).update(currentThreadId, {
-            metadata: {
-              graph_id: "platform_assistant",
-              title: newTitle,
-            },
-          });
+          const runDetail = await client.runs.get(
+            currentThreadId,
+            currentRunId.value,
+          );
+          if (runDetail && runDetail.status === "error") {
+            turnStatus.value = "error";
+            errorBanner.value = "智能体执行失败，请检查会话或重试。";
+            return;
+          }
         } catch {
-          // 标题更新失败不影响正常使用
+          // run 状态查询失败不阻塞
         }
       }
 
@@ -351,11 +426,16 @@ export function usePlatformAssistantSession() {
 
       for await (const chunk of stream) {
         if (!chunk) continue;
-        const eventName = chunk.event;
+        const eventName = chunk.event as string;
         const data = chunk.data as Record<string, unknown> | undefined;
 
-        if (eventName === "values" && data && Array.isArray(data.messages)) {
-          messages.value = normalizeRawMessages(data.messages);
+        const payload = unwrapChunkPayload(data);
+
+        if (eventName === "values") {
+          const valuesObj = payload as { messages?: unknown[] } | undefined;
+          if (valuesObj && Array.isArray(valuesObj.messages)) {
+            messages.value = normalizeRawMessages(valuesObj.messages);
+          }
         }
       }
 

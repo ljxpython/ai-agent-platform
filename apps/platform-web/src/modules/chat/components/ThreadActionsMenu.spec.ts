@@ -159,4 +159,40 @@ describe("ThreadActionsMenu", () => {
     await disabledBtn?.trigger("click");
     expect(disabledWrapper.emitted("offload-conversation")).toBeUndefined();
   });
+
+  it("renders evaluation actions and emits events when enabled", async () => {
+    const wrapper = mount(ThreadActionsMenu, {
+      props: {
+        canEvaluation: true,
+        canPickEvaluation: true,
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+          Teleport: true,
+        },
+      },
+    });
+
+    const trigger = wrapper.find('button[aria-label="更多操作"]');
+    await trigger.trigger("click");
+    await flushPromises();
+
+    const evalItem = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("转为评测集"));
+    expect(evalItem).toBeDefined();
+    await evalItem?.trigger("click");
+    expect(wrapper.emitted("send-evaluation")).toBeDefined();
+
+    await trigger.trigger("click");
+    await flushPromises();
+
+    const pickItem = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("从历史会话建评测集"));
+    expect(pickItem).toBeDefined();
+    await pickItem?.trigger("click");
+    expect(wrapper.emitted("pick-evaluation")).toBeDefined();
+  });
 });

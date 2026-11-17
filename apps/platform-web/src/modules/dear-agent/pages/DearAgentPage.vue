@@ -24,6 +24,8 @@ import {
   type ChatThread,
 } from "@/services/threads/session.service";
 import BaseDialog from "@/components/base/BaseDialog.vue";
+import SendSessionMaterials from "@/modules/evaluation/components/SendSessionMaterials.vue";
+import PickSessionMaterials from "@/modules/evaluation/components/PickSessionMaterials.vue";
 import ThreadAccessControl from "@/modules/chat/components/ThreadAccessControl.vue";
 import ThreadActionsMenu from "@/modules/chat/components/ThreadActionsMenu.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
@@ -74,6 +76,8 @@ const canTakeover = computed(
     can("platform.super_admin.manage"),
 );
 const accessRevision = ref(0);
+const evaluationThreads = ref<string[]>([]);
+const pickEvaluationMaterials = ref(false);
 type ChatTarget = {
   graphId: string;
   agentId?: string;
@@ -1029,6 +1033,18 @@ onScopeDispose(() => {
                 :can-delete="
                   Boolean(selectedThread && threadCan(selectedThread, 'delete'))
                 "
+                :can-evaluation="
+                  Boolean(
+                    selectedThread &&
+                    can('project.evaluation.execute', activeProjectId),
+                  )
+                "
+                :can-pick-evaluation="
+                  Boolean(
+                    target?.agentId &&
+                    can('project.evaluation.execute', activeProjectId),
+                  )
+                "
                 :offload-disabled="!sessionRef?.canOffload"
                 :offload-disabled-reason="
                   !selectedThread
@@ -1051,6 +1067,10 @@ onScopeDispose(() => {
                 @open-takeover="accessControlRef?.openTakeover()"
                 @delete-thread="selectedThread && requestDelete(selectedThread)"
                 @offload-conversation="sessionRef?.offloadConversation()"
+                @send-evaluation="
+                  selectedThread && (evaluationThreads = [selectedThread])
+                "
+                @pick-evaluation="pickEvaluationMaterials = true"
               />
               <div
                 class="h-4 w-px bg-gray-200 dark:bg-dark-700 mx-1 hidden sm:block shrink-0"
@@ -1092,6 +1112,23 @@ onScopeDispose(() => {
         </div>
       </div>
     </template>
+    <SendSessionMaterials
+      :show="evaluationThreads.length > 0"
+      :thread-ids="evaluationThreads"
+      :project-id="activeProjectId"
+      :can-authorize="can('project.evaluation.manage', activeProjectId)"
+      @close="evaluationThreads = []"
+    />
+    <PickSessionMaterials
+      :show="pickEvaluationMaterials"
+      :project-id="activeProjectId"
+      :agent-id="target?.agentId || ''"
+      @close="pickEvaluationMaterials = false"
+      @select="
+        evaluationThreads = $event;
+        pickEvaluationMaterials = false;
+      "
+    />
     <BaseDialog :show="deleteOpen" title="删除对话" @close="deleteOpen = false">
       <p>删除后无法恢复此对话及运行历史。确认删除？</p>
       <template #footer>
