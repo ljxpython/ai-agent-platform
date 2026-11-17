@@ -115,7 +115,12 @@ async def authenticate_ingress(
     if (
         not authorization
         and method == "POST"
-        and path in {"/internal/usage/aggregate", "/internal/usage/runs/query"}
+        and path
+        in {
+            "/internal/usage/aggregate",
+            "/internal/usage/runs/query",
+            "/internal/usage/gateway/series",
+        }
         and headers
         and headers.get(b"x-usage-query-timestamp")
         and headers.get(b"x-usage-query-signature")

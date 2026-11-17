@@ -4,6 +4,7 @@ import threading
 import time
 from contextlib import contextmanager
 from datetime import timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import psycopg
@@ -440,3 +441,144 @@ def list_usage_runs(query, *, deadline=None):
             else None
         )
         return {"items": page, "next_cursor": cursor, "as_of": as_of, "cutoff": cutoff}
+
+
+def aggregate_gateway_series(query, *, deadline=None):
+    where, values = _where(query)
+    if getattr(query, "status", None) == "ok":
+        where += " AND c.outcome = 'completed'"
+    elif getattr(query, "status", None) == "error":
+        where += " AND c.outcome IN ('failed', 'cancelled')"
+    elif getattr(query, "status", None) == "rate_limit":
+        where += " AND c.outcome = 'failed' AND (c.cost_reason ILIKE '%%rate_limit%%' OR c.cost_reason ILIKE '%%429%%')"
+
+    values["bucket_seconds"] = query.bucket_seconds
+    bucket_expr = "to_timestamp(floor(extract(epoch from c.started_at) / %(bucket_seconds)s) * %(bucket_seconds)s)"
+    zone = ZoneInfo(query.timezone)
+
+    with _connection(deadline) as (conn, deadline):
+        as_of = conn.execute("SELECT transaction_timestamp() AS at").fetchone()["at"]
+
+        series_sql = f"""
+            SELECT
+                {bucket_expr} AS bucket,
+                count(*) AS requests,
+                count(*) FILTER (WHERE c.outcome IN ('failed', 'cancelled')) AS errors,
+                percentile_cont(0.50) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (COALESCE(c.ended_at, c.started_at) - c.started_at)) * 1000) AS latency_p50_ms,
+                percentile_cont(0.90) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (COALESCE(c.ended_at, c.started_at) - c.started_at)) * 1000) AS latency_p90_ms,
+                percentile_cont(0.99) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (COALESCE(c.ended_at, c.started_at) - c.started_at)) * 1000) AS latency_p99_ms,
+                sum(COALESCE(c.input_tokens, 0)) AS input_tokens,
+                sum(COALESCE(c.output_tokens, 0)) AS output_tokens,
+                sum(COALESCE(c.total_tokens, 0)) AS total_tokens,
+                sum(COALESCE(c.cache_read_tokens, 0)) AS cache_read_tokens,
+                sum(COALESCE(c.cache_creation_tokens, 0)) AS cache_creation_tokens,
+                sum(COALESCE(c.estimated_cost_usd, 0)) AS cost_usd
+            FROM runtime_usage_calls c
+            WHERE {where}
+            GROUP BY 1
+            ORDER BY 1 ASC
+        """
+        series_rows = _execute(conn, deadline, series_sql, values)
+
+        summary_sql = f"""
+            SELECT
+                count(*) AS total_requests,
+                count(*) FILTER (WHERE c.outcome IN ('failed', 'cancelled')) AS total_errors,
+                percentile_cont(0.90) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (COALESCE(c.ended_at, c.started_at) - c.started_at)) * 1000) AS p90_latency_ms,
+                sum(COALESCE(c.input_tokens, 0)) AS total_input_tokens,
+                sum(COALESCE(c.output_tokens, 0)) AS total_output_tokens,
+                sum(COALESCE(c.total_tokens, 0)) AS total_tokens,
+                sum(COALESCE(c.cache_read_tokens, 0)) AS total_cache_read_tokens,
+                sum(COALESCE(c.cache_creation_tokens, 0)) AS total_cache_creation_tokens,
+                sum(COALESCE(c.estimated_cost_usd, 0)) AS total_cost_usd
+            FROM runtime_usage_calls c
+            WHERE {where}
+        """
+        summary_raw = _execute(conn, deadline, summary_sql, values)[0]
+
+        breakdown_sql = f"""
+            SELECT
+                COALESCE(c.model_name, c.model_id::text, 'unmapped') AS key,
+                count(*) AS requests,
+                sum(COALESCE(c.total_tokens, 0)) AS total_tokens,
+                sum(COALESCE(c.estimated_cost_usd, 0)) AS cost_usd
+            FROM runtime_usage_calls c
+            WHERE {where}
+            GROUP BY 1
+            ORDER BY cost_usd DESC, requests DESC
+            LIMIT 20
+        """
+        breakdown_rows = _execute(conn, deadline, breakdown_sql, values)
+
+        formatted_series = []
+        for r in series_rows:
+            b_dt = r["bucket"]
+            ts_ms = int(b_dt.timestamp() * 1000)
+            t_label = b_dt.astimezone(zone).strftime("%m/%d %H:%M")
+            reqs = int(r["requests"])
+            tot_toks = int(r["total_tokens"])
+            formatted_series.append(
+                {
+                    "timestamp_ms": ts_ms,
+                    "time_label": t_label,
+                    "requests": reqs,
+                    "errors": int(r["errors"]),
+                    "latency_p50_ms": float(r["latency_p50_ms"])
+                    if r["latency_p50_ms"] is not None
+                    else None,
+                    "latency_p90_ms": float(r["latency_p90_ms"])
+                    if r["latency_p90_ms"] is not None
+                    else None,
+                    "latency_p99_ms": float(r["latency_p99_ms"])
+                    if r["latency_p99_ms"] is not None
+                    else None,
+                    "input_tokens": int(r["input_tokens"]),
+                    "output_tokens": int(r["output_tokens"]),
+                    "total_tokens": tot_toks,
+                    "cache_read_tokens": int(r["cache_read_tokens"]),
+                    "cache_creation_tokens": int(r["cache_creation_tokens"]),
+                    "tokens_per_request": round(tot_toks / reqs, 2) if reqs else None,
+                    "cost_usd": f"{Decimal(str(r['cost_usd'] or 0)):.12f}",
+                }
+            )
+
+        tot_req = int(summary_raw["total_requests"] or 0)
+        tot_err = int(summary_raw["total_errors"] or 0)
+        tot_in = int(summary_raw["total_input_tokens"] or 0)
+        tot_tok = int(summary_raw["total_tokens"] or 0)
+        tot_cache = int(summary_raw["total_cache_read_tokens"] or 0)
+        formatted_summary = {
+            "total_requests": tot_req,
+            "total_errors": tot_err,
+            "error_rate": round(tot_err / tot_req, 4) if tot_req else 0.0,
+            "total_tokens": tot_tok,
+            "total_input_tokens": tot_in,
+            "total_output_tokens": int(summary_raw["total_output_tokens"] or 0),
+            "total_cache_read_tokens": tot_cache,
+            "total_cache_creation_tokens": int(
+                summary_raw["total_cache_creation_tokens"] or 0
+            ),
+            "cache_hit_ratio": round(tot_cache / tot_in, 4) if tot_in else None,
+            "avg_tokens_per_request": round(tot_tok / tot_req, 2) if tot_req else None,
+            "p90_latency_ms": float(summary_raw["p90_latency_ms"])
+            if summary_raw["p90_latency_ms"] is not None
+            else None,
+            "total_cost_usd": f"{Decimal(str(summary_raw['total_cost_usd'] or 0)):.12f}",
+        }
+
+        formatted_breakdown = [
+            {
+                "key": str(b["key"]),
+                "requests": int(b["requests"]),
+                "total_tokens": int(b["total_tokens"]),
+                "cost_usd": f"{Decimal(str(b['cost_usd'] or 0)):.12f}",
+            }
+            for b in breakdown_rows
+        ]
+
+        return {
+            "as_of": as_of.isoformat() if hasattr(as_of, "isoformat") else str(as_of),
+            "series": formatted_series,
+            "summary": formatted_summary,
+            "breakdown": formatted_breakdown,
+        }

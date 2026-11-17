@@ -12,8 +12,10 @@ from pydantic import ValidationError
 
 from runtime_service.observability.usage_analytics import (
     AggregateQuery,
+    GatewaySeriesQuery,
     RunsQuery,
     query_aggregate,
+    query_gateway_series,
     query_runs,
 )
 
@@ -96,3 +98,8 @@ async def aggregate_endpoint(request: Request, response: Response):
 @router.post("/runs/query")
 async def runs_endpoint(request: Request, response: Response):
     return await _query(request, response, RunsQuery, query_runs)
+
+
+@router.post("/gateway/series")
+async def gateway_series_endpoint(request: Request, response: Response):
+    return await _query(request, response, GatewaySeriesQuery, query_gateway_series)

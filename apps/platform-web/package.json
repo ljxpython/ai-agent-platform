@@ -32,6 +32,7 @@
     "@xterm/xterm": "^6.0.0",
     "axios": "^1.8.4",
     "canvas-confetti": "^1.9.4",
+    "echarts": "^6.1.0",
     "markdown-it": "^14.1.1",
     "pinia": "^2.3.1",
     "vue": "^3.5.40",

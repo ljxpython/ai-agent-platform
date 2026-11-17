@@ -20,11 +20,39 @@ import {
 import UsageFilterToolbar from "../components/UsageFilterToolbar.vue";
 import UsageTrend from "../components/UsageTrend.vue";
 import UsageBreakdown from "../components/UsageBreakdown.vue";
+import GatewayUsageTab from "../components/GatewayUsageTab.vue";
+import GatewayLogsTable from "../components/GatewayLogsTable.vue";
+import type { GatewayMetricPoint } from "../types";
 import RunUsage from "@/modules/chat/components/trajectory/RunUsage.vue";
 import BaseDrawer from "@/components/base/BaseDrawer.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 
 const route = useRoute();
+
+// 当前主 Tab：'gateway' (网关大盘) | 'logs' (调用日志) | 'governance' (历史治理)
+const activeTab = ref<"gateway" | "logs" | "governance">("gateway");
+const activeFilterRange = ref<{ from: string; to: string } | null>(null);
+
+function setActiveTab(tab: "gateway" | "logs" | "governance") {
+  activeTab.value = tab;
+}
+
+defineExpose({ activeTab, setActiveTab });
+
+function handleDrilldownToLogs(payload: {
+  from: string;
+  to: string;
+  point: GatewayMetricPoint;
+}) {
+  activeFilterRange.value = { from: payload.from, to: payload.to };
+  activeTab.value = "logs";
+  loadFirstPage();
+}
+
+function handleClearDrilldownRange() {
+  activeFilterRange.value = null;
+  loadFirstPage();
+}
 
 // 1. 作用域派生 (严格从路由路径判定，防顶栏项目切换污染)
 const currentScope = computed(() => {
@@ -78,10 +106,10 @@ const targetRunsProjectId = computed<string | undefined>(() => {
   return undefined;
 });
 
-// Runs 查询参数白名单
+// Runs 查询参数白名单（支持下钻区间覆盖）
 const runsFilters = computed<RunsQueryParams>(() => ({
-  from: filters.value.from,
-  to: filters.value.to,
+  from: activeFilterRange.value?.from || filters.value.from,
+  to: activeFilterRange.value?.to || filters.value.to,
   model_id: filters.value.model_id,
   model_mapping: filters.value.model_mapping,
   agent_id: filters.value.agent_id,
@@ -245,454 +273,577 @@ const runsErrorMessage = computed(() => {
       </div>
     </header>
 
-    <!-- 2. 常驻业务说明条 (参考 deer-flow 最佳实践) -->
-    <aside
-      class="flex items-start gap-3 rounded-xl border border-primary-100 bg-primary-50/50 p-4 text-xs leading-5 text-primary-900 dark:border-primary-950/80 dark:bg-primary-950/20 dark:text-primary-200 shadow-sm"
-    >
-      <BaseIcon
-        name="info"
-        size="sm"
-        class="mt-0.5 shrink-0 text-primary-600 dark:text-primary-400"
-      />
-      <div class="flex-1">
-        <p class="font-medium">
-          已采集当前范围内 Agent
-          运行用量；辅助开销（标题生成、推荐问题等）及未落账调用未计入。
-        </p>
-        <p class="mt-0.5 text-primary-700/80 dark:text-primary-300/70">
-          由于系统重试、内部调用及供应商计费周期差异，汇总数据与供应商账单可能存在微小偏差。金额展示保留
-          12 位原文字符串精度，严防截断丢失。
-        </p>
-      </div>
-    </aside>
-
-    <!-- 3. 筛选工具栏 -->
-    <UsageFilterToolbar
-      :filters="filters"
-      :facets="dashboardData?.facets"
-      :is-platform-scope="isPlatformScope"
-      @update:filters="filters = $event"
-      @reset="handleResetFilters"
-    />
-
-    <!-- 错误状态提示卡 -->
+    <!-- Tab 导航栏 -->
     <div
-      v-if="dashboardError"
-      class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200 flex items-center justify-between"
+      class="flex items-center gap-2 border-b border-gray-200 dark:border-dark-800"
     >
-      <div class="flex items-center gap-2">
-        <BaseIcon name="alert" size="sm" class="text-rose-600" />
-        <span>{{ dashboardErrorMessage }}</span>
-      </div>
       <button
         type="button"
-        class="font-medium underline hover:text-rose-950 dark:hover:text-white"
-        @click="refreshDashboard"
+        data-testid="tab-btn-gateway"
+        class="flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition"
+        :class="
+          activeTab === 'gateway'
+            ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+            : 'border-transparent text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+        "
+        @click="setActiveTab('gateway')"
       >
-        重试
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          />
+        </svg>
+        <span>网关监控大盘 (Gateway Usage)</span>
+      </button>
+
+      <button
+        type="button"
+        data-testid="tab-btn-logs"
+        class="flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition"
+        :class="
+          activeTab === 'logs'
+            ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+            : 'border-transparent text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+        "
+        @click="setActiveTab('logs')"
+      >
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h7"
+          />
+        </svg>
+        <span>调用明细日志 (Invocation Logs)</span>
+        <span
+          v-if="activeFilterRange"
+          class="inline-block h-2 w-2 rounded-full bg-primary-500"
+          title="已应用图表下钻区间"
+        />
+      </button>
+
+      <button
+        type="button"
+        data-testid="tab-btn-governance"
+        class="flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition"
+        :class="
+          activeTab === 'governance'
+            ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+            : 'border-transparent text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+        "
+        @click="setActiveTab('governance')"
+      >
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+        <span>历史治理统计 (Governance)</span>
       </button>
     </div>
 
-    <!-- 4. 四组金融级核心指标卡 -->
-    <section
-      class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 transition-opacity duration-150"
-      :class="{ 'opacity-70': isRefreshing }"
-    >
-      <!-- 卡片 1: 已记录 Token -->
-      <article
-        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
-      >
-        <div class="min-w-0 overflow-hidden">
-          <div
-            class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400"
-          >
-            <span class="truncate">已记录 Token</span>
-            <span
-              v-if="displayTokens.isPartial"
-              class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800 shrink-0"
-            >
-              部分小计
-            </span>
-          </div>
-          <div
-            class="mt-2 text-xl xl:text-2xl font-bold font-mono tracking-tight text-gray-950 dark:text-white truncate"
-            :title="formatTokenNumber(displayTokens.data?.total_tokens)"
-          >
-            {{ formatTokenNumber(displayTokens.data?.total_tokens) }}
-          </div>
-        </div>
-        <div
-          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
-        >
-          <span class="shrink-0">较紧邻前窗：</span>
-          <span
-            class="font-mono font-medium truncate"
-            :class="
-              Number(
-                dashboardData?.previous_window.total_token_change_ratio || 0,
-              ) > 0
-                ? 'text-emerald-600'
-                : 'text-gray-600 dark:text-gray-400'
-            "
-          >
-            {{
-              formatChangeRatio(
-                dashboardData?.previous_window.total_token_change_ratio,
-              )
-            }}
-          </span>
-        </div>
-      </article>
-
-      <!-- 卡片 2: 输入 / 输出明细 (工业级紧凑单位 + 悬停全精度防截断) -->
-      <article
-        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
-      >
-        <div class="min-w-0 overflow-hidden">
-          <div
-            class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400 truncate"
-          >
-            输入 / 输出 Tokens
-          </div>
-          <div
-            class="mt-2 flex items-baseline font-mono font-bold tracking-tight text-lg sm:text-xl xl:text-2xl text-gray-950 dark:text-white whitespace-nowrap min-w-0"
-            :title="`输入: ${formatTokenNumber(displayTokens.data?.input_tokens)} / 输出: ${formatTokenNumber(displayTokens.data?.output_tokens)}（完整精度）`"
-          >
-            <span class="text-primary-600 dark:text-primary-400 shrink-0">{{
-              formatCompactTokens(displayTokens.data?.input_tokens)
-            }}</span>
-            <span
-              class="mx-1.5 text-gray-300 dark:text-dark-600 font-normal shrink-0"
-              >/</span
-            >
-            <span class="text-emerald-600 dark:text-emerald-400 shrink-0">{{
-              formatCompactTokens(displayTokens.data?.output_tokens)
-            }}</span>
-          </div>
-        </div>
-        <div
-          class="mt-3 border-t border-gray-100 pt-2 text-[11px] sm:text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
-        >
-          <span
-            class="truncate mr-1"
-            :title="`缓存读完整精度: ${formatTokenNumber(displayTokens.data?.cache_read_tokens)}`"
-          >
-            缓存读:
-            <strong class="font-mono text-gray-700 dark:text-gray-300">{{
-              formatTokenNumber(displayTokens.data?.cache_read_tokens)
-            }}</strong>
-          </span>
-          <span
-            class="truncate"
-            :title="`推理完整精度: ${formatTokenNumber(displayTokens.data?.reasoning_tokens)}`"
-          >
-            推理:
-            <strong class="font-mono text-gray-700 dark:text-gray-300">{{
-              formatTokenNumber(displayTokens.data?.reasoning_tokens)
-            }}</strong>
-          </span>
-        </div>
-      </article>
-
-      <!-- 卡片 3: 估算成本 (USD) -->
-      <article
-        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
-      >
-        <div class="min-w-0 overflow-hidden">
-          <div
-            class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400"
-          >
-            <span class="truncate">估算成本 (USD)</span>
-            <span
-              v-if="costViewModel.isPartial"
-              class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 shrink-0"
-            >
-              部分计价
-            </span>
-          </div>
-          <div
-            class="mt-2 text-lg sm:text-xl xl:text-2xl font-bold font-mono tracking-tight text-amber-600 dark:text-amber-400 truncate"
-            :title="`完整精度：${costViewModel.fullUsd}`"
-          >
-            {{ costViewModel.display }}
-          </div>
-        </div>
-        <div
-          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
-        >
-          <span class="shrink-0">未计价调用数：</span>
-          <span class="font-mono font-medium truncate">{{
-            dashboardData?.summary.cost.unpriced_call_count ?? "—"
-          }}</span>
-        </div>
-      </article>
-
-      <!-- 卡片 4: 已采集调用 / Run -->
-      <article
-        class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
-      >
-        <div class="min-w-0 overflow-hidden">
-          <div
-            class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400 truncate"
-          >
-            已采集调用 / 运行数
-          </div>
-          <div
-            class="mt-2 text-xl xl:text-2xl font-bold font-mono tracking-tight text-gray-950 dark:text-white truncate"
-          >
-            <span>{{
-              dashboardData?.summary.coverage.observed_call_count ?? "—"
-            }}</span>
-            <span class="mx-0.5 xl:mx-1 text-gray-300 dark:text-dark-600"
-              >/</span
-            >
-            <span>{{ dashboardData?.summary.recorded_run_count ?? "—" }}</span>
-          </div>
-        </div>
-        <div
-          class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
-        >
-          <span class="shrink-0">调用报告率：</span>
-          <span
-            class="font-mono font-medium text-emerald-600 dark:text-emerald-400 truncate"
-          >
-            {{
-              dashboardData?.summary.coverage.observed_call_count
-                ? `${Math.round(((dashboardData.summary.coverage.reported_call_count || 0) / dashboardData.summary.coverage.observed_call_count) * 100)}%`
-                : "—"
-            }}
-          </span>
-        </div>
-      </article>
-    </section>
-
-    <!-- 5. 趋势图与排行分解双栏 -->
-    <section
-      class="grid grid-cols-1 gap-6 lg:grid-cols-2 transition-opacity duration-150"
-      :class="{ 'opacity-70': isRefreshing }"
-    >
-      <!-- 趋势堆叠图与折线图 -->
-      <UsageTrend
-        :series="dashboardData?.series || []"
-        :granularity="filters.granularity || 'day'"
+    <!-- Tab 1: 网关监控大盘 (Gateway Usage) -->
+    <div v-show="activeTab === 'gateway'" data-testid="tab-pane-gateway">
+      <GatewayUsageTab
+        :scope="currentScope"
+        @drilldown-to-logs="handleDrilldownToLogs"
       />
+    </div>
 
-      <!-- 排行与分解 -->
-      <UsageBreakdown
-        v-if="dashboardData"
-        :breakdown="dashboardData.breakdown"
+    <!-- Tab 2: 调用明细日志 (Invocation Logs) -->
+    <div v-show="activeTab === 'logs'" data-testid="tab-pane-logs">
+      <GatewayLogsTable
+        :runs="runItems"
+        :loading="runsLoading"
+        :loading-more="runsLoadingMore"
+        :has-more="Boolean(nextCursor)"
+        :active-filter-range="activeFilterRange"
+        :project-id="targetRunsProjectId"
+        @select-run="openRunDrawer"
+        @clear-range="handleClearDrilldownRange"
+        @load-more="loadNextPage"
+      />
+    </div>
+
+    <!-- Tab 3: 传统治理统计 (Governance) -->
+    <div
+      v-if="activeTab === 'governance'"
+      data-testid="tab-pane-governance"
+      class="space-y-6"
+    >
+      <!-- 2. 常驻业务说明条 (参考 deer-flow 最佳实践) -->
+      <aside
+        class="flex items-start gap-3 rounded-xl border border-primary-100 bg-primary-50/50 p-4 text-xs leading-5 text-primary-900 dark:border-primary-950/80 dark:bg-primary-950/20 dark:text-primary-200 shadow-sm"
+      >
+        <BaseIcon
+          name="info"
+          size="sm"
+          class="mt-0.5 shrink-0 text-primary-600 dark:text-primary-400"
+        />
+        <div class="flex-1">
+          <p class="font-medium">
+            已采集当前范围内 Agent
+            运行用量；辅助开销（标题生成、推荐问题等）及未落账调用未计入。
+          </p>
+          <p class="mt-0.5 text-primary-700/80 dark:text-primary-300/70">
+            由于系统重试、内部调用及供应商计费周期差异，汇总数据与供应商账单可能存在微小偏差。金额展示保留
+            12 位原文字符串精度，严防截断丢失。
+          </p>
+        </div>
+      </aside>
+
+      <!-- 3. 筛选工具栏 -->
+      <UsageFilterToolbar
+        :filters="filters"
+        :facets="dashboardData?.facets"
         :is-platform-scope="isPlatformScope"
-        @update:group_by="filters.group_by = $event"
-        @update:rank_by="filters.rank_by = $event"
-        @drilldown="handleDrilldown"
+        @update:filters="filters = $event"
+        @reset="handleResetFilters"
       />
-    </section>
 
-    <!-- 6. 运行明细表格区域 -->
-    <section
-      class="rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900 shadow-sm space-y-4"
-      data-testid="usage-runs-section"
-    >
+      <!-- 错误状态提示卡 -->
       <div
-        class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4 dark:border-dark-800"
+        v-if="dashboardError"
+        class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200 flex items-center justify-between"
       >
-        <div>
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
-            运行明细 (期间消费)
-          </h3>
-          <p class="text-xs text-gray-500 dark:text-dark-400 mt-0.5">
-            仅显示当前账号有权查看的 Run；展示数据覆盖所选筛选期间
+        <div class="flex items-center gap-2">
+          <BaseIcon name="alert" size="sm" class="text-rose-600" />
+          <span>{{ dashboardErrorMessage }}</span>
+        </div>
+        <button
+          type="button"
+          class="font-medium underline hover:text-rose-950 dark:hover:text-white"
+          @click="refreshDashboard"
+        >
+          重试
+        </button>
+      </div>
+
+      <!-- 4. 四组金融级核心指标卡 -->
+      <section
+        class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4 transition-opacity duration-150"
+        :class="{ 'opacity-70': isRefreshing }"
+      >
+        <!-- 卡片 1: 已记录 Token -->
+        <article
+          class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
+        >
+          <div class="min-w-0 overflow-hidden">
+            <div
+              class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400"
+            >
+              <span class="truncate">已记录 Token</span>
+              <span
+                v-if="displayTokens.isPartial"
+                class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-800 shrink-0"
+              >
+                部分小计
+              </span>
+            </div>
+            <div
+              class="mt-2 text-xl xl:text-2xl font-bold font-mono tracking-tight text-gray-950 dark:text-white truncate"
+              :title="formatTokenNumber(displayTokens.data?.total_tokens)"
+            >
+              {{ formatTokenNumber(displayTokens.data?.total_tokens) }}
+            </div>
+          </div>
+          <div
+            class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
+          >
+            <span class="shrink-0">较紧邻前窗：</span>
+            <span
+              class="font-mono font-medium truncate"
+              :class="
+                Number(
+                  dashboardData?.previous_window?.total_token_change_ratio || 0,
+                ) > 0
+                  ? 'text-emerald-600'
+                  : 'text-gray-600 dark:text-gray-400'
+              "
+            >
+              {{
+                formatChangeRatio(
+                  dashboardData?.previous_window?.total_token_change_ratio,
+                )
+              }}
+            </span>
+          </div>
+        </article>
+
+        <!-- 卡片 2: 输入 / 输出明细 (工业级紧凑单位 + 悬停全精度防截断) -->
+        <article
+          class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
+        >
+          <div class="min-w-0 overflow-hidden">
+            <div
+              class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400 truncate"
+            >
+              输入 / 输出 Tokens
+            </div>
+            <div
+              class="mt-2 flex items-baseline font-mono font-bold tracking-tight text-lg sm:text-xl xl:text-2xl text-gray-950 dark:text-white whitespace-nowrap min-w-0"
+              :title="`输入: ${formatTokenNumber(displayTokens.data?.input_tokens)} / 输出: ${formatTokenNumber(displayTokens.data?.output_tokens)}（完整精度）`"
+            >
+              <span class="text-primary-600 dark:text-primary-400 shrink-0">{{
+                formatCompactTokens(displayTokens.data?.input_tokens)
+              }}</span>
+              <span
+                class="mx-1.5 text-gray-300 dark:text-dark-600 font-normal shrink-0"
+                >/</span
+              >
+              <span class="text-emerald-600 dark:text-emerald-400 shrink-0">{{
+                formatCompactTokens(displayTokens.data?.output_tokens)
+              }}</span>
+            </div>
+          </div>
+          <div
+            class="mt-3 border-t border-gray-100 pt-2 text-[11px] sm:text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
+          >
+            <span
+              class="truncate mr-1"
+              :title="`缓存读完整精度: ${formatTokenNumber(displayTokens.data?.cache_read_tokens)}`"
+            >
+              缓存读:
+              <strong class="font-mono text-gray-700 dark:text-gray-300">{{
+                formatTokenNumber(displayTokens.data?.cache_read_tokens)
+              }}</strong>
+            </span>
+            <span
+              class="truncate"
+              :title="`推理完整精度: ${formatTokenNumber(displayTokens.data?.reasoning_tokens)}`"
+            >
+              推理:
+              <strong class="font-mono text-gray-700 dark:text-gray-300">{{
+                formatTokenNumber(displayTokens.data?.reasoning_tokens)
+              }}</strong>
+            </span>
+          </div>
+        </article>
+
+        <!-- 卡片 3: 估算成本 (USD) -->
+        <article
+          class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
+        >
+          <div class="min-w-0 overflow-hidden">
+            <div
+              class="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400"
+            >
+              <span class="truncate">估算成本 (USD)</span>
+              <span
+                v-if="costViewModel.isPartial"
+                class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 shrink-0"
+              >
+                部分计价
+              </span>
+            </div>
+            <div
+              class="mt-2 text-lg sm:text-xl xl:text-2xl font-bold font-mono tracking-tight text-amber-600 dark:text-amber-400 truncate"
+              :title="`完整精度：${costViewModel.fullUsd}`"
+            >
+              {{ costViewModel.display }}
+            </div>
+          </div>
+          <div
+            class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
+          >
+            <span class="shrink-0">未计价调用数：</span>
+            <span class="font-mono font-medium truncate">{{
+              dashboardData?.summary?.cost?.unpriced_call_count ?? "—"
+            }}</span>
+          </div>
+        </article>
+
+        <!-- 卡片 4: 已采集调用 / Run -->
+        <article
+          class="pw-stat-card rounded-xl border border-gray-200 bg-white p-4 dark:border-dark-800 dark:bg-dark-900 shadow-sm flex flex-col justify-between min-w-0 overflow-hidden"
+        >
+          <div class="min-w-0 overflow-hidden">
+            <div
+              class="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-dark-400 truncate"
+            >
+              已采集调用 / 运行数
+            </div>
+            <div
+              class="mt-2 text-xl xl:text-2xl font-bold font-mono tracking-tight text-gray-950 dark:white truncate"
+            >
+              <span>{{
+                dashboardData?.summary?.coverage?.observed_call_count ?? "—"
+              }}</span>
+              <span class="mx-0.5 xl:mx-1 text-gray-300 dark:text-dark-600"
+                >/</span
+              >
+              <span>{{
+                dashboardData?.summary?.recorded_run_count ?? "—"
+              }}</span>
+            </div>
+          </div>
+          <div
+            class="mt-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-dark-800 dark:text-dark-400 flex items-center justify-between min-w-0"
+          >
+            <span class="shrink-0">调用报告率：</span>
+            <span
+              class="font-mono font-medium text-emerald-600 dark:text-emerald-400 truncate"
+            >
+              {{
+                dashboardData?.summary?.coverage?.observed_call_count
+                  ? `${Math.round(((dashboardData.summary.coverage.reported_call_count || 0) / dashboardData.summary.coverage.observed_call_count) * 100)}%`
+                  : "—"
+              }}
+            </span>
+          </div>
+        </article>
+      </section>
+
+      <!-- 5. 趋势图与排行分解双栏 -->
+      <section
+        class="grid grid-cols-1 gap-6 lg:grid-cols-2 transition-opacity duration-150"
+        :class="{ 'opacity-70': isRefreshing }"
+      >
+        <!-- 趋势堆叠图与折线图 -->
+        <UsageTrend
+          :series="dashboardData?.series || []"
+          :granularity="filters.granularity || 'day'"
+        />
+
+        <!-- 排行与分解 -->
+        <UsageBreakdown
+          v-if="dashboardData"
+          :breakdown="dashboardData.breakdown"
+          :is-platform-scope="isPlatformScope"
+          @update:group_by="filters.group_by = $event"
+          @update:rank_by="filters.rank_by = $event"
+          @drilldown="handleDrilldown"
+        />
+      </section>
+
+      <!-- 6. 运行明细表格区域 (治理模式) -->
+      <section
+        class="rounded-xl border border-gray-200 bg-white p-5 dark:border-dark-800 dark:bg-dark-900 shadow-sm space-y-4"
+        data-testid="usage-runs-section"
+      >
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-4 dark:border-dark-800"
+        >
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
+              运行明细 (期间消费)
+            </h3>
+            <p class="text-xs text-gray-500 dark:text-dark-400 mt-0.5">
+              仅显示当前账号有权查看的 Run；展示数据覆盖所选筛选期间
+            </p>
+          </div>
+
+          <div v-if="targetRunsProjectId" class="flex items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-dark-700 dark:text-dark-300 dark:hover:bg-dark-800"
+              :disabled="runsLoading"
+              @click="loadFirstPage"
+            >
+              <BaseIcon
+                name="refresh"
+                size="xs"
+                :class="{ 'animate-spin': runsLoading }"
+              />
+              重新开始
+            </button>
+          </div>
+        </div>
+
+        <!-- 场景 A：平台模式未限定单项目 -> 展示友好引导态 -->
+        <div
+          v-if="!targetRunsProjectId"
+          class="flex h-44 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center text-gray-500 dark:border-dark-800 dark:text-dark-400 bg-gray-50/40 dark:bg-dark-950/20"
+        >
+          <BaseIcon
+            name="project"
+            size="lg"
+            class="mb-2 text-gray-400 opacity-60"
+          />
+          <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
+            平台汇总视图未指定单个项目
+          </p>
+          <p class="mt-1 text-xs text-gray-500 dark:text-dark-400 max-w-md">
+            运行明细与会话正文遵循强权限隔离。请在上方筛选栏限定单个具体项目，以检索该项目下你可查看的详细运行。
           </p>
         </div>
 
-        <div v-if="targetRunsProjectId" class="flex items-center gap-2">
-          <button
-            type="button"
-            class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-dark-700 dark:text-dark-300 dark:hover:bg-dark-800"
-            :disabled="runsLoading"
-            @click="loadFirstPage"
+        <!-- 场景 B：已锁定单项目 -> 展示 Runs 数据表格 -->
+        <div v-else>
+          <!-- 运行检索错误提示 -->
+          <div
+            v-if="runsError"
+            class="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300 flex items-center justify-between"
           >
-            <BaseIcon
-              name="refresh"
-              size="xs"
-              :class="{ 'animate-spin': runsLoading }"
-            />
-            重新开始
-          </button>
-        </div>
-      </div>
-
-      <!-- 场景 A：平台模式未限定单项目 -> 展示友好引导态 -->
-      <div
-        v-if="!targetRunsProjectId"
-        class="flex h-44 flex-col items-center justify-center rounded-lg border border-dashed border-gray-200 p-6 text-center text-gray-500 dark:border-dark-800 dark:text-dark-400 bg-gray-50/40 dark:bg-dark-950/20"
-      >
-        <BaseIcon
-          name="project"
-          size="lg"
-          class="mb-2 text-gray-400 opacity-60"
-        />
-        <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
-          平台汇总视图未指定单个项目
-        </p>
-        <p class="mt-1 text-xs text-gray-500 dark:text-dark-400 max-w-md">
-          运行明细与会话正文遵循强权限隔离。请在上方筛选栏限定单个具体项目，以检索该项目下你可查看的详细运行。
-        </p>
-      </div>
-
-      <!-- 场景 B：已锁定单项目 -> 展示 Runs 数据表格 -->
-      <div v-else>
-        <!-- 运行检索错误提示 -->
-        <div
-          v-if="runsError"
-          class="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-300 flex items-center justify-between"
-        >
-          <div class="flex items-center gap-2">
-            <BaseIcon name="alert" size="xs" class="text-rose-600" />
-            <span>{{ runsErrorMessage }}</span>
+            <div class="flex items-center gap-2">
+              <BaseIcon name="alert" size="xs" class="text-rose-600" />
+              <span>{{ runsErrorMessage }}</span>
+            </div>
+            <button
+              type="button"
+              class="font-semibold underline hover:text-rose-950 dark:hover:text-rose-100"
+              @click="loadFirstPage"
+            >
+              重试
+            </button>
           </div>
-          <button
-            type="button"
-            class="font-semibold underline hover:text-rose-950 dark:hover:text-rose-100"
-            @click="loadFirstPage"
-          >
-            重试
-          </button>
-        </div>
 
-        <!-- 空页带 cursor 穿透扫描提示 -->
-        <div
-          v-if="hasEmptyWithCursor"
-          class="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300 flex items-center justify-between"
-        >
-          <div class="flex items-center gap-2">
-            <BaseIcon name="info" size="xs" />
-            <span
-              >当前扫描批次中无可见会话（已受 Thread ACL
-              过滤），但后端仍有后续候选记录。</span
-            >
-          </div>
-          <button
-            type="button"
-            class="font-semibold underline hover:text-amber-950 dark:hover:text-amber-100"
-            @click="loadNextPage"
+          <!-- 空页带 cursor 穿透扫描提示 -->
+          <div
+            v-if="hasEmptyWithCursor"
+            class="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300 flex items-center justify-between"
           >
-            继续穿透扫描
-          </button>
-        </div>
-
-        <div class="overflow-x-auto">
-          <table
-            class="w-full text-left text-xs text-gray-700 dark:text-gray-300"
-          >
-            <thead
-              class="border-b border-gray-200 bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500 dark:border-dark-800 dark:bg-dark-950 dark:text-dark-400 font-sans"
-            >
-              <tr>
-                <th class="px-3.5 py-2.5">调用开始时间</th>
-                <th class="px-3.5 py-2.5">Agent 名称</th>
-                <th class="px-3.5 py-2.5">Run ID</th>
-                <th class="px-3.5 py-2.5 text-right">期间 Token</th>
-                <th class="px-3.5 py-2.5 text-right">期间估算成本</th>
-                <th class="px-3.5 py-2.5 text-center">覆盖率</th>
-                <th class="px-3.5 py-2.5 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody
-              class="divide-y divide-gray-100 dark:divide-dark-800 font-mono"
-            >
-              <tr v-if="runsLoading && runItems.length === 0">
-                <td
-                  colspan="7"
-                  class="py-12 text-center text-xs text-gray-400 font-sans"
-                >
-                  正在检索运行明细...
-                </td>
-              </tr>
-              <tr v-else-if="runItems.length === 0">
-                <td
-                  colspan="7"
-                  class="py-12 text-center text-xs text-gray-400 font-sans"
-                >
-                  当前筛选条件与权限范围内未检索到任何匹配运行
-                </td>
-              </tr>
-              <tr
-                v-for="run in runItems"
-                :key="`${run.project_id}_${run.run_id}`"
-                class="hover:bg-gray-50/60 dark:hover:bg-dark-800/40 transition-colors"
+            <div class="flex items-center gap-2">
+              <BaseIcon name="info" size="xs" />
+              <span
+                >当前扫描批次中无可见会话（已受 Thread ACL
+                过滤），但后端仍有后续候选记录。</span
               >
-                <td class="px-3.5 py-2.5 font-sans">
-                  {{ run.first_matching_call_at }}
-                </td>
-                <td
-                  class="px-3.5 py-2.5 font-sans font-medium text-gray-900 dark:text-white"
-                >
-                  {{ run.agent_name || run.graph_id }}
-                </td>
-                <td
-                  class="px-3.5 py-2.5 text-gray-500 dark:text-dark-400 text-[11px]"
-                  :title="run.run_id"
-                >
-                  {{ run.run_id.slice(0, 8) }}...
-                </td>
-                <td class="px-3.5 py-2.5 text-right font-semibold">
-                  {{
-                    formatTokenNumber(
-                      run.tokens?.total_tokens ??
-                        run.known_tokens?.total_tokens,
-                    )
-                  }}
-                </td>
-                <td
-                  class="px-3.5 py-2.5 text-right text-amber-600 dark:text-amber-400"
-                >
-                  {{ formatDashboardCost(run.cost).display }}
-                </td>
-                <td class="px-3.5 py-2.5 text-center font-sans">
-                  <span
-                    class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-dark-800 dark:text-dark-300"
-                  >
-                    {{ run.coverage.reported_call_count }}/{{
-                      run.coverage.observed_call_count
-                    }}
-                  </span>
-                </td>
-                <td class="px-3.5 py-2.5 text-right font-sans">
-                  <button
-                    type="button"
-                    class="rounded px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/50 transition-colors"
-                    @click="openRunDrawer(run)"
-                  >
-                    查看用量
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            </div>
+            <button
+              type="button"
+              class="font-semibold underline hover:text-amber-950 dark:hover:text-amber-100"
+              @click="loadNextPage"
+            >
+              继续穿透扫描
+            </button>
+          </div>
 
-        <!-- 分页底部 -->
-        <div v-if="nextCursor" class="mt-4 flex items-center justify-center">
-          <button
-            type="button"
-            class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-200 dark:hover:bg-dark-800 shadow-sm disabled:opacity-50"
-            :disabled="runsLoadingMore"
-            @click="loadNextPage"
-          >
-            <BaseIcon
-              v-if="runsLoadingMore"
-              name="refresh"
-              size="xs"
-              class="animate-spin"
-            />
-            <span>{{
-              runsLoadingMore ? "正在扫描后续批次..." : "继续加载下一批"
-            }}</span>
-          </button>
+          <div class="overflow-x-auto">
+            <table
+              class="w-full text-left text-xs text-gray-700 dark:text-gray-300"
+            >
+              <thead
+                class="border-b border-gray-200 bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500 dark:border-dark-800 dark:bg-dark-950 dark:text-dark-400 font-sans"
+              >
+                <tr>
+                  <th class="px-3.5 py-2.5">调用开始时间</th>
+                  <th class="px-3.5 py-2.5">Agent 名称</th>
+                  <th class="px-3.5 py-2.5">Run ID</th>
+                  <th class="px-3.5 py-2.5 text-right">期间 Token</th>
+                  <th class="px-3.5 py-2.5 text-right">期间估算成本</th>
+                  <th class="px-3.5 py-2.5 text-center">覆盖率</th>
+                  <th class="px-3.5 py-2.5 text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody
+                class="divide-y divide-gray-100 dark:divide-dark-800 font-mono"
+              >
+                <tr v-if="runsLoading && runItems.length === 0">
+                  <td
+                    colspan="7"
+                    class="py-12 text-center text-xs text-gray-400 font-sans"
+                  >
+                    正在检索运行明细...
+                  </td>
+                </tr>
+                <tr v-else-if="runItems.length === 0">
+                  <td
+                    colspan="7"
+                    class="py-12 text-center text-xs text-gray-400 font-sans"
+                  >
+                    当前筛选条件与权限范围内未检索到任何匹配运行
+                  </td>
+                </tr>
+                <tr
+                  v-for="run in runItems"
+                  :key="`${run.project_id}_${run.run_id}`"
+                  class="hover:bg-gray-50/60 dark:hover:bg-dark-800/40 transition-colors"
+                >
+                  <td class="px-3.5 py-2.5 font-sans">
+                    {{ run.first_matching_call_at }}
+                  </td>
+                  <td
+                    class="px-3.5 py-2.5 font-sans font-medium text-gray-900 dark:text-white"
+                  >
+                    {{ run.agent_name || run.graph_id }}
+                  </td>
+                  <td
+                    class="px-3.5 py-2.5 text-gray-500 dark:text-dark-400 text-[11px]"
+                    :title="run.run_id"
+                  >
+                    {{ run.run_id.slice(0, 8) }}...
+                  </td>
+                  <td class="px-3.5 py-2.5 text-right font-semibold">
+                    {{
+                      formatTokenNumber(
+                        run.tokens?.total_tokens ??
+                          run.known_tokens?.total_tokens,
+                      )
+                    }}
+                  </td>
+                  <td
+                    class="px-3.5 py-2.5 text-right text-amber-600 dark:text-amber-400"
+                  >
+                    {{ formatDashboardCost(run.cost).display }}
+                  </td>
+                  <td class="px-3.5 py-2.5 text-center font-sans">
+                    <span
+                      class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600 dark:bg-dark-800 dark:text-dark-300"
+                    >
+                      {{ run.coverage.reported_call_count }}/{{
+                        run.coverage.observed_call_count
+                      }}
+                    </span>
+                  </td>
+                  <td class="px-3.5 py-2.5 text-right font-sans">
+                    <button
+                      type="button"
+                      class="rounded px-2 py-1 text-xs font-medium text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-950/50 transition-colors"
+                      @click="openRunDrawer(run)"
+                    >
+                      查看用量
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 分页底部 -->
+          <div v-if="nextCursor" class="mt-4 flex items-center justify-center">
+            <button
+              type="button"
+              class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-4 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-gray-200 dark:hover:bg-dark-800 shadow-sm disabled:opacity-50"
+              :disabled="runsLoadingMore"
+              @click="loadNextPage"
+            >
+              <BaseIcon
+                v-if="runsLoadingMore"
+                name="refresh"
+                size="xs"
+                class="animate-spin"
+              />
+              <span>{{
+                runsLoadingMore ? "正在扫描后续批次..." : "继续加载下一批"
+              }}</span>
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
 
     <!-- 7. 无头模式挂载 RunUsage 抽屉 (彻底消除双 Header 与双滚动条冲突) -->
     <BaseDrawer

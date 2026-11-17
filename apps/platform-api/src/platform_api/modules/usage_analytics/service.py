@@ -1,7 +1,7 @@
 """Authorize governance totals separately from current Thread content access."""
 
 import asyncio
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -37,10 +37,12 @@ from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
 )
 from platform_api.modules.usage_analytics.contracts import (
     Filters,
+    GatewaySeriesV1,
     UsageDashboardV1,
     UsageRun,
     UsageRunPageV1,
     empty_dashboard,
+    empty_gateway_series,
 )
 from platform_api.modules.usage_analytics.cursor import (
     binding,
@@ -627,3 +629,130 @@ class UsageAnalyticsService:
             AttributeError,
         ) as exc:
             raise _invalid_upstream() from exc
+
+    async def gateway_series(self, *, context, project_id, requested, query):
+        try:
+            async with asyncio.timeout(5), self.query_slots:
+                return await self._gateway_series(
+                    context=context,
+                    project_id=project_id,
+                    requested=requested,
+                    query=query,
+                )
+        except TimeoutError as exc:
+            raise ServiceUnavailableError(
+                code="usage_query_capacity_exhausted",
+                message="Usage query capacity is temporarily unavailable",
+            ) from exc
+
+    async def _gateway_series(self, *, context, project_id, requested, query):
+        actor, projects, graph_id = await run_in_threadpool(
+            self._authorize, context, project_id, requested, query
+        )
+        if not projects:
+            await run_in_threadpool(
+                self._authorize, context, project_id, requested, query
+            )
+            return empty_gateway_series(query, context.request.request_id)
+        payload = self._gateway_payload(context, actor, projects, graph_id, query)
+        raw = await self.upstream.usage_analytics(
+            payload, secret=self.secret, path="/internal/usage/gateway/series"
+        )
+        _, current_projects, current_graph = await run_in_threadpool(
+            self._authorize, context, project_id, requested, query
+        )
+        if set(current_projects) != set(projects) or current_graph != graph_id:
+            raise ForbiddenError(
+                code="usage_scope_changed",
+                message="Usage permission scope changed; refresh the query",
+            )
+        try:
+            return self._gateway_projection(
+                raw,
+                query,
+                current_projects,
+                "project" if project_id else "platform",
+                context.request.request_id,
+            )
+        except (
+            ValidationError,
+            KeyError,
+            TypeError,
+            ValueError,
+            AttributeError,
+        ) as exc:
+            raise _invalid_upstream() from exc
+
+    def _gateway_payload(self, context, actor, projects, graph_id, query):
+        actor_id = (
+            getattr(actor, "user_id", None)
+            or getattr(actor, "subject", None)
+            or getattr(actor, "actor_id", None)
+        )
+        project_ids = (
+            sorted(list(projects.keys()))
+            if isinstance(projects, dict)
+            else sorted(projects)
+        )
+        return {
+            "version": 1,
+            "actor_id": str(actor_id),
+            "credential_id": str(actor.credential_id)
+            if getattr(actor, "credential_id", None)
+            else None,
+            "tenant_id": str(context.tenant.tenant_id),
+            "project_ids": project_ids,
+            "request_id": context.request.request_id,
+            "from": query.start.isoformat(),
+            "to": query.end.isoformat(),
+            "timezone": query.timezone,
+            "bucket_seconds": query.bucket_seconds,
+            "status": query.status,
+            "model_id": str(query.model_id) if query.model_id else None,
+            "model_mapping": query.model_mapping,
+            "graph_id": graph_id or query.graph_id,
+            "purpose": query.purpose,
+            "scope": query.scope,
+        }
+
+    def _gateway_projection(self, raw, query, projects, scope_kind, request_id):
+        project_ids = (
+            sorted(list(projects.keys()))
+            if isinstance(projects, dict)
+            else sorted(projects)
+        )
+        window = {
+            "from": query.start,
+            "to": query.end,
+            "timezone": query.timezone,
+            "bucket_seconds": query.bucket_seconds,
+            "time_basis": "model_call_started_at",
+        }
+        scope = {
+            "kind": scope_kind,
+            "project_ids": project_ids,
+            "covered_project_count": len(project_ids),
+        }
+        as_of = raw.get("as_of")
+        if isinstance(as_of, str):
+            as_of_dt = datetime.fromisoformat(as_of)
+        elif isinstance(as_of, datetime):
+            as_of_dt = as_of
+        else:
+            as_of_dt = datetime.now(UTC)
+        if as_of_dt.tzinfo is None:
+            as_of_dt = as_of_dt.replace(tzinfo=UTC)
+
+        result = GatewaySeriesV1.model_validate(
+            {
+                "version": 1,
+                "as_of": as_of_dt,
+                "window": window,
+                "scope": scope,
+                "summary": raw.get("summary", {}),
+                "series": raw.get("series", []),
+                "breakdown": raw.get("breakdown", []),
+                "request_id": request_id,
+            }
+        )
+        return _bounded_result(result)

@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-16（平台助手全栈验收通过并合并主干，11/11 done；评测飞轮 Task 7.5 主环境配置完成并通过真实评测；本地测试服务与专属测试库已清理）
+> **最后更新：** 2026-11-18（AI网关使用看板与综合可观测重构已全栈实施并通过全部前后端单测、类型校验与生产构建；对标 mlflow-eval-platform 成功实现网关黄金三要素、Token均值/Prompt Caching以及图表至Logs毫秒级下钻穿透）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -30,6 +30,8 @@
 2026-11-13：D01–D06本地done。专用执行项目、集中MLflow实验、原生版本化评测集与任务绑定已实现；同一dearflow_agent的温度0/0.3具名配置真实比较通过。64项后端、25项前端及4次真实模型运行8个用例通过，构建通过（关闭既有全局ESLint插件）；详见Agent仓项目verification.md扩展Final及EvalFlow implementation/27-dataset-profiles.md。已合入main；两个feature分支已推送。主仓复验后端64/前端39项、主/shared类型检查与Ruff通过；两个Worktree、专属PG库/角色和EvalFlow SQLite已清理，7个端口释放，其他数据库/Worktree未变。生产未部署。新增配置身份/审批恢复/题库冻结经验已确认沉淀至EvalFlow经验库。
 
 ## 最近改动
+
+2026-11-18 | **AI 网关使用看板与综合可观测重构全栈实施与验证完成**：对标 `mlflow-eval-platform` 的网关使用大盘（方案二：原生 Vue 3 + ECharts 重写）。扩展 `Platform API` 与 `Runtime Service` 的网关时序统计接口（按 60s/300s/3600s/86400s 桶聚合吞吐、错误率、P50/P90/P99 延迟分位数、Token 堆叠、Tokens per Request 均值与成本）。前端封装 ECharts 专业图表组件群（深浅双主题、自适应 Resize），集成四联黄金指标卡、智能时间控制栏（自适应桶推导与防爆限制）；实现图表 Tooltip 毫秒级下钻直达 Logs 标签页，并自动锁定筛选时间区间并展示高亮 Pill。前端 5 个套件 33 项单测 100% 跑绿，`vue-tsc` 0 报错，生产打包（24.52s）通过；后端 55 项单元测试全绿。
 
 2026-11-16 | **平台助手全栈验收通过与交付合并**：用户已确认需求完成并授权交付。前端落地 Clean Architecture 解耦架构（`apps/platform-web/src/modules/platform-assistant/`），含全局抽屉、错误胶囊、专职审批卡、证据二级抽屉，以及首轮自动命名与 Scoped Client 作用域锁；修复 TraceDiagnosticsPage.vue 的 x-project-id 请求头、partial 覆盖警示条与 log.raw 空安全防崩溃。11 项任务全量完成（11/11 done），vue-tsc 0 报错、单测 24 项全绿、生产打包构建通过。本地测试服务已停止，专属测试数据库已删除，Worktree 分支推送并合入 main。
 
@@ -66,6 +68,8 @@
 2026-10-22 | **工业级可观测性与指标大盘全栈落地与前端方案 B 内嵌**：建立 Langfuse + Prometheus 双轨制架构；彻底重构 Platform API 内存锁计数器，引入标准 prometheus-client 并提供防内存泄漏的路径归一化；在 API (2142) 与 Runtime (8123) 暴露标准 /metrics 接口；生产主机 sshmy1 成功部署 Prometheus (19.59MB) 与 Grafana (50.5MB)，常驻内存总增量仅 70.09MB，双抓取 Targets 100% UP；实装前端方案 B 内嵌大盘（`ObservabilityDashboardPage.vue`，Kiosk 沉浸式无边框、深浅色主题双向联动、全屏与独立窗口跳转、系统探测快速直达），远端 Grafana 容器安全配置 `GF_SECURITY_ALLOW_EMBEDDING=true` 与免密只读已平滑热生效，前端全量 906 项单测及构建 100% 绿灯。
 
 ## 活跃项目
+
+- [AI 网关使用看板与综合可观测重构](projects/20261117-gateway-observability-usage/README.md)：`已完成（done）`（2026-11-18 全栈实施与验证完成，5 项任务 100% 验收通过）；对标 mlflow-eval-platform 重构网关黄金三要素（吞吐、延迟分布、错误率）、单请求 Token 均值与 Prompt Cache 效能，落地图表到 Logs 毫秒级下钻穿透。
 
 - [会话转评测集后台异步任务与通知闭环](projects/20261117-evaluation-materials-async-task/README.md)：`待开始`（2026-11-17 方案已规划）；将大体量业务会话转评测集的同步阻塞请求重构为基于 BackgroundTasks 的异步任务，弹窗秒级关闭 + 全局 Toast 提示，完成后通过平台通知中心（🔔）推送直达链接，彻底根治前端 30 秒超时与弹窗卡死问题。
 

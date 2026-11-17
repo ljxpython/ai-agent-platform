@@ -68,9 +68,12 @@ from platform_api.modules.service_accounts.models import (
 )
 from platform_api.modules.usage_analytics.contracts import (
     DashboardQuery,
+    GatewaySeriesV1,
     RunsQuery,
     UsageDashboardV1,
     empty_dashboard,
+    empty_gateway_series,
+    parse_gateway_query,
     parse_query,
 )
 from platform_api.modules.usage_analytics.cursor import decode_cursor, encode_cursor
@@ -792,3 +795,175 @@ def test_public_routes_headers_and_audit_actions(environment):
             and resolved.metadata["usage_from"] == FROM
             and "api_key" not in resolved.metadata
         )
+
+
+def test_gateway_series_query_validation():
+    # Valid platform query
+    q, p = parse_gateway_query(
+        QueryParams(
+            {
+                "from": FROM,
+                "to": TO,
+                "timezone": "Asia/Shanghai",
+                "bucket_seconds": "300",
+                "status": "ok",
+            }
+        ),
+        platform=True,
+    )
+    assert q.bucket_seconds == 300
+    assert q.status == "ok"
+    assert p == []
+
+    # Valid project query
+    q, p = parse_gateway_query(
+        QueryParams(
+            {
+                "from": FROM,
+                "to": TO,
+                "bucket_seconds": "300",
+            }
+        ),
+        platform=False,
+    )
+    assert q.bucket_seconds == 300
+    assert p is None
+
+    # Invalid: non-platform passing project_ids
+    with pytest.raises(BadRequestError):
+        parse_gateway_query(
+            QueryParams({"from": FROM, "to": TO, "project_ids": str(uuid4())}),
+            platform=False,
+        )
+
+    # Invalid: unallowed parameter
+    with pytest.raises(BadRequestError):
+        parse_gateway_query(
+            QueryParams({"from": FROM, "to": TO, "unknown_field": "val"}),
+            platform=True,
+        )
+
+    # Invalid: bucket_seconds not integer
+    with pytest.raises(BadRequestError):
+        parse_gateway_query(
+            QueryParams({"from": FROM, "to": TO, "bucket_seconds": "invalid"}),
+            platform=True,
+        )
+
+    # Invalid: start >= end
+    with pytest.raises(BadRequestError):
+        parse_gateway_query(
+            QueryParams({"from": TO, "to": FROM, "bucket_seconds": "300"}),
+            platform=True,
+        )
+
+
+def test_empty_gateway_series_model():
+    q, _ = parse_gateway_query(
+        QueryParams({"from": FROM, "to": TO, "bucket_seconds": "300"}),
+        platform=True,
+    )
+    res = empty_gateway_series(q, request_id="req-123")
+    assert res.version == 1
+    assert res.summary.total_requests == 0
+    assert res.summary.total_cost_usd == "0.000000000000"
+    assert len(res.series) == 0
+    assert res.request_id == "req-123"
+
+
+def test_gateway_series_routes(environment):
+    env = environment
+    app = FastAPI()
+    app.include_router(router)
+    register_exception_handlers(app)
+    app.dependency_overrides[get_usage_service] = lambda: env.service
+
+    @app.middleware("http")
+    async def context(request: Request, call_next):
+        request.state.platform_context = env.context
+        request.state.request_id = "usage-request"
+        return await call_next(request)
+
+    register_request_context_middleware(app)
+
+    now_iso = datetime.now(UTC).isoformat()
+    mock_payload = {
+        "as_of": now_iso,
+        "summary": {
+            "total_requests": 150,
+            "total_errors": 2,
+            "error_rate": 0.0133,
+            "total_tokens": 150000,
+            "total_input_tokens": 100000,
+            "total_output_tokens": 50000,
+            "total_cache_read_tokens": 40000,
+            "total_cache_creation_tokens": 5000,
+            "cache_hit_ratio": 0.4,
+            "avg_tokens_per_request": 1000.0,
+            "p90_latency_ms": 1250.5,
+            "total_cost_usd": "0.150000000000",
+        },
+        "series": [
+            {
+                "timestamp_ms": 1731801600000,
+                "time_label": "10/01 08:00",
+                "requests": 150,
+                "errors": 2,
+                "latency_p50_ms": 620.0,
+                "latency_p90_ms": 1250.5,
+                "latency_p99_ms": 2500.0,
+                "input_tokens": 100000,
+                "output_tokens": 50000,
+                "total_tokens": 150000,
+                "cache_read_tokens": 40000,
+                "cache_creation_tokens": 5000,
+                "tokens_per_request": 1000.0,
+                "cost_usd": "0.150000000000",
+            }
+        ],
+        "breakdown": [
+            {
+                "key": "deepseek-v4.1-flash",
+                "requests": 150,
+                "total_tokens": 150000,
+                "cost_usd": "0.150000000000",
+            }
+        ],
+    }
+    env.upstream.usage_analytics.side_effect = lambda *a, **k: mock_payload
+
+    async def verify():
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://api"
+        ) as client:
+            # 1. Platform Gateway Series
+            res = await client.get(
+                "/api/usage/gateway/series",
+                params={"from": FROM, "to": TO, "bucket_seconds": "300"},
+            )
+            assert res.status_code == 200
+            assert res.headers["cache-control"] == "no-store"
+            data = res.json()
+            validated = GatewaySeriesV1.model_validate(data)
+            assert validated.summary.total_requests == 150
+            assert len(validated.series) == 1
+            assert validated.series[0].tokens_per_request == 1000.0
+
+            # 2. Project Gateway Series
+            proj_res = await client.get(
+                f"/api/projects/{env.project}/usage/gateway/series",
+                params={"from": FROM, "to": TO, "bucket_seconds": "300"},
+            )
+            assert proj_res.status_code == 200
+            proj_data = proj_res.json()
+            proj_val = GatewaySeriesV1.model_validate(proj_data)
+            assert proj_val.scope.kind == "project"
+
+            # 3. Bad request with invalid bucket_seconds
+            bad = await client.get(
+                "/api/usage/gateway/series",
+                params={"from": FROM, "to": TO, "bucket_seconds": "not_an_int"},
+            )
+            assert bad.status_code == 400
+
+    asyncio.run(verify())

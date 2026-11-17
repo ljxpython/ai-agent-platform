@@ -5,7 +5,14 @@ from math import isclose
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    model_validator,
+)
 
 from platform_api.core.errors import BadRequestError
 from platform_api.modules.runtime_gateway.application.usage import (
@@ -408,6 +415,181 @@ def empty_dashboard(query, request_id):
                 "last_recorded_at": None,
                 "excluded_operations": metric["coverage"]["excluded_operations"],
             },
+            "request_id": request_id,
+        }
+    )
+
+
+class GatewaySeriesQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    start: AwareDatetime = Field(alias="from")
+    end: AwareDatetime = Field(alias="to")
+    timezone: Literal["UTC", "Asia/Shanghai"] = "Asia/Shanghai"
+    bucket_seconds: Annotated[int, Field(ge=10, le=86400 * 7)] = 300
+    status: Literal["all", "ok", "error", "rate_limit"] = "all"
+    model_id: UUID | None = None
+    model_mapping: Literal["unmapped"] | None = None
+    agent_id: UUID | None = None
+    graph_id: str | None = None
+    purpose: (
+        Literal["agent", "summarization", "memory_extraction", "vision", "other"] | None
+    ) = None
+    scope: Literal["primary", "subagent", "auxiliary"] | None = None
+
+    @model_validator(mode="after")
+    def check_range(self):
+        if any(
+            v.utcoffset() != timedelta(0) for v in (self.start, self.end)
+        ) or not timedelta(0) < self.end - self.start <= timedelta(days=90):
+            raise ValueError("Window must be in UTC and between 0 and 90 days")
+        diff = self.end - self.start
+        if diff.total_seconds() / self.bucket_seconds > 1000:
+            raise ValueError(
+                "Too many buckets; increase bucket_seconds or narrow window"
+            )
+        if self.model_id and self.model_mapping:
+            raise ValueError("Conflicting model filters")
+        return self
+
+
+class GatewayMetricPoint(UsageFields):
+    timestamp_ms: int
+    time_label: str
+    requests: int
+    errors: int
+    latency_p50_ms: float | None = None
+    latency_p90_ms: float | None = None
+    latency_p99_ms: float | None = None
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    cache_read_tokens: int
+    cache_creation_tokens: int
+    tokens_per_request: float | None = None
+    cost_usd: str
+
+
+class GatewayModelBreakdownItem(UsageFields):
+    key: str
+    requests: int
+    total_tokens: int
+    cost_usd: str
+
+
+class GatewaySummary(UsageFields):
+    total_requests: int
+    total_errors: int
+    error_rate: float
+    total_tokens: int
+    total_input_tokens: int
+    total_output_tokens: int
+    total_cache_read_tokens: int
+    total_cache_creation_tokens: int
+    cache_hit_ratio: float | None = None
+    avg_tokens_per_request: float | None = None
+    p90_latency_ms: float | None = None
+    total_cost_usd: str
+
+
+class GatewayWindow(UsageFields):
+    start: AwareDatetime = Field(alias="from")
+    end: AwareDatetime = Field(alias="to")
+    timezone: Literal["UTC", "Asia/Shanghai"]
+    bucket_seconds: int
+    time_basis: Literal["model_call_started_at"] = "model_call_started_at"
+
+
+class GatewaySeriesV1(UsageFields):
+    version: Literal[1] = 1
+    as_of: AwareDatetime
+    window: GatewayWindow
+    scope: DashboardScope
+    summary: GatewaySummary
+    series: list[GatewayMetricPoint]
+    breakdown: list[GatewayModelBreakdownItem]
+    request_id: str | None = None
+
+
+def parse_gateway_query(params, *, platform: bool = False):
+    allowed = {
+        "from",
+        "to",
+        "timezone",
+        "bucket_seconds",
+        "status",
+        "model_id",
+        "model_mapping",
+        "agent_id",
+        "graph_id",
+        "purpose",
+        "scope",
+        "project_ids",
+    }
+    for key in params.keys():
+        if key not in allowed or (not platform and key == "project_ids"):
+            raise BadRequestError(
+                code="invalid_usage_analytics_query",
+                message="Unsupported or repeated usage parameter",
+            )
+    try:
+        if "bucket_seconds" in params and (
+            not params["bucket_seconds"].isascii()
+            or not params["bucket_seconds"].isdecimal()
+        ):
+            raise ValueError("Invalid integer bucket_seconds")
+        for key in ("from", "to"):
+            if key in params and "T" not in params[key]:
+                raise ValueError("ISO timestamp required")
+        raw_query = {key: params[key] for key in params.keys() if key != "project_ids"}
+        query = GatewaySeriesQuery.model_validate(raw_query)
+    except (ValidationError, ValueError) as exc:
+        raise BadRequestError(
+            code="invalid_usage_analytics_query",
+            message="Invalid gateway usage query parameters",
+        ) from exc
+    requested = (
+        [UUID(p) for p in params.getlist("project_ids")]
+        if platform and "project_ids" in params
+        else []
+        if platform
+        else None
+    )
+    return query, requested
+
+
+def empty_gateway_series(query: GatewaySeriesQuery, request_id: str) -> GatewaySeriesV1:
+    return GatewaySeriesV1.model_validate(
+        {
+            "version": 1,
+            "as_of": datetime.now(UTC),
+            "window": {
+                "from": query.start,
+                "to": query.end,
+                "timezone": query.timezone,
+                "bucket_seconds": query.bucket_seconds,
+                "time_basis": "model_call_started_at",
+            },
+            "scope": {
+                "kind": "platform",
+                "project_ids": [],
+                "covered_project_count": 0,
+            },
+            "summary": {
+                "total_requests": 0,
+                "total_errors": 0,
+                "error_rate": 0.0,
+                "total_tokens": 0,
+                "total_input_tokens": 0,
+                "total_output_tokens": 0,
+                "total_cache_read_tokens": 0,
+                "total_cache_creation_tokens": 0,
+                "cache_hit_ratio": None,
+                "avg_tokens_per_request": None,
+                "p90_latency_ms": None,
+                "total_cost_usd": "0.000000000000",
+            },
+            "series": [],
+            "breakdown": [],
             "request_id": request_id,
         }
     )

@@ -255,3 +255,58 @@ def test_frozen_hmac_vector_matches_runtime_verifier(monkeypatch):
                 assert response.status_code == 200
 
     asyncio.run(verify())
+
+
+def test_gateway_series_endpoint_authenticated(monkeypatch):
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", SECRET)
+    app = FastAPI()
+    app.include_router(router)
+    gw_path = "/internal/usage/gateway/series"
+    gw_body = {
+        "version": 1,
+        "actor_id": "actor",
+        "tenant_id": "analytics-test",
+        "project_ids": ["10000000-0000-0000-0000-000000000001"],
+        "request_id": "request",
+        "from": "2026-10-01T00:00:00Z",
+        "to": "2026-10-01T01:00:00Z",
+        "bucket_seconds": 60,
+    }
+
+    async def verify():
+        body = json.dumps(gw_body).encode()
+        with patch(
+            "runtime_service.http.usage_analytics.query_gateway_series",
+            AsyncMock(return_value={"version": 1, "points": []}),
+        ) as execute:
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://runtime"
+            ) as client:
+                good = await client.post(
+                    gw_path, content=body, headers=signed(body, path=gw_path)
+                )
+                assert (
+                    good.status_code == 200
+                    and good.headers["cache-control"] == "no-store"
+                )
+                assert good.json() == {"version": 1, "points": []}
+                execute.assert_awaited_once()
+
+    asyncio.run(verify())
+
+
+def test_authenticate_ingress_allows_gateway_series():
+    async def verify():
+        headers = {
+            b"x-usage-query-timestamp": b"1234567890",
+            b"x-usage-query-signature": b"sha256=" + b"a" * 64,
+        }
+        user = await authenticate_ingress(
+            authorization=None,
+            path="/internal/usage/gateway/series",
+            method="POST",
+            headers=headers,
+        )
+        assert user["identity"] == "usage-query-ingress"
+
+    asyncio.run(verify())

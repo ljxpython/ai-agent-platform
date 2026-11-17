@@ -8,8 +8,10 @@ from platform_api.adapters.langgraph.runtime_gateway_upstream import (
 )
 from platform_api.core.errors import BadRequestError
 from platform_api.modules.usage_analytics.contracts import (
+    GatewaySeriesV1,
     UsageDashboardV1,
     UsageRunPageV1,
+    parse_gateway_query,
     parse_query,
 )
 from platform_api.modules.usage_analytics.service import UsageAnalyticsService
@@ -102,4 +104,66 @@ async def project_runs(
     project_id, query, _ = _query(request, response, project_id=project_id, runs=True)
     return await service.runs(
         context=request.state.platform_context, project_id=project_id, query=query
+    )
+
+
+def _gateway_query(request, response, *, project_id=None):
+    response.headers["Cache-Control"] = "no-store"
+    if any(key.startswith("x-usage-query-") for key in request.headers):
+        raise BadRequestError(
+            code="invalid_usage_analytics_query",
+            message="Internal usage headers are not public parameters",
+        )
+    if project_id is not None:
+        try:
+            project_id = str(UUID(project_id))
+        except ValueError as exc:
+            raise BadRequestError(
+                code="invalid_usage_analytics_query",
+                message="Invalid project identifier",
+            ) from exc
+    query, requested = parse_gateway_query(
+        request.query_params, platform=project_id is None
+    )
+    request.state.audit_metadata = {
+        "usage_from": query.start.isoformat(),
+        "usage_to": query.end.isoformat(),
+        "usage_bucket_seconds": query.bucket_seconds,
+        "usage_project_count": 1 if project_id else len(requested) if requested else 0,
+    }
+    return project_id, query, requested
+
+
+@router.get("/usage/gateway/series", response_model=GatewaySeriesV1)
+async def platform_gateway_series(
+    request: Request, response: Response, service=Depends(get_usage_service)
+):
+    _, query, requested = _gateway_query(request, response)
+    result = await service.gateway_series(
+        context=request.state.platform_context,
+        project_id=None,
+        requested=requested,
+        query=query,
+    )
+    request.state.audit_metadata["usage_project_count"] = (
+        result.scope.covered_project_count
+    )
+    return result
+
+
+@router.get(
+    "/projects/{project_id}/usage/gateway/series", response_model=GatewaySeriesV1
+)
+async def project_gateway_series(
+    project_id: str,
+    request: Request,
+    response: Response,
+    service=Depends(get_usage_service),
+):
+    verified_id, query, _ = _gateway_query(request, response, project_id=project_id)
+    return await service.gateway_series(
+        context=request.state.platform_context,
+        project_id=verified_id,
+        requested=[verified_id],
+        query=query,
     )
