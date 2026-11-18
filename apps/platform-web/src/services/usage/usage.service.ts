@@ -2,10 +2,13 @@ import { platformHttpClient } from "@/services/http/client";
 import {
   UsageDashboardV1Schema,
   UsageRunPageV1Schema,
+  GatewaySeriesV1Schema,
   type UsageDashboardV1,
   type UsageRunPageV1,
+  type GatewaySeriesV1,
   type DashboardQueryParams,
   type RunsQueryParams,
+  type GatewaySeriesQueryParams,
 } from "@/modules/usage/types";
 import { extractPlatformHttpError } from "@/utils/http-error";
 
@@ -209,6 +212,104 @@ export async function getProjectUsageRuns(
     if (options.signal?.aborted) throw error;
     const fields = extractPlatformHttpError(error, "获取运行明细分页失败");
     const enhancedError = new Error(fields.message || "获取运行明细分页失败");
+    Object.assign(enhancedError, fields);
+    throw enhancedError;
+  }
+}
+
+/**
+ * 构造网关时序看板白名单参数
+ */
+function buildGatewaySeriesParams(
+  raw: GatewaySeriesQueryParams,
+): Record<string, unknown> {
+  const params: Record<string, unknown> = {
+    from: raw.from,
+    to: raw.to,
+  };
+  if (raw.timezone) params.timezone = raw.timezone;
+  if (raw.bucket_seconds) params.bucket_seconds = raw.bucket_seconds;
+  if (raw.status) params.status = raw.status;
+  if (raw.project_ids && raw.project_ids.length > 0) {
+    params.project_ids = raw.project_ids;
+  }
+  if (raw.model_id) params.model_id = raw.model_id;
+  if (raw.model_mapping) params.model_mapping = raw.model_mapping;
+  if (raw.agent_id) params.agent_id = raw.agent_id;
+  if (raw.graph_id) params.graph_id = raw.graph_id;
+  if (raw.purpose) params.purpose = raw.purpose;
+  if (raw.scope) params.scope = raw.scope;
+  return params;
+}
+
+/**
+ * 获取平台级网关监控时序聚合
+ */
+export async function getPlatformGatewaySeries(
+  queryParams: GatewaySeriesQueryParams,
+  options: RequestOptions = {},
+): Promise<GatewaySeriesV1> {
+  const params = buildGatewaySeriesParams(queryParams);
+  try {
+    const response = await platformHttpClient.get<unknown>(
+      "/api/usage/gateway/series",
+      {
+        params,
+        paramsSerializer: serializeParams,
+        signal: options.signal,
+      },
+    );
+    const parsed = GatewaySeriesV1Schema.safeParse(response.data);
+    if (!parsed.success) {
+      throw Object.assign(
+        new Error(`网关时序看板响应结构校验失败: ${parsed.error.message}`),
+        { code: "invalid_gateway_series_dto" },
+      );
+    }
+    return parsed.data;
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    const fields = extractPlatformHttpError(error, "获取网关时序统计失败");
+    const enhancedError = new Error(fields.message || "获取网关时序统计失败");
+    Object.assign(enhancedError, fields);
+    throw enhancedError;
+  }
+}
+
+/**
+ * 获取项目级网关监控时序聚合
+ */
+export async function getProjectGatewaySeries(
+  projectId: string,
+  queryParams: GatewaySeriesQueryParams,
+  options: RequestOptions = {},
+): Promise<GatewaySeriesV1> {
+  const trimmedProjectId = (projectId || "").trim();
+  if (!trimmedProjectId) {
+    throw new Error("projectId 不能为空");
+  }
+  const params = buildGatewaySeriesParams(queryParams);
+  try {
+    const url = `/api/projects/${encodeURIComponent(trimmedProjectId)}/usage/gateway/series`;
+    const response = await platformHttpClient.get<unknown>(url, {
+      params,
+      paramsSerializer: serializeParams,
+      signal: options.signal,
+    });
+    const parsed = GatewaySeriesV1Schema.safeParse(response.data);
+    if (!parsed.success) {
+      throw Object.assign(
+        new Error(`项目网关时序看板响应结构校验失败: ${parsed.error.message}`),
+        { code: "invalid_gateway_series_dto" },
+      );
+    }
+    return parsed.data;
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    const fields = extractPlatformHttpError(error, "获取项目网关时序统计失败");
+    const enhancedError = new Error(
+      fields.message || "获取项目网关时序统计失败",
+    );
     Object.assign(enhancedError, fields);
     throw enhancedError;
   }

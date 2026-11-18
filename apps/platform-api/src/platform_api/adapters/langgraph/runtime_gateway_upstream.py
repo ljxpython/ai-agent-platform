@@ -15,7 +15,9 @@ from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 
 
 class LangGraphRuntimeGatewayUpstream:
-    async def usage_analytics(self, payload: dict, *, secret: str, runs: bool = False):
+    async def usage_analytics(
+        self, payload: dict, *, secret: str, runs: bool = False, path: str | None = None
+    ):
         import hashlib
         import hmac
         import json
@@ -27,7 +29,8 @@ class LangGraphRuntimeGatewayUpstream:
                 status_code=503,
                 message="Usage query authentication is not configured",
             )
-        path = "/internal/usage/runs/query" if runs else "/internal/usage/aggregate"
+        if path is None:
+            path = "/internal/usage/runs/query" if runs else "/internal/usage/aggregate"
         body = json.dumps(
             payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode()

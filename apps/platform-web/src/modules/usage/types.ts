@@ -234,3 +234,85 @@ export interface RunsQueryParams {
   limit?: number;
   cursor?: string | null;
 }
+
+// --- 网关时序看板（Gateway Usage Analytics）结构契约 ---
+
+export const GatewayMetricPointSchema = z.object({
+  timestamp_ms: z.number(),
+  time_label: z.string(),
+  requests: z.number(),
+  errors: z.number(),
+  latency_p50_ms: z.number().nullable().optional(),
+  latency_p90_ms: z.number().nullable().optional(),
+  latency_p99_ms: z.number().nullable().optional(),
+  input_tokens: z.number(),
+  output_tokens: z.number(),
+  total_tokens: z.number(),
+  cache_read_tokens: z.number(),
+  cache_creation_tokens: z.number(),
+  tokens_per_request: z.number().nullable().optional(),
+  cost_usd: z.string(),
+});
+export type GatewayMetricPoint = z.infer<typeof GatewayMetricPointSchema>;
+
+export const GatewayModelBreakdownItemSchema = z.object({
+  key: z.string(),
+  requests: z.number(),
+  total_tokens: z.number(),
+  cost_usd: z.string(),
+});
+export type GatewayModelBreakdownItem = z.infer<
+  typeof GatewayModelBreakdownItemSchema
+>;
+
+export const GatewaySummarySchema = z.object({
+  total_requests: z.number(),
+  total_errors: z.number(),
+  error_rate: z.number(),
+  total_tokens: z.number(),
+  total_input_tokens: z.number(),
+  total_output_tokens: z.number(),
+  total_cache_read_tokens: z.number(),
+  total_cache_creation_tokens: z.number(),
+  cache_hit_ratio: z.number().nullable().optional(),
+  avg_tokens_per_request: z.number().nullable().optional(),
+  p90_latency_ms: z.number().nullable().optional(),
+  total_cost_usd: z.string(),
+});
+export type GatewaySummary = z.infer<typeof GatewaySummarySchema>;
+
+export const GatewayWindowSchema = z.object({
+  from: z.string(),
+  to: z.string(),
+  timezone: z.enum(["UTC", "Asia/Shanghai"]),
+  bucket_seconds: z.number(),
+  time_basis: z.literal("model_call_started_at"),
+});
+export type GatewayWindow = z.infer<typeof GatewayWindowSchema>;
+
+export const GatewaySeriesV1Schema = z.object({
+  version: z.literal(1),
+  as_of: z.string(),
+  window: GatewayWindowSchema,
+  scope: DashboardScopeSchema,
+  summary: GatewaySummarySchema,
+  series: z.array(GatewayMetricPointSchema),
+  breakdown: z.array(GatewayModelBreakdownItemSchema),
+  request_id: z.string().nullable().optional(),
+});
+export type GatewaySeriesV1 = z.infer<typeof GatewaySeriesV1Schema>;
+
+export interface GatewaySeriesQueryParams {
+  from: string;
+  to: string;
+  timezone?: Timezone;
+  bucket_seconds?: number;
+  status?: "all" | "ok" | "error" | "rate_limit";
+  project_ids?: string[];
+  model_id?: string;
+  model_mapping?: "unmapped";
+  agent_id?: string;
+  graph_id?: string;
+  purpose?: CallPurpose;
+  scope?: CallScope;
+}

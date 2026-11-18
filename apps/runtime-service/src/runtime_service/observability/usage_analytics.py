@@ -113,6 +113,21 @@ class AggregateQuery(AnalyticsQuery):
         return self
 
 
+class GatewaySeriesQuery(AnalyticsQuery):
+    timezone: Literal["UTC", "Asia/Shanghai"] = "Asia/Shanghai"
+    bucket_seconds: Annotated[int, Field(strict=True, ge=10, le=86400 * 7)] = 300
+    status: Literal["all", "ok", "error", "rate_limit"] = "all"
+
+    @model_validator(mode="after")
+    def check_buckets(self):
+        duration = (self.end - self.start).total_seconds()
+        if duration / self.bucket_seconds > 1000:
+            raise ValueError(
+                "Too many buckets; increase bucket_seconds or narrow window"
+            )
+        return self
+
+
 class RunPosition(BaseModel):
     model_config = ConfigDict(extra="forbid")
     at: datetime
@@ -349,3 +364,9 @@ async def query_runs(query):
         "as_of": facts["as_of"].isoformat(),
         "request_id": query.request_id,
     }
+
+
+async def query_gateway_series(query):
+    from runtime_service.db.repositories.usage_analytics import aggregate_gateway_series
+
+    return await _read(aggregate_gateway_series, query)
