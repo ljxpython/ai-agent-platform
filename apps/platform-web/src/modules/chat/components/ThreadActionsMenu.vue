@@ -12,6 +12,7 @@ const props = withDefaults(
     offloadDisabledReason?: string;
     canEvaluation?: boolean;
     canPickEvaluation?: boolean;
+    evaluationUnavailableReason?: string;
   }>(),
   {
     focusMode: false,
@@ -22,6 +23,7 @@ const props = withDefaults(
     offloadDisabledReason: "",
     canEvaluation: false,
     canPickEvaluation: false,
+    evaluationUnavailableReason: "",
   },
 );
 
@@ -163,9 +165,19 @@ function handleAction(
           </button>
 
           <div
-            v-if="canEvaluation || canPickEvaluation"
+            v-if="
+              canEvaluation || canPickEvaluation || evaluationUnavailableReason
+            "
             class="my-1 border-t border-gray-100 dark:border-dark-800"
           />
+
+          <p
+            v-if="evaluationUnavailableReason"
+            role="status"
+            class="px-3 py-2 text-xs text-gray-500"
+          >
+            {{ evaluationUnavailableReason }}
+          </p>
 
           <button
             v-if="canEvaluation"

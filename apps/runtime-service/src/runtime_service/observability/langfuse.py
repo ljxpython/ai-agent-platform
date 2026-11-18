@@ -597,9 +597,7 @@ def with_langfuse_tracing(
         is_mlflow_enabled,
     )
 
-    # Assistant material stays in the revocable Runtime store, never a shared trace project.
-    export_content = graph_id != "evaluation_assistant"
-    if export_content and is_langfuse_enabled():
+    if is_langfuse_enabled():
         try:
             callback = (
                 _new_callback(trace_context={"trace_id": trace_id})
@@ -613,7 +611,7 @@ def with_langfuse_tracing(
         except Exception as error:
             _record_export_error(error)
 
-    if export_content and is_mlflow_enabled():
+    if is_mlflow_enabled():
         mlflow_cb = create_mlflow_callback(
             graph_id=graph_id,
             bound_metadata=bound_metadata,

@@ -183,20 +183,6 @@ def revoke_grant(factory, actor, project_id, grant_id):
         return {"grant_id": str(grant_id), "status": "revoked"}
 
 
-def bind_assistant_thread(factory, project_id, grant_ids, thread_id):
-    from platform_api.modules.evaluation.service import _authorized_package
-
-    with session_scope(factory) as session:
-        lock_packages(session, grant_ids)
-        for grant_id in grant_ids:
-            _authorized_package(session, project_id, grant_id)
-            grant = session.get(EvaluationExport, str(grant_id))
-            threads = list(grant.receipt.get("assistant_threads", []))
-            if thread_id not in threads:
-                threads.append(thread_id)
-            grant.receipt = {**grant.receipt, "assistant_threads": threads}
-
-
 def bind_execution_thread(factory, project_id, grants, thread_id, agent_id, graph_id):
     """Bind before sending any fixture or input to the evaluated Agent."""
     from platform_api.modules.evaluation.service import _authorized_package

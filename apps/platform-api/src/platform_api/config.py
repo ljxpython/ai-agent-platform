@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     evaluation_inspection_budget_version: str = ""
     evaluation_project_id: str = ""
     evaluation_receiver_url: str = ""
+    evaluation_receiver_allowed_origins: tuple[str, ...] = ()
     evaluation_web_url: str = ""
     evaluation_receiver_username: str = ""
     evaluation_receiver_password: str = ""

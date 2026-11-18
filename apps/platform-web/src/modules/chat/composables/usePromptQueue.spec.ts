@@ -52,14 +52,22 @@ describe("usePromptQueue", () => {
 
     // move B up -> should be [B, A, C]
     expect(moveUp(1)).toBe(true);
-    expect(queue.value.map((i) => i.content)).toEqual(["Task B", "Task A", "Task C"]);
+    expect(queue.value.map((i) => i.content)).toEqual([
+      "Task B",
+      "Task A",
+      "Task C",
+    ]);
 
     // move first item up -> invalid
     expect(moveUp(0)).toBe(false);
 
     // move B down -> should be [A, B, C]
     expect(moveDown(0)).toBe(true);
-    expect(queue.value.map((i) => i.content)).toEqual(["Task A", "Task B", "Task C"]);
+    expect(queue.value.map((i) => i.content)).toEqual([
+      "Task A",
+      "Task B",
+      "Task C",
+    ]);
 
     // move last item down -> invalid
     expect(moveDown(2)).toBe(false);

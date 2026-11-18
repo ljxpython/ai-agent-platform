@@ -195,4 +195,16 @@ describe("ThreadActionsMenu", () => {
     await pickItem?.trigger("click");
     expect(wrapper.emitted("pick-evaluation")).toBeDefined();
   });
+
+  it("shows the unavailable reason without conversion actions", async () => {
+    const wrapper = mount(ThreadActionsMenu, {
+      props: { evaluationUnavailableReason: "当前项目未启用评测集转换。" },
+      global: { stubs: { BaseIcon: true, Teleport: true } },
+    });
+    await wrapper.get('button[aria-label="更多操作"]').trigger("click");
+    expect(wrapper.get('[role="status"]').text()).toContain("未启用评测集转换");
+    expect(wrapper.text()).not.toContain("转为评测集");
+    expect(wrapper.text()).not.toContain("从历史会话建评测集");
+    wrapper.unmount();
+  });
 });

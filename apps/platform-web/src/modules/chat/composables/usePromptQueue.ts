@@ -6,7 +6,9 @@ export interface QueuedPromptItem {
   createdAt: number;
 }
 
-export function usePromptQueue(storageKeyRef?: Ref<string> | ComputedRef<string>) {
+export function usePromptQueue(
+  storageKeyRef?: Ref<string> | ComputedRef<string>,
+) {
   const queue = ref<QueuedPromptItem[]>([]);
 
   // 从本地存储还原
@@ -18,7 +20,8 @@ export function usePromptQueue(storageKeyRef?: Ref<string> | ComputedRef<string>
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           queue.value = parsed.filter(
-            (item) => item && typeof item.id === "string" && item.content != null,
+            (item) =>
+              item && typeof item.id === "string" && item.content != null,
           );
         }
       }

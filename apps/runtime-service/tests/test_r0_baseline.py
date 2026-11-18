@@ -61,7 +61,6 @@ def test_production_config_registers_model_backed_agents() -> None:
         "workflow_demo",
         "showcase_demo",
         "dearflow_agent",
-        "evaluation_assistant",
         "platform_assistant",
     ]
     assert all(
@@ -84,6 +83,14 @@ def test_production_config_registers_runtime_auth_adapter() -> None:
         },
         "security": [{"RuntimeBearer": []}],
     }
+
+
+def test_tool_catalog_does_not_advertise_retired_evaluation_assistant() -> None:
+    from runtime_service.runtime.capabilities import tool_catalog
+
+    tools = tool_catalog()["tools"]
+    assert tools
+    assert all("evaluation_assistant" not in item["graph_ids"] for item in tools)
 
 
 def test_graph_configs_use_the_runtime_lifespan_app() -> None:
@@ -109,7 +116,6 @@ def test_docker_uses_graphharbor_production_config() -> None:
         "workflow_demo",
         "showcase_demo",
         "dearflow_agent",
-        "evaluation_assistant",
         "platform_assistant",
     ]
 

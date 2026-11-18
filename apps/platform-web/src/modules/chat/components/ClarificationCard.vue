@@ -103,11 +103,7 @@ function handleSubmit() {
     </div>
 
     <!-- Fields Form -->
-    <form
-      v-else
-      class="mt-4 space-y-3.5"
-      @submit.prevent="handleSubmit"
-    >
+    <form v-else class="mt-4 space-y-3.5" @submit.prevent="handleSubmit">
       <div
         v-for="field in clarification.request.fields"
         :key="field.name"
@@ -116,7 +112,8 @@ function handleSubmit() {
         <label
           v-if="
             field.type !== 'checkbox' &&
-            (clarification.request.fields.length > 1 || field.label !== clarification.request.question)
+            (clarification.request.fields.length > 1 ||
+              field.label !== clarification.request.question)
           "
           :for="'field-' + field.name"
           class="flex items-center text-xs font-medium text-zinc-700 dark:text-zinc-300"
@@ -200,7 +197,9 @@ function handleSubmit() {
 
         <!-- 5. Checkbox Field -->
         <div v-else-if="field.type === 'checkbox'" class="pt-1 pb-1">
-          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <label
+            class="inline-flex items-center gap-2 cursor-pointer select-none"
+          >
             <input
               :id="'field-' + field.name"
               v-model="formValues[field.name]"
@@ -231,22 +230,30 @@ function handleSubmit() {
               :disabled="submitting"
               class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-medium transition-all select-none"
               :class="[
-                Array.isArray(formValues[field.name]) && (formValues[field.name] as string[]).includes(opt.value)
+                Array.isArray(formValues[field.name]) &&
+                (formValues[field.name] as string[]).includes(opt.value)
                   ? 'border-amber-500 bg-amber-50 text-amber-900 shadow-sm dark:border-amber-600 dark:bg-amber-950/50 dark:text-amber-200 ring-1 ring-amber-500/30'
                   : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700/60',
-                submitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                submitting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer',
               ]"
               @click="toggleMultiSelect(field.name, opt.value)"
             >
               <span
                 class="flex h-4 w-4 items-center justify-center rounded border text-[10px]"
                 :class="[
-                  Array.isArray(formValues[field.name]) && (formValues[field.name] as string[]).includes(opt.value)
+                  Array.isArray(formValues[field.name]) &&
+                  (formValues[field.name] as string[]).includes(opt.value)
                     ? 'border-amber-600 bg-amber-600 text-white dark:border-amber-500 dark:bg-amber-500'
-                    : 'border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-700'
+                    : 'border-zinc-300 bg-white dark:border-zinc-600 dark:bg-zinc-700',
                 ]"
               >
-                <span v-if="Array.isArray(formValues[field.name]) && (formValues[field.name] as string[]).includes(opt.value)">✓</span>
+                <span
+                  v-if="
+                    Array.isArray(formValues[field.name]) &&
+                    (formValues[field.name] as string[]).includes(opt.value)
+                  "
+                  >✓</span
+                >
               </span>
               <span>{{ opt.label }}</span>
             </button>
@@ -279,7 +286,9 @@ function handleSubmit() {
       </div>
 
       <!-- Action Buttons -->
-      <div class="mt-4 flex items-center justify-end gap-2 pt-1 border-t border-amber-200/50 dark:border-amber-900/40">
+      <div
+        class="mt-4 flex items-center justify-end gap-2 pt-1 border-t border-amber-200/50 dark:border-amber-900/40"
+      >
         <BaseButton
           type="submit"
           size="sm"

@@ -1,7 +1,15 @@
 import { shallowReactive } from "vue";
-import { createPinia, defineStore, getActivePinia, setActivePinia } from "pinia";
+import {
+  createPinia,
+  defineStore,
+  getActivePinia,
+  setActivePinia,
+} from "pinia";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { ChatCheckpoint, ChatThread } from "@/services/threads/session.service";
+import type {
+  ChatCheckpoint,
+  ChatThread,
+} from "@/services/threads/session.service";
 
 export interface SessionCacheEntry {
   threadId: string;
@@ -59,7 +67,10 @@ const useChatSessionStoreDef = defineStore("chat-session-cache", () => {
     return created;
   }
 
-  function getSession(projectId: string, threadId?: string | null): SessionCacheEntry | undefined {
+  function getSession(
+    projectId: string,
+    threadId?: string | null,
+  ): SessionCacheEntry | undefined {
     if (!projectId || !threadId) return undefined;
     return sessions.get(makeKey(projectId, threadId));
   }
@@ -163,4 +174,3 @@ export function useChatSessionStore() {
   }
   return useChatSessionStoreDef();
 }
-

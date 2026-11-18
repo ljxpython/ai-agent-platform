@@ -35,7 +35,9 @@ it("keeps unchanged decisions, resets changed requests and removes departed requ
 
   // 点击第二个 review 的批准药丸
   await approvePills[1].trigger("click");
-  expect(wrapper.findAll('[data-action="approve"]')[1].classes()).toContain("border-emerald-500");
+  expect(wrapper.findAll('[data-action="approve"]')[1].classes()).toContain(
+    "border-emerald-500",
+  );
 
   // 修改第一个 review 的参数触发重置
   await wrapper.setProps({ reviews: [review("a", "/changed"), second] });
@@ -140,4 +142,3 @@ it("renders write_file preview with content and path", async () => {
   expect(wrapper.text()).toContain("文件内容预览");
   expect(wrapper.text()).toContain("import csv\nprint('hello')");
 });
-

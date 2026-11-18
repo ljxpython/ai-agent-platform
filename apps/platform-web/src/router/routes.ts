@@ -4,9 +4,9 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: "projects/:projectId/evaluation",
     name: "workspace-evaluation",
-    component: () => import("@/modules/evaluation/EvaluationPage.vue"),
+    component: () => import("@/modules/evaluation/EvaluationMovedPage.vue"),
     meta: {
-      title: "评测与改进",
+      title: "评测入口已迁移",
       requiredPermissions: ["project.evaluation.read"],
       permissionProjectSource: "route",
     },
@@ -24,9 +24,9 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: "projects/:projectId/evaluation/:itemId",
     name: "workspace-evaluation-detail",
-    component: () => import("@/modules/evaluation/EvaluationDetail.vue"),
+    component: () => import("@/modules/evaluation/EvaluationMovedPage.vue"),
     meta: {
-      title: "改进工作项",
+      title: "评测入口已迁移",
       requiredPermissions: ["project.evaluation.read"],
       permissionProjectSource: "route",
     },
@@ -399,7 +399,8 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: {
       title: "Token 看板",
       eyebrow: "Projects",
-      requiredPermissions: ["project.usage.read"],
+      permissionMode: "any",
+      requiredPermissions: ["project.usage.read", "platform.usage.read"],
       permissionProjectSource: "route",
     },
   },
@@ -419,11 +420,6 @@ const navigation: Record<
   "workspace-projects": { group: "工作区", label: "项目", icon: "folder" },
   "workspace-agents": { group: "项目管理", label: "Agents", icon: "assistant" },
   "workspace-chat": { group: "项目管理", label: "Chat", icon: "chat" },
-  "workspace-evaluation": {
-    group: "项目管理",
-    label: "评测与改进",
-    icon: "activity",
-  },
   "workspace-dear-agent": {
     group: "Dear Agent",
     label: "对话工作台",
@@ -506,11 +502,6 @@ const navigation: Record<
     group: "平台管理",
     label: "链路诊断",
     icon: "search",
-  },
-  "workspace-usage": {
-    group: "平台管理",
-    label: "Token 看板",
-    icon: "activity",
   },
   "workspace-project-usage": {
     group: "项目管理",

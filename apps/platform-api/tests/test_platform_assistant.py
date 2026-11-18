@@ -5,8 +5,8 @@ from types import SimpleNamespace as NS
 from uuid import UUID, uuid4
 
 import pytest
+from evaluation_fixtures import setup as setup_fixture
 from sqlalchemy import select
-from test_evaluation_feedback import setup as setup_fixture
 
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext

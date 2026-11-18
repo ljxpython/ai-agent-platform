@@ -44,27 +44,6 @@ def test_enabled_requires_complete_settings(monkeypatch: pytest.MonkeyPatch) -> 
         langfuse.initialize_langfuse()
 
 
-def test_evaluation_assistant_does_not_export_material_to_shared_tracing(monkeypatch):
-    from unittest.mock import Mock
-
-    from runtime_service.observability import mlflow_tracer
-
-    monkeypatch.setattr(mlflow_tracer, "is_langfuse_enabled", lambda: True)
-    monkeypatch.setattr(mlflow_tracer, "is_mlflow_enabled", lambda: True)
-    langfuse_export = Mock(side_effect=AssertionError("shared content export"))
-    mlflow_export = Mock(side_effect=AssertionError("shared content export"))
-    monkeypatch.setattr(langfuse, "_new_callback", langfuse_export)
-    monkeypatch.setattr(mlflow_tracer, "create_mlflow_callback", mlflow_export)
-    graph = _Graph()
-    langfuse.with_langfuse_tracing(graph, {}, graph_id="evaluation_assistant")
-    langfuse_export.assert_not_called()
-    mlflow_export.assert_not_called()
-    assert any(
-        type(cb).__name__ == "_RuntimeDiagnosticsCallback"
-        for cb in graph.bound["callbacks"]
-    )
-
-
 def test_initialize_reuses_process_client(monkeypatch: pytest.MonkeyPatch) -> None:
     client = object()
     monkeypatch.setattr(langfuse, "_client", client)

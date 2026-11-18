@@ -4,10 +4,15 @@ import { createPinia, setActivePinia } from "pinia";
 import UsageDashboardPage from "./UsageDashboardPage.vue";
 
 // Mock vue-router
+const mockRouterReplace = vi.fn();
 vi.mock("vue-router", () => ({
   useRoute: () => ({
-    params: { projectId: undefined },
+    params: { projectId: "test-project-123" },
     query: {},
+  }),
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: mockRouterReplace,
   }),
 }));
 
@@ -151,5 +156,42 @@ describe("UsageDashboardPage Integration", () => {
     expect(
       wrapper.find('[data-testid="tab-pane-logs"]').attributes("style") || "",
     ).not.toContain("display: none");
+  });
+
+  it("renders scope switch and toggles between project and platform when authorized", async () => {
+    const authStore = (await import("@/stores/auth")).useAuthStore();
+    authStore.user = {
+      id: "admin-1",
+      username: "admin",
+      status: "active",
+      permissions: ["platform.usage.read", "project.usage.read"],
+    } as any;
+
+    const wrapper = mount(UsageDashboardPage, {
+      global: {
+        stubs: {
+          GatewayUsageTab: true,
+          GatewayLogsTable: true,
+          UsageFilterToolbar: true,
+          UsageTrend: true,
+          UsageBreakdown: true,
+          BaseDrawer: true,
+          BaseIcon: true,
+          RunUsage: true,
+        },
+      },
+    });
+
+    // 默认通过 projectId 进入，初始为 project 作用域
+    expect(wrapper.vm.selectedScopeMode).toBe("project");
+
+    // 切换到 platform 全局作用域
+    wrapper.vm.handleSetScopeMode("platform");
+    await flushPromises();
+
+    expect(wrapper.vm.selectedScopeMode).toBe("platform");
+    expect(mockRouterReplace).toHaveBeenCalledWith({
+      query: { scope: "platform" },
+    });
   });
 });

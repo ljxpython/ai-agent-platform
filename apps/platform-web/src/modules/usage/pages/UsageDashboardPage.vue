@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { useRoute } from "vue-router";
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthorization } from "@/composables/useAuthorization";
+import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
 import { useUsageDashboard } from "../composables/useUsageDashboard";
 import { useUsageRuns } from "../composables/useUsageRuns";
 import type {
@@ -28,6 +30,50 @@ import BaseDrawer from "@/components/base/BaseDrawer.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 
 const route = useRoute();
+const router = useRouter();
+const authorization = useAuthorization();
+const { workspaceStore } = useWorkspaceProjectContext();
+
+// 平台用量查看权限 (platform.usage.read)
+const canViewPlatformUsage = computed(() =>
+  authorization.can("platform.usage.read"),
+);
+
+// 当前激活的项目名称
+const currentProjectName = computed(() => {
+  return workspaceStore.currentProject?.name || "当前项目";
+});
+
+// 作用域模式：'project' | 'platform'
+// 初始值：优先取 query.scope，其次若路由无 projectId 则默认 platform，否则 project
+const selectedScopeMode = ref<"project" | "platform">(
+  route.query.scope === "platform" || !route.params.projectId
+    ? "platform"
+    : "project",
+);
+
+// 安全保护：若失去超管权限但处于 platform 模式，强制降级为 project 模式
+watch(
+  canViewPlatformUsage,
+  (canPlatform) => {
+    if (!canPlatform && selectedScopeMode.value === "platform") {
+      selectedScopeMode.value = "project";
+    }
+  },
+  { immediate: true },
+);
+
+// 切换作用域模式
+function handleSetScopeMode(mode: "project" | "platform") {
+  if (mode === "platform" && !canViewPlatformUsage.value) return;
+  selectedScopeMode.value = mode;
+  router.replace({
+    query: {
+      ...route.query,
+      scope: mode === "platform" ? "platform" : undefined,
+    },
+  });
+}
 
 // 当前主 Tab：'gateway' (网关大盘) | 'logs' (调用日志) | 'governance' (历史治理)
 const activeTab = ref<"gateway" | "logs" | "governance">("gateway");
@@ -37,7 +83,13 @@ function setActiveTab(tab: "gateway" | "logs" | "governance") {
   activeTab.value = tab;
 }
 
-defineExpose({ activeTab, setActiveTab });
+defineExpose({
+  activeTab,
+  setActiveTab,
+  canViewPlatformUsage,
+  selectedScopeMode,
+  handleSetScopeMode,
+});
 
 function handleDrilldownToLogs(payload: {
   from: string;
@@ -54,10 +106,18 @@ function handleClearDrilldownRange() {
   loadFirstPage();
 }
 
-// 1. 作用域派生 (严格从路由路径判定，防顶栏项目切换污染)
+// 1. 作用域派生 (响应式驱动网关图表、明细日志与历史治理统计)
 const currentScope = computed(() => {
-  const projectIdParam = route.params.projectId;
-  if (projectIdParam && typeof projectIdParam === "string") {
+  if (selectedScopeMode.value === "platform" && canViewPlatformUsage.value) {
+    return { kind: "platform" as const };
+  }
+  const projectIdParam =
+    (route.params.projectId as string) || authorization.currentProjectId.value;
+  if (
+    projectIdParam &&
+    typeof projectIdParam === "string" &&
+    projectIdParam.trim()
+  ) {
     return { kind: "project" as const, projectId: projectIdParam.trim() };
   }
   return { kind: "platform" as const };
@@ -228,12 +288,99 @@ const runsErrorMessage = computed(() => {
       class="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-5 dark:border-dark-800"
     >
       <div>
-        <div class="flex items-center gap-2.5">
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <h1
             class="text-xl font-bold tracking-tight text-gray-950 dark:text-white"
           >
-            Token 看板 · {{ isPlatformScope ? "平台用量" : "项目用量" }}
+            Token 看板
           </h1>
+
+          <!-- 平台管理员专享：项目/全局 作用域切换分段控件 (Segmented Control) -->
+          <div
+            v-if="canViewPlatformUsage"
+            class="inline-flex items-center rounded-lg bg-gray-100 p-0.5 dark:bg-dark-800 border border-gray-200/80 dark:border-dark-700/80"
+            data-testid="scope-mode-switch"
+          >
+            <button
+              type="button"
+              data-testid="scope-btn-project"
+              class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition"
+              :class="
+                !isPlatformScope
+                  ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-900 dark:text-primary-300'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+              "
+              @click="handleSetScopeMode('project')"
+            >
+              <svg
+                class="h-3.5 w-3.5 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                />
+              </svg>
+              <span
+                class="max-w-[140px] truncate"
+                :title="currentProjectName"
+                >{{ currentProjectName }}</span
+              >
+            </button>
+
+            <button
+              type="button"
+              data-testid="scope-btn-platform"
+              class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition"
+              :class="
+                isPlatformScope
+                  ? 'bg-white text-primary-700 shadow-sm dark:bg-dark-900 dark:text-primary-300'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+              "
+              @click="handleSetScopeMode('platform')"
+            >
+              <svg
+                class="h-3.5 w-3.5 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+              <span>全平台总览 (所有项目)</span>
+            </button>
+          </div>
+
+          <!-- 普通项目成员：静态当前项目 Badge -->
+          <span
+            v-else
+            class="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-dark-800 dark:text-dark-300"
+          >
+            <svg
+              class="h-3.5 w-3.5 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+              />
+            </svg>
+            <span>项目：{{ currentProjectName }}</span>
+          </span>
+
           <span
             class="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium border"
             :class="{
@@ -252,7 +399,17 @@ const runsErrorMessage = computed(() => {
           </span>
         </div>
         <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
-          数据快照时刻：{{ dashboardData?.as_of || "加载中..." }}
+          <span
+            v-if="isPlatformScope"
+            class="font-medium text-primary-600 dark:text-primary-400"
+          >
+            [全局租户汇总] 统计全平台所有租户与项目的统一模型调用开销
+          </span>
+          <span v-else>
+            [单项目视图] 当前正在查看项目「{{ currentProjectName }}」的独立用量
+          </span>
+          <span class="mx-1.5 text-gray-300 dark:text-dark-600">·</span>
+          <span>数据快照时刻：{{ dashboardData?.as_of || "加载中..." }}</span>
         </p>
       </div>
 

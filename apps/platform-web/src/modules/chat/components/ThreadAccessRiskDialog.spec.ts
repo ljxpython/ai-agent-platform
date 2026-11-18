@@ -54,8 +54,8 @@ it("emits close and resets checkbox on cancel", async () => {
     checkbox.dispatchEvent(new Event("change", { bubbles: true }));
     await wrapper.vm.$nextTick();
 
-    const cancelBtn = [...document.querySelectorAll("button")].find(
-      (b) => b.textContent?.includes("取消"),
+    const cancelBtn = [...document.querySelectorAll("button")].find((b) =>
+      b.textContent?.includes("取消"),
     );
     expect(cancelBtn).toBeTruthy();
     cancelBtn!.click();

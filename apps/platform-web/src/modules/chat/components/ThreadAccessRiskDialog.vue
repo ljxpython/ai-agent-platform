@@ -49,7 +49,9 @@ function handleConfirm() {
 <template>
   <BaseDialog
     :show="show"
-    :title="isFullAccess ? '确认启用 Full access？' : '确认切换至「允许工作区操作」'"
+    :title="
+      isFullAccess ? '确认启用 Full access？' : '确认切换至「允许工作区操作」'
+    "
     width="normal"
     @close="handleCancel"
   >
@@ -65,7 +67,8 @@ function handleConfirm() {
           />
           <div class="text-xs leading-5">
             <span class="font-semibold">全权负责模式（Full access）：</span>
-            启用 Full access 后，agent 将减少确认步骤，可以直接执行更多操作，包括敏感操作、文件修改、外部命令或部署。所有工具审批均默认放行，仅建议在你信任当前任务时使用。
+            启用 Full access 后，agent
+            将减少确认步骤，可以直接执行更多操作，包括敏感操作、文件修改、外部命令或部署。所有工具审批均默认放行，仅建议在你信任当前任务时使用。
           </div>
         </div>
       </div>
@@ -81,20 +84,25 @@ function handleConfirm() {
           />
           <div class="text-xs leading-5">
             <span class="font-semibold">受控工作区免审批策略：</span>
-            开启后，Agent 在受控工作区范围内的日常研发操作将不再逐次暂停请求确认，可自主推进多步任务。
+            开启后，Agent
+            在受控工作区范围内的日常研发操作将不再逐次暂停请求确认，可自主推进多步任务。
           </div>
         </div>
       </div>
 
       <div class="space-y-2">
-        <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400">
+        <h4
+          class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-dark-400"
+        >
           受此策略影响的权限边界
         </h4>
         <div
           v-if="isFullAccess"
           class="rounded-lg border border-red-200/80 bg-red-50/40 p-2.5 dark:border-red-900/50 dark:bg-red-950/20"
         >
-          <div class="flex items-center gap-1.5 font-medium text-red-800 dark:text-red-300 text-xs mb-1">
+          <div
+            class="flex items-center gap-1.5 font-medium text-red-800 dark:text-red-300 text-xs mb-1"
+          >
             <BaseIcon
               name="alert"
               size="xs"
@@ -102,20 +110,31 @@ function handleConfirm() {
             />
             <span>全量工具自动放行</span>
           </div>
-          <ul class="text-[11px] text-red-700 dark:text-red-400/90 space-y-0.5 list-disc list-inside">
-            <li>文件创建、编辑与删除 (<code class="font-mono">write_file</code>, <code class="font-mono">edit_file</code>)</li>
+          <ul
+            class="text-[11px] text-red-700 dark:text-red-400/90 space-y-0.5 list-disc list-inside"
+          >
+            <li>
+              文件创建、编辑与删除 (<code class="font-mono">write_file</code>,
+              <code class="font-mono">edit_file</code>)
+            </li>
             <li>终端所有命令执行 (<code class="font-mono">execute</code>)</li>
-            <li>预览部署与外部副作用 (<code class="font-mono">deploy_preview</code> 及插件能力)</li>
+            <li>
+              预览部署与外部副作用 (<code class="font-mono"
+                >deploy_preview</code
+              >
+              及插件能力)
+            </li>
             <li>智能体自主规划并连续调用全部工具，不再挂起审批中断</li>
           </ul>
         </div>
 
-        <div
-          v-else
-          class="grid grid-cols-1 gap-2 sm:grid-cols-2"
-        >
-          <div class="rounded-lg border border-emerald-200/80 bg-emerald-50/50 p-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-            <div class="flex items-center gap-1.5 font-medium text-emerald-800 dark:text-emerald-300 text-xs mb-1">
+        <div v-else class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div
+            class="rounded-lg border border-emerald-200/80 bg-emerald-50/50 p-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/20"
+          >
+            <div
+              class="flex items-center gap-1.5 font-medium text-emerald-800 dark:text-emerald-300 text-xs mb-1"
+            >
               <BaseIcon
                 name="check"
                 size="xs"
@@ -123,15 +142,21 @@ function handleConfirm() {
               />
               <span>免逐次审批工具</span>
             </div>
-            <ul class="text-[11px] text-emerald-700 dark:text-emerald-400/90 space-y-0.5 list-disc list-inside">
+            <ul
+              class="text-[11px] text-emerald-700 dark:text-emerald-400/90 space-y-0.5 list-disc list-inside"
+            >
               <li>写入文件 (<code class="font-mono">write_file</code>)</li>
               <li>编辑文件 (<code class="font-mono">edit_file</code>)</li>
               <li>受限命令 (<code class="font-mono">execute</code>)</li>
             </ul>
           </div>
 
-          <div class="rounded-lg border border-blue-200/80 bg-blue-50/50 p-2.5 dark:border-blue-900/50 dark:bg-blue-950/20">
-            <div class="flex items-center gap-1.5 font-medium text-blue-800 dark:text-blue-300 text-xs mb-1">
+          <div
+            class="rounded-lg border border-blue-200/80 bg-blue-50/50 p-2.5 dark:border-blue-900/50 dark:bg-blue-950/20"
+          >
+            <div
+              class="flex items-center gap-1.5 font-medium text-blue-800 dark:text-blue-300 text-xs mb-1"
+            >
               <BaseIcon
                 name="shield"
                 size="xs"
@@ -139,7 +164,9 @@ function handleConfirm() {
               />
               <span>仍强制拦截审批</span>
             </div>
-            <ul class="text-[11px] text-blue-700 dark:text-blue-400/90 space-y-0.5 list-disc list-inside">
+            <ul
+              class="text-[11px] text-blue-700 dark:text-blue-400/90 space-y-0.5 list-disc list-inside"
+            >
               <li>预览部署 (<code class="font-mono">deploy_preview</code>)</li>
               <li>技能治理与发布</li>
               <li>凭据、权限与外部副作用</li>
@@ -156,9 +183,12 @@ function handleConfirm() {
             class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-700 dark:bg-dark-900"
             data-testid="risk-acknowledge-checkbox"
           />
-          <span class="text-xs leading-relaxed text-gray-700 dark:text-dark-200">
+          <span
+            class="text-xs leading-relaxed text-gray-700 dark:text-dark-200"
+          >
             <template v-if="isFullAccess">
-              我已知晓启用 Full access 将跳过所有工具审批，AI 可直接执行任何操作，我自愿承担可能产生的所有风险。
+              我已知晓启用 Full access 将跳过所有工具审批，AI
+              可直接执行任何操作，我自愿承担可能产生的所有风险。
             </template>
             <template v-else>
               我已了解上述工作区自动操作范围及不可突破的安全底线，确认对当前会话开启工作区操作免审批。
@@ -186,7 +216,9 @@ function handleConfirm() {
           @click="handleConfirm"
         >
           <span v-if="busy">正在保存...</span>
-          <span v-else>{{ isFullAccess ? '启用 Full access' : '确认开启' }}</span>
+          <span v-else>{{
+            isFullAccess ? "启用 Full access" : "确认开启"
+          }}</span>
         </BaseButton>
       </div>
     </template>

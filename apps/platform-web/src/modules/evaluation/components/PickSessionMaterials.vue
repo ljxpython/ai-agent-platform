@@ -16,7 +16,6 @@ type Session = {
   title: string;
   created_at: string;
   status: string;
-  feedback: string[];
 };
 type Page = {
   items: Session[];
@@ -29,7 +28,6 @@ const rows = ref<Session[]>([]);
 const selected = ref<string[]>([]);
 const since = ref("");
 const until = ref("");
-const feedback = ref("all");
 const status = ref("all");
 const next = ref<number | null>(null);
 const busy = ref(false);
@@ -50,7 +48,6 @@ async function search(offset = 0) {
       {
         agent_id: props.agentId,
         offset,
-        feedback: feedback.value,
         status: status.value,
         since: since.value ? new Date(since.value).toISOString() : null,
         until: until.value ? new Date(until.value).toISOString() : null,
@@ -113,14 +110,6 @@ watch(
             class="pw-input block"
         /></label>
         <label
-          >我的反馈<select v-model="feedback" class="pw-input block">
-            <option value="all">全部</option>
-            <option value="positive">有好评</option>
-            <option value="negative">有差评</option>
-            <option value="none">无有效反馈</option>
-          </select></label
-        >
-        <label
           >执行状态<select v-model="status" class="pw-input block">
             <option value="all">全部</option>
             <option value="idle">空闲</option>
@@ -150,12 +139,7 @@ watch(
           <span
             >{{ row.title
             }}<small class="block"
-              >{{ row.created_at }} · {{ row.status }} ·
-              {{
-                row.feedback
-                  .map((r) => (r === "positive" ? "好评" : "差评"))
-                  .join("、") || "无有效反馈"
-              }}</small
+              >{{ row.created_at }} · {{ row.status }}</small
             ></span
           >
         </label>

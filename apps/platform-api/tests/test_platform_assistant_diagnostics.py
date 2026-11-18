@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
-from test_evaluation_feedback import setup as setup_fixture
+from evaluation_fixtures import setup as setup_fixture
 
 from platform_api.config import Settings
 from platform_api.core.errors import (

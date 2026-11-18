@@ -206,6 +206,15 @@ class IamPolicyEngine:
                 return PolicyDecision(
                     allowed=False, reason=PolicyReason.PROJECT_SCOPE_REQUIRED
                 )
+            if actor.has_platform_role(
+                PlatformRole.SUPER_ADMIN.value
+            ) and permission in {
+                PermissionCode.PROJECT_USAGE_READ,
+                PermissionCode.PROJECT_AUDIT_READ,
+            }:
+                return PolicyDecision(
+                    allowed=True, reason=PolicyReason.PLATFORM_SUPER_ADMIN
+                )
             actor_roles = actor.project_role_set(authorization.project_id)
             required_roles = PROJECT_PERMISSION_MAP[permission]
             matched = {

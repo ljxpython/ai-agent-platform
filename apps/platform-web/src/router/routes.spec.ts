@@ -33,6 +33,19 @@ describe("workspace account routes", () => {
 });
 
 describe("workspace primary navigation routes", () => {
+  it("keeps old evaluation URLs as migration pages without a navigation item", () => {
+    for (const name of [
+      "workspace-evaluation",
+      "workspace-evaluation-detail",
+    ]) {
+      const route = getWorkspaceChildren().find((item) => item.name === name);
+      expect(route?.meta?.title).toBe("评测入口已迁移");
+      expect(route?.meta?.requiredPermissions).toEqual([
+        "project.evaluation.read",
+      ]);
+      expect(route?.meta?.nav).toBeUndefined();
+    }
+  });
   it("does not register retired testcase workspaces", () => {
     const paths = getWorkspaceChildren().map((route) => route.path);
 
