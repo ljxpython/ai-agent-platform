@@ -144,8 +144,8 @@ function handleDrilldown(point: GatewayMetricPoint) {
       @drilldown="handleDrilldown"
     />
 
-    <!-- 双列并排：延迟 & Token 吞吐 -->
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <!-- 三列并排：延迟分位数、Token 吞吐与单请求均值 -->
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
       <!-- 图表 2：延迟分位数与异常 -->
       <GatewayLatencyChart
         :points="data?.series || []"
@@ -159,24 +159,21 @@ function handleDrilldown(point: GatewayMetricPoint) {
         :loading="loading && !data"
         @drilldown="handleDrilldown"
       />
-    </div>
 
-    <!-- 双列并排：单请求 Token 均值 & 成本与模型分布 -->
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <!-- 图表 4：Tokens per Request 均值 -->
       <GatewayTokenStatsChart
         :points="data?.series || []"
         :loading="loading && !data"
         @drilldown="handleDrilldown"
       />
-
-      <!-- 图表 5：成本走势与模型排行 -->
-      <GatewayCostChart
-        :points="data?.series || []"
-        :breakdown="data?.breakdown || []"
-        :loading="loading && !data"
-        @drilldown="handleDrilldown"
-      />
     </div>
+
+    <!-- 全宽复合图表 5：成本走势与模型用量分布 (2:1 黄金比例) -->
+    <GatewayCostChart
+      :points="data?.series || []"
+      :breakdown="data?.breakdown || []"
+      :loading="loading && !data"
+      @drilldown="handleDrilldown"
+    />
   </div>
 </template>

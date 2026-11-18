@@ -131,16 +131,26 @@ function handleDrilldown(index: number) {
 
     <!-- 模型消耗排行 Breakdown -->
     <div
-      class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-dark-800 dark:bg-dark-900/90"
+      class="flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-dark-800 dark:bg-dark-900/90"
     >
-      <div class="mb-3 flex items-center justify-between">
-        <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
-          模型用量分布 (Breakdown)
+      <div class="mb-3 flex items-center justify-between gap-2">
+        <h4
+          class="truncate text-sm font-semibold text-gray-900 dark:text-white"
+          title="模型用量分布 (Breakdown)"
+        >
+          模型用量分布
+          <span class="text-xs font-normal text-gray-500 dark:text-dark-400"
+            >(Breakdown)</span
+          >
         </h4>
-        <span class="text-xs text-gray-400 dark:text-dark-500">TOP 10</span>
+        <span
+          class="shrink-0 rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-dark-800 dark:text-dark-400"
+        >
+          TOP 10
+        </span>
       </div>
 
-      <div v-if="loading" class="flex h-[200px] items-center justify-center">
+      <div v-if="loading" class="flex h-[260px] items-center justify-center">
         <div
           class="h-5 w-5 animate-spin rounded-full border-2 border-primary-500 border-t-transparent"
         />
@@ -148,20 +158,21 @@ function handleDrilldown(index: number) {
 
       <div
         v-else-if="!breakdown || breakdown.length === 0"
-        class="flex h-[200px] flex-col items-center justify-center text-center"
+        class="flex h-[260px] flex-col items-center justify-center text-center"
       >
         <span class="text-xs text-gray-400 dark:text-dark-500"
           >暂无模型调用分布</span
         >
       </div>
 
-      <div v-else class="max-h-[220px] space-y-3 overflow-y-auto pr-1">
+      <div v-else class="max-h-[265px] space-y-2.5 overflow-y-auto pr-1">
         <div
           v-for="item in breakdown"
           :key="item.key"
-          class="flex items-center justify-between rounded-xl border border-gray-50 bg-gray-50/50 p-2.5 transition hover:border-gray-200 dark:border-dark-800 dark:bg-dark-800/40"
+          class="flex items-center justify-between gap-3 rounded-xl border border-gray-100/80 bg-gray-50/60 p-2.5 transition hover:border-gray-200 dark:border-dark-800 dark:bg-dark-800/40"
         >
-          <div class="min-w-0 flex-1 pr-3">
+          <!-- 左侧指标信息 -->
+          <div class="min-w-0 flex-1">
             <div
               class="truncate text-xs font-semibold text-gray-900 dark:text-gray-100"
               :title="item.key"
@@ -169,16 +180,21 @@ function handleDrilldown(index: number) {
               {{ item.key }}
             </div>
             <div
-              class="mt-0.5 flex items-center gap-2 text-[11px] text-gray-500 dark:text-dark-400"
+              class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500 dark:text-dark-400"
             >
-              <span>{{ item.requests.toLocaleString() }} 次请求</span>
-              <span>·</span>
-              <span>{{ item.total_tokens.toLocaleString() }} Tokens</span>
+              <span class="whitespace-nowrap"
+                >{{ item.requests.toLocaleString() }} 次请求</span
+              >
+              <span class="text-gray-300 dark:text-dark-600">·</span>
+              <span class="whitespace-nowrap"
+                >{{ item.total_tokens.toLocaleString() }} Tokens</span
+              >
             </div>
           </div>
-          <div class="text-right">
+          <!-- 右侧成本金额 -->
+          <div class="shrink-0 text-right">
             <span
-              class="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+              class="whitespace-nowrap font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400"
             >
               ${{ parseFloat(item.cost_usd || "0").toFixed(4) }}
             </span>
