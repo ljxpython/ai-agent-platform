@@ -135,3 +135,98 @@ def test_public_search_cannot_invent_keywords_from_private_tool_results():
                 query,
                 [HumanMessage(content="搜索 Python 文档"), AIMessage(content=query)],
             )
+
+
+@pytest.mark.parametrize("asynchronous", [False, True])
+def test_authorization_refreshes_catalog_without_mutating_request(
+    monkeypatch, asynchronous
+):
+    from langchain.agents.middleware import ModelRequest
+    from langchain_core.messages import SystemMessage
+
+    from runtime_service.services.platform_assistant import agent as module
+
+    versions = iter(["旧目录", "新目录"])
+    statuses = iter(["not_checked", "denied"])
+    calls = []
+
+    def read(*args, **kwargs):
+        calls.append(args[1])
+        return {
+            "data": {
+                "authorized": True,
+                "document_status": "available",
+                "document_catalog": [{"document_id": "chat", "title": next(versions)}],
+                "capabilities": {
+                    "logs": {"availability": next(statuses)},
+                    "shell": False,
+                },
+            }
+        }
+
+    monkeypatch.setattr(module, "platform_read", read)
+    middleware = module.CurrentAuthorization(None)
+    request = ModelRequest(
+        model=BindableFakeMessagesChatModel(responses=[AIMessage(content="ok")]),
+        messages=[],
+        system_message=SystemMessage(content="原规则"),
+    )
+    seen = []
+
+    def handler(req):
+        seen.append(req.system_message.text)
+        return "ok"
+
+    async def ahandler(req):
+        return handler(req)
+
+    for _ in range(2):
+        if asynchronous:
+            assert asyncio.run(middleware.awrap_model_call(request, ahandler)) == "ok"
+        else:
+            assert middleware.wrap_model_call(request, handler) == "ok"
+    assert "旧目录" in seen[0] and "新目录" in seen[1] and "旧目录" not in seen[1]
+    assert "not_checked" in seen[0] and "denied" in seen[1]
+    assert '"availability": "not_checked"' not in seen[1]
+    assert request.system_message.text == "原规则"
+    assert calls == ["authorize", "authorize"]
+
+    def denied(*args, **kwargs):
+        raise ToolException("assistant_project_denied")
+
+    monkeypatch.setattr(module, "platform_read", denied)
+    with pytest.raises(ToolException):
+        if asynchronous:
+            asyncio.run(middleware.awrap_model_call(request, ahandler))
+        else:
+            middleware.wrap_model_call(request, handler)
+    assert len(seen) == 2
+
+
+def test_document_and_run_log_tools_forward_selected_ids_and_window(monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    from runtime_service.services.platform_assistant import tools as module
+
+    calls = []
+
+    def read(facts, operation, **kwargs):
+        calls.append((operation, kwargs))
+        return {"data": {"ok": True}}
+
+    monkeypatch.setattr(module, "platform_read", read)
+    tools = {t.name: t for t in module.make_tools(None)}
+    runtime = SimpleNamespace(tool_call_id="test")
+    assert json.loads(tools["search_documents"].func(runtime, document_id="chat"))[
+        "data"
+    ]["ok"]
+    assert calls[-1][1]["document_id"] == "chat"
+    tools["read_run_logs"].func(
+        str(uuid4()),
+        str(uuid4()),
+        runtime,
+        start="2026-01-01T00:00:00Z",
+        end="2026-01-01T01:00:00Z",
+    )
+    assert calls[-1][1]["log_start"] == "2026-01-01T00:00:00Z"

@@ -40,6 +40,22 @@ watch(
   },
 );
 
+function handleToggleAssistant() {
+  const currentPid =
+    (typeof route.params.projectId === "string"
+      ? route.params.projectId
+      : "") ||
+    workspaceStore.currentProjectId ||
+    undefined;
+  if (platformAssistantStore.isOpen) {
+    platformAssistantStore.close();
+  } else {
+    platformAssistantStore.open(
+      currentPid ? { projectId: currentPid } : undefined,
+    );
+  }
+}
+
 watch(
   () => route.params.projectId,
   (projectId) => {
@@ -246,16 +262,26 @@ const isImmersive = computed(
       </main>
     </div>
 
-    <!-- 全局平台助手唤起浮动入口 -->
+    <!-- 全局平台助手唤起浮动入口 (纯净桌面看板小人形态，无多余文字与背景框) -->
     <button
       type="button"
-      class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-sky-600 hover:bg-sky-700 text-white shadow-lg hover:shadow-xl transition-all cursor-pointer select-none group border border-white/20"
-      title="打开平台助手 (咨询/排障/查询)"
+      class="fixed bottom-6 right-6 z-40 p-0 bg-transparent border-0 outline-none ring-0 cursor-pointer select-none group focus:outline-none focus:ring-0 transition-all duration-300 hover:scale-115 hover:-translate-y-1.5 active:scale-95"
+      title="点击唤起平台助手"
       data-testid="platform-assistant-toggle-btn"
-      @click="platformAssistantStore.toggle()"
+      @click="handleToggleAssistant"
     >
-      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-      <span class="text-xs font-bold tracking-tight">平台助手</span>
+      <div class="relative w-16 h-16 sm:w-18 sm:h-18">
+        <!-- 纯小人透明底动图立绘 -->
+        <img
+          src="/assistant-mascot.gif"
+          alt="平台助手"
+          class="w-full h-full object-contain filter drop-shadow-[0_8px_16px_rgba(56,189,248,0.4)] dark:drop-shadow-[0_8px_20px_rgba(14,165,233,0.5)] pointer-events-none"
+        />
+        <!-- 极简微弱在线呼吸小绿点 -->
+        <span
+          class="absolute bottom-1 right-2 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-white dark:ring-dark-900 shadow-xs animate-pulse"
+        />
+      </div>
     </button>
 
     <!-- 全局平台助手滑出抽屉 -->

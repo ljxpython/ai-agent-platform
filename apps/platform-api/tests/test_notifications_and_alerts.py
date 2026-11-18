@@ -171,6 +171,77 @@ class NotificationsAndAlertsTest(unittest.IsolatedAsyncioTestCase):
             call_args = mock_feishu.send_card.call_args[0]
             self.assertIn("已恢复", call_args[1]["header"]["title"]["content"])
 
+    async def test_multi_project_channel_filtering(self) -> None:
+        """测试推送范围多项目多选过滤逻辑."""
+        mock_feishu = AsyncMock(spec=FeishuBotClient)
+        mock_feishu.send_card.return_value = (True, "ok")
+
+        import uuid
+
+        proj_a = uuid.uuid4()
+        proj_b = uuid.uuid4()
+        proj_c = uuid.uuid4()
+
+        with session_scope(self._session_factory) as session:
+            repo = SqlAlchemyNotificationsRepository(session)
+            service = NotificationService(
+                repository=repo,
+                governance_engine=AlertGovernanceEngine(cooldown_seconds=0.01),
+                feishu_client=mock_feishu,
+            )
+
+            # 创建专属多项目渠道 (仅订阅 proj_a 和 proj_b)
+            ch_ab = service.create_channel(
+                CreateChannelRequest(
+                    name="项目AB专属群",
+                    channel_type="feishu",
+                    endpoint_url="https://open.feishu.cn/open-apis/bot/v2/hook/ab",
+                    project_ids=[proj_a, proj_b],
+                    subscribed_events=["*"],
+                    is_enabled=True,
+                )
+            )
+            self.assertEqual(len(ch_ab.project_ids), 2)
+
+            # 1. 触发项目 A 的告警 -> 应当收到
+            mock_feishu.send_card.reset_mock()
+            await service.process_incoming_alert(
+                AlertIncomingPayload(
+                    source="agent_runtime",
+                    alert_type="agent_error",
+                    target_id="run_a",
+                    summary="项目A发生死循环",
+                    project_id=proj_a,
+                )
+            )
+            mock_feishu.send_card.assert_called_once()
+
+            # 2. 触发项目 B 的告警 -> 应当收到
+            mock_feishu.send_card.reset_mock()
+            await service.process_incoming_alert(
+                AlertIncomingPayload(
+                    source="agent_runtime",
+                    alert_type="agent_error",
+                    target_id="run_b",
+                    summary="项目B发生死循环",
+                    project_id=proj_b,
+                )
+            )
+            mock_feishu.send_card.assert_called_once()
+
+            # 3. 触发项目 C 的告警 -> 渠道未包含项目 C，应当精准拦截！
+            mock_feishu.send_card.reset_mock()
+            await service.process_incoming_alert(
+                AlertIncomingPayload(
+                    source="agent_runtime",
+                    alert_type="agent_error",
+                    target_id="run_c",
+                    summary="项目C发生死循环",
+                    project_id=proj_c,
+                )
+            )
+            mock_feishu.send_card.assert_not_called()
+
 
 class NotificationHttpRouteTest(unittest.TestCase):
     def setUp(self) -> None:

@@ -9,10 +9,11 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 平台内置助手全局面板与错误现场入口 | 已完成交付：Clean Architecture 独立模块（`modules/platform-assistant`），含全局抽屉、错误胶囊、独立审批卡、证据二级抽屉，vue-tsc 0 报错与 24 项单测全绿，用户验收通过并完成合并 | [前端交接](projects/20261116-platform-assistant/frontend-handoff.md) |
+| 平台内置助手全局面板与错误现场入口 | 原错误现场/指南/权限交互保留；追加追踪未配置时的持久失败任务、审批摘要与日志来源/关联显示，0条及来源不可用分开。新增证据组件5项与类型通过；原连续浏览器链保持原范围，本轮新增状态未浏览器复验，未生产发布 | [前端交接](projects/20261116-platform-assistant/frontend-handoff.md) · [验证](projects/20261116-platform-assistant/verification.md) |
 | AI协作评测旧流程：提出问题、反馈修订、确认运行与结果复核 | 05本地范围12项关闭：10项原验证，5.3/5.7由06新流程修复承接；旧A1入口不做兼容升级，旧失败/评分保留，当前操作使用06手册 | [05任务](projects/20261113-agent-eval-production-flywheel/05-ai-assisted-evaluation-workflow.md) · [验收手册](projects/20261113-agent-eval-production-flywheel/manual-acceptance.md) |
 | EvalFlow正式评测集入口与页面登录 | 已完成本地07共4项：列表/新建/详情接入平台导航，保留历史运行定位与未保存保护，原生页面登录替代认证弹窗；182前端/52后端及浏览器关键场景通过。保持两套身份与既有权限，用户已确认验收通过，未上线 | [07方案与验证](projects/20261113-agent-eval-production-flywheel/07-native-platform-integration.md) |
 | EvalFlow评测Agent、Session资料转题库与全链路诊断 | 06本地16/16 done：获准业务会话直接转换并自动生成首版，可读来源、AI修订/扩题/指标、版本发布运行、完整Session/裁判/文件证据、原证据重评及撤权。四轮真实对话→2题→运行→重评已验；16张图/5段录像交付。首轮提前计算与裁判局限保留，用户已于2026-11-16确认验收通过，生产及原暂缓范围不变 | [06方案与任务](projects/20261113-agent-eval-production-flywheel/06-session-to-dataset-and-ai-authoring.md) |
+| 业务会话转评测集后台异步非阻塞与通知直达 | 已完成：POST /api/evaluation/materials/send 异步非阻塞 202 响应（耗时 < 500ms），后台接管长耗时抓取脱敏与出题，根治 30s 超时；前端弹窗秒关 + 全局 Toast，完成后通过通知中心一键直达 EvalFlow 详情页 | [项目概览](projects/20261117-evaluation-materials-async-task/README.md) · [实施清单](projects/20261117-evaluation-materials-async-task/tasks.md) |
 | 工作区总览工业级重构与信息密度治理 | 已完成：彻底清除“从当前项目继续工作。”废话副标题；收纳平台治理按钮；实装 4 联项目指标看板（Agents、对话数、工具数、运行时健康）；主辅双栏高能工作流（最近对话相对时间流 + Agent 矩阵模型 Tag 与一键对话直达）；补齐 OverviewPage.spec.ts，单测、vue-tsc 与生产构建全绿 | [项目概览](projects/20261108-workspace-overview-refactor/README.md) · [实现记录](projects/20261108-workspace-overview-refactor/implementation/01-overview-refactor.md) |
 | 会话侧边栏三段式工业级重构与批量删除、顶栏 Tooltip 交互优化 | 已完成：落实方案 A 三段式纯净排版（标头聚合操作、全宽搜索、单行永不断行分类胶囊），实装并发度 3 纯前端批量删除队列与进度响应，顶栏毛玻璃 Tooltip 接入并根治压缩撞车重合；全仓单测 159 套件 945 项 100% 绿灯，线上部署验证通过 | [变更记录](../apps/platform-web/docs/changes/20261107-chat-sidebar-redesign-and-batch-delete.md) |
 | 新会话快照优先展示与媒体按需加载 | 本地功能已完成：首屏依赖 SDK 权威快照，历史抽屉按需读取；真实刷新恢复通过；性能/竞态治理证据待补 | [项目概览](projects/20261107-session-hydration-and-artifact-offloading/README.md) |
@@ -68,6 +69,7 @@
 | 产物图片全链路渲染缺陷修复与代码保护原地切块 | 已完成：支持 outputs 产物白名单、原地切块、Markdown 反引号代码/超链接保护防止路径误触拆块，并对齐 Dear Agent 模块 | [产物图片渲染修复](../apps/platform-web/docs/changes/20260918-fix-artifact-image-rendering.md) |
 | DeepSeek Harness 轨迹视图迁移（双视图切换、事件流水账与 Master-Detail 检查器） | 已完成：支持对话/轨迹模式随时切换；按轮次/步数分组呈现思考链、工具入参与返回、错误高亮及 Raw JSON 深度排障；适配层带安全降级 | [轨迹视图迁移](projects/20260914-deepseek-trajectory-migration/README.md) |
 | 轨迹排障 DevTools 体验深度对齐（三层甘特时间线、树状贯穿线、紧凑单行表格与 Summary 内联预览） | 已完成：多通道横向甘特条（Input/Model/Tools）、Turn Rail 树状节点与连线、微型彩色徽章、左侧 3px 指示竖条、实时搜索与性能指标底栏 | [轨迹 DevTools 体验对齐](../apps/platform-web/docs/changes/20260914-trajectory-devtools-layout-alignment.md) |
+| 平台助手可拖拽拉伸抽屉、一键宽屏与个性化头像联动 | 已完成：BaseDrawer 增加左边缘拖拽手柄与 customWidth 响应式样式、抽屉本地持久化与一键宽屏（580px ⇄ 960px）、输入框原生深色外框拔除与呼吸聚焦微光、个人资料页预设头像库与全局联动；单测 19 项全绿、vue-tsc 0 错误、端到端真机验收通过 | [变更记录](../apps/platform-web/docs/changes/20261117-assistant-ux-resizable-drawer-and-avatar.md) |
 | 前端主对话流极简化与高级感对齐（无界通透主视窗、灰色原子 Think 条、无头像用户气泡与工业指标底栏） | 已完成：去除卡片套娃大框、Think 改为极简灰色单行、去头像气泡、下划线视图 Tab 与性能小字底栏 | [主对话流极简对齐](../apps/platform-web/docs/changes/20260914-chat-ui-minimalist-deepseek-alignment.md) |
 | 对话工作台通透无界大视野与布局重构（单层沉浸顶栏、消除底部死留白、自适应平滑滚动与侧栏一键折叠） | 已完成：消灭双 Header 套娃释放 56px 高度、下沉项目与用户切换器、消灭底部大留白、移除会话侧栏分页器并常驻一键折叠 | [通透无界布局重构](../apps/platform-web/docs/changes/20260914-chat-workspace-borderless-layout-redesign.md) |
 | 轨迹排障三合一控制器、微交互与工业级指标栏对齐（Duration/Turns/Calls、甘特 Tooltip、概览大字与圆球发送气泡） | 已完成：实装 Duration 真实耗时模式、Turns 批量折叠、Calls 工具隐藏、时间轴色块 hover 黑底白字气泡、顶栏 X 轮 Y 步 Z 工具统揽、完整 LLM/TTFT/tok/s 指标栏及圆球向上箭头微交互 | [控制器与指标栏对齐](../apps/platform-web/docs/changes/20260914-trajectory-controllers-and-metrics-strip-alignment.md) |
@@ -98,7 +100,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 平台助手只读数据库分析、日志授权与查询审计 | 后端已实现并本地验证：动态PostgreSQL、全部获准数据源发现、旧日志鉴权、研发源码、证据审计与撤权历史；生产未部署 | [方案与任务](projects/20261116-platform-assistant/README.md) |
+| 平台助手只读数据库分析、日志授权与查询审计 | 本地技术验收done：目标Run绑定checkpoint、Trace/可信执行请求/Run受控日志关联及每轮可读能力摘要，保留当前目标ACL/时间/脱敏边界；最终相关API96项、原旧Run实际读取通过。六篇指南更新可继续会话；生产与真实Loki未验 | [方案与任务](projects/20261116-platform-assistant/README.md) · [排障补强证据](projects/20261116-platform-assistant/implementation/04-real-diagnostics-followup.md) · [跨项目排障变更](../apps/platform-api/docs/changes/20261117-assistant-cross-project-diagnostics.md) |
 | 新会话媒体引用投影与授权读取 | 本地功能已完成：复用 State/History/Workspace 与 Thread 权限，图片按引用鉴权预览；真实 state、预览和刷新恢复通过 | [项目方案](projects/20261107-session-hydration-and-artifact-offloading/plan.md) |
 | 会话与运行数据生命周期管理及自动清理治理 | 已实现并完成隔离栈验收，已提交 `5635e621` 并合并 `main`：GraphHarbor post48 执行 TTL/可靠删除；平台定义闲置 30 天、查看/发送续期；Workspace 随会话删除、未确认资源保留重试；详情 30 天/去重 90 天；维护默认预览、100 条/批、上限 1000；专属服务和测试资源已清理，未部署现役 | [项目概览](projects/20261030-session-and-runtime-retention-governance/README.md) · [运维手册](runbooks/session-retention-maintenance.md) |
 | 分布式全链路追踪与 Loki 轻量日志代理网关 | 已完成：生成与透传 W3C traceparent 协议（00-{trace_id}-{span_id}-01）、统一结构化日志打标、实现自研 Loki 轻量代理检索 API（过滤自回声日志并提取各步耗时）、免密白名单放行；单元测试全绿 | [项目概览](projects/20261022-trace-to-logs-distributed-observability/README.md) · [验证记录](projects/20261022-trace-to-logs-distributed-observability/verification.md) |
@@ -130,7 +132,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 平台多功能助手Agent | 已实现并本地验证：单create_agent、无执行沙箱、持久历史与重启续聊、只读工具及强制写审批；生产业务写工具为空 | [交付证据](projects/20261116-platform-assistant/verification.md) |
+| 平台多功能助手Agent | 本地技术验收done：单create_agent、按目录读当前指南，原历史/写审批保留；每轮刷新可读资料说明，按Run失败状态和本轮证据回答，不从review/not_configured/空目录猜根因。补强Runtime24项与真实模型四轮通过并已重载本地API/Worker；正式业务写工具为空 | [交付证据](projects/20261116-platform-assistant/verification.md) |
 | 新工具结果媒体外置与模型临时解析 | 本地功能已完成：平台 Runtime 在工具结果发出前引用化，模型调用时临时解析；同步/异步 read_file、真实 xiaok DeepSeek 和公开 state 无 Base64 均通过；GraphHarbor 不承担媒体业务 | [任务与验证](projects/20261107-session-hydration-and-artifact-offloading/tasks.md) |
 | 有界调研委派与模型输入治理 | 已完成并经用户人工验收（2026-10-30），已快进合并main、停止服务并清理所属Worktree/测试库：复用官方task+只读general-purpose，撤除自研报告/合成/原文校验，保留预算/PII/Usage/取消/并发，修复子额度异常穿透。扩大回归560通过/13跳过/1项local后端复验通过；正式烟测主峰31.1%、root自动整理观测值0、28/28 Usage完整。原五项明确语义覆盖3/5，不宣称稳定质量或统计收益，未发布 | [项目](projects/20261028-subagent-fanout-and-prefix-caching/README.md) |
 | Agent 代码库剖析收敛准则与高优先级预算收尾感知 | 已完成：SYSTEM_PROMPT 确立代码资产剖析 Top-Down 自顶向下原则、单轮 5~8 次探索硬约束、严禁写脚本正则遍历海量文件树；将 WRAPUP_INSTRUCTION 升级为中英双语最高优先级强制收尾指令，warning_calls 提早至 5 轮；76 项自动化单测全绿 | [项目概览](projects/20261028-run-resubmission-and-agent-convergence/README.md) · [实现记录](projects/20261028-run-resubmission-and-agent-convergence/implementation/02-agent-convergence-and-wrapup-governance.md) |

@@ -157,7 +157,7 @@
 2. **输入框上方上下文胶囊（Context Pill）**：
    - 将诊断包挂载在输入框正上方，渲染为紧凑的可视化胶囊卡片：展示错误标题、发生时间、Trace 标识、以及 `[预览详情]` 浮层和 `[✕ 移除]` 按钮；
    - 用户的输入框保持干净空白，用户可以正常输入自己的提问（例如：“帮我分析这个报错的根本原因”）；
-   - 点击发送时，前端自动将用户提问与挂载的诊断 Markdown 拼装为一轮输入提交给后端，发送后自动清空当前挂载的胶囊。
+   - 卡片提供“复制诊断”和预览；点击发送时，将用户提问与诊断 Markdown 拼成一轮输入。成功完成或进入待审批后才清除同一份卡片，bootstrap/请求/运行失败时保留，方便继续复制交人工处理。
 
 助手 Thread 与被诊断 Thread 必须分开。打开助手不能自动重跑失败 Run。页面切换不等于取消任务，关闭面板不等于批准动作。刷新先读 state/Run，再恢复流和待审卡，不重发最后一条消息。
 
@@ -174,6 +174,10 @@
 | 401 登录过期 | 走既有认证恢复流程 |
 
 后端复核旧会话用过的数据源、源码和目标会话权限。数据源被撤销或 revision 变更、源码撤权、工具被停用时，旧助手历史可能返回 `assistant_history_source_revoked`，列表会隐藏不可再读的助手会话。第一版仅本人读取助手历史，不提供分享或 fork；fork 请求返回 `assistant_fork_denied`。已在用户屏幕展示或复制到本地的内容无法远程收回，前端应在账号/项目切换和权限变更时清理缓存。
+
+普通用户指南revision更新不再属于历史拒绝条件；旧答案不会自动更新，下一轮操作咨询重新读取。错误现场的目标projectId不改变助手已绑定的会话项目；显式切换助手项目时清空activeThread并重建Scoped Client，不能把原Thread带入新项目。
+
+会话操作使用局部操作代数：项目切换或新会话使旧历史、创建、流式、审批和停止回调失效，晚到结果不恢复旧Thread或证据；bootstrap期间禁止发送。明确403会清空Thread、消息、审批和证据索引/抽屉并提示新建会话，组件不能再次重置而抹掉权限提示；503/临时网络故障保留现场。
 
 ## 5. 来源与证据展示规范
 
@@ -193,6 +197,12 @@
 ```
 
 ### 证据徽章（Evidence Badge）解析与展示规范
+
+诊断/日志证据另含 `scope.target_project_id`，表示被排查项目；`scope.project_id`仍是助手会话项目。抽屉分别标注“助手会话项目”和“排查目标项目”，`observed_at`标注“资料读取时间”。运行时间看诊断`data.run_time.created_at/updated_at`，日志实际范围看`data.query_start/query_end`，不能混用。
+
+2026-11-17追加：diagnostics.data.persistent_state独立于追踪availability，展示目标Run的失败任务和当前中断，不因追踪disabled隐藏已有持久状态。messages是累计checkpoint类型计数、side_effects=unknown，不能标为本轮没有输出/动作。日志source/availability/correlation_type分别表示来源、当前结果状态和实际关联方式；empty与unavailable区分，0条日志不显示“命中”。保留既有JSON详情，无新增任意日志路径或原始异常入口。
+
+文档结果的`data.catalog`表示短目录，尚未读取正文；`data.sources`才是本次正文及行号、SHA256、revision和truncated。空结果不表示平台没有功能。日志partial或无记录时保留覆盖限制；错误弹窗的解释为初步分类，无编号不借用最近请求，错误发生时间未知时不填诊断包生成时间。
 
 1. **Markdown 正则拦截**：
    在渲染模型答复文本时，前端流水线通过正则后处理将 `\[证据:([a-f0-9\-]{36})\]` 转换为带特定属性的交互式按钮：
@@ -278,7 +288,7 @@
 {"operation":"sql_query","database_id":"platform-local","query":"SELECT status, COUNT(*) FROM runs GROUP BY status"}
 ```
 
-其他 operation：sql_sources、documents、source、diagnostics、logs。文档用 query / document_id / line；运行查询用 target_thread_id 和 target_run_id；无 Run 日志调查用 query（Trace，可空）、log_start/log_end（含时区）、log_service，须明确日志调查授权。authorize/authorize_search/record_citations 是 Agent 生命周期用途，前端无需主动调用。
+其他 operation：sql_sources、documents、source、diagnostics、logs。用户指南无document_id返回目录，有ID读取当前正文；query/line仅保留兼容，不再对指南匹配或选起始行。源码仍保留原检索规则。运行查询用 target_thread_id 和 target_run_id；日志可补log_start/log_end（含时区）。无Run日志调查用query（Trace，可空）、时间与log_service，须明确日志调查授权。authorize/authorize_search/record_citations 是 Agent 生命周期用途，前端无需主动调用。
 
 `/api/platform-assistant/internal/read` 仅供 Runtime 带用途绑定 HMAC 回调，前端不得使用，也不得保存其密钥。
 
@@ -298,7 +308,8 @@
 | 400 assistant_run_required / assistant_trace_missing | 缺少可核验关联，补信息或用明确授权的项目日志调查 |
 | 403 trace_scope_denied / assistant_logs_denied | 日志范围无权；不能猜 Trace 绕过 |
 | 400 assistant_log_window_invalid | 含时区、正跨度且最多24小时 |
-| 400 assistant_document_missing / 503 assistant_source_unavailable | 资料不存在或未发布源码 |
+| 400 assistant_log_window_required | 目标Run缺可信时间或跨度过长；请补充含时区的起止时间，不退回当前一小时 |
+| 400 assistant_document_missing / 503 assistant_source_unavailable | 资料不存在或未发布源码；不编造页面操作 |
 | assistant_public_keywords_required / assistant_public_query_private | 工具消息中的错误；补公开关键词，不自动把内部资料外发 |
 
 API schema 不合法时沿现有422响应；模型/Runtime/预算错误沿现有错误处理。HTTP200只表示成功返回，仍须查看 partial、truncated、audit_recorded、availability 和 error。
@@ -317,7 +328,7 @@ API schema 不合法时沿现有422响应；模型/Runtime/预算错误沿现有
 
 ## 9. 联调步骤与推荐代码结构
 
-先按 [后端配置与复验](backend-operations.md)准备所属 Worktree、迁移、模型和数据源。当前隔离环境 Web28074 / API28581 / Runtime25418；这些仅是2026-11-16本次环境，可能在清理后失效，实际以 `.local-stack/environment.json` 为准。凭据仅通过本地配置/现有登录取得，不放文档。
+通常先按 [后端配置与复验](backend-operations.md)及仓库Worktree规范准备环境。2026-11-16旧隔离栈Web28074/API28581/Runtime25418已清理，不能继续用于联调。2026-11-17用户明确使用当前环境，已在Web3000/API2142/Runtime8123以专用合成账号/项目完成连续链，未重启主服务；测试账号和临时模型现已停用。新测试需重新准备获准资源，凭据不放文档；本次决定不修改仓库通用隔离规范。
 
 ### 推荐前端模块结构（Surgical Isolation）
 

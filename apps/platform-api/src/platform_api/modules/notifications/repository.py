@@ -163,7 +163,7 @@ class SqlAlchemyNotificationsRepository:
         channel_type: str,
         endpoint_url: str,
         secret_token: str | None = None,
-        project_id: uuid.UUID | None = None,
+        project_ids: list[uuid.UUID | str] | None = None,
         is_enabled: bool = True,
         subscribed_events: list[str] | None = None,
     ) -> NotificationChannelRecord:
@@ -172,7 +172,7 @@ class SqlAlchemyNotificationsRepository:
             channel_type=channel_type,
             endpoint_url=endpoint_url,
             secret_token=secret_token,
-            project_id=project_id,
+            project_ids=[str(p) for p in project_ids] if project_ids else [],
             is_enabled=is_enabled,
             subscribed_events=subscribed_events or [],
             created_at=_now(),
@@ -193,20 +193,26 @@ class SqlAlchemyNotificationsRepository:
         enabled_only: bool = False,
     ) -> list[NotificationChannelRecord]:
         stmt = select(NotificationChannelRecord)
-        if project_id is not None:
-            stmt = stmt.where(
-                (NotificationChannelRecord.project_id == project_id)
-                | (NotificationChannelRecord.project_id.is_(None))
-            )
         if channel_type:
             stmt = stmt.where(NotificationChannelRecord.channel_type == channel_type)
         if enabled_only:
             stmt = stmt.where(NotificationChannelRecord.is_enabled.is_(True))
-        return list(
+        records = list(
             self.session.scalars(
                 stmt.order_by(desc(NotificationChannelRecord.created_at))
             ).all()
         )
+        if project_id is not None:
+            proj_str = str(project_id)
+            filtered = []
+            for ch in records:
+                # 空列表代表全局通用
+                if not ch.project_ids:
+                    filtered.append(ch)
+                elif any(str(p) == proj_str for p in ch.project_ids):
+                    filtered.append(ch)
+            return filtered
+        return records
 
     def update_channel(
         self,
@@ -216,8 +222,12 @@ class SqlAlchemyNotificationsRepository:
         channel = self.get_channel(channel_id)
         if not channel:
             return None
+        if "project_ids" in updates and updates["project_ids"] is not None:
+            p_list = updates["project_ids"]
+            if isinstance(p_list, list):
+                updates["project_ids"] = [str(p) for p in p_list]
         for k, v in updates.items():
-            if v is not None and hasattr(channel, k):
+            if hasattr(channel, k):
                 setattr(channel, k, v)
         channel.updated_at = _now()
         self.session.flush()

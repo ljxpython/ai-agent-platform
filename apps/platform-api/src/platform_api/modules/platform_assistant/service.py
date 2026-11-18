@@ -11,11 +11,17 @@ from starlette.concurrency import run_in_threadpool
 from platform_api.core.errors import (
     BadRequestError,
     ForbiddenError,
+    NotFoundError,
+    PlatformApiError,
     ServiceUnavailableError,
 )
 from platform_api.modules.audit.models import AuditLogRecord
 from platform_api.modules.platform_assistant import database
 from platform_api.modules.platform_assistant.contracts import AssistantDatabase
+from platform_api.modules.platform_assistant.diagnostics import (
+    identifier,
+    read_checkpoint,
+)
 from platform_api.modules.platform_assistant.materials import read_material
 from platform_api.modules.projects.models import ProjectRecord
 
@@ -59,6 +65,66 @@ def sources(settings, actor, project_id):
         ):
             result[key] = source
     return result
+
+
+def readable_capabilities(settings, actor, project_id, overrides):
+    databases = sources(settings, actor, project_id)
+    return {
+        "scope": "current_identity_and_project",
+        "run_diagnostics": "denied"
+        if overrides.get("read_run_diagnostics") is False
+        else "on_request",
+        "databases": {
+            "availability": "denied"
+            if overrides.get("list_databases") is False
+            else "available"
+            if databases
+            else "empty",
+            "reason": "no_readable_sources" if not databases else None,
+            "includes_platform_system_database": False,
+        },
+        "logs": {
+            "availability": "denied"
+            if overrides.get("read_run_logs") is False
+            else "not_checked",
+            "source": "fixed_files" if settings.assistant_log_files else "loki",
+            "services": [
+                name for name in settings.assistant_log_files if identifier(name)
+            ]
+            if overrides.get("read_run_logs") is not False
+            else [],
+            "coverage": "bounded_structured_project_thread_run_time",
+            "project_search_allowed": actor.user_id in settings.assistant_log_users
+            and overrides.get("search_project_logs") is not False,
+        },
+        "source": "allowed"
+        if actor.user_id in settings.assistant_source_users
+        and overrides.get("search_source") is not False
+        else "denied",
+        "shell": False,
+    }
+
+
+def require_target_project(factory, actor, thread_id):
+    from platform_api.modules.identity.actors import load_user_actor
+    from platform_api.modules.runtime_gateway.application import thread_access
+
+    metadata = thread_access.get(factory, thread_id)
+    target_project = metadata.get("project_id")
+    # Internal callbacks load roles for the assistant project, not the target project.
+    target_actor = (
+        load_user_actor(
+            session_factory=factory, user_id=actor.user_id, project_id=target_project
+        )
+        if target_project
+        else None
+    )
+    if not target_actor or not thread_access.allowed(
+        target_actor, target_project, metadata, "read"
+    ):
+        raise ForbiddenError(code="thread_action_denied", message="无权读取目标会话。")
+    require_scope(factory, target_actor, target_project)
+    return target_project, target_actor
 
 
 def write_audit(
@@ -114,7 +180,16 @@ def write_audit(
         return False
 
 
-async def read(request, actor, project_id, body, gateway, *, correlation=None):
+async def read(
+    request,
+    actor,
+    project_id,
+    body,
+    gateway,
+    *,
+    correlation=None,
+    target_gateway_factory=None,
+):
     settings = request.app.state.settings
     if not settings.platform_assistant_enabled:
         raise ServiceUnavailableError(
@@ -123,6 +198,7 @@ async def read(request, actor, project_id, body, gateway, *, correlation=None):
     factory = request.app.state.db_session_factory
     evidence_id, started = str(uuid4()), time.monotonic()
     correlation = correlation or {}
+    scope = {"project_id": project_id}
     try:
         await run_in_threadpool(require_scope, factory, actor, project_id)
         from platform_api.modules.runtime_policies.application.service import (
@@ -139,7 +215,7 @@ async def read(request, actor, project_id, body, gateway, *, correlation=None):
             "logs": "read_run_logs" if body.target_run_id else "search_project_logs",
             "authorize_search": "search_public_web",
         }.get(body.operation)
-        if tool_name:
+        if tool_name or body.operation == "authorize":
             policy = await run_in_threadpool(
                 RuntimePolicyOverlayService(
                     session_factory=factory,
@@ -155,6 +231,23 @@ async def read(request, actor, project_id, body, gateway, *, correlation=None):
                 )
         if body.operation in {"authorize", "authorize_search"}:
             data = {"authorized": True}
+            if body.operation == "authorize":
+                data["capabilities"] = readable_capabilities(
+                    settings, actor, project_id, policy["tool_overrides"]
+                )
+                data["document_catalog"] = []
+                data["document_status"] = "denied"
+                if policy["tool_overrides"].get("search_documents") is not False:
+                    try:
+                        catalog = await run_in_threadpool(
+                            read_material, settings.assistant_document_root, body
+                        )
+                        data["document_catalog"] = catalog["catalog"]
+                        data["document_status"] = (
+                            "available" if catalog["catalog"] else "empty"
+                        )
+                    except ServiceUnavailableError:
+                        data["document_status"] = "unavailable"
         elif body.operation == "record_citations":
             from platform_api.modules.platform_assistant.evidence import check_citations
 
@@ -168,11 +261,16 @@ async def read(request, actor, project_id, body, gateway, *, correlation=None):
             )
             correlation = {**correlation, **data}
         elif body.operation == "sql_sources":
+            readable = sources(settings, actor, project_id)
             data = {
+                "availability": "available" if readable else "empty",
+                "scope": "current_identity_and_project",
+                "empty_reason": "no_readable_sources" if not readable else None,
+                "includes_platform_system_database": False,
                 "databases": [
                     {"database_id": key, "revision": value.revision}
-                    for key, value in sources(settings, actor, project_id).items()
-                ]
+                    for key, value in readable.items()
+                ],
             }
         elif body.operation in {"sql_schema", "sql_query"}:
             source = sources(settings, actor, project_id).get(body.database_id)
@@ -236,20 +334,89 @@ async def read(request, actor, project_id, body, gateway, *, correlation=None):
                     code="assistant_run_required",
                     message="请提供目标 Thread 和 Run 编号。",
                 )
-            data = await gateway.get_thread_run_diagnostics(
-                actor=actor,
-                project_id=project_id,
+            target_project_id, target_actor = await run_in_threadpool(
+                require_target_project, factory, actor, str(body.target_thread_id)
+            )
+            scope["target_project_id"] = target_project_id
+            if target_gateway_factory is not None:
+                gateway = await run_in_threadpool(
+                    target_gateway_factory, target_actor, target_project_id
+                )
+
+            snapshot = await gateway.get_thread_run(
+                actor=target_actor,
+                project_id=target_project_id,
                 thread_id=str(body.target_thread_id),
                 run_id=str(body.target_run_id),
-                request_id=correlation.get("request_id", evidence_id),
             )
+            if (
+                not isinstance(snapshot, dict)
+                or snapshot.get("thread_id") != str(body.target_thread_id)
+                or snapshot.get("run_id") != str(body.target_run_id)
+            ):
+                raise NotFoundError(code="run_not_found", message="未找到目标运行。")
+            try:
+                data = await gateway.get_thread_run_diagnostics(
+                    actor=target_actor,
+                    project_id=target_project_id,
+                    thread_id=str(body.target_thread_id),
+                    run_id=str(body.target_run_id),
+                    request_id=correlation.get("request_id", evidence_id),
+                )
+            except PlatformApiError as exc:
+                if exc.status_code < 500:
+                    raise
+                data = {
+                    "availability": "unavailable",
+                    "unavailable_reason": "backend_unavailable",
+                    "correlation": {},
+                }
             if body.operation == "diagnostics":
-                snapshot = await gateway.get_thread_run(
-                    actor=actor,
-                    project_id=project_id,
+                status = snapshot.get("status")
+                data["run_status"] = (
+                    status
+                    if isinstance(status, str)
+                    and status
+                    in {
+                        "pending",
+                        "running",
+                        "success",
+                        "error",
+                        "timeout",
+                        "interrupted",
+                        "cancelled",
+                    }
+                    else "unknown"
+                )
+                data["request_id_scope"] = "diagnostic_query_not_execution"
+                data["availability_scope"] = "current_trace_query_client"
+                data["historical_collection"] = "unknown"
+                data["execution_request_id_scope"] = (
+                    "platform_execution_not_provider_request"
+                )
+                # Observation IDs locate telemetry, not graph nodes; the assistant needs facts.
+                for key in (
+                    "graph_executions",
+                    "model_errors",
+                    "retries",
+                    "preparations",
+                    "workspace_executions",
+                    "loop_detections",
+                ):
+                    for item in data.get(key, []):
+                        item.pop("observation_id", None)
+                data["persistent_state"] = await read_checkpoint(
+                    gateway,
+                    actor=target_actor,
+                    project_id=target_project_id,
                     thread_id=str(body.target_thread_id),
                     run_id=str(body.target_run_id),
                 )
+                data["run_time"] = {
+                    key: value.isoformat() if isinstance(value, datetime) else value
+                    for key in ("created_at", "updated_at")
+                    if isinstance(value := snapshot.get(key), (str, datetime))
+                }
                 context = (snapshot.get("kwargs") or {}).get("context") or {}
                 data["configuration"] = {
                     key: value
@@ -258,25 +425,28 @@ async def read(request, actor, project_id, body, gateway, *, correlation=None):
                     and isinstance(value, (str, bool))
                 }
             if body.operation == "logs":
-                from platform_api.modules.platform_assistant.logs import authorized_logs
+                from platform_api.modules.platform_assistant.logs import (
+                    authorized_logs,
+                    run_log_window,
+                )
 
-                trace_id = data.get("correlation", {}).get("platform_trace_id")
-                if not trace_id:
-                    raise BadRequestError(
-                        code="assistant_trace_missing",
-                        message="此运行没有已验证的平台Trace，不能猜测日志关联。",
-                    )
+                trace_id = data.get("correlation", {}).get("platform_trace_id") or ""
+                execution_request_id = (
+                    data.get("correlation", {}).get("execution_request_id") or ""
+                )
+                start, end = run_log_window(snapshot, body.log_start, body.log_end)
                 data = (
                     await authorized_logs(
                         request,
-                        actor,
-                        project_id,
+                        target_actor,
+                        target_project_id,
                         trace_id,
                         verified=True,
+                        execution_request_id=execution_request_id,
                         target_thread_id=str(body.target_thread_id),
                         target_run_id=str(body.target_run_id),
-                        start=body.log_start,
-                        end=body.log_end,
+                        start=start,
+                        end=end,
                         service=body.log_service,
                     )
                 ).model_dump(mode="json")
@@ -325,7 +495,7 @@ async def read(request, actor, project_id, body, gateway, *, correlation=None):
         "evidence_id": evidence_id,
         "operation": body.operation,
         "observed_at": datetime.now(UTC).isoformat(),
-        "scope": {"project_id": project_id},
+        "scope": scope,
         "audit_recorded": recorded,
         "data": data,
     }

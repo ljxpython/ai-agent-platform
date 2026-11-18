@@ -231,7 +231,7 @@ def list_channels(
             NotificationChannelItem(
                 id=r.id,
                 name=r.name,
-                project_id=r.project_id,
+                project_ids=r.project_ids or [],
                 channel_type=r.channel_type,
                 endpoint_url=r.endpoint_url,
                 secret_token=r.secret_token,
@@ -267,7 +267,7 @@ def create_channel(
         return NotificationChannelItem(
             id=r.id,
             name=r.name,
-            project_id=r.project_id,
+            project_ids=r.project_ids or [],
             channel_type=r.channel_type,
             endpoint_url=r.endpoint_url,
             secret_token=r.secret_token,
@@ -303,7 +303,7 @@ def update_channel(
         return NotificationChannelItem(
             id=r.id,
             name=r.name,
-            project_id=r.project_id,
+            project_ids=r.project_ids or [],
             channel_type=r.channel_type,
             endpoint_url=r.endpoint_url,
             secret_token=r.secret_token,

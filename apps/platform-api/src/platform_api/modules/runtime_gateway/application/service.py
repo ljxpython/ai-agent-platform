@@ -3643,18 +3643,6 @@ class RuntimeGatewayService:
             thread_id=thread_id,
         )
 
-    async def set_evaluation_capture(self, *, actor, project_id, thread_id, capture):
-        thread = await self._load_thread(
-            actor=actor, project_id=project_id, thread_id=thread_id, write=True
-        )
-        upstream = await self._thread_upstream(
-            project_id=project_id, thread=thread, operation="thread-edit"
-        )
-        await upstream.update_thread(
-            thread_id, {"metadata": {"evaluation_material_capture": capture}}
-        )
-        return {"thread_id": thread_id, "capture": capture}
-
     async def update_thread(
         self,
         *,

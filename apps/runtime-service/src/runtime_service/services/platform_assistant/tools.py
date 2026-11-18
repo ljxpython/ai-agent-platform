@@ -136,7 +136,7 @@ def make_tools(facts):
 
     @tool
     def list_databases(runtime: ToolRuntime) -> str:
-        """列出当前用户获准读取的全部已接入数据库；不需要审批。"""
+        """列出当前身份/项目获准且已接入助手的只读数据库；空列表不代表平台没有数据库，平台系统Run/Thread记录通过运行诊断读取。"""
         return json.dumps(reader(runtime)("sql_sources"), ensure_ascii=False)
 
     @tool
@@ -163,7 +163,7 @@ def make_tools(facts):
 
     @tool
     def read_run_diagnostics(thread_id: str, run_id: str, runtime: ToolRuntime) -> str:
-        """读取获准目标运行的模型错误、429、超时、启动和链路诊断。"""
+        """读取获准Run最终状态、时间、追踪诊断及该Run绑定的持久checkpoint摘要（失败任务、错误码、实际中断和消息类型计数）。追踪未配置时仍查持久状态；review只是策略，不能证明发生审批；不返回消息正文/审批参数/堆栈。"""
         return json.dumps(
             reader(runtime)(
                 "diagnostics",
@@ -174,13 +174,21 @@ def make_tools(facts):
         )
 
     @tool
-    def read_run_logs(thread_id: str, run_id: str, runtime: ToolRuntime) -> str:
-        """根据已验证的运行关联读取当前项目脱敏日志；不接受模型猜测的 trace。"""
+    def read_run_logs(
+        thread_id: str,
+        run_id: str,
+        runtime: ToolRuntime,
+        start: str = "",
+        end: str = "",
+    ) -> str:
+        """读取获准Run脱敏日志；后端按已验证Trace→执行请求编号→Run关联，不要求用户提供Trace。默认运行前后5分钟；时间未知或超过24小时需补含时区start/end。说明source、availability、correlation_type与覆盖窗口；空结果不证明无故障，不能扩查项目全量。"""
         return json.dumps(
             reader(runtime)(
                 "logs",
                 target_thread_id=str(UUID(thread_id)),
                 target_run_id=str(UUID(run_id)),
+                log_start=start,
+                log_end=end,
             ),
             ensure_ascii=False,
         )
@@ -207,9 +215,9 @@ def make_tools(facts):
 
     @tool
     def search_documents(
-        query: str, runtime: ToolRuntime, document_id: str = "", line: int = 1
+        runtime: ToolRuntime, document_id: str = "", query: str = "", line: int = 1
     ) -> str:
-        """检索或读取平台使用文档，返回版本、行号、哈希和证据。"""
+        """从已提供目录自行选择document_id，读取该篇当前用户指南正文及行号、哈希和证据；每次具体操作咨询应重新读取。无ID仅返回目录，不做关键词匹配；query/line仅为旧调用兼容，不影响指南选择。"""
         return json.dumps(
             reader(runtime)(
                 "documents", query=query, document_id=document_id, line=line

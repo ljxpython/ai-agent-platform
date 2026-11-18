@@ -8,7 +8,6 @@ import {
   type DiagnosticContext,
 } from "@/services/observability/diagnostic-packet";
 import { usePlatformAssistantStore } from "@/modules/platform-assistant";
-import { errorRingBuffer } from "@/services/observability/error-buffer";
 import { buildTraceUrl } from "@/services/observability/langfuse-url";
 import { getRunDiagnostics } from "@/services/threads/diagnostics.service";
 import type { RunDiagnosticsV1 } from "../diagnostics/types";
@@ -46,11 +45,14 @@ const copiedRequestId = ref(false);
 const copiedTraceId = ref(false);
 const backendDiagnostics = shallowRef<RunDiagnosticsV1 | null>(null);
 const loadingDiagnostics = ref(false);
+let diagnosticLoad = 0;
 
 // 异步加载后端安全诊断快照
 async function loadDiagnostics() {
-  if (!props.threadId || !props.runId) {
-    backendDiagnostics.value = null;
+  const load = ++diagnosticLoad;
+  backendDiagnostics.value = null;
+  if (!props.show || !props.threadId || !props.runId) {
+    loadingDiagnostics.value = false;
     return;
   }
   loadingDiagnostics.value = true;
@@ -58,20 +60,18 @@ async function loadDiagnostics() {
     const res = await getRunDiagnostics(props.threadId, props.runId, {
       projectId: props.projectId,
     });
-    backendDiagnostics.value = res;
+    if (load === diagnosticLoad) backendDiagnostics.value = res;
   } catch {
     // 静默降级，不中断弹窗显示
   } finally {
-    loadingDiagnostics.value = false;
+    if (load === diagnosticLoad) loadingDiagnostics.value = false;
   }
 }
 
 watch(
-  () => [props.show, props.threadId, props.runId],
-  ([show]) => {
-    if (show && props.threadId && props.runId) {
-      loadDiagnostics();
-    }
+  () => [props.show, props.projectId, props.threadId, props.runId],
+  () => {
+    void loadDiagnostics();
   },
   { immediate: true },
 );
@@ -149,6 +149,14 @@ const rawErrorStack = computed(() => {
 // 解析错误机器码、人话解释与可操作建议 (借鉴 open-swe)
 const reasonInfo = computed(() => {
   const diag = backendDiagnostics.value;
+  if (diag?.run_status === "success") {
+    return {
+      reasonCode: "run_success",
+      reasonText: "运行最终成功；记录中的错误可能属于已恢复的中间过程。",
+      followUp:
+        "先核对最终回答及重试结果，无需仅因中间错误重复运行；若页面仍异常，请保留请求编号交给支持人员。",
+    };
+  }
   let code = props.errorCode;
   if (!code && diag?.model_errors?.[0]?.code) {
     code = diag.model_errors[0].code;
@@ -158,6 +166,7 @@ const reasonInfo = computed(() => {
 
 // 关联的最优 Request ID (对账凭据)
 const resolvedRequestId = computed(() => {
+  if (props.requestId) return props.requestId;
   const diag = backendDiagnostics.value;
   if (diag?.correlation?.execution_request_id) {
     return diag.correlation.execution_request_id;
@@ -165,12 +174,7 @@ const resolvedRequestId = computed(() => {
   if (diag?.correlation?.platform_trace_id) {
     return diag.correlation.platform_trace_id;
   }
-  if (diag?.request_id) {
-    return diag.request_id;
-  }
-  if (props.requestId) return props.requestId;
-  const record = errorRingBuffer.getLatest();
-  return record?.requestId || "";
+  return "";
 });
 
 // 提取 Trace ID 与 Trace URL (对标 open-swe Open Trace)
@@ -236,8 +240,8 @@ const handleCopyPacket = async () => {
     requestId: resolvedRequestId.value || undefined,
     traceId: traceId.value || undefined,
     traceUrl: traceUrl.value || undefined,
-    error: props.error,
-    customMessage: reasonInfo.value.reasonText,
+    error: props.error || rawErrorMessage.value,
+    errorCode: props.errorCode,
     backendDiagnostics:
       (backendDiagnostics.value as unknown as Record<string, unknown>) ||
       undefined,
@@ -265,11 +269,11 @@ const handleAskAssistant = () => {
     projectId: props.projectId,
     threadId: props.threadId,
     runId: props.runId || undefined,
-    requestId: props.requestId,
+    requestId: resolvedRequestId.value || undefined,
     traceId: traceId.value || undefined,
     traceUrl: traceUrl.value || undefined,
-    error: props.error,
-    customMessage: reasonInfo.value.reasonText,
+    error: props.error || rawErrorMessage.value,
+    errorCode: props.errorCode,
     backendDiagnostics:
       (backendDiagnostics.value as unknown as Record<string, unknown>) ||
       undefined,
@@ -330,7 +334,7 @@ const handleAskAssistant = () => {
               运行排障诊断详情 (Diagnostic Inspection)
             </h3>
             <p class="text-xs text-zinc-500 dark:text-zinc-400">
-              结构化分析 Agent 运行失败根因、链路追踪与恢复建议
+              查看运行证据、初步错误分类与恢复建议
             </p>
           </div>
         </div>
@@ -556,7 +560,7 @@ const handleAskAssistant = () => {
 
           <div>
             <span class="text-xs text-zinc-500 dark:text-zinc-400 block mb-0.5"
-              >根因概述</span
+              >初步分类（待证据确认）</span
             >
             <span
               class="text-xs font-medium text-zinc-700 dark:text-zinc-300"

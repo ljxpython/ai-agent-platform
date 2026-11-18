@@ -15,12 +15,38 @@ from platform_api.modules.platform_assistant.contracts import (
     InternalReadRequest,
     ReadRequest,
 )
-from platform_api.modules.platform_assistant.service import read, require_scope, sources
+from platform_api.modules.platform_assistant.service import (
+    read,
+    require_scope,
+    sources,
+)
 from platform_api.modules.runtime_gateway.presentation.http import (
     get_runtime_gateway_service,
 )
 
 router = APIRouter(prefix="/api/platform-assistant", tags=["platform-assistant"])
+
+
+def _target_gateway(request, target_actor, target_project):
+    factory = request.app.state.db_session_factory
+    context = request.state.platform_context
+    tenant_id = require_scope(factory, target_actor, target_project)
+    # Runtime's delegation must match the target, while evidence stays in the assistant scope.
+    target_request = Request(
+        {
+            **request.scope,
+            "state": {
+                **request.scope.get("state", {}),
+                "platform_context": replace(
+                    context,
+                    actor=target_actor,
+                    project=ProjectContext(project_id=target_project),
+                    tenant=TenantContext(tenant_id=tenant_id),
+                ),
+            },
+        }
+    )
+    return get_runtime_gateway_service(target_request, target_actor)
 
 
 @router.post("/bootstrap")
@@ -81,6 +107,7 @@ async def public_read(
         body,
         gateway,
         correlation={"request_id": request.state.platform_context.request.request_id},
+        target_gateway_factory=lambda a, p: _target_gateway(request, a, p),
     )
 
 
@@ -176,4 +203,5 @@ async def internal_read(
             "tool_call_id": body.tool_call_id,
             "request_id": request.state.platform_context.request.request_id,
         },
+        target_gateway_factory=lambda a, p: _target_gateway(request, a, p),
     )

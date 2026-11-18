@@ -12,6 +12,7 @@ export interface DiagnosticContext {
   runId?: string;
   userEmail?: string;
   error?: unknown;
+  errorCode?: string;
   customMessage?: string;
   requestId?: string;
   routePath?: string;
@@ -31,7 +32,7 @@ const SENSITIVE_PATTERNS = [
  */
 export const REASON_CODE_TEXT: Record<string, string> = {
   provider_overloaded: "大模型上游服务商负载过高，暂未恢复响应",
-  provider_rate_limited: "触发大模型服务商调用频率限制 (Rate Limit)",
+  provider_rate_limited: "模型请求受到上游限制 (HTTP 429)",
   provider_unavailable: "大模型服务商持续返回服务不可用或内部错误 (5xx)",
   provider_timeout: "大模型调用超时或网络握手超时",
   context_too_long: "对话上下文长度超出大模型窗口上限",
@@ -43,6 +44,7 @@ export const REASON_CODE_TEXT: Record<string, string> = {
   "runtime.context.capacity_unknown":
     "模型未配置 context_window_tokens 且无法推断上下文预算",
   "runtime.execution_failed": "智能体执行中断或发生不可恢复异常",
+  unknown: "错误类型尚未确认，请结合原始现场和诊断证据判断",
   "runtime.loop.detected": "检测到工具调用或模型输出进入死循环",
   context_offload_not_supported: "当前智能体未开启或不支持上下文手动整理",
   context_offload_empty_thread: "当前会话尚无历史消息，无需整理",
@@ -57,10 +59,11 @@ export const REASON_CODE_TEXT: Record<string, string> = {
 export const REASON_CODE_FOLLOW_UP: Record<string, string> = {
   context_too_long: "建议点击左侧新建会话，开启新对话以重置上下文长度。",
   provider_rate_limited:
-    "模型调用配额超限，请等待 1~2 分钟后再试，或在输入框切换其他可用模型。",
+    "先核对最终状态和已有产出，确认重复操作安全后再考虑重试或切换可用模型；持续发生时请管理员核对并发、速率及额度。仅凭 429 不能判断欠费或配额耗尽。",
   provider_overloaded: "服务商服务器繁忙，请稍等片刻后发送新消息继续。",
   provider_unavailable: "上游接口故障，请核对模型接入配置或稍后重试。",
-  provider_timeout: "响应超时，请重试发送消息或减小单次提示词复杂度。",
+  provider_timeout:
+    "先核对运行最终状态和已有产出；确认已失败且重复操作安全后，再考虑重试。超时本身不能证明任务未执行。",
   model_unavailable: "请前往设置检查模型凭据是否有效，或选择其他可用模型。",
   sandbox_unreachable: "建议刷新页面并重新发起运行以自动重建沙箱。",
   step_limit: "任务复杂度过高，建议将大任务拆分为小步骤分别指派给智能体。",
@@ -147,7 +150,7 @@ export function resolveReasonDetails(
     } else if (normCode) {
       matchedCode = normCode;
     } else {
-      matchedCode = "runtime.execution_failed";
+      matchedCode = "unknown";
     }
   }
 
@@ -198,13 +201,10 @@ export function generateDiagnosticMarkdown(
   const isSecure =
     typeof window !== "undefined" ? Boolean(window.isSecureContext) : false;
 
-  // 1. 查找关联的最新错误或特定 request_id 错误
+  // 只有明确的请求关联才能作为本次故障证据。
   let relatedRecord: DiagnosticErrorRecord | null = null;
   if (context.requestId) {
     relatedRecord = errorRingBuffer.getLatestByRequestId(context.requestId);
-  }
-  if (!relatedRecord) {
-    relatedRecord = errorRingBuffer.getLatest();
   }
 
   // 2. 解析传入的直接错误
@@ -224,7 +224,10 @@ export function generateDiagnosticMarkdown(
   }
 
   // 3. 最近失败请求摘要
-  const recentErrors = errorRingBuffer.getAll().slice(0, 3);
+  const recentErrors = errorRingBuffer
+    .getAll()
+    .filter((e) => e !== relatedRecord)
+    .slice(0, 3);
   const recentErrorsSection =
     recentErrors.length > 0
       ? recentErrors
@@ -261,7 +264,7 @@ export function generateDiagnosticMarkdown(
     "未关联";
 
   let rawErrMsg = directErrorMsg || relatedRecord?.message || "";
-  let rawCode = relatedRecord?.code || "";
+  let rawCode = context.errorCode || relatedRecord?.code || "";
 
   // 兜底：若前端内存无错误，但后端诊断有 model_errors 或 graph_executions，提取之
   const modelErrors = Array.isArray(backendDiag?.model_errors)
@@ -286,6 +289,7 @@ export function generateDiagnosticMarkdown(
   }
 
   const reasonDetails = resolveReasonDetails(rawCode, rawErrMsg);
+  const completed = backendDiag?.run_status === "success";
 
   const tracingSection = `- **分布式链路追踪 (Distributed Tracing / Open Trace)**:
   - Trace Provider: Langfuse
@@ -310,7 +314,8 @@ ${traceUrl ? `  - Trace 直达链接: [在 Langfuse 中打开追踪 (Open Trace 
   }
 
   const report = `### 🛠️ 故障诊断数据包 (Diagnostic Packet)
-- **发生时间**: ${now}
+- **发生时间**: ${relatedRecord?.timestamp || "未知（尚无已关联的发生时间）"}
+- **诊断包生成时间**: ${now}
 - **访问路径**: \`${path}\`
 - **完整链接**: ${sanitizeDiagnosticText(href)}
 - **客户端环境**:
@@ -322,16 +327,19 @@ ${traceUrl ? `  - Trace 直达链接: [在 Langfuse 中打开追踪 (Open Trace 
   - Run ID: \`${context.runId || "未提供"}\`
   - 关联 Request ID: \`${resolvedRequestId}\`
 ${tracingSection}- **错误概况**:
+  - 运行最终状态: ${String(backendDiag?.run_status || "未知")}
+  - 诊断资料状态: ${String(backendDiag?.availability || "未知")}；不可用原因: ${String(backendDiag?.unavailable_reason || "无/未知")}（只描述资料，不代表业务根因）
   - 原始错误: ${sanitizeDiagnosticText(rawErrMsg || "未捕获明确错误信息")}
   - 机器代码: \`${reasonDetails.reasonCode}\`
-- **根因分析与恢复建议**:
-  - 根因分析: ${reasonDetails.reasonText}
-  - 操作建议: ${reasonDetails.followUp}
+${relatedRecord ? `  - 已关联请求记录: ${relatedRecord.type.toUpperCase()} ${relatedRecord.status ? `[${relatedRecord.status}] ` : ""}${relatedRecord.code ? `[Code: ${relatedRecord.code}] ` : ""}${sanitizeDiagnosticText(relatedRecord.message)}\n` : ""}\
+- **初步分类与恢复建议（待诊断证据确认）**:
+  - 初步分类: ${completed ? "运行最终成功；上述错误可能是已恢复的中间过程，不能据此判断最终失败。" : reasonDetails.reasonText}
+  - 操作建议: ${completed ? "先核对最终回答和重试结果；若页面仍报错，请保留请求编号交给支持人员核对。" : reasonDetails.followUp}
 ${
   directErrorStack
     ? `- **前端调用栈**:\n\`\`\`\n${sanitizeDiagnosticText(directErrorStack.trim())}\n\`\`\`\n`
     : ""
-}- **最近异常记录 (最近 3 条)**:
+}- **其他近期异常（未确认与本次故障相关，最多 3 条）**:
 ${recentErrorsSection}
 `;
 

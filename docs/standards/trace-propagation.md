@@ -1,6 +1,6 @@
 ---
 status: active
-last_verified: 2026-11-16
+last_verified: 2026-11-17
 confidence: high
 source_project: docs/projects/20261022-trace-to-logs-distributed-observability/verification.md
 ---
@@ -75,3 +75,9 @@ close_reason, reused_submission, correlation_version=1（整数）
 运行诊断若未配置追踪后端，返回disabled/not_configured；不猜platform_trace_id。模型Trace与平台Trace仍按原类型区分。关闭助手不恢复旧日志匿名访问。新增接口、旧页面迁移及本地验证见[助手交接](../projects/20261116-platform-assistant/frontend-handoff.md)和[验证](../projects/20261116-platform-assistant/verification.md)。本次只补读取范围，不新增追踪头或SSE事件；未验证生产Loki。
 
 普通日志查询还逐条校验结构化thread_id的当前Thread ACL；按Run读取同时限定目标Thread/Run。客户端传播的Trace或自己的同Trace审计记录不是独立授权，缺资源关联仅供明确获准的项目日志调查者查看。
+
+2026-11-17补充：首次读取与助手历史复核均按目标Thread的真实项目及当前成员/Thread ACL授权。证据scope.project_id表示助手会话项目，scope.target_project_id表示排查目标项目；跨项目本身不构成归属冲突。observed_at表示本次资料读取时间，data.run_time表示获准Run快照中的created_at/updated_at，不能拿读取时间冒充故障时间。
+
+按Run默认查created_at前5分钟至updated_at后5分钟的日志，返回query_start/query_end。时间未知、无时区、逆序、扩展后超24小时或只提供一端时要求补充时间；显式窗口仍最多24小时。保留partial/coverage及原数量和字节边界，日志为空不证明无故障。合成时间/日志、当前权限和模型分层验证见[实施证据](../projects/20261116-platform-assistant/implementation/03-guide-and-diagnostics-optimization.md)，未代替真实Loki或生产采集验收。
+
+2026-11-17真实排障复盘追加批准：Run已通过当前目标项目/Thread ACL且后端核实Run归属后，日志可按已验证平台Trace、诊断来源的execution_request_id、Run编号依次选择关联。该回退只改变候选搜索键；每条返回仍须有精确项目/Thread/Run、所选关联字段及时间范围，不接受模型指定请求编号，不扩大项目检索，不放宽旧Trace入口。correlation_type返回实际方式。诊断顶层request_id属于本次查询，不能作为旧执行关联；availability_scope明确当前查询端，不能推断历史采集。验证入口为[本轮任务](../projects/20261116-platform-assistant/tasks.md#t21把目标运行的持久失败状态提供给助手)，实际结果见verification的R01–R05。

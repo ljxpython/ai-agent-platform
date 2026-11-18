@@ -70,7 +70,7 @@ class NotificationChannelItem(BaseModel):
 
     id: uuid.UUID
     name: str
-    project_id: uuid.UUID | None = None
+    project_ids: list[uuid.UUID] = Field(default_factory=list)
     channel_type: ChannelType
     endpoint_url: str
     secret_token: str | None = None
@@ -82,7 +82,7 @@ class NotificationChannelItem(BaseModel):
 
 class CreateChannelRequest(BaseModel):
     name: str = Field(min_length=1, max_length=128)
-    project_id: uuid.UUID | None = None
+    project_ids: list[uuid.UUID] = Field(default_factory=list)
     channel_type: ChannelType = ChannelType.FEISHU
     endpoint_url: str = Field(min_length=1)
     secret_token: str | None = None
@@ -94,6 +94,7 @@ class CreateChannelRequest(BaseModel):
 
 class UpdateChannelRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=128)
+    project_ids: list[uuid.UUID] | None = None
     endpoint_url: str | None = None
     secret_token: str | None = None
     is_enabled: bool | None = None

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 
@@ -15,6 +15,10 @@ const props = withDefaults(
     flush?: boolean;
     closeOnEscape?: boolean;
     closeOnClickOutside?: boolean;
+    resizable?: boolean;
+    customWidth?: number;
+    minWidth?: number;
+    maxWidth?: number;
   }>(),
   {
     side: "right",
@@ -22,16 +26,82 @@ const props = withDefaults(
     flush: false,
     closeOnEscape: true,
     closeOnClickOutside: true,
+    resizable: false,
+    customWidth: undefined,
+    minWidth: 420,
+    maxWidth: undefined,
   },
 );
 
 const emit = defineEmits<{
-  close: [];
+  (e: "close"): void;
+  (e: "update:customWidth", width: number): void;
+  (e: "resize", width: number): void;
 }>();
 
 const { t } = useI18n();
 const drawerRef = ref<HTMLElement | null>(null);
 let previousActiveElement: HTMLElement | null = null;
+
+const internalWidth = ref<number | null>(props.customWidth ?? null);
+
+watch(
+  () => props.customWidth,
+  (val) => {
+    if (typeof val === "number") {
+      internalWidth.value = val;
+    }
+  },
+);
+
+const panelStyle = computed(() => {
+  if (internalWidth.value) {
+    return {
+      width: `min(${internalWidth.value}px, 96vw)`,
+    };
+  }
+  return {};
+});
+
+const isResizing = ref(false);
+
+function startResize(_e: MouseEvent) {
+  if (!props.resizable) return;
+  isResizing.value = true;
+  document.body.style.cursor = "col-resize";
+  document.body.style.userSelect = "none";
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (!isResizing.value) return;
+    const minW = props.minWidth ?? 420;
+    const maxW =
+      props.maxWidth ??
+      (typeof window !== "undefined"
+        ? Math.max(window.innerWidth - 60, minW)
+        : 1400);
+    let newWidth = internalWidth.value ?? 520;
+    if (props.side === "right") {
+      newWidth = window.innerWidth - moveEvent.clientX;
+    } else {
+      newWidth = moveEvent.clientX;
+    }
+    const clamped = Math.max(minW, Math.min(maxW, newWidth));
+    internalWidth.value = clamped;
+    emit("update:customWidth", clamped);
+    emit("resize", clamped);
+  };
+
+  const onMouseUp = () => {
+    isResizing.value = false;
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+    window.removeEventListener("mousemove", onMouseMove);
+    window.removeEventListener("mouseup", onMouseUp);
+  };
+
+  window.addEventListener("mousemove", onMouseMove);
+  window.addEventListener("mouseup", onMouseUp);
+}
 
 function widthClass(width: DrawerWidth) {
   switch (width) {
@@ -164,9 +234,24 @@ onUnmounted(() => {
           <div
             ref="drawerRef"
             tabindex="-1"
-            class="pw-dialog-panel absolute inset-y-0 flex h-full flex-col overflow-hidden"
-            :class="[panelPositionClass(side), widthClass(width)]"
+            class="pw-dialog-panel absolute inset-y-0 flex h-full flex-col overflow-hidden shadow-2xl"
+            :class="[
+              panelPositionClass(side),
+              !internalWidth ? widthClass(width) : '',
+            ]"
+            :style="panelStyle"
           >
+            <!-- 可拖拽拉伸手柄 (仅当 resizable 且 side 为 right 时位于左侧) -->
+            <div
+              v-if="resizable && side === 'right'"
+              class="absolute inset-y-0 left-0 w-3 -ml-1.5 cursor-col-resize z-50 group flex items-center justify-center select-none"
+              title="按住左右拖拽调整抽屉宽度"
+              @mousedown.prevent="startResize"
+            >
+              <div
+                class="w-1 h-14 rounded-full bg-gray-300 dark:bg-dark-600 group-hover:bg-sky-500 group-hover:w-1.5 transition-all opacity-0 group-hover:opacity-100 group-active:opacity-100 group-active:bg-sky-600"
+              />
+            </div>
             <div
               class="flex shrink-0 items-center justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-800"
             >

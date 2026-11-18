@@ -24,7 +24,7 @@ function handleKeyDown(event: KeyboardEvent) {
 
 function handleSend() {
   const trimmed = inputContent.value.trim();
-  if (!trimmed && !props.disabled) return;
+  if (!trimmed || props.disabled || props.isRunning) return;
   emit("send", trimmed);
   inputContent.value = "";
 }
@@ -39,14 +39,14 @@ function handleSend() {
 
     <!-- 输入区与控制按钮 -->
     <div
-      class="relative flex flex-col bg-gray-50 dark:bg-dark-950 border border-gray-200 dark:border-dark-700 rounded-xl p-2 focus-within:border-sky-500 focus-within:ring-1 focus-within:ring-sky-500 transition-all"
+      class="relative flex flex-col bg-gray-50/80 dark:bg-dark-950/80 border border-gray-200 dark:border-dark-700 rounded-xl p-2.5 hover:border-sky-300 dark:hover:border-sky-700/60 focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/15 focus-within:bg-white dark:focus-within:bg-dark-900 transition-all duration-200"
     >
       <textarea
         v-model="inputContent"
         rows="3"
-        class="w-full bg-transparent resize-none border-0 p-1 text-xs text-gray-900 dark:text-white placeholder-gray-400 focus:outline-hidden"
+        class="w-full bg-transparent resize-none border-none outline-none ring-0 focus:outline-none focus:ring-0 focus:border-none p-1 text-xs text-gray-900 dark:text-white placeholder-gray-400"
         placeholder="咨询平台用法、排查异常、或探讨创意... (Enter 发送, Shift+Enter 换行)"
-        :disabled="isRunning"
+        :disabled="isRunning || disabled"
         @keydown="handleKeyDown"
       />
 
@@ -73,7 +73,7 @@ function handleSend() {
             v-else
             variant="primary"
             size="sm"
-            :disabled="!inputContent.trim() && !disabled"
+            :disabled="!inputContent.trim() || disabled"
             class="bg-sky-600 hover:bg-sky-700 text-white text-xs py-1 px-3 h-auto shadow-xs"
             @click="handleSend"
           >

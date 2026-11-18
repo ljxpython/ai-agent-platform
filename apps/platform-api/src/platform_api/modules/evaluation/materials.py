@@ -1,12 +1,14 @@
 """Supply authorized Session evidence. Test case authoring belongs to EvalFlow."""
 
 import json
-from datetime import UTC, datetime, timedelta
+import logging
+import types
+from datetime import UTC, datetime
 from typing import Literal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import httpx
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response, status
 from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
 from platform_api.core.context.models import ActorContext
@@ -39,6 +41,7 @@ class MaterialRequest(BaseModel):
     data_class: Literal["synthetic", "business"] = "synthetic"
     material_consent: bool = False
     auto_generate: bool = False
+    async_mode: bool = True
 
     @model_validator(mode="after")
     def consented(self):
@@ -49,10 +52,6 @@ class MaterialRequest(BaseModel):
         ):
             raise ValueError("请确认有权将所选会话用于评测；自动整理还会使用受管模型。")
         return self
-
-
-class CaptureRequest(MaterialRequest):
-    enabled: bool = True
 
 
 class SessionQuery(BaseModel):
@@ -164,44 +163,6 @@ async def list_material_sessions(
         else None,
         "limited": body.offset == 10000 and len(rows) == 100,
         "notice": "按当前项目和Agent筛选有权查看的会话；反馈仅指你自己的有效反馈。每批检查100条，可继续查找。",
-    }
-
-
-@router.post("/capture")
-async def capture_materials(
-    request: Request,
-    body: CaptureRequest,
-    actor: ActorContext = Depends(get_actor_context),
-    gateway=Depends(get_runtime_gateway_service),
-):
-    project_id = _require_project_id(request)
-    require_action(actor, project_id, "grant")
-    capture = {
-        "id": str(body.request_id),
-        "expires_at": (datetime.now(UTC) + timedelta(hours=24)).isoformat(),
-        "actor_id": actor.user_id,
-        "data_class": body.data_class,
-        "policy": "local-synthetic-20261114",
-    }
-    if not body.enabled:
-        capture = None
-    values = []
-    for thread_id in body.thread_ids:
-        values.append(
-            await gateway.set_evaluation_capture(
-                actor=actor,
-                project_id=project_id,
-                thread_id=str(thread_id),
-                capture=capture,
-            )
-        )
-    return {
-        "items": values,
-        "notice": (
-            "已开启后续运行前的上传文本资料快照，24小时有效；不补造过去初态，不发送给模型。"
-            if body.enabled
-            else "已停止采集并封闭原始快照读取；已有评测批次请在EvalFlow单独撤权。"
-        ),
     }
 
 
@@ -378,12 +339,191 @@ async def snapshot(gateway, actor, project_id, thread_id, data_class="synthetic"
     return value
 
 
+def notify_conversion_result(
+    session_factory,
+    user_id: str,
+    project_id: str,
+    title: str,
+    item_id: str | None,
+    evalflow_web_url: str | None,
+    error_message: str | None = None,
+):
+    from platform_api.core.db import session_scope
+    from platform_api.modules.notifications.repository import (
+        SqlAlchemyNotificationsRepository,
+    )
+    from platform_api.modules.notifications.schemas import (
+        NotificationCategory,
+        NotificationLevel,
+    )
+    from platform_api.modules.notifications.service import NotificationService
+
+    try:
+        with session_scope(session_factory) as session:
+            repo = SqlAlchemyNotificationsRepository(session)
+            service = NotificationService(repository=repo)
+            if error_message:
+                clean_err = str(error_message).strip().rstrip("。，, .")
+                service.create_notification(
+                    title=f"评测集【{title}】转换未完成",
+                    content=f"会话转评测集处理异常：{clean_err}，请稍后重试。",
+                    level=NotificationLevel.WARNING,
+                    category=NotificationCategory.EVAL,
+                    recipient_user_id=UUID(user_id) if user_id else None,
+                    project_id=UUID(project_id) if project_id else None,
+                )
+            else:
+                url = (
+                    f"{evalflow_web_url.rstrip('/')}/#/authoring/{item_id}"
+                    if evalflow_web_url and item_id
+                    else None
+                )
+                service.create_notification(
+                    title=f"评测集【{title}】已生成完毕",
+                    content="会话历史与执行证据已处理完毕，AI 建议用例草稿已就绪，点击即可前往查看与调整。",
+                    level=NotificationLevel.INFO,
+                    category=NotificationCategory.EVAL,
+                    recipient_user_id=UUID(user_id) if user_id else None,
+                    project_id=UUID(project_id) if project_id else None,
+                    action_url=url,
+                )
+    except Exception as exc:  # noqa: BLE001
+        logging.getLogger(__name__).warning(
+            "Failed to emit conversion notification: %s", exc
+        )
+
+
+async def process_materials_background(
+    app_state,
+    actor: ActorContext,
+    project_id: str,
+    gateway,
+    body: MaterialRequest,
+    item_id: str,
+    submission: dict,
+    title: str,
+):
+    logger = logging.getLogger(__name__)
+    req_proxy = types.SimpleNamespace(app=types.SimpleNamespace(state=app_state))
+    evalflow_url = getattr(app_state.settings, "evaluation_web_url", None)
+    try:
+        materials, failures = [], []
+        for identifier in dict.fromkeys(body.thread_ids):
+            try:
+                materials.append(
+                    await snapshot(
+                        gateway, actor, project_id, str(identifier), body.data_class
+                    )
+                )
+            except (PlatformApiError, ValueError) as exc:
+                failures.append(
+                    {
+                        "thread_id": str(identifier),
+                        "reason": getattr(exc, "message", str(exc)),
+                    }
+                )
+        if not materials:
+            error_desc = "未成功采集到所选会话资料"
+            if failures:
+                error_desc += "：" + "; ".join(
+                    f"{f.get('thread_id', '')}: {f.get('reason', '')}" for f in failures
+                )
+            notify_conversion_result(
+                app_state.db_session_factory,
+                actor.user_id,
+                project_id,
+                title,
+                None,
+                evalflow_url,
+                error_message=error_desc,
+            )
+            return
+
+        agents = {m["agent_id"] for m in materials}
+        if len(agents) != 1 or None in agents:
+            notify_conversion_result(
+                app_state.db_session_factory,
+                actor.user_id,
+                project_id,
+                title,
+                None,
+                evalflow_url,
+                error_message="请选择同一个Agent的会话，且需有明确Agent关联。",
+            )
+            return
+
+        receipt = {
+            "status": "partial" if failures else "delivered",
+            "materials": [
+                {
+                    key: m[key]
+                    for key in (
+                        "thread_id",
+                        "title",
+                        "content_hash",
+                        "missing",
+                        "environment",
+                    )
+                }
+                for m in materials
+            ],
+            "failures": failures,
+        }
+        item = await forward(
+            req_proxy,
+            actor,
+            project_id,
+            "create",
+            item_id,
+            body.request_id,
+            {
+                "title": title,
+                "description": "根据已选Agent会话整理评测题目与评分建议，保留来源，独立核对预期；用户确认后再发布和运行。",
+                "agent_id": next(iter(agents)),
+                "source_materials": materials,
+                "authoring": True,
+                "material_submission": {"scope": submission, "receipt": receipt},
+                "data_class": body.data_class,
+                "material_consent": body.material_consent,
+                "synthetic_attestation": body.synthetic_attestation,
+                "share_with_project_reviewers": True,
+            },
+        )
+        await finish_conversion(req_proxy, actor, project_id, body, item, receipt)
+        notify_conversion_result(
+            app_state.db_session_factory,
+            actor.user_id,
+            project_id,
+            title,
+            item["id"],
+            evalflow_url,
+        )
+        logger.info(
+            "Successfully converted session materials async for item %s", item_id
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception(
+            "Failed to process materials conversion in background: %s", exc
+        )
+        notify_conversion_result(
+            app_state.db_session_factory,
+            actor.user_id,
+            project_id,
+            title,
+            None,
+            evalflow_url,
+            error_message=getattr(exc, "message", str(exc)),
+        )
+
+
 @router.post("/send")
 async def send_materials(
     request: Request,
     body: MaterialRequest,
     actor: ActorContext = Depends(get_actor_context),
     gateway=Depends(get_runtime_gateway_service),
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
+    response: Response = None,  # type: ignore[assignment]
 ):
     project_id = _require_project_id(request)
     require_action(actor, project_id, "create")
@@ -430,6 +570,29 @@ async def send_materials(
             ),
             "reused": True,
         }
+    if body.async_mode and background_tasks is not None:
+        if response is not None:
+            response.status_code = status.HTTP_202_ACCEPTED
+        background_tasks.add_task(
+            process_materials_background,
+            app_state=request.app.state,
+            actor=actor,
+            project_id=project_id,
+            gateway=gateway,
+            body=body,
+            item_id=item_id,
+            submission=submission,
+            title=title,
+        )
+        return {
+            "status": "accepted",
+            "message": "评测集转换任务已提交后台处理，完成后将通过系统通知告知。",
+            "task_id": item_id,
+            "item_id": item_id,
+            "request_id": str(body.request_id),
+            "title": title,
+        }
+
     materials, failures = [], []
     for identifier in dict.fromkeys(body.thread_ids):
         try:

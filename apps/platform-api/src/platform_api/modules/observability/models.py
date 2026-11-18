@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -33,3 +33,12 @@ class TraceLogsResponse(BaseModel):
     error: str | None = None
     partial: bool = False
     coverage: str | None = None
+    query_start: str | None = None
+    query_end: str | None = None
+    correlation_type: (
+        Literal["platform_trace_id", "execution_request_id", "run_id", "project_id"]
+        | None
+    ) = None
+    source: Literal["fixed_files", "loki"] | None = None
+    availability: Literal["available", "empty", "unavailable", "partial"] | None = None
+    retention: Literal["unknown"] = "unknown"

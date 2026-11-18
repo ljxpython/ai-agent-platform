@@ -43,7 +43,7 @@ export const usePlatformAssistantStore = defineStore("platformAssistant", {
         this.activeThreadId = options.threadId;
       }
       this.activeView = "chat";
-      void this.ensureBootstrap(options?.projectId);
+      void this.ensureBootstrap(options?.projectId).catch(() => {});
     },
 
     close() {
@@ -66,7 +66,8 @@ export const usePlatformAssistantStore = defineStore("platformAssistant", {
       this.attachedContext = context;
       this.isOpen = true;
       this.activeView = "chat";
-      void this.ensureBootstrap(context.projectId);
+      // 诊断目标不改变助手会话的项目绑定。
+      void this.ensureBootstrap().catch(() => {});
     },
 
     setAttachedContext(context: AssistantAttachedContext | null) {
@@ -103,6 +104,12 @@ export const usePlatformAssistantStore = defineStore("platformAssistant", {
       this.error = null;
       try {
         const config = await bootstrapAssistant(targetProjectId);
+        if (
+          this.bootstrapConfig &&
+          this.bootstrapConfig.project_id !== config.project_id
+        ) {
+          this.activeThreadId = null;
+        }
         this.bootstrapConfig = config;
 
         // 尝试加载能力声明，静默捕获不阻塞核心流程

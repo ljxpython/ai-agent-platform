@@ -79,6 +79,12 @@ const assistance = ref(true);
 const regression = ref(true);
 const hours = ref("24");
 const model = ref("");
+const authoringUrl = ref("");
+const hasCandidate = computed(() =>
+  item.value?.assistant_jobs?.some(
+    (job) => job.candidate?.status === "pending",
+  ),
+);
 const revokeId = ref("");
 const assignee = ref("");
 const members = ref<{ value: string; label: string }[]>([]);
@@ -157,9 +163,12 @@ watch(
     consent.value = false;
     members.value = [];
     model.value = "";
+    authoringUrl.value = "";
     const capability = await workbenchCapabilities(current).catch(() => null);
-    if (project.value === current)
+    if (project.value === current) {
       model.value = capability?.assistant_model || "未配置";
+      authoringUrl.value = capability?.authoring_url || "";
+    }
     if (canManage.value) {
       const values = await listProjectMembers(current).catch(() => []);
       if (project.value === current)
@@ -325,6 +334,23 @@ function canExplain(value: Result) {
       description="问题正文、方案和结果已封闭。不会继续生成、发布或运行；旧授权不能用来恢复这些内容。"
     />
     <template v-if="item && item.status !== 'materials_unavailable'">
+      <SurfaceCard v-if="hasCandidate" class="space-y-3">
+        <h2 class="font-semibold">AI候选待审阅</h2>
+        <p class="text-sm">
+          候选尚未保存为草稿。请在评测工作台核对增删改差异，选择全部或部分采纳。
+        </p>
+        <a
+          v-if="authoringUrl"
+          class="text-primary-600 underline"
+          :href="`${authoringUrl}/#/authoring/${encodeURIComponent(item.id)}`"
+          target="_blank"
+          rel="noopener noreferrer"
+          >打开候选审阅与 Copilot</a
+        >
+        <p v-else role="status">
+          评测工作台地址尚未配置，请联系管理员；当前草稿保持不变。
+        </p>
+      </SurfaceCard>
       <div class="flex flex-wrap items-center gap-3 text-sm" role="status">
         <strong>{{ statusLabel(item.status) }}</strong
         ><span>方案第 {{ item.revision }} 版</span

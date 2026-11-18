@@ -79,28 +79,40 @@ bash "scripts/local-stack.sh" restart-one runtime-worker
 
 ## 4. 文档与研发源码发布
 
-没有自定义文档目录时，使用两份随版本维护的内置文档：助手指南、平台常用导航。导航按2026-11-16前端路由核对。默认不扫描整个仓库。自定义资料采用明确发布清单，保证版本、范围可解释：
+没有自定义文档目录时，读取仓库 `docs/assistant/manifest.json` 及其六篇短指南，分别介绍平台入门、Agent、聊天、知识库、评测与设置。只维护这份面向用户的正文，不再保留 Python 内置副本，不扫描全仓。自定义发布目录仍采用明确清单：
 
 ```json
 {
-  "revision": "release-20261116",
+  "revision": "release-20261117",
   "files": [
-    {"id": "getting-started", "title": "快速入门", "path": "getting-started.md"}
+    {"id": "getting-started", "title": "快速入门", "summary": "项目入口和前端操作", "path": "getting-started.md"}
   ]
 }
 ```
 
-配置 `PLATFORM_API_ASSISTANT_DOCUMENT_ROOT` 为包含manifest.json的目录。发布者更新文件、版本和清单；不要只覆盖同版本内容。检索是有界文本匹配，不是全仓向量检索；query为空可读首批文档，document_id+line可定位。
+配置 `PLATFORM_API_ASSISTANT_DOCUMENT_ROOT` 可覆盖默认目录。`search_documents` 不传ID时返回最多32篇的ID/标题/简介目录，传 `document_id` 时从头读取该篇当前正文，最多300行/16,000字符。`query/line` 仅保留调用兼容，不再控制用户指南关键词排名或阅读起点。返回正文行号、SHA256、revision和truncated；超限须拆短或明确缺失，不能声称已读完整文档。
 
-源码使用独立 `PLATFORM_API_ASSISTANT_SOURCE_ROOT` 和同格式清单，`PLATFORM_API_ASSISTANT_SOURCE_USERS` 为明确获准用户UUID的JSON数组。只有.py/.ts/.vue/.js/.sql可读；文档仅.md/.txt。拒绝绝对路径、隐藏路径、越目录和软链接；单文件最多500KB，单次最多5个文件、每文件80行/8,000字符。源码结果带相对path、revision、行号、hash，不能请求任意宿主路径。
+Runtime 沿每轮原 `authorize` 回调获取目录，临时追加到本轮模型系统消息，不新增分类模型或持久目录缓存。目录读取失败时普通聊天仍可继续。指南revision只作来源标记，更新正文或标记均不阻断旧会话；下一次操作咨询重新读当前内容。工具撤权、当前项目/会话授权继续校验，不提供历史指南快照或自动改写旧答案。
+
+源码使用独立 `PLATFORM_API_ASSISTANT_SOURCE_ROOT` 和同格式清单，`PLATFORM_API_ASSISTANT_SOURCE_USERS` 为明确获准用户UUID的JSON数组。只有.py/.ts/.vue/.js/.sql可读；文档仅.md/.txt。两类资料均拒绝绝对路径、隐藏路径、越目录和软链接，单文件最多500KB。源码仍按文本查询，单次最多5文件、每文件80行/8,000字符；不套用指南新窗口。源码结果带相对path、revision、行号、hash，不能请求任意宿主路径。
 
 发布负责人须去掉代码中的真实密钥和不应公开的业务资料。扩展名白名单不能保证任意.py文件都无秘密。源码权限撤销后，引用过源码的旧助手会话不再可读；改版本也触发重新开会话。
 
 ## 5. 日志与诊断
 
-优先使用既有 `get_thread_run_diagnostics` 校验目标Thread/Run。它校验真实Run归属，返回平台Trace与模型Trace的不同字段，保留available/partial/disabled/unavailable。
+优先使用既有 `get_thread_run_diagnostics` 校验目标Thread/Run。首次读取和历史复核统一从目标Thread记录取得真实项目，重载目标项目当前成员角色并核对Thread ACL；助手会话自己的ACL另行保留。返回平台Trace与模型Trace的不同字段，保留available/partial/disabled/unavailable。
 
-有目标Run时，只用已验证的platform_trace_id查日志；没有追踪关联时返回assistant_trace_missing，不猜ID。无Run调查须当前成员且在 `PLATFORM_API_ASSISTANT_LOG_USERS`（用户UUID JSON数组）中，可按项目、服务、含时区时间窗口和Trace查询，默认最近1小时、最长24小时。
+授权目标后，读取网关使用独立请求上下文按目标项目、当前角色与策略重新构建Runtime委托，不能沿用助手项目委托。原助手请求不改，读取和拒绝仍在审计范围内；证据归助手会话，目标项目单独记录。
+
+证据外层 `scope.project_id` 是助手会话项目，诊断/日志的 `scope.target_project_id` 是排查目标项目，两者不同不表示冲突。`observed_at` 只是读取时间；`data.run_time.created_at/updated_at` 从获准Run快照投影，才是运行时间信息。没有新增原始错误正文、完整配置或堆栈返回通道。
+
+有目标Run时优先用已验证platform_trace_id，缺失后用诊断来源的correlation.execution_request_id，再缺失按已验证Run编号检索；不接受模型指定执行请求编号，不把诊断响应顶层request_id当成旧Run请求。每条结果仍须匹配结构化目标项目、Thread、Run及所选关联字段，缺少资源字段直接丢弃，不扩大为项目调查。返回correlation_type区分platform_trace_id/execution_request_id/run_id。默认窗口来自获准Run的created_at前5分钟至updated_at后5分钟。时间缺失、无时区、逆序、扩展后超过24小时或仅给一端时间时返回 `assistant_log_window_required`；显式窗口最多24小时，返回实际 `query_start/query_end`。
+
+diagnostics沿授权网关用metadata.run_id过滤、limit=1读取最新checkpoint，并再次核对Run绑定。persistent_state只包含任务名/已知错误码、实际中断/审批布尔、最多200条消息的类型计数和checkpoint标识；任务/中断有界，截断时不将未观察到写成确定不存在。消息计数是累计状态，不是Run增量，side_effects保持unknown。不返回原始错误、消息、参数或堆栈。状态来源失败与追踪来源失败分开；401/403仍拒绝整次读取。
+
+availability_scope=current_trace_query_client及historical_collection=unknown明确顶层可用性仅表示当前追踪查询客户端，不能证明过去是否采集。request_id_scope=diagnostic_query_not_execution明确顶层request_id只属于本次诊断请求。每轮authorize还提供当前身份/项目的capabilities，数据库空只说明no_readable_sources；日志只给别名和not_checked状态，不泄漏路径或宣称已查通。
+
+无Run调查须当前成员且在 `PLATFORM_API_ASSISTANT_LOG_USERS`（用户UUID JSON数组）中，可按项目、服务、含时区时间窗口和Trace查询，仍默认最近1小时、最长24小时。目标Run日志空或诊断未配置不授予扩大项目检索范围的权限。
 
 日志来源任选现有Loki或管理员指定的固定文件。`PLATFORM_API_ASSISTANT_LOG_FILES` 是 `{"platform-api":"<绝对日志路径>"}`；配置文件时使用文件来源，不再同时查Loki。每文件最多扫描尾部512KB/100条候选，返回总计最多100条且日志条目合计64KB。跨项目、仅在正文碰巧出现Trace、非结构化或不匹配服务/时间的日志被丢弃。普通用户还逐条校验日志thread_id的当前ACL；按Run读取必须同时匹配目标thread_id/run_id。Trace可以来自客户端传播，不能单独承担授权，缺少资源关联的记录仅向明确获准的项目日志调查者开放。
 
@@ -108,7 +120,7 @@ bash "scripts/local-stack.sh" restart-one runtime-worker
 
 旧URL保留并需要登录、项目及当前Trace权限；助手关闭后该修复仍有效。前端唯一页面调用者及迁移要求见 [交接第8节](frontend-handoff.md#8-旧日志页面迁移)。
 
-本次隔离环境未配置运行追踪后端，真实运行诊断返回disabled/not_configured；本地结构化合成日志及真实模型分析已验证。真实Loki、生产运行诊断数据接入由环境负责人按现有观测配置启用，本次不虚报为生产验证。
+日志响应新增source=fixed_files/loki、availability=available/empty/unavailable/partial。配置的文件不可读会返回来源错误，不再静默伪装空结果。2026-11-17当前本地私有.env已配置platform-api/runtime-api/runtime-worker三个固定文件，不修改用户权限、业务库或模型凭据；无project_id/Thread/Run等字段的Runtime记录仍不返回。旧Run在当前文件窗口内未命中，只说明有界覆盖不足，不能证明过去没记录。当前追踪查询仍disabled/not_configured，但持久状态可读；真实Loki和生产采集未验证。
 
 ## 6. 审计、历史与审批维护
 
@@ -148,4 +160,4 @@ API PostgreSQL夹具需管理员先准备当前登记Platform库：
 
 本地已演练关闭助手并撤源码权：bootstrap/read 503、旧源码历史403、其他会话state200、已授权旧日志200、匿名旧日志401；随后恢复配置。迁移downgrade不删除授权回执，应用回滚保留表，不以回滚代码为由恢复旧日志匿名行为。
 
-生产发布、真实数据源凭据与视图配置、追踪后端部署、人工交付验收和前端浏览器联合验收均独立于本次本地开发。没有修改生产环境，没有合并main；本次代码交付在feat/platform-assistant分支。
+2026-11-16原交付已由用户确认并合并；2026-11-17新增优化仅在当前工作区实施，没有Git交付或生产部署。生产发布、真实数据源凭据与视图、追踪后端部署及人工验收仍独立于本地开发。本轮API、真实模型签名读取与浏览器夹具的边界见[新增实施证据](implementation/03-guide-and-diagnostics-optimization.md)，不能代替完整GraphHarbor联合验收。

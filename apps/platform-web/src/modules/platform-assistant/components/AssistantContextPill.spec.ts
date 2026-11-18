@@ -1,6 +1,8 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { copyText } from "@/utils/clipboard";
 import AssistantContextPill from "./AssistantContextPill.vue";
+vi.mock("@/utils/clipboard", () => ({ copyText: vi.fn() }));
 
 describe("AssistantContextPill", () => {
   const mockContext = {
@@ -73,5 +75,23 @@ describe("AssistantContextPill", () => {
 
     await removeBtn.trigger("click");
     expect(wrapper.emitted("remove")).toHaveLength(1);
+  });
+
+  it("不依赖助手服务复制已有诊断，复制失败时可展开手动复制", async () => {
+    vi.mocked(copyText)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const wrapper = mount(AssistantContextPill, {
+      props: { context: mockContext },
+      global: { stubs: { BaseIcon: true } },
+    });
+    const button = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "复制诊断")!;
+    await button.trigger("click");
+    expect(copyText).toHaveBeenCalledWith(mockContext.diagnosticMarkdown);
+    expect(wrapper.text()).toContain("诊断已复制");
+    await button.trigger("click");
+    expect(wrapper.text()).toContain("复制失败，请展开详情手动复制");
   });
 });

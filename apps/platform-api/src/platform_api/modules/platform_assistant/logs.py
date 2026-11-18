@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import select
 from starlette.concurrency import run_in_threadpool
 
-from platform_api.core.errors import ForbiddenError
+from platform_api.core.errors import BadRequestError, ForbiddenError
 from platform_api.modules.audit.models import AuditLogRecord
 from platform_api.modules.observability.service import ObservabilityService
 from platform_api.modules.platform_assistant.service import require_scope
@@ -32,15 +32,55 @@ SAFE_FIELDS = {
 }
 
 
+def run_log_window(snapshot, start="", end=""):
+    if start and end:
+        return start, end
+    if not start and not end:
+        try:
+            created = snapshot["created_at"]
+            updated = snapshot["updated_at"]
+            created = (
+                created
+                if isinstance(created, datetime)
+                else datetime.fromisoformat(created)
+            )
+            updated = (
+                updated
+                if isinstance(updated, datetime)
+                else datetime.fromisoformat(updated)
+            )
+            if created.tzinfo and updated.tzinfo and created <= updated:
+                begin, finish = (
+                    created - timedelta(minutes=5),
+                    updated + timedelta(minutes=5),
+                )
+                if finish - begin <= timedelta(hours=24):
+                    return begin.isoformat(), finish.isoformat()
+        except (KeyError, TypeError, ValueError):
+            pass
+    raise BadRequestError(
+        code="assistant_log_window_required",
+        message="运行时间未知或跨度超过24小时；请补充含时区、跨度不超过24小时的起止时间，不能默认查询最近一小时。",
+    )
+
+
 def file_logs(paths, trace_id):
     streams = []
+    unreadable = False
     for service, filename in paths.items():
         path = Path(filename)
         if any(p.is_symlink() for p in (path, *path.parents)) or not path.is_file():
+            unreadable = True
             continue
-        with path.open("rb") as handle:
-            handle.seek(max(0, path.stat().st_size - 512000))
-            lines = handle.read(512000).decode("utf-8", errors="replace").splitlines()
+        try:
+            with path.open("rb") as handle:
+                handle.seek(max(0, path.stat().st_size - 512000))
+                lines = (
+                    handle.read(512000).decode("utf-8", errors="replace").splitlines()
+                )
+        except OSError:
+            unreadable = True
+            continue
         values = []
         for line in lines:
             if trace_id not in line:
@@ -58,7 +98,14 @@ def file_logs(paths, trace_id):
             except (ValueError, KeyError, TypeError):
                 continue
         streams.append({"stream": {"service": service}, "values": values[-100:]})
-    return ObservabilityService.parse_results(trace_id, streams)
+    result = ObservabilityService.parse_results(trace_id, streams)
+    if unreadable:
+        result.error = (
+            "assistant_log_source_partial"
+            if streams
+            else "assistant_log_source_unavailable"
+        )
+    return result
 
 
 def trace_owned(factory, actor, project_id, trace_id):
@@ -86,6 +133,7 @@ async def authorized_logs(
     trace_id,
     *,
     verified=False,
+    execution_request_id="",
     target_thread_id=None,
     target_run_id=None,
     start="",
@@ -107,6 +155,15 @@ async def authorized_logs(
         )
     if trace_id and not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", trace_id):
         raise ForbiddenError(code="trace_scope_denied", message="日志关联编号无效。")
+    if execution_request_id and (
+        not verified
+        or not target_thread_id
+        or not target_run_id
+        or not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", execution_request_id)
+    ):
+        raise ForbiddenError(code="trace_scope_denied", message="请求关联未验证。")
+    if not trace_id and target_run_id and (not verified or not target_thread_id):
+        raise ForbiddenError(code="trace_scope_denied", message="运行关联未验证。")
     try:
         end_time = datetime.fromisoformat(end) if end else datetime.now(UTC)
         start_time = (
@@ -125,7 +182,16 @@ async def authorized_logs(
             code="assistant_log_window_invalid",
             message="请提供含时区且跨度不超过24小时的日志时间范围。",
         ) from None
-    search_id = trace_id or project_id
+    search_id = trace_id or execution_request_id or target_run_id or project_id
+    correlation_type = (
+        "platform_trace_id"
+        if trace_id
+        else "execution_request_id"
+        if execution_request_id
+        else "run_id"
+        if target_run_id
+        else "project_id"
+    )
     result = (
         await run_in_threadpool(file_logs, settings.assistant_log_files, search_id)
         if settings.assistant_log_files
@@ -154,6 +220,12 @@ async def authorized_logs(
         if target_thread_id and payload.get("thread_id") != target_thread_id:
             continue
         if target_run_id and payload.get("run_id") != target_run_id:
+            continue
+        if (
+            not trace_id
+            and execution_request_id
+            and payload.get("request_id") != execution_request_id
+        ):
             continue
         if actor.user_id not in settings.assistant_log_users:
             target = payload.get("thread_id")
@@ -206,4 +278,17 @@ async def authorized_logs(
     result.duration_ms = None
     result.partial = True
     result.coverage = "bounded_structured_project_logs_only"
+    result.query_start = start_time.isoformat()
+    result.query_end = end_time.isoformat()
+    result.correlation_type = correlation_type
+    result.source = "fixed_files" if settings.assistant_log_files else "loki"
+    result.availability = (
+        "partial"
+        if result.error and logs
+        else "unavailable"
+        if result.error
+        else "available"
+        if logs
+        else "empty"
+    )
     return result

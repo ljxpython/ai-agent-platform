@@ -32,6 +32,7 @@ import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
 import WorkspaceProjectSwitcher from "@/components/platform/WorkspaceProjectSwitcher.vue";
+import NotificationCenterDropdown from "@/modules/notifications/components/NotificationCenterDropdown.vue";
 import RunNotificationCenter from "@/components/layout/RunNotificationCenter.vue";
 import UserMenu from "@/components/layout/UserMenu.vue";
 import ChatSessionOutlet from "../components/ChatSessionOutlet.vue";
@@ -1215,6 +1216,7 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
               />
               <div class="flex items-center gap-1.5 shrink-0">
                 <WorkspaceProjectSwitcher compact />
+                <NotificationCenterDropdown />
                 <RunNotificationCenter />
                 <UserMenu compact />
               </div>
@@ -1227,6 +1229,7 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
           >
             <div class="flex items-center gap-1.5 shrink-0">
               <WorkspaceProjectSwitcher compact />
+              <NotificationCenterDropdown />
               <RunNotificationCenter />
               <UserMenu compact />
             </div>

@@ -33,6 +33,84 @@ describe("diagnostic-packet", () => {
   });
 
   describe("generateDiagnosticMarkdown", () => {
+    it("不把已恢复的模型错误或资料未配置当成最终失败根因", () => {
+      const md = generateDiagnosticMarkdown({
+        backendDiagnostics: {
+          run_status: "success",
+          availability: "disabled",
+          unavailable_reason: "not_configured",
+          model_errors: [
+            { code: "provider_rate_limited", provider_status: 429 },
+          ],
+        },
+      });
+      expect(md).toContain("运行最终成功");
+      expect(md).toContain("只描述资料，不代表业务根因");
+      expect(md).not.toContain("操作建议: 请求受到限流");
+    });
+    it("目标请求未匹配时不借用其他请求的错误码或时间", () => {
+      errorRingBuffer.push({
+        type: "http",
+        requestId: "other-request",
+        code: "provider_rate_limited",
+        message: "unrelated 429",
+        timestamp: "2026-11-16T01:00:00Z",
+      });
+      const md = generateDiagnosticMarkdown({
+        requestId: "target-request",
+        error: "connection refused",
+      });
+      const target = md.split("- **其他近期异常")[0];
+      expect(target).toContain("机器代码: `model_connection_refused`");
+      expect(target).not.toContain("provider_rate_limited");
+      expect(target).toContain("发生时间**: 未知");
+      expect(md).toContain("未确认与本次故障相关");
+      expect(md).not.toContain("根因分析:");
+    });
+
+    it("没有请求编号的前端错误不会认领最近请求", () => {
+      errorRingBuffer.push({
+        type: "http",
+        requestId: "other-request",
+        message: "429",
+        code: "provider_rate_limited",
+      });
+      const md = generateDiagnosticMarkdown({ error: "UI Render Crash" });
+      const target = md.split("- **其他近期异常")[0];
+      expect(target).toContain("关联 Request ID: `未关联`");
+      expect(target).not.toContain("provider_rate_limited");
+      expect(target).toContain("UI Render Crash");
+      expect(target).toContain("机器代码: `unknown`");
+      expect(target).not.toContain("智能体执行中断");
+    });
+
+    it("区分已关联错误发生时间和诊断包生成时间", () => {
+      errorRingBuffer.push({
+        type: "http",
+        requestId: "target-request",
+        message: "timeout",
+        timestamp: "2026-11-16T01:00:00Z",
+      });
+      const md = generateDiagnosticMarkdown({ requestId: "target-request" });
+      expect(md).toContain("发生时间**: 2026-11-16T01:00:00Z");
+      expect(md).toContain("诊断包生成时间**:");
+    });
+
+    it("目标明确错误码优先于同请求的缓存记录", () => {
+      errorRingBuffer.push({
+        type: "http",
+        requestId: "target-request",
+        message: "timeout",
+        code: "provider_timeout",
+      });
+      const md = generateDiagnosticMarkdown({
+        requestId: "target-request",
+        errorCode: "model_unavailable",
+        error: "target model missing",
+      });
+      expect(md).toContain("机器代码: `model_unavailable`");
+    });
+
     it("应当正确组装包含业务上下文与关联 request_id 的 Markdown", () => {
       errorRingBuffer.push({
         type: "http",
@@ -160,7 +238,7 @@ describe("diagnostic-packet", () => {
         "Rate limit exceeded (429) from provider",
       );
       expect(inferred1.reasonCode).toBe("provider_rate_limited");
-      expect(inferred1.followUp).toContain("配额超限");
+      expect(inferred1.followUp).toContain("仅凭 429 不能判断");
 
       const inferred2 = resolveReasonDetails(
         "",

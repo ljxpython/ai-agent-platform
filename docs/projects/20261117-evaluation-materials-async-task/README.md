@@ -1,6 +1,6 @@
 # 会话转评测集后台异步任务与通知闭环
 
-> 启动日期：2026-11-17 ｜ 状态：待开始（方案已规划，等待用户确认实施）
+> 启动日期：2026-11-17 ｜ 状态：已完成（done）
 > 影响服务：`platform-api`（后端协议与异步任务）、`platform-web`（前端交互与通知直达）
 > 关联专题：[06-session-to-dataset-and-ai-authoring.md](../20261113-agent-eval-production-flywheel/06-session-to-dataset-and-ai-authoring.md)
 
@@ -9,7 +9,7 @@
 ## 业务过程与目标
 
 ### 谁遇到了什么问题？
-平台用户在将一段真实业务会话（特别是包含多轮交互、几十步工具调用、海量 Token 的重度会话）转换为评测集时，当前的交互方式为**前端同步长轮询硬等**：
+平台用户在将一段真实业务会话（特别是包含多轮交互、几十步工具调用、海量 Token 的重度会话）转换为评测集时，原交互方式为**前端同步长轮询硬等**：
 - 前端点击“转换”后，弹窗锁定并显示“正在转换，请稍候...”。
 - 后端需要逐页抓取 checkpoints、提取所有 run 的 execution evidence、做敏感信息（PII）安全脱敏、跨系统推送到 EvalFlow 并启动大模型生成草稿，耗时常在 30~60 秒以上。
 - **痛点一（网络超时中断）**：前端 Axios 默认 30 秒超时，大体量会话极易直接报错 `timeout of 30000ms exceeded`。
@@ -24,12 +24,16 @@
 
 ---
 
-## 关键模块与改动范围
+## 交付结果与实施总结
 
-| 服务 | 改动内容 | 职责与边界 |
-|---|---|---|
-| `platform-api` | 改造 `POST /api/evaluation/materials/send` 支持异步非阻塞返回（202 Accepted）；通过 BackgroundTasks 执行会话快照与 EvalFlow 推送；完成后写入站内信通知。新增轻量任务状态查询接口。 | 保证会话数据完整提取、脱敏安全、跨系统幂等与通知持久化。 |
-| `platform-web` | 重构 `SendSessionMaterials.vue`：点击后立即触发 202 并关闭弹窗，调用 `uiStore.showToast` 给出全局无感反馈；通知中心支持直达链接跳转。 | 解除用户界面阻塞，实现无感体验与通知闭环。 |
+1. **后端异步非阻塞（FastAPI BackgroundTasks）**：
+   - 接口 `POST /api/evaluation/materials/send` 支持 `async_mode: true`，耗时 0.357s 立即响应 `202 Accepted`；
+   - 后台安全接管长耗时抓取（30~40s）、脱敏与题目生成，彻底根绝 30s 客户端超时异常。
+2. **通知中心无缝触达**：
+   - 任务成功时自动发送带 `action_url` 的系统通知，用户点击一键直达 EvalFlow 评测集题目详情页；
+   - 异常失败时明确提示原因（如敏感密钥拦截等排查建议）。
+3. **前端零阻塞体验**：
+   - `SendSessionMaterials.vue` 收到 202 状态后立即关闭弹窗并弹出全局 Toast 提示，用户可无缝继续后续工作。
 
 ---
 

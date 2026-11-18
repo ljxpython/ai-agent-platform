@@ -32,6 +32,7 @@ import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
 import WorkspaceProjectSwitcher from "@/components/platform/WorkspaceProjectSwitcher.vue";
+import NotificationCenterDropdown from "@/modules/notifications/components/NotificationCenterDropdown.vue";
 import UserMenu from "@/components/layout/UserMenu.vue";
 import ChatSessionOutlet from "@/modules/chat/components/ChatSessionOutlet.vue";
 import {
@@ -1077,6 +1078,7 @@ onScopeDispose(() => {
               />
               <div class="hidden sm:flex items-center gap-1.5 shrink-0">
                 <WorkspaceProjectSwitcher compact />
+                <NotificationCenterDropdown />
                 <UserMenu compact />
               </div>
             </div>

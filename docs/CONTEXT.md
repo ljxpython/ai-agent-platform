@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-18（AI网关使用看板与综合可观测重构已全栈实施并通过全部前后端单测、类型校验与生产构建；对标 mlflow-eval-platform 成功实现网关黄金三要素、Token均值/Prompt Caching以及图表至Logs毫秒级下钻穿透）
+> **最后更新：** 2026-11-18（AI网关使用看板与综合可观测重构已全栈实施并通过全部前后端单测、类型校验与生产构建；对标 mlflow-eval-platform 成功实现网关黄金三要素、Token均值/Prompt Caching以及图表至Logs毫秒级下钻穿透；平台助手与会话转评测集异步优化完成）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -9,6 +9,10 @@
 
 
 2026-11-13 Git交付：用户追加授权将EvalFlow主环境适配及中文/品牌修复提交并推送远端；本仓同步对应的项目状态与验收文档，无Agent服务代码改动。生产部署未授权，A04沙箱准入阻塞保留；最终提交与远端状态以Git记录为准。
+
+## EvalFlow Copilot联调补丁（2026-11-17）
+
+EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作项pending候选及EvalFlow审阅入口，获准成员capabilities返回authoring_url。相关API23/通知8项、类型与指定文件lint/ruff通过；本仓其他既有改动不属于该专项。真实浏览器已完成会话出题、咨询/局部修改、差异/部分采纳、手改/旧基线保护、刷新/取消、发布运行及结果回归主线；03只采纳新增题为v5、单独发布题库v2，最新运行37f9052e-4d2c-48d4-bfae-40c0272525e4为passed，Session/2Run/2Trace与代码评分已核对。旧01格式failed、模型503和首个03的Runtime包指纹error保留；确认本地无未结Run后，仅用既有脚本重载本地Runtime API/Worker，未改被测Agent配置、模型或标准。临时推理资源只接入本地EvalFlow私有0600且Git忽略文件，Key未入源码/证据。12项本地done，生产发布未授权，整体partial；双账号/断网/20题模型容量等边界未实测。dsfe浏览器工具会话已关闭，主服务保留；没有提交、推送或生产部署。详见相邻EvalFlow仓docs/projects/20261117-evaluation-copilot-full-lifecycle/README.md及implementation/87-browser-local-closeout.md。
 
 ## 当前批准范围与完成状态（2026-11-16）
 
@@ -32,6 +36,14 @@
 ## 最近改动
 
 2026-11-18 | **AI 网关使用看板与综合可观测重构全栈实施与验证完成**：对标 `mlflow-eval-platform` 的网关使用大盘（方案二：原生 Vue 3 + ECharts 重写）。扩展 `Platform API` 与 `Runtime Service` 的网关时序统计接口（按 60s/300s/3600s/86400s 桶聚合吞吐、错误率、P50/P90/P99 延迟分位数、Token 堆叠、Tokens per Request 均值与成本）。前端封装 ECharts 专业图表组件群（深浅双主题、自适应 Resize），集成四联黄金指标卡、智能时间控制栏（自适应桶推导与防爆限制）；实现图表 Tooltip 毫秒级下钻直达 Logs 标签页，并自动锁定筛选时间区间并展示高亮 Pill。前端 5 个套件 33 项单测 100% 跑绿，`vue-tsc` 0 报错，生产打包（24.52s）通过；后端 55 项单元测试全绿。
+
+2026-11-17 | **转评测集安全脱敏密钥正则误判治理与单测加固**：彻底根治会话转评测集过程中安全脱敏模块将正常编程语言变量赋值及函数调用（如 `token = _operation.set(...)`、`token = None`、`token: str`）粗暴误判为“材料疑似包含密钥”导致转换任务暴毙的缺陷。在 `privacy.py` 建立高置信度密钥模式与键值语法精准辨析机制，排除函数调用与语言类型字面量；新增防回归单测，全量 52 项评测单测 100% 跑绿，报错会话真实重转实测成功并产出 AI 用例草稿。
+
+2026-11-17 | **转评测集弹窗纯净化与初态采集死代码清理**：彻底拔除“转为评测集”弹窗中既无法回溯历史初态又造成严重交互内耗的“高级选项：运行前文件初态采集”折叠面板及其按钮；后端彻底清理死接口 `POST /api/evaluation/materials/capture`、`CaptureRequest` 及网关层 `set_evaluation_capture` 孤儿代码。前端 3 项单测、后端 52 项评测单测及 `vue-tsc` 类型检查 100% 跑绿，browser-skill 真实弹窗复验清爽优雅。
+
+2026-11-17 | **平台助手体验升级与跨项目排障权限打通**：修复跨项目故障诊断被权限层误拒（thread_action_denied）导致无法排查的缺陷，后端自动根据目标 thread 反查所属项目并完成鉴权校验，反查request_id，并观察到诊断来源not_configured（未配置，不等于业务根因）；前端实现 BaseDrawer 拖拽无级拉伸（resizable handle）与宽度持久化、一键宽屏（580px ⇄ 960px）、输入框原生深色边框清除与平滑微光聚焦；个人资料页增加预设头像库与本地上传能力并全局联动；browser-skill 5 轮全场景压测验证全绿（单测 73+19 项通过，TypeScript 0 错误）。
+
+2026-11-17 | **会话转评测集后台异步非阻塞与通知直达闭环**：彻底解决多轮重度会话转评测集前端 30 秒超时报错（timeout of 30000ms exceeded）与弹窗锁定卡死缺陷。后端重构 `POST /api/evaluation/materials/send` 为 FastAPI BackgroundTasks 异步非阻塞模式（0.357s 立即响应 202 Accepted），长耗时抓取脱敏与 EvalFlow 用例生成在后台稳定执行；前端弹窗秒级关闭并弹出全局 Toast 提示；任务完成后通过系统通知中心向用户推送直达 EvalFlow 详情页的链接。API 单测 15 项全绿、Web 单测 3 项全绿、vue-tsc 0 报错、自动化端到端测试闭环通过。
 
 2026-11-16 | **平台助手全栈验收通过与交付合并**：用户已确认需求完成并授权交付。前端落地 Clean Architecture 解耦架构（`apps/platform-web/src/modules/platform-assistant/`），含全局抽屉、错误胶囊、专职审批卡、证据二级抽屉，以及首轮自动命名与 Scoped Client 作用域锁；修复 TraceDiagnosticsPage.vue 的 x-project-id 请求头、partial 覆盖警示条与 log.raw 空安全防崩溃。11 项任务全量完成（11/11 done），vue-tsc 0 报错、单测 24 项全绿、生产打包构建通过。本地测试服务已停止，专属测试数据库已删除，Worktree 分支推送并合入 main。
 
@@ -71,9 +83,9 @@
 
 - [AI 网关使用看板与综合可观测重构](projects/20261117-gateway-observability-usage/README.md)：`已完成（done）`（2026-11-18 全栈实施与验证完成，5 项任务 100% 验收通过）；对标 mlflow-eval-platform 重构网关黄金三要素（吞吐、延迟分布、错误率）、单请求 Token 均值与 Prompt Cache 效能，落地图表到 Logs 毫秒级下钻穿透。
 
-- [会话转评测集后台异步任务与通知闭环](projects/20261117-evaluation-materials-async-task/README.md)：`待开始`（2026-11-17 方案已规划）；将大体量业务会话转评测集的同步阻塞请求重构为基于 BackgroundTasks 的异步任务，弹窗秒级关闭 + 全局 Toast 提示，完成后通过平台通知中心（🔔）推送直达链接，彻底根治前端 30 秒超时与弹窗卡死问题。
+- [会话转评测集后台异步任务与通知闭环](projects/20261117-evaluation-materials-async-task/README.md)：`done`（2026-11-17 全栈闭环与端到端验证通过）；将大体量业务会话转评测集的同步阻塞请求重构为基于 BackgroundTasks 的异步任务，弹窗秒级关闭 + 全局 Toast 提示，完成后通过平台通知中心（🔔）推送直达链接，彻底根治前端 30 秒超时与弹窗卡死问题。
 
-- [平台内置助手](projects/20261116-platform-assistant/README.md)：`done`（2026-11-16 用户验收通过并授权交付合并）；后端/Agent、只读SQL、日志/源码及前端独立模块均完成验证（11项全部done）。前端落地独立模块（`modules/platform-assistant`），含全局抽屉、错误胶囊、独立审批卡、证据二级抽屉，vue-tsc 0 报错、单测 24 项全绿，旧日志页面防御性修复通过；测试服务已停，专属数据库已删；代码已合并推送主干，生产未部署。
+- [平台内置助手](projects/20261116-platform-assistant/README.md)：T01–T25批准开发与本地技术验收`done`。原指南/连续浏览器链保持原范围；追加Run绑定持久失败、缺Trace时可信执行请求/Run日志关联、每轮可读资料摘要与误判回归。最终相关API96、Runtime24、证据抽屉5项及类型/指定静态检查通过；真实模型四轮/11个工具结果经答案复核。原旧Run只读定位技能准备失败，根因仍未知，固定旧日志为empty。主环境无未结Run后已重载Runtime API/Worker，API自动重载且未迁移；未改模型凭据或业务库。原API既有ACL断言失败保留；当前追踪未配置、历史采集未知，生产Loki/容量及本轮新增状态真实浏览器复验未覆盖，没有本轮Git交付或生产部署。详见项目tasks/verification及implementation/04。
 
 - [Agent生产评测飞轮](projects/20261113-agent-eval-production-flywheel/README.md)：06本地16/16、07本地4/4 done，含业务会话转换、正式页面与登录；用户已于2026-11-16确认验收通过。原01–04为22 done/3 deferred；原失败与AI裁判局限保留。原16图/5视频与新增8图/1视频及主线手册齐备，验收通过并合并推送，测试服务和资源已回收，未生产部署。
 - [Agent 自动化评测体系](projects/20261112-agent-evaluation-system/README.md)：done，已合main并清理测试Worktree/专属数据库；EvalFlow执行器、20题、真实基线、门禁、Badcase审核与页面验证通过。Agent仍有KnowledgeRetention质量失败；真实CI、生产发布、新盲测集后置。
@@ -153,9 +165,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-11-06 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。2026-11-16规划补充：平台助手采用create_agent、无执行沙箱，复用持久历史/会话记忆，写工具须用户确认；本次负责后端/Agent/交接，本分支已验证真实文档/SQL/日志源码/检索、重启历史/隔离、跨进程审批和SSE/取消，前端交接完成；生产现役未复验。 |
-| platform-api | 2026-11-08 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。2026-11-16规划补充：平台助手拟接schema驱动只读SQL、日志授权、查询审计及强制写审批；本分支已完成只读SQL、日志范围、证据审计/撤权与个人项目，迁移0012仅在隔离库验证；生产权限未改。 |
-| platform-web | 2026-11-08 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。2026-11-16规划补充：平台助手前端由同事实施并决定组件，已提供可联调历史/审批/错误入口完整交接；代码未改，现役未复验。 |
+| runtime-service | 2026-11-17 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。2026-11-17平台助手：单create_agent/无执行沙箱，六篇当前指南及原持久历史/强制写审批保留；追加每轮可读资料刷新、失败阶段/未知根因与本轮引用规则。补强24项及真实模型四轮通过；最终提示/工具已在无未结Run后重载本地Runtime API/Worker，未改模型或生产。EvalFlow题库v2既有运行包指纹一致并passed的联调结论保留。 |
+| platform-api | 2026-11-17 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。2026-11-17平台助手：原只读SQL/指南/当前目标ACL/查询审计保留；新增Run绑定checkpoint安全摘要、Trace/执行请求/Run受控日志关联及可读能力说明。最终相关96项通过；本地固定三个日志源已接入，旧Run状态连续读回准确、对应旧窗口日志0条如实标empty。8秒状态查询上限低于工具15秒；API自动重载、未迁移，原扩大回归1项既有ACL断言失败保留，生产权限未改。 |
+| platform-web | 2026-11-17 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。2026-11-17平台助手：原全局抽屉/错误现场/指南/项目竞态及403缓存修复保留；追加持久失败阶段、审批摘要、日志来源/关联与空/不可用状态，相关抽屉5项及vue-tsc/Prettier通过。原68项及连续浏览器链保持原范围，本轮新增状态未真实浏览器复验；Vite主服务未重启，助手未生产发布。 |
 | AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent生产评测飞轮本轮批准范围已在双Worktree完成，22 done / 3 deferred，联合Final通过；未提交、合并或生产部署，主工作区服务未变更。Agent 自动化评测首期与D01–D06已合main，测试资源已回收；详见项目记录。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

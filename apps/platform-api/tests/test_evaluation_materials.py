@@ -392,6 +392,16 @@ def test_business_material_rejects_secrets_and_requires_consent():
     value, report = prepare_business_material("手机号１３８１２３４５６７８")
     assert report["redacted_occurrences"] == 1 and "13812345678" not in value
 
+    # Ensure normal programming code assignments or type annotations do not trigger false positives
+    for safe_code in [
+        "token = _operation.set(operation)",
+        "token = None",
+        "token: str",
+        "token = self._token",
+    ]:
+        safe_val, _ = prepare_business_material(safe_code)
+        assert safe_val == safe_code
+
 
 def test_conversion_resumes_lost_generation_receipt_without_recollecting(monkeypatch):
     from platform_api.core.errors import ServiceUnavailableError
@@ -506,3 +516,130 @@ def test_auto_conversion_checks_grant_permission_before_source_access(monkeypatc
     )
     with pytest.raises(ForbiddenError):
         asyncio.run(module.send_materials(None, body, None, None))
+
+
+def test_async_mode_returns_202_accepted_and_dispatches_background_task(monkeypatch):
+    from fastapi import BackgroundTasks, Response
+
+    from platform_api.modules.evaluation import materials as module
+
+    project = str(uuid4())
+    actor = SimpleNamespace(user_id=str(uuid4()))
+    request = SimpleNamespace(
+        app=SimpleNamespace(
+            state=SimpleNamespace(
+                settings=SimpleNamespace(evaluation_web_url="http://127.0.0.1:9128"),
+                db_session_factory=None,
+            )
+        )
+    )
+
+    async def forward(*args):
+        if args[3] == "read":
+            return {}
+        return {"id": args[4]}
+
+    monkeypatch.setattr(module, "forward", forward)
+    monkeypatch.setattr(module, "require_action", lambda *args: None)
+    monkeypatch.setattr(module, "_require_project_id", lambda _: project)
+
+    background_tasks = BackgroundTasks()
+    response = Response()
+    body = module.MaterialRequest(
+        request_id=uuid4(),
+        thread_ids=[uuid4()],
+        title="异步业务评测集",
+        synthetic_attestation=True,
+        async_mode=True,
+    )
+
+    result = asyncio.run(
+        module.send_materials(
+            request,
+            body,
+            actor,
+            None,
+            background_tasks=background_tasks,
+            response=response,
+        )
+    )
+
+    assert response.status_code == 202
+    assert result["status"] == "accepted"
+    assert "task_id" in result
+    assert result["title"] == "异步业务评测集"
+    assert len(background_tasks.tasks) == 1
+    assert background_tasks.tasks[0].func == module.process_materials_background
+
+
+def test_background_task_processes_and_notifies(monkeypatch):
+    from platform_api.modules.evaluation import materials as module
+
+    project, agent = str(uuid4()), str(uuid4())
+    actor = SimpleNamespace(user_id=str(uuid4()))
+    notifications = []
+
+    async def forward(*args):
+        if args[3] == "read":
+            return {}
+        return {"id": args[4], "assistant_jobs": []}
+
+    async def finish(*args):
+        return {"status": "delivered", "materials": []}
+
+    async def collect(*args):
+        return {
+            "thread_id": str(uuid4()),
+            "agent_id": agent,
+            "title": "会话A",
+            "content_hash": "b" * 64,
+            "missing": [],
+            "environment": {},
+            "messages": [],
+        }
+
+    def mock_notify(
+        factory, user_id, project_id, title, item_id, url, error_message=None
+    ):
+        notifications.append(
+            {
+                "user_id": user_id,
+                "project_id": project_id,
+                "title": title,
+                "item_id": item_id,
+                "error": error_message,
+            }
+        )
+
+    monkeypatch.setattr(module, "forward", forward)
+    monkeypatch.setattr(module, "finish_conversion", finish)
+    monkeypatch.setattr(module, "snapshot", collect)
+    monkeypatch.setattr(module, "notify_conversion_result", mock_notify)
+
+    app_state = SimpleNamespace(
+        settings=SimpleNamespace(evaluation_web_url="http://127.0.0.1:9128"),
+        db_session_factory=None,
+    )
+    body = module.MaterialRequest(
+        request_id=uuid4(),
+        thread_ids=[uuid4()],
+        title="异步成功测试",
+        synthetic_attestation=True,
+    )
+
+    asyncio.run(
+        module.process_materials_background(
+            app_state=app_state,
+            actor=actor,
+            project_id=project,
+            gateway=None,
+            body=body,
+            item_id="item-123",
+            submission={},
+            title="异步成功测试",
+        )
+    )
+
+    assert len(notifications) == 1
+    assert notifications[0]["item_id"] == "item-123"
+    assert notifications[0]["error"] is None

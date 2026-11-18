@@ -68,6 +68,13 @@ def capabilities(request: Request, actor: ActorContext = Depends(get_actor_conte
             and actor.project_role_set(project_id)
         ),
         "assistant_model": assistant_model,
+        "authoring_url": (
+            getattr(settings, "evaluation_web_url", "").rstrip("/")
+            if getattr(settings, "evaluation_workbench_enabled", False)
+            and project_id == settings.evaluation_project_id
+            and actor.project_role_set(project_id)
+            else None
+        ),
         "synthetic_export": bool(
             settings.evaluation_feedback_enabled
             and settings.evaluation_synthetic_export_enabled

@@ -54,8 +54,8 @@ const operationMeta = computed(() => {
       };
     case "documents":
       return {
-        name: "官方帮助与知识资料检索",
-        desc: "检索平台官方使用指南、操作手册与配置说明",
+        name: "平台用户指南阅读",
+        desc: "查看当前指南目录，按文档编号读取操作说明",
         icon: "file" as const,
       };
     case "logs":
@@ -100,15 +100,32 @@ const sources = computed(() => {
   return [];
 });
 
+const catalog = computed(() => {
+  const data = props.evidence?.data;
+  return data && Array.isArray(data.catalog) ? data.catalog : [];
+});
+
 const isHit = computed(() => {
   if (!props.evidence) return false;
   if (props.evidence.operation === "sql_query") {
     return sqlRows.value.length > 0;
   }
+  if (props.evidence.operation === "logs") {
+    return (props.evidence.data?.total ?? 0) > 0;
+  }
+  if (props.evidence.operation === "diagnostics") {
+    return (
+      props.evidence.data?.persistent_state?.availability === "available" ||
+      Boolean(
+        props.evidence.data?.run_status &&
+        props.evidence.data.run_status !== "unknown",
+      )
+    );
+  }
   if (
     ["documents", "source", "public_search"].includes(props.evidence.operation)
   ) {
-    return sources.value.length > 0;
+    return sources.value.length > 0 || catalog.value.length > 0;
   }
   if (props.evidence.data?.error) return false;
   return true;
@@ -116,13 +133,16 @@ const isHit = computed(() => {
 
 const hitCount = computed(() => {
   if (!props.evidence) return 0;
+  if (props.evidence.operation === "logs")
+    return props.evidence.data?.total ?? 0;
+  if (props.evidence.operation === "diagnostics") return isHit.value ? 1 : 0;
   if (props.evidence.operation === "sql_query") {
     return props.evidence.data?.row_count ?? sqlRows.value.length;
   }
   if (
     ["documents", "source", "public_search"].includes(props.evidence.operation)
   ) {
-    return sources.value.length;
+    return sources.value.length + catalog.value.length;
   }
   return 0;
 });
@@ -144,17 +164,25 @@ const hitCount = computed(() => {
           class="flex items-center justify-between text-[11px] text-gray-500 dark:text-dark-400"
         >
           <span class="font-mono">编号: {{ evidence.evidence_id }}</span>
-          <span>{{
-            evidence.observed_at
-              ? new Date(evidence.observed_at).toLocaleTimeString()
-              : ""
-          }}</span>
+          <span
+            >资料读取时间：{{
+              evidence.observed_at
+                ? new Date(evidence.observed_at).toLocaleTimeString()
+                : ""
+            }}</span
+          >
         </div>
         <div
           v-if="evidence.scope?.project_id"
           class="text-[11px] text-gray-400 font-mono"
         >
-          归属项目: {{ evidence.scope.project_id }}
+          助手会话项目: {{ evidence.scope.project_id }}
+        </div>
+        <div
+          v-if="evidence.scope?.target_project_id"
+          class="text-[11px] text-gray-400 font-mono"
+        >
+          排查目标项目: {{ evidence.scope.target_project_id }}
         </div>
 
         <!-- 操作概览与命中状态胶囊 -->
@@ -179,12 +207,75 @@ const hitCount = computed(() => {
             "
           >
             {{
-              isHit
-                ? `已命中 ${hitCount} 条事实记录`
-                : "未匹配到相关内容 (0条结果)"
+              evidence.operation === "logs" &&
+              evidence.data?.availability === "unavailable"
+                ? "日志来源不可用"
+                : isHit
+                  ? `已命中 ${hitCount} 条事实记录`
+                  : "未匹配到相关内容 (0条结果)"
             }}
           </span>
         </div>
+      </div>
+
+      <div
+        v-if="evidence.operation === 'logs'"
+        class="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+      >
+        <p>
+          实际日志查询窗口：{{ evidence.data?.query_start || "未知" }} —
+          {{ evidence.data?.query_end || "未知" }}
+        </p>
+        <p v-if="evidence.data?.partial">
+          仅覆盖有界结构化日志；没有记录不能证明没有故障。{{
+            evidence.data?.coverage
+          }}
+        </p>
+        <p v-if="evidence.data?.error">
+          日志来源提示：{{ evidence.data.error }}
+        </p>
+        <p v-if="evidence.data?.source">
+          日志来源：{{ evidence.data.source }}；关联方式：{{
+            evidence.data.correlation_type || "未知"
+          }}
+        </p>
+      </div>
+
+      <div
+        v-if="
+          evidence.operation === 'diagnostics' &&
+          evidence.data?.persistent_state
+        "
+        class="space-y-1 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+      >
+        <p>
+          运行状态：{{ evidence.data.run_status || "未知" }}；追踪资料：{{
+            evidence.data.availability
+          }}
+        </p>
+        <p>
+          持久运行状态：{{ evidence.data.persistent_state.availability }}；{{
+            evidence.data.persistent_state.reason ||
+            "仅描述目标 Run 的当前检查点"
+          }}
+        </p>
+        <p
+          v-for="(task, index) in evidence.data.persistent_state.failed_tasks ||
+          []"
+          :key="index"
+        >
+          失败任务：{{ task.node || "未知任务" }}；错误码：{{ task.error_code }}
+        </p>
+        <p>
+          是否待审批：{{
+            evidence.data.persistent_state.approval_pending === true
+              ? "是"
+              : evidence.data.persistent_state.approval_pending === false
+                ? "未观察到"
+                : "未知"
+          }}
+        </p>
+        <p>状态和消息计数不能证明没有副作用；失败阶段不等于底层根因。</p>
       </div>
 
       <!-- 1. SQL 查询结果呈现 (表格) -->
@@ -313,6 +404,17 @@ const hitCount = computed(() => {
 
       <!-- 3. 官方文档呈现 (Documents) -->
       <div v-else-if="evidence.operation === 'documents'" class="space-y-3">
+        <div v-if="catalog.length" class="space-y-2 text-xs">
+          <p>用户指南目录（尚未读取正文）</p>
+          <div
+            v-for="doc in catalog"
+            :key="doc.document_id"
+            class="rounded-lg border border-gray-200 dark:border-dark-800 p-3"
+          >
+            <p class="font-semibold">{{ doc.title }} · {{ doc.document_id }}</p>
+            <p>{{ doc.summary }}</p>
+          </div>
+        </div>
         <div v-if="sources.length > 0" class="space-y-3">
           <div
             v-for="(src, idx) in sources"
@@ -341,12 +443,23 @@ const hitCount = computed(() => {
             >
               {{ src.text }}
             </div>
+            <p class="break-all text-[10px] text-gray-500">
+              来源标记：{{ src.revision || "未提供" }} · SHA256：{{
+                src.sha256 || "未提供"
+              }}
+            </p>
+            <p
+              v-if="src.truncated"
+              class="text-xs text-amber-700 dark:text-amber-300"
+            >
+              正文已截断，未返回部分不能作为已读内容。
+            </p>
           </div>
         </div>
 
         <!-- 空状态友好提示 (Empty State) -->
         <div
-          v-else
+          v-else-if="!catalog.length"
           class="flex flex-col items-center justify-center p-8 text-center border border-dashed border-gray-200 dark:border-dark-800 rounded-2xl bg-gray-50/50 dark:bg-dark-900/40 space-y-2.5"
         >
           <div
@@ -356,13 +469,12 @@ const hitCount = computed(() => {
           </div>
           <div class="space-y-1">
             <p class="font-semibold text-xs text-gray-700 dark:text-dark-200">
-              知识库检索完成，未命中相关文档 (0 Matches)
+              暂无可读用户指南
             </p>
             <p
               class="text-[11px] text-gray-500 dark:text-dark-400 max-w-sm leading-relaxed"
             >
-              本次检索已在平台官方手册与帮助文档中执行全文比对，暂无与当前关键词直接匹配的条目。
-              平台助手已如实记录该只读审计证据，并据此客观事实调整后续回答或改换检索词。
+              当前没有返回文档正文或目录，请确认资料是否已发布及当前权限。空结果不能证明平台没有此功能。
             </p>
           </div>
         </div>

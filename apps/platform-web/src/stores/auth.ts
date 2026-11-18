@@ -17,7 +17,13 @@ import { getCurrentProfile } from "@/services/identity/identity.service";
 import type { AuthTokenSet, ManagementUser } from "@/types/management";
 
 export const useAuthStore = defineStore("auth", () => {
+  const AVATAR_STORAGE_KEY = "pw_user_custom_avatar";
   const user = ref<ManagementUser | null>(null);
+  const customAvatar = ref<string>(
+    typeof localStorage !== "undefined"
+      ? localStorage.getItem(AVATAR_STORAGE_KEY) || ""
+      : "",
+  );
   const loading = ref(false);
   const hydrated = ref(false);
   const sessionEpoch = ref(0);
@@ -27,6 +33,22 @@ export const useAuthStore = defineStore("auth", () => {
     () => hasStoredAuthSession() && Boolean(user.value),
   );
   const roleLabel = computed(() => describePlatformRole(user.value));
+
+  const userAvatar = computed(() => {
+    if (customAvatar.value) return customAvatar.value;
+    return "/avatars/default-user.png";
+  });
+
+  function setCustomAvatar(avatarUrl: string) {
+    customAvatar.value = avatarUrl;
+    if (typeof localStorage !== "undefined") {
+      if (avatarUrl) {
+        localStorage.setItem(AVATAR_STORAGE_KEY, avatarUrl);
+      } else {
+        localStorage.removeItem(AVATAR_STORAGE_KEY);
+      }
+    }
+  }
 
   async function fetchCurrentUser(): Promise<ManagementUser | null> {
     const epoch = sessionEpoch.value;
@@ -126,6 +148,9 @@ export const useAuthStore = defineStore("auth", () => {
 
   return {
     user,
+    customAvatar,
+    userAvatar,
+    setCustomAvatar,
     loading,
     hydrated,
     sessionEpoch,

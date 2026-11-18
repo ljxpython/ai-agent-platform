@@ -41,7 +41,7 @@ export interface UnreadCountResponse {
 export interface NotificationChannelItem {
   id: string;
   name: string;
-  project_id: string | null;
+  project_ids: string[];
   channel_type: ChannelType;
   endpoint_url: string;
   secret_token: string | null;
@@ -53,7 +53,7 @@ export interface NotificationChannelItem {
 
 export interface CreateChannelRequest {
   name: string;
-  project_id?: string | null;
+  project_ids?: string[];
   channel_type: ChannelType;
   endpoint_url: string;
   secret_token?: string | null;
@@ -63,6 +63,7 @@ export interface CreateChannelRequest {
 
 export interface UpdateChannelRequest {
   name?: string;
+  project_ids?: string[];
   endpoint_url?: string;
   secret_token?: string | null;
   is_enabled?: boolean;

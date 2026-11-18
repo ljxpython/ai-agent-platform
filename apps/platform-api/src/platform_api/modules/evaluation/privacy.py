@@ -7,10 +7,62 @@ import unicodedata
 
 from platform_api.core.errors import BadRequestError
 
-SECRET = re.compile(
-    r"(?i)(?:\b(?:api[_ -]?key|authorization|password|token|secret)\s*[:=]\s*\S+"
-    r"|\bsk-[a-z0-9_-]{8,}|-----BEGIN [A-Z ]*PRIVATE KEY-----|\bBearer\s+\S+)"
+SECRET_PATTERNS = (
+    re.compile(r"\bsk-[a-z0-9_-]{8,}", re.IGNORECASE),
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    re.compile(r"\bBearer\s+\S+", re.IGNORECASE),
 )
+
+KV_SECRET = re.compile(
+    r"(?i)\b(api[_ -]?key|authorization|password|secret|access_token|refresh_token|private_key|token)\s*[:=]\s*(\S+)"
+)
+
+EXCLUDED_SECRET_VALUES = {
+    "none",
+    "null",
+    "true",
+    "false",
+    "str",
+    "int",
+    "bool",
+    "float",
+    "dict",
+    "list",
+    "tuple",
+    "set",
+    "undefined",
+    "nil",
+}
+
+
+def is_secret_present(value: str) -> bool:
+    clean = value.replace('"', "").replace("'", "")
+    for pattern in SECRET_PATTERNS:
+        if pattern.search(clean):
+            return True
+    for match in KV_SECRET.finditer(clean):
+        val = match.group(2).strip().rstrip(",;}]")
+        # Exclude language constructs: function or method calls
+        if "(" in val or ")" in val:
+            continue
+        # Exclude type annotations and language literals
+        if val.lower() in EXCLUDED_SECRET_VALUES:
+            continue
+        # Exclude attribute references (e.g. self.token, req.auth, ctx.val)
+        if re.match(r"^[a-zA-Z_]\w*\.[a-zA-Z_]\w*$", val):
+            continue
+        return True
+    return False
+
+
+class _SecretDetector:
+    def search(self, text: str):
+        if is_secret_present(text):
+            return True
+        return None
+
+
+SECRET = _SecretDetector()
 PII = re.compile(
     r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|(?<!\d)1[3-9]\d{9}(?!\d)|(?<!\d)\d{17}[\dXx](?!\d)"
 )

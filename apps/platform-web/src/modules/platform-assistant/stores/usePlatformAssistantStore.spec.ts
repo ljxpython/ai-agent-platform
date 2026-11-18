@@ -80,4 +80,32 @@ describe("usePlatformAssistantStore", () => {
     await store.ensureBootstrap("proj-auto-created");
     expect(clientService.bootstrapAssistant).toHaveBeenCalledTimes(1);
   });
+
+  it("错误目标项目不切换已有助手会话，显式切换项目才清除旧会话编号", async () => {
+    const store = usePlatformAssistantStore();
+    const config = {
+      project_id: "assistant-project",
+      personal_project: true,
+      assistant_id: "platform_assistant",
+      agent_id: "a",
+      model_id: "m",
+      history: true,
+    };
+    store.bootstrapConfig = config;
+    store.activeThreadId = "assistant-thread";
+    store.openWithDiagnostic({
+      title: "错误",
+      diagnosticMarkdown: "诊断",
+      projectId: "business-project",
+    });
+    expect(store.boundProjectId).toBe("assistant-project");
+    expect(store.activeThreadId).toBe("assistant-thread");
+    expect(clientService.bootstrapAssistant).not.toHaveBeenCalled();
+    vi.mocked(clientService.bootstrapAssistant).mockResolvedValue({
+      ...config,
+      project_id: "other-project",
+    });
+    await store.ensureBootstrap("other-project");
+    expect(store.activeThreadId).toBeNull();
+  });
 });

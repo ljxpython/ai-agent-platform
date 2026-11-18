@@ -65,6 +65,14 @@ export interface EvidenceDetail {
     revision?: string;
     limit?: number;
     sources?: EvidenceSource[];
+    total?: number;
+    run_status?: string;
+    persistent_state?: {
+      availability: string;
+      reason?: string;
+      failed_tasks?: { node: string | null; error_code: string }[];
+      approval_pending?: boolean | null;
+    };
     [key: string]: unknown;
   };
   [key: string]: unknown;

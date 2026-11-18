@@ -60,11 +60,7 @@ class NotificationChannelRecord(Base):
         default=uuid.uuid4,
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
-    project_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid(as_uuid=True),
-        nullable=True,
-        index=True,
-    )
+    project_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     channel_type: Mapped[str] = mapped_column(
         String(32), nullable=False, default="feishu"
     )

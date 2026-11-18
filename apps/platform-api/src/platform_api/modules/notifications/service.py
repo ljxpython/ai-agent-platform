@@ -134,7 +134,7 @@ class NotificationService:
             channel_type=req.channel_type.value,
             endpoint_url=req.endpoint_url,
             secret_token=req.secret_token,
-            project_id=req.project_id,
+            project_ids=req.project_ids,
             is_enabled=req.is_enabled,
             subscribed_events=req.subscribed_events,
         )
@@ -209,6 +209,54 @@ class NotificationService:
                 message=f"测试异常: {exc}",
             )
 
+    def _normalize_alert_action_url(
+        self, action_url: str | None, details: dict[str, Any]
+    ) -> str:
+        """规范化告警动作链接，彻底杜绝无 thread 的空对话跳转。"""
+        thread_id = details.get("thread_id") or details.get("threadId")
+        if thread_id:
+            return f"/workspace/chat/{thread_id}"
+
+        # 检查是否为通用空白 chat 路径或空 URL
+        is_generic_chat = False
+        if action_url:
+            cleaned = action_url.strip().rstrip("/")
+            if cleaned.endswith("/workspace/chat") or cleaned.endswith("/chat"):
+                is_generic_chat = True
+
+        if not action_url or is_generic_chat:
+            trace_id = details.get("trace_id") or details.get("traceId")
+            if trace_id:
+                return f"/workspace/trace-diagnostics?traceId={trace_id}"
+            return "/workspace/trace-diagnostics"
+
+        return action_url
+
+    @staticmethod
+    def _is_event_subscribed(
+        subscribed_events: list[str] | None, alert_type: str
+    ) -> bool:
+        """检查渠道是否订阅了指定类型的告警。"""
+        if not subscribed_events or "*" in subscribed_events:
+            return True
+        for evt in subscribed_events:
+            if evt == alert_type:
+                return True
+            if evt.endswith("*") and alert_type.startswith(evt[:-1]):
+                return True
+            if alert_type.startswith(evt + "_") or evt.startswith(alert_type + "_"):
+                return True
+            # 大类聚合匹配 (如 eval_degraded 订阅能接收 eval_score_drop)
+            if ("eval" in evt and "eval" in alert_type) or (
+                "agent" in evt and "agent" in alert_type
+            ):
+                return True
+            if ("budget" in evt and "budget" in alert_type) or (
+                "model" in evt and "model" in alert_type
+            ):
+                return True
+        return False
+
     # --- 统一告警接入与治理分发 (Task 3 核心) ---
 
     async def process_incoming_alert(
@@ -235,6 +283,10 @@ class NotificationService:
             details=payload.details,
         )
 
+        resolved_action_url = self._normalize_alert_action_url(
+            payload.action_url, payload.details
+        )
+
         # 2. 写入一条站内信 (所有进入的事件均留痕)
         self.create_notification(
             title=f"[{payload.level.value.upper()}] {payload.summary}",
@@ -245,7 +297,7 @@ class NotificationService:
             else NotificationCategory.SYSTEM,
             recipient_user_id=payload.recipient_user_id,
             project_id=payload.project_id,
-            action_url=payload.action_url,
+            action_url=resolved_action_url,
             extra_metadata={
                 "fingerprint": fingerprint,
                 "occurrences": occurrences,
@@ -270,7 +322,18 @@ class NotificationService:
 
         tasks = []
         for ch in channels:
-            tasks.append(self._dispatch_to_channel(ch, payload, occurrences))
+            # 严格依据渠道订阅事件过滤：非订阅事件不予推送外部群
+            if not self._is_event_subscribed(ch.subscribed_events, payload.alert_type):
+                logger.info(
+                    "渠道 %s 未订阅告警类别 %s，跳过外部推送",
+                    ch.name,
+                    payload.alert_type,
+                )
+                continue
+
+            tasks.append(
+                self._dispatch_to_channel(ch, payload, occurrences, resolved_action_url)
+            )
         await asyncio.gather(*tasks, return_exceptions=True)
 
         return True, fingerprint, occurrences
@@ -280,7 +343,9 @@ class NotificationService:
         channel: NotificationChannelRecord,
         payload: AlertIncomingPayload,
         occurrences: int,
+        action_url: str | None = None,
     ) -> None:
+        target_action_url = action_url or payload.action_url
         if channel.channel_type == "feishu":
             fields = [
                 ("来源", f"`{payload.source}`"),
@@ -288,6 +353,8 @@ class NotificationService:
                 ("目标对象", f"`{payload.target_id}`"),
                 ("当前级别", payload.level.value.upper()),
             ]
+            if payload.project_id:
+                fields.append(("所属项目", f"`{str(payload.project_id)[:8]}`"))
             if occurrences > 1:
                 fields.append(("累计触发", f"{occurrences} 次"))
 
@@ -296,8 +363,8 @@ class NotificationService:
                 summary=payload.summary,
                 level=payload.level.value,
                 fields=fields,
-                action_url=payload.action_url,
-                action_button_text="🔍 查看详情 / 链路",
+                action_url=target_action_url,
+                action_button_text="🔍 查看详情 / 排障",
             )
             success, msg = await self.feishu_client.send_card(
                 channel.endpoint_url, card, secret=channel.secret_token

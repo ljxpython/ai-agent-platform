@@ -25,6 +25,45 @@ from platform_api.modules.projects.models import ProjectMemberRecord
 setup = _feedback_setup
 
 
+@pytest.mark.parametrize("member,enabled", [(True, True), (False, True), (True, False)])
+def test_authoring_link_requires_enabled_project_membership(
+    monkeypatch, member, enabled
+):
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    from platform_api.modules.evaluation.router import capabilities
+
+    project = str(uuid4())
+    settings = SimpleNamespace(
+        evaluation_workbench_enabled=enabled,
+        evaluation_project_id=project,
+        evaluation_assistant_model_route="not-configured",
+        evaluation_web_url="http://127.0.0.1:9128/",
+        evaluation_feedback_enabled=False,
+        evaluation_synthetic_export_enabled=False,
+        evaluation_inspection_enabled=False,
+    )
+    request = SimpleNamespace(
+        headers={"x-project-id": project},
+        app=SimpleNamespace(
+            state=SimpleNamespace(settings=settings, db_session_factory=None)
+        ),
+    )
+    actor = ActorContext(
+        user_id=str(uuid4()),
+        project_roles={project: ("project_editor",)} if member else {},
+    )
+    monkeypatch.setattr(
+        "platform_api.core.db.session_scope",
+        lambda _: nullcontext(SimpleNamespace(get=lambda *_: None)),
+    )
+    value = capabilities(request, actor)
+    assert value["authoring_url"] == (
+        "http://127.0.0.1:9128" if member and enabled else None
+    )
+
+
 def test_public_creation_cannot_forge_server_owned_session_materials():
     from platform_api.core.errors import BadRequestError
     from platform_api.modules.evaluation.workbench import reject_client_source_snapshots

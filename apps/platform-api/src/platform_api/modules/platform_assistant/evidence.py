@@ -5,7 +5,6 @@ from sqlalchemy import select
 
 from platform_api.core.errors import ForbiddenError
 from platform_api.modules.platform_assistant.models import AssistantEvidenceRecord
-from platform_api.modules.runtime_gateway.application import thread_access
 
 
 def save_evidence(factory, actor, project_id, evidence_id, body, correlation, data):
@@ -36,7 +35,10 @@ def save_evidence(factory, actor, project_id, evidence_id, body, correlation, da
 
 
 def require_history_access(factory, settings, actor, project_id, thread_id, access):
-    from platform_api.modules.platform_assistant.service import sources
+    from platform_api.modules.platform_assistant.service import (
+        require_target_project,
+        sources,
+    )
 
     if access.get("owner_user_id") != actor.user_id:
         raise ForbiddenError(
@@ -66,16 +68,9 @@ def require_history_access(factory, settings, actor, project_id, thread_id, acce
         if record.operation in {"sql_schema", "sql_query"}:
             dataset = available.get(source["database_id"])
             allowed = dataset is not None and dataset.revision == source["revision"]
-        elif record.operation in {"source", "documents"}:
-            allowed = (
-                record.operation == "documents"
-                or actor.user_id in settings.assistant_source_users
-            )
-            root = (
-                settings.assistant_source_root
-                if record.operation == "source"
-                else settings.assistant_document_root
-            )
+        elif record.operation == "source":
+            allowed = actor.user_id in settings.assistant_source_users
+            root = settings.assistant_source_root
             try:
                 revision = (
                     str(
@@ -91,8 +86,10 @@ def require_history_access(factory, settings, actor, project_id, thread_id, acce
                 allowed = False
         elif record.operation in {"diagnostics", "logs"}:
             if source["target_thread_id"]:
-                metadata = thread_access.get(factory, source["target_thread_id"])
-                allowed = thread_access.allowed(actor, project_id, metadata, "read")
+                try:
+                    require_target_project(factory, actor, source["target_thread_id"])
+                except ForbiddenError:
+                    allowed = False
             else:
                 allowed = actor.user_id in settings.assistant_log_users
         tool = {

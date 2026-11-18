@@ -4,6 +4,8 @@ import BaseDialog from "@/components/base/BaseDialog.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import { platformHttpClient } from "@/services/http/client";
 import { resolvePlatformHttpErrorMessage } from "@/utils/http-error";
+import { useUiStore } from "@/stores/ui";
+
 const props = defineProps<{
   projectId: string;
   threadIds: string[];
@@ -11,6 +13,18 @@ const props = defineProps<{
   canAuthorize?: boolean;
 }>();
 const emit = defineEmits<{ close: [] }>();
+
+function triggerToast(
+  message: string,
+  type: "info" | "success" | "warning" | "error" = "info",
+) {
+  try {
+    useUiStore().pushToast({ message, type });
+  } catch {
+    // Pinia not active in isolated test environment
+  }
+}
+
 const title = ref("会话评测集");
 const submitted = ref(false);
 const consent = ref(false);
@@ -22,6 +36,9 @@ type Receipt = {
   generation_error?: string;
   status: string;
   item_id?: string;
+  task_id?: string;
+  message?: string;
+  reused?: boolean;
   url?: string;
   failures: { thread_id?: string; reason: string }[];
   materials: {
@@ -31,34 +48,6 @@ type Receipt = {
   }[];
 };
 const receipt = ref<Receipt>();
-const captureNotice = ref("");
-async function capture(enabled = true) {
-  busy.value = true;
-  error.value = "";
-  try {
-    const response = await platformHttpClient.post<{ notice: string }>(
-      "/api/evaluation/materials/capture",
-      {
-        request_id: requestId.value,
-        thread_ids: props.threadIds,
-        title: title.value,
-        data_class: "business",
-        material_consent: consent.value,
-        enabled,
-      },
-      { headers: { "X-Project-Id": props.projectId } },
-    );
-    captureNotice.value = response.data.notice;
-  } catch (e) {
-    error.value = resolvePlatformHttpErrorMessage(
-      e,
-      "未能开启初态快照。",
-      "会话评测资料",
-    );
-  } finally {
-    busy.value = false;
-  }
-}
 watch(
   () => props.show,
   (show) => {
@@ -76,23 +65,32 @@ async function send() {
   busy.value = true;
   error.value = "";
   try {
-    receipt.value = (
-      await platformHttpClient.post<Receipt>(
-        "/api/evaluation/materials/send",
-        {
-          request_id: requestId.value,
-          thread_ids: props.threadIds,
-          title: title.value,
-          data_class: "business",
-          material_consent: consent.value,
-          auto_generate: props.canAuthorize === true,
-        },
-        {
-          headers: { "X-Project-Id": props.projectId },
-          timeout: 180000,
-        },
-      )
-    ).data;
+    const response = await platformHttpClient.post<Receipt>(
+      "/api/evaluation/materials/send",
+      {
+        request_id: requestId.value,
+        thread_ids: props.threadIds,
+        title: title.value,
+        data_class: "business",
+        material_consent: consent.value,
+        auto_generate: props.canAuthorize === true,
+        async_mode: true,
+      },
+      {
+        headers: { "X-Project-Id": props.projectId },
+        timeout: 30000,
+      },
+    );
+    const data = response.data;
+    if (response.status === 202 || data?.status === "accepted") {
+      triggerToast(
+        `评测集【${title.value}】转换任务已在后台启动，处理完成后将在通知中心提醒您。`,
+        "info",
+      );
+      emit("close");
+      return;
+    }
+    receipt.value = data;
     if (
       receipt.value.status === "delivered" &&
       receipt.value.generation_status !== "needs_retry" &&
@@ -202,54 +200,6 @@ async function send() {
         </span>
       </label>
 
-      <!-- 高级选项：初态采集收敛折叠 -->
-      <details
-        class="group rounded-lg border border-gray-200/60 bg-gray-50/40 p-2.5 text-xs dark:border-dark-800 dark:bg-dark-900/40"
-      >
-        <summary
-          class="flex cursor-pointer select-none items-center justify-between font-medium text-gray-600 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white transition-colors"
-        >
-          <span>高级选项：运行前文件初态采集</span>
-          <span
-            class="text-[10px] text-gray-400 transition-transform group-open:rotate-180"
-            >▼</span
-          >
-        </summary>
-        <div
-          class="mt-2 space-y-2 border-t border-gray-200/50 pt-2 dark:border-dark-800/80"
-        >
-          <p class="text-[11px] text-gray-500 dark:text-dark-400">
-            为后续测试保留上传文本的运行前状态（24小时有效）；缺初态时 AI
-            将以历史回答为准。
-          </p>
-          <div class="flex items-center gap-2">
-            <BaseButton
-              size="xs"
-              variant="secondary"
-              :disabled="!canAuthorize || !consent || busy || submitted"
-              @click="capture(true)"
-            >
-              开启后续文件初态采集
-            </BaseButton>
-            <BaseButton
-              size="xs"
-              variant="secondary"
-              :disabled="!canAuthorize || !consent || busy || submitted"
-              @click="capture(false)"
-            >
-              停止初态采集
-            </BaseButton>
-          </div>
-        </div>
-      </details>
-
-      <p
-        v-if="captureNotice"
-        role="status"
-        class="text-xs text-emerald-600 dark:text-emerald-400"
-      >
-        {{ captureNotice }}
-      </p>
       <p
         v-if="error"
         role="alert"

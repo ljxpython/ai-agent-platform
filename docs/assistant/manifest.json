@@ -1,0 +1,11 @@
+{
+  "revision": "2026-11-17",
+  "files": [
+    {"id": "overview", "path": "overview.md", "title": "平台与项目入门", "summary": "平台能做什么、选择项目、平台助手与业务智能体的区别、权限"},
+    {"id": "agents", "path": "agents.md", "title": "创建和配置 Agent", "summary": "新建智能体、Graph、模型、运行参数、工具权限、定时任务"},
+    {"id": "chat", "path": "chat.md", "title": "聊天、历史和平台助手", "summary": "发起对话、停止、审批、历史续聊、错误现场求助、证据引用"},
+    {"id": "knowledge", "path": "knowledge.md", "title": "使用项目知识库", "summary": "查看文档、入库状态、检索沙盒、图谱控制台、上传入口当前限制"},
+    {"id": "evaluation", "path": "evaluation.md", "title": "评测与改进", "summary": "新建测试需求、转为评测集、后台转换、通知、EvalFlow审阅和验证"},
+    {"id": "settings", "path": "settings.md", "title": "模型、成员、通知与设置", "summary": "项目模型与工具、全局模型连接、成员权限、Token看板、通知中心、个人资料"}
+  ]
+}

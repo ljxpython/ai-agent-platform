@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import BaseDialog from "@/components/base/BaseDialog.vue";
 import { useTopbarDropdown } from "@/composables/useTopbarDropdown";
 import { useNotificationCenterStore } from "../stores/useNotificationCenterStore";
 import type { NotificationItem, NotificationLevel } from "../types";
+import {
+  cleanNotificationTitle,
+  getNotificationActionInfo,
+  getNotificationLevelBadge,
+  resolveNotificationActionUrl,
+} from "../utils/notification-action";
 
 const router = useRouter();
 const store = useNotificationCenterStore();
@@ -11,11 +18,12 @@ const store = useNotificationCenterStore();
 const { close, dropdownRef, dropdownStyle, isOpen, open, rootRef, triggerRef } =
   useTopbarDropdown({
     alignment: "end",
-    fallbackWidth: 420,
-    minWidth: 360,
+    fallbackWidth: 440,
+    minWidth: 380,
   });
 
 const currentTab = ref<string>("all");
+const selectedItem = ref<NotificationItem | null>(null);
 
 const filteredItems = computed(() => {
   if (currentTab.value === "all") return store.items;
@@ -50,48 +58,30 @@ function formatRelativeTime(dateStr: string): string {
   }
 }
 
-function getLevelBadge(level: NotificationLevel) {
-  switch (level) {
-    case "critical":
-      return {
-        label: "严重",
-        class: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
-      };
-    case "error":
-      return {
-        label: "错误",
-        class:
-          "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-      };
-    case "warning":
-      return {
-        label: "警告",
-        class:
-          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-      };
-    default:
-      return {
-        label: "信息",
-        class:
-          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-      };
+function handleCardClick(item: NotificationItem) {
+  if (item.status === "unread") {
+    void store.markRead(item.id);
   }
+  selectedItem.value = item;
 }
 
-async function handleItemClick(item: NotificationItem) {
-  if (item.status === "unread") {
-    await store.markRead(item.id);
+function executeAction(item: NotificationItem, event?: Event) {
+  if (event) {
+    event.stopPropagation();
   }
-  if (item.action_url) {
-    close();
-    if (
-      item.action_url.startsWith("http://") ||
-      item.action_url.startsWith("https://")
-    ) {
-      window.open(item.action_url, "_blank");
-    } else {
-      await router.push(item.action_url);
-    }
+  if (item.status === "unread") {
+    void store.markRead(item.id);
+  }
+  const resolved = resolveNotificationActionUrl(item);
+  if (!resolved) return;
+
+  close();
+  selectedItem.value = null;
+
+  if (resolved.startsWith("http://") || resolved.startsWith("https://")) {
+    window.open(resolved, "_blank");
+  } else {
+    void router.push(resolved);
   }
 }
 
@@ -173,7 +163,7 @@ onUnmounted(() => {
               全部已读
             </button>
             <RouterLink
-              to="/workspace/settings/notifications"
+              to="/workspace/settings/notifications?tab=channels"
               class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"
               title="配置通知与飞书机器人"
               @click="close"
@@ -235,46 +225,69 @@ onUnmounted(() => {
           <div
             v-for="item in filteredItems"
             :key="item.id"
-            class="group relative flex flex-col gap-1.5 p-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-dark-800/60 cursor-pointer"
+            class="group relative flex flex-col gap-2 p-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-dark-800/60 cursor-pointer"
             :class="{
-              'bg-blue-50/30 dark:bg-blue-950/10': item.status === 'unread',
+              'bg-blue-50/25 dark:bg-blue-950/15': item.status === 'unread',
             }"
-            @click="handleItemClick(item)"
+            @click="handleCardClick(item)"
           >
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-2">
+            <!-- 头部：未读点 + 等级 Badge + 标题 + 时间 -->
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex min-w-0 flex-1 items-center gap-1.5">
+                <!-- 未读小蓝点 -->
                 <span
-                  class="inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold"
-                  :class="getLevelBadge(item.level).class"
+                  v-if="item.status === 'unread'"
+                  class="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600 dark:bg-blue-400"
+                  title="未读消息"
+                />
+                <!-- 等级 Badge：坚决不折行 -->
+                <span
+                  class="inline-flex shrink-0 whitespace-nowrap items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide"
+                  :class="getNotificationLevelBadge(item.level).class"
                 >
-                  {{ getLevelBadge(item.level).label }}
+                  {{ getNotificationLevelBadge(item.level).label }}
                 </span>
+                <!-- 干净无前缀标题 -->
                 <span
-                  class="text-xs font-semibold text-gray-900 dark:text-white line-clamp-1"
-                  :class="{ 'font-bold': item.status === 'unread' }"
+                  class="truncate text-xs text-gray-900 dark:text-white"
+                  :class="
+                    item.status === 'unread' ? 'font-bold' : 'font-medium'
+                  "
+                  :title="item.title"
                 >
-                  {{ item.title }}
+                  {{ cleanNotificationTitle(item.title) }}
                 </span>
               </div>
+              <!-- 贴边时间 -->
               <span
-                class="shrink-0 text-[10px] text-gray-400 dark:text-dark-500"
+                class="shrink-0 whitespace-nowrap text-[10px] text-gray-400 dark:text-dark-400 pt-0.5"
               >
                 {{ formatRelativeTime(item.created_at) }}
               </span>
             </div>
 
+            <!-- 正文描述 -->
             <p
-              class="text-[11px] text-gray-600 dark:text-dark-300 line-clamp-2 leading-relaxed"
+              class="text-[11px] leading-relaxed text-gray-600 dark:text-dark-300 line-clamp-2"
+              :class="item.status === 'unread' ? 'pl-3' : ''"
             >
               {{ item.content }}
             </p>
 
+            <!-- 操作链接：根据状态动态呈现优雅文案与色彩 -->
             <div
-              v-if="item.action_url"
-              class="mt-1 flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400"
+              v-if="resolveNotificationActionUrl(item)"
+              class="mt-0.5 flex items-center gap-1 text-[11px] font-medium transition-colors"
+              :class="[
+                getNotificationActionInfo(item).colorClass,
+                item.status === 'unread' ? 'pl-3' : '',
+              ]"
+              @click.stop="executeAction(item, $event)"
             >
-              <span>立即前往排障排错</span>
-              <span>→</span>
+              <span>{{ getNotificationActionInfo(item).label }}</span>
+              <span class="transition-transform group-hover:translate-x-0.5"
+                >→</span
+              >
             </div>
           </div>
         </div>
@@ -284,14 +297,103 @@ onUnmounted(() => {
           class="border-t border-gray-100 bg-gray-50/50 p-2 text-center dark:border-dark-800 dark:bg-dark-900"
         >
           <RouterLink
-            to="/workspace/settings/notifications"
-            class="text-[11px] text-gray-500 hover:text-blue-600 dark:text-dark-400 dark:hover:text-blue-400 transition-colors"
+            to="/workspace/settings/notifications?tab=history"
+            class="text-[11px] text-gray-500 hover:text-blue-600 dark:text-dark-400 dark:hover:text-blue-400 transition-colors inline-flex items-center gap-1"
             @click="close"
           >
-            管理通知与飞书推送渠道 →
+            <span>查看完整消息与告警历史</span>
+            <span>→</span>
           </RouterLink>
         </div>
       </div>
     </Teleport>
+
+    <!-- 详情弹窗 -->
+    <BaseDialog
+      :show="!!selectedItem"
+      :title="cleanNotificationTitle(selectedItem?.title || '通知详情')"
+      width="normal"
+      @close="selectedItem = null"
+    >
+      <div v-if="selectedItem" class="space-y-4">
+        <!-- 头部等级与时间 -->
+        <div
+          class="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-dark-800"
+        >
+          <div class="flex items-center gap-2">
+            <span
+              class="inline-flex shrink-0 whitespace-nowrap items-center rounded-md border px-2 py-0.5 text-xs font-semibold"
+              :class="getNotificationLevelBadge(selectedItem.level).class"
+            >
+              {{ getNotificationLevelBadge(selectedItem.level).label }}
+            </span>
+            <span class="text-xs text-gray-500 dark:text-dark-400 capitalize">
+              {{ selectedItem.category }}
+            </span>
+          </div>
+          <span class="text-xs text-gray-400 dark:text-dark-500 font-mono">
+            {{ formatRelativeTime(selectedItem.created_at) }}
+          </span>
+        </div>
+
+        <!-- 消息正文 -->
+        <div
+          class="rounded-xl bg-gray-50/70 p-3.5 text-xs leading-relaxed text-gray-800 dark:bg-dark-800/60 dark:text-dark-200 break-words whitespace-pre-wrap"
+        >
+          {{ selectedItem.content }}
+        </div>
+
+        <!-- 告警与诊断元数据 (如有) -->
+        <div
+          v-if="
+            selectedItem.extra_metadata &&
+            Object.keys(selectedItem.extra_metadata).length > 0
+          "
+          class="space-y-1.5"
+        >
+          <h4
+            class="text-[11px] font-semibold text-gray-500 dark:text-dark-400 uppercase tracking-wider"
+          >
+            排障上下文与元数据
+          </h4>
+          <div
+            class="max-h-48 overflow-y-auto rounded-lg bg-gray-100/90 p-2.5 font-mono text-[11px] text-gray-700 dark:bg-dark-900/90 dark:text-dark-300"
+          >
+            <pre class="whitespace-pre-wrap break-all">{{
+              JSON.stringify(selectedItem.extra_metadata, null, 2)
+            }}</pre>
+          </div>
+        </div>
+
+        <!-- 弹窗底部操作按钮 -->
+        <div
+          class="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-dark-800"
+        >
+          <button
+            type="button"
+            class="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-dark-400 dark:hover:bg-dark-800 transition-colors"
+            @click="selectedItem = null"
+          >
+            关闭
+          </button>
+
+          <button
+            v-if="resolveNotificationActionUrl(selectedItem)"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors"
+            :class="
+              selectedItem.level === 'critical' ||
+              selectedItem.level === 'error'
+                ? 'bg-rose-600 hover:bg-rose-700'
+                : 'bg-blue-600 hover:bg-blue-700'
+            "
+            @click="executeAction(selectedItem)"
+          >
+            <span>{{ getNotificationActionInfo(selectedItem).label }}</span>
+            <span>→</span>
+          </button>
+        </div>
+      </div>
+    </BaseDialog>
   </div>
 </template>

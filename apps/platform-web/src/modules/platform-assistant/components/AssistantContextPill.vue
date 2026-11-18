@@ -2,8 +2,9 @@
 import { ref } from "vue";
 import type { AssistantAttachedContext } from "../types";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import { copyText } from "@/utils/clipboard";
 
-defineProps<{
+const props = defineProps<{
   context: AssistantAttachedContext;
 }>();
 
@@ -12,6 +13,13 @@ const emit = defineEmits<{
 }>();
 
 const isPreviewOpen = ref(false);
+const copyStatus = ref("");
+
+async function copyDiagnostic() {
+  copyStatus.value = (await copyText(props.context.diagnosticMarkdown))
+    ? "诊断已复制"
+    : "复制失败，请展开详情手动复制";
+}
 
 function togglePreview() {
   isPreviewOpen.value = !isPreviewOpen.value;
@@ -44,6 +52,13 @@ function togglePreview() {
       <div class="flex items-center gap-1.5 shrink-0">
         <button
           type="button"
+          class="px-2 py-0.5 text-[11px] font-medium hover:bg-amber-200/50 dark:hover:bg-amber-900/50 rounded"
+          @click="copyDiagnostic"
+        >
+          复制诊断
+        </button>
+        <button
+          type="button"
           class="px-2 py-0.5 rounded text-[11px] font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 transition"
           @click="togglePreview"
         >
@@ -59,6 +74,9 @@ function togglePreview() {
         </button>
       </div>
     </div>
+    <p v-if="copyStatus" role="status" class="mt-1 text-[11px]">
+      {{ copyStatus }}
+    </p>
 
     <!-- 展开详情预览 -->
     <div

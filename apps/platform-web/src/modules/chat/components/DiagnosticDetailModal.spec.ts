@@ -1,11 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
+import { createPinia, setActivePinia } from "pinia";
 import DiagnosticDetailModal from "./DiagnosticDetailModal.vue";
 import * as diagnosticPacketModule from "@/services/observability/diagnostic-packet";
 import { errorRingBuffer } from "@/services/observability/error-buffer";
+import { usePlatformAssistantStore } from "@/modules/platform-assistant/stores/usePlatformAssistantStore";
+import { getRunDiagnostics } from "@/services/threads/diagnostics.service";
 
 describe("DiagnosticDetailModal.vue", () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     errorRingBuffer.clear();
     vi.restoreAllMocks();
   });
@@ -183,5 +187,127 @@ describe("DiagnosticDetailModal.vue", () => {
       "[Model Failure] Code: provider_overloaded",
     );
     expect(wrapper.text()).toContain("HTTP: 503");
+  });
+
+  it("切换目标后丢弃旧请求晚到的诊断；已恢复运行显示成功说明", async () => {
+    const service = await import("@/services/threads/diagnostics.service");
+    let completeOld!: (
+      value: Awaited<ReturnType<typeof getRunDiagnostics>>,
+    ) => void;
+    const old = new Promise<Awaited<ReturnType<typeof getRunDiagnostics>>>(
+      (resolve) => {
+        completeOld = resolve;
+      },
+    );
+    const diagnostics = (
+      requestId: string,
+      runId: string,
+      status = "error",
+    ) => ({
+      version: 1 as const,
+      availability: "available" as const,
+      correlation: { execution_request_id: requestId },
+      trace: null,
+      thread_id: "thread",
+      run_id: runId,
+      run_status: status,
+      request_id: requestId,
+      model_errors: [],
+      graph_executions: [],
+      startup: null,
+      truncated: false,
+    });
+    vi.spyOn(service, "getRunDiagnostics")
+      .mockReturnValueOnce(old)
+      .mockResolvedValueOnce(diagnostics("current-request", "new", "success"));
+    const wrapper = mount(DiagnosticDetailModal, {
+      props: {
+        show: true,
+        projectId: "project",
+        threadId: "thread",
+        runId: "old",
+      },
+    });
+    await wrapper.setProps({ runId: "new" });
+    await flushPromises();
+    completeOld(diagnostics("stale-request", "old"));
+    await flushPromises();
+    expect(wrapper.text()).toContain("current-request");
+    expect(wrapper.text()).not.toContain("stale-request");
+    expect(wrapper.text()).toContain("运行最终成功");
+    await wrapper.setProps({ threadId: undefined, runId: null });
+    expect(wrapper.text()).not.toContain("current-request");
+  });
+
+  it("复制与求助使用相同解析编号和明确错误码；助手故障不影响复制", async () => {
+    const store = usePlatformAssistantStore();
+    vi.spyOn(store, "ensureBootstrap").mockResolvedValue({
+      project_id: "p",
+      personal_project: false,
+      assistant_id: "platform_assistant",
+      agent_id: "a",
+      model_id: "m",
+      history: true,
+    });
+    const open = vi.spyOn(store, "openWithDiagnostic");
+    const copy = vi
+      .spyOn(diagnosticPacketModule, "copyDiagnosticPacket")
+      .mockResolvedValue({ success: true, markdown: "packet" });
+    const wrapper = mount(DiagnosticDetailModal, {
+      props: {
+        show: true,
+        requestId: "target",
+        errorCode: "model_unavailable",
+        error: "no model",
+      },
+    });
+    await wrapper
+      .find('[data-testid="copy-diagnostic-packet-btn"]')
+      .trigger("click");
+    await wrapper
+      .find('[data-testid="ask-platform-assistant-btn"]')
+      .trigger("click");
+    expect(copy.mock.calls[0][0]).toMatchObject({
+      requestId: "target",
+      errorCode: "model_unavailable",
+      error: "no model",
+    });
+    expect(open.mock.calls[0][0].diagnosticMarkdown).toContain(
+      "关联 Request ID: `target`",
+    );
+    expect(open.mock.calls[0][0].diagnosticMarkdown).toContain(
+      "机器代码: `model_unavailable`",
+    );
+    expect(open.mock.calls[0][0].diagnosticMarkdown).toContain(
+      "原始错误: no model",
+    );
+  });
+
+  it("无请求编号的前端错误不认领最近请求，求助保留原始现场", async () => {
+    const store = usePlatformAssistantStore();
+    const open = vi
+      .spyOn(store, "openWithDiagnostic")
+      .mockImplementation(() => {});
+    errorRingBuffer.push({
+      type: "http",
+      requestId: "unrelated-request",
+      code: "provider_rate_limited",
+      message: "unrelated 429",
+    });
+    const wrapper = mount(DiagnosticDetailModal, {
+      props: { show: true, error: "UI Render Crash", canViewTrajectory: false },
+    });
+    expect(
+      wrapper.find('[data-testid="diagnostic-request-id"]').text(),
+    ).toContain("未关联");
+    await wrapper
+      .find('[data-testid="ask-platform-assistant-btn"]')
+      .trigger("click");
+    const packet = open.mock.calls[0][0].diagnosticMarkdown;
+    const target = packet.split("- **其他近期异常")[0];
+    expect(target).toContain("关联 Request ID: `未关联`");
+    expect(target).toContain("原始错误: UI Render Crash");
+    expect(target).not.toContain("unrelated-request");
+    expect(target).not.toContain("provider_rate_limited");
   });
 });

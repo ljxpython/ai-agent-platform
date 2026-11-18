@@ -1,4 +1,4 @@
-import { ref, shallowRef } from "vue";
+import { ref, shallowRef, watch } from "vue";
 import type { Client } from "@langchain/langgraph-sdk";
 import type {
   AssistantAttachedContext,
@@ -57,16 +57,27 @@ export function usePlatformAssistantSession() {
   const pendingReview = ref<AssistantPendingReview | null>(null);
   const currentRunId = ref<string | null>(null);
   const errorBanner = ref<string | null>(null);
+  let operationGeneration = 0;
+
+  watch(
+    () => store.boundProjectId,
+    (projectId, previousId) => {
+      if (previousId && projectId !== previousId) startNewSession();
+    },
+    { flush: "sync" },
+  );
 
   // 内部保持唯一的 Scoped Client
   const scopedClient = shallowRef<Client | null>(null);
+  let scopedProjectId = "";
 
   function getClient(): Client {
     if (!store.boundProjectId) {
       throw new Error("平台助手未完成 Bootstrap 初始化");
     }
-    if (!scopedClient.value) {
+    if (!scopedClient.value || scopedProjectId !== store.boundProjectId) {
       scopedClient.value = createAssistantScopedClient(store.boundProjectId);
+      scopedProjectId = store.boundProjectId;
     }
     return scopedClient.value;
   }
@@ -119,13 +130,15 @@ export function usePlatformAssistantSession() {
     if (turnStatus.value === "running") return;
     if (threadId.value === targetThreadId && messages.value.length > 0) return;
 
-    await store.ensureBootstrap();
-    const client = getClient();
-
+    const operation = ++operationGeneration;
     turnStatus.value = "running";
     errorBanner.value = null;
     try {
+      await store.ensureBootstrap();
+      if (operation !== operationGeneration) return;
+      const client = getClient();
       const state = await client.threads.getState(targetThreadId);
+      if (operation !== operationGeneration) return;
       threadId.value = targetThreadId;
       store.setActiveThreadId(targetThreadId);
 
@@ -152,6 +165,8 @@ export function usePlatformAssistantSession() {
       pendingReview.value = null;
       turnStatus.value = "idle";
     } catch (err: unknown) {
+      if (operation !== operationGeneration) return;
+      if (clearForbiddenSession(err)) return;
       turnStatus.value = "error";
       errorBanner.value = err instanceof Error ? err.message : "读取会话失败";
     }
@@ -161,6 +176,8 @@ export function usePlatformAssistantSession() {
    * 重置当前会话以新建
    */
   function startNewSession() {
+    // 旧请求可能仍在返回，不能再恢复旧Thread或消息。
+    operationGeneration++;
     threadId.value = null;
     currentRunId.value = null;
     messages.value = [];
@@ -169,6 +186,21 @@ export function usePlatformAssistantSession() {
     errorBanner.value = null;
     evidenceLookup.clearAllEvidence();
     store.newSession();
+  }
+
+  function clearForbiddenSession(error: unknown): boolean {
+    if (
+      !error ||
+      typeof error !== "object" ||
+      !("status" in error) ||
+      error.status !== 403
+    ) {
+      return false;
+    }
+    startNewSession();
+    turnStatus.value = "error";
+    errorBanner.value = "此会话或资料的读取权限已变更，请新建会话。";
+    return true;
   }
 
   /**
@@ -180,9 +212,20 @@ export function usePlatformAssistantSession() {
   ) {
     const trimmed = prompt.trim();
     if (!trimmed && !attachedContext) return;
-    if (turnStatus.value === "running") return;
+    if (["running", "awaiting_review"].includes(turnStatus.value)) return;
 
-    await store.ensureBootstrap();
+    const operation = ++operationGeneration;
+    try {
+      await store.ensureBootstrap();
+      if (operation !== operationGeneration) return;
+    } catch (err: unknown) {
+      if (operation !== operationGeneration) return;
+      if (clearForbiddenSession(err)) return;
+      turnStatus.value = "error";
+      errorBanner.value =
+        err instanceof Error ? err.message : "平台助手初始化失败";
+      return;
+    }
     const client = getClient();
 
     errorBanner.value = null;
@@ -205,10 +248,13 @@ export function usePlatformAssistantSession() {
             title: "平台助手",
           },
         });
+        if (operation !== operationGeneration) return;
         currentThreadId = created.thread_id;
         threadId.value = currentThreadId;
         store.setActiveThreadId(currentThreadId);
       } catch (err: unknown) {
+        if (operation !== operationGeneration) return;
+        if (clearForbiddenSession(err)) return;
         turnStatus.value = "error";
         errorBanner.value = err instanceof Error ? err.message : "创建会话失败";
         return;
@@ -255,6 +301,7 @@ export function usePlatformAssistantSession() {
       });
 
       for await (const chunk of stream) {
+        if (operation !== operationGeneration) return;
         if (!chunk) continue;
         const eventName = chunk.event as string;
         const data = chunk.data;
@@ -351,6 +398,7 @@ export function usePlatformAssistantSession() {
 
       // 6. 运行完毕后，再次读取最新 State 检查 Interrupts
       const finalState = await client.threads.getState(currentThreadId);
+      if (operation !== operationGeneration) return;
       const finalRawMsgs =
         (finalState.values as { messages?: unknown[] })?.messages || [];
       if (finalRawMsgs.length > 0) {
@@ -377,12 +425,15 @@ export function usePlatformAssistantSession() {
             currentThreadId,
             currentRunId.value,
           );
+          if (operation !== operationGeneration) return;
           if (runDetail && runDetail.status === "error") {
             turnStatus.value = "error";
             errorBanner.value = "智能体执行失败，请检查会话或重试。";
             return;
           }
-        } catch {
+        } catch (err: unknown) {
+          if (operation !== operationGeneration) return;
+          if (clearForbiddenSession(err)) return;
           // run 状态查询失败不阻塞
         }
       }
@@ -391,6 +442,8 @@ export function usePlatformAssistantSession() {
       turnStatus.value = "idle";
       currentRunId.value = null;
     } catch (err: unknown) {
+      if (operation !== operationGeneration) return;
+      if (clearForbiddenSession(err)) return;
       turnStatus.value = "error";
       errorBanner.value = err instanceof Error ? err.message : "智能体运行异常";
     }
@@ -404,6 +457,8 @@ export function usePlatformAssistantSession() {
     customMessage?: string,
   ) {
     if (!threadId.value || !pendingReview.value) return;
+    const operation = ++operationGeneration;
+    const reviewThreadId = threadId.value;
     const client = getClient();
     const interruptId = pendingReview.value.interrupt_id;
 
@@ -419,12 +474,13 @@ export function usePlatformAssistantSession() {
 
     try {
       const stream = client.runs.stream(
-        threadId.value,
+        reviewThreadId,
         "platform_assistant",
         commandPayload as unknown as Record<string, unknown>,
       );
 
       for await (const chunk of stream) {
+        if (operation !== operationGeneration) return;
         if (!chunk) continue;
         const eventName = chunk.event as string;
         const data = chunk.data as Record<string, unknown> | undefined;
@@ -440,7 +496,8 @@ export function usePlatformAssistantSession() {
       }
 
       // 审批后再次检查状态
-      const finalState = await client.threads.getState(threadId.value);
+      const finalState = await client.threads.getState(reviewThreadId);
+      if (operation !== operationGeneration) return;
       const finalRawMsgs =
         (finalState.values as { messages?: unknown[] })?.messages || [];
       if (finalRawMsgs.length > 0) {
@@ -462,6 +519,8 @@ export function usePlatformAssistantSession() {
 
       turnStatus.value = "idle";
     } catch (err: unknown) {
+      if (operation !== operationGeneration) return;
+      if (clearForbiddenSession(err)) return;
       turnStatus.value = "error";
       errorBanner.value =
         err instanceof Error ? err.message : "提交审批决策失败";
@@ -473,14 +532,19 @@ export function usePlatformAssistantSession() {
    */
   async function stopCurrentRun() {
     if (!threadId.value || !currentRunId.value) return;
+    const operation = operationGeneration;
     const client = getClient();
     try {
       await client.runs.cancel(threadId.value, currentRunId.value);
-    } catch {
+    } catch (err: unknown) {
+      if (operation !== operationGeneration) return;
+      clearForbiddenSession(err);
       // 容错处理
     } finally {
-      turnStatus.value = "idle";
-      currentRunId.value = null;
+      if (operation === operationGeneration) {
+        turnStatus.value = "idle";
+        currentRunId.value = null;
+      }
     }
   }
 

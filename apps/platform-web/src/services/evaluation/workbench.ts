@@ -43,6 +43,7 @@ export type Job = {
   created_at: number;
   task_id?: string;
   feedback: string;
+  candidate?: { status: string };
 };
 export type Operation = {
   id: string;
@@ -217,10 +218,11 @@ export async function readSummary(project: string) {
 }
 export async function workbenchCapabilities(project: string) {
   return (
-    await http.get<{ workbench: boolean; assistant_model?: string }>(
-      `${base}/capabilities`,
-      scope(project),
-    )
+    await http.get<{
+      workbench: boolean;
+      assistant_model?: string;
+      authoring_url?: string | null;
+    }>(`${base}/capabilities`, scope(project))
   ).data;
 }
 export const statusLabel = (value: string) =>

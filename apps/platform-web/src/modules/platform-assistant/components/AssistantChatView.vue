@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from "vue";
 import { usePlatformAssistantStore } from "../stores/usePlatformAssistantStore";
 import { usePlatformAssistantSession } from "../composables/usePlatformAssistantSession";
+import { useAuthStore } from "@/stores/auth";
 import AssistantComposer from "./AssistantComposer.vue";
 import AssistantContextPill from "./AssistantContextPill.vue";
 import AssistantApprovalCard from "./AssistantApprovalCard.vue";
@@ -11,6 +12,7 @@ import { renderMarkdown } from "@/utils/markdown";
 
 const store = usePlatformAssistantStore();
 const session = usePlatformAssistantSession();
+const authStore = useAuthStore();
 
 const messagesContainer = ref<HTMLElement | null>(null);
 
@@ -46,18 +48,23 @@ watch(
       if (newId !== session.threadId.value) {
         void session.loadThread(newId);
       }
-    } else {
+    } else if (session.threadId.value) {
       session.startNewSession();
     }
   },
   { immediate: true },
 );
 
-function handleSendMessage(text: string) {
+async function handleSendMessage(text: string) {
+  if (store.loading) return;
+  if (["running", "awaiting_review"].includes(session.turnStatus.value)) return;
   const ctx = store.attachedContext;
-  void session.sendMessage(text, ctx);
-  // 发送后自动清除已挂载的上下文
-  if (ctx) {
+  await session.sendMessage(text, ctx);
+  if (
+    ctx &&
+    store.attachedContext === ctx &&
+    ["idle", "awaiting_review"].includes(session.turnStatus.value)
+  ) {
     store.clearAttachedContext();
   }
 }
@@ -81,6 +88,40 @@ function renderMessageHtml(content: string): string {
     (_, id: string) =>
       `<button type="button" class="assistant-evidence-badge inline-flex items-center gap-1 px-1.5 py-0.5 mx-1 rounded text-[11px] font-mono font-bold bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/80 dark:hover:bg-sky-900 border border-sky-300 dark:border-sky-800 text-sky-700 dark:text-sky-300 cursor-pointer transition select-none" data-evidence-id="${id}" title="查看该证据的真实只读事实">📎 证据:${id.slice(0, 8)}</button>`,
   );
+}
+
+/**
+ * 欢迎页面的快捷引导提示
+ */
+const quickPrompts = [
+  {
+    icon: "🔍",
+    title: "排查最近报错",
+    desc: "提供 thread_id 或报错信息诊断",
+    text: "你能帮我排查一次失败的 Run 报错吗？需要我提供什么信息？",
+  },
+  {
+    icon: "📚",
+    title: "平台核心能力",
+    desc: "查阅平台使用指南与工具手册",
+    text: "平台内置了哪些核心能力和排障工具？",
+  },
+  {
+    icon: "📊",
+    title: "探查只读数据",
+    desc: "查看当前可查询的只读数据源",
+    text: "当前账号有哪些可以执行只读 SQL 查询的数据源？",
+  },
+  {
+    icon: "⚡",
+    title: "转为评测集",
+    desc: "了解对话沉淀为用例的流程",
+    text: "如何把一段业务对话沉淀转化为自动化评测集？",
+  },
+];
+
+function handleQuickPrompt(text: string) {
+  handleSendMessage(text);
 }
 
 /**
@@ -153,62 +194,18 @@ function getToolCardSummary(evidenceId: string) {
 
 <template>
   <div class="flex flex-col h-full bg-gray-50/50 dark:bg-dark-950/50">
-    <!-- 顶部状态栏: 项目作用域锁 Tag & 历史/新建按钮 -->
-    <div
-      class="flex items-center justify-between px-4 py-2 bg-white dark:bg-dark-900 border-b border-gray-200 dark:border-dark-800 text-xs shrink-0"
-    >
-      <div class="flex items-center gap-2">
-        <span
-          class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border"
-          :class="
-            store.isPersonalProject
-              ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800'
-              : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800'
-          "
-        >
-          <BaseIcon
-            :name="store.isPersonalProject ? 'user' : 'branch'"
-            class="w-3 h-3"
-          />
-          {{
-            store.isPersonalProject ? "个人助手作用域" : "业务项目安全作用域"
-          }}
-        </span>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-sky-600 dark:text-dark-400 dark:hover:text-sky-400 font-medium transition cursor-pointer"
-          @click="store.switchView('history')"
-        >
-          <BaseIcon name="threads" class="w-3.5 h-3.5" />
-          历史会话
-        </button>
-        <span class="text-gray-300 dark:text-dark-700">|</span>
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-sky-600 dark:text-dark-400 dark:hover:text-sky-400 font-medium transition cursor-pointer"
-          @click="session.startNewSession"
-        >
-          <BaseIcon name="plus" class="w-3.5 h-3.5" />
-          开启新会话
-        </button>
-      </div>
-    </div>
-
     <!-- 错误横幅提示 -->
     <div
       v-if="session.errorBanner.value"
       class="p-2.5 mx-3 mt-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-xs flex items-center justify-between"
     >
-      <div class="flex items-center gap-2">
+      <div class="flex min-w-0 items-center gap-2">
         <BaseIcon name="alert" class="w-4 h-4 shrink-0 text-red-500" />
-        <span>{{ session.errorBanner.value }}</span>
+        <span class="min-w-0 break-all">{{ session.errorBanner.value }}</span>
       </div>
       <button
         type="button"
-        class="text-red-500 hover:text-red-700 text-xs font-bold"
+        class="shrink-0 text-red-500 hover:text-red-700 text-xs font-bold"
         @click="session.errorBanner.value = null"
       >
         ✕
@@ -221,25 +218,55 @@ function getToolCardSummary(evidenceId: string) {
       class="flex-1 overflow-y-auto p-4 space-y-4"
       @click="handleMessageClick"
     >
-      <!-- 空白引导 -->
+      <!-- 空白引导与快捷提问卡片 -->
       <div
         v-if="session.messages.value.length === 0"
-        class="flex flex-col items-center justify-center h-full py-12 text-center text-gray-400 dark:text-dark-500 space-y-3"
+        class="flex flex-col items-center justify-center h-full py-8 text-center text-gray-400 dark:text-dark-500 space-y-3"
       >
-        <div
-          class="w-12 h-12 rounded-2xl bg-sky-50 dark:bg-sky-950/60 border border-sky-100 dark:border-sky-900 flex items-center justify-center text-sky-600 dark:text-sky-400"
-        >
-          <BaseIcon name="sparkle" class="w-6 h-6" />
+        <!-- 可爱 AI 动图大立绘 -->
+        <div class="relative w-24 h-24 mx-auto -mb-1 select-none">
+          <img
+            src="/assistant-mascot.gif"
+            alt="平台助手"
+            class="w-full h-full object-contain drop-shadow-md"
+          />
         </div>
-        <p class="text-sm font-semibold text-gray-700 dark:text-dark-200">
-          平台内置只读助手
-        </p>
-        <p
-          class="text-xs max-w-xs text-gray-500 dark:text-dark-400 leading-relaxed"
+
+        <div class="space-y-1">
+          <h3 class="text-sm font-bold text-gray-800 dark:text-dark-100">
+            你好！我是平台助手 👋
+          </h3>
+          <p
+            class="text-xs max-w-xs text-gray-500 dark:text-dark-400 leading-relaxed mx-auto"
+          >
+            按当前权限读取诊断、用户指南和数据，帮助你排查问题。
+          </p>
+        </div>
+
+        <!-- 快捷引导提问卡片组 -->
+        <div
+          class="w-full max-w-md pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left"
         >
-          您可以咨询平台架构与用法、查阅官方操作手册、提供报错信息协助定位诊断、或由助手编写只读
-          SQL 检索数据库事实。
-        </p>
+          <button
+            v-for="(prompt, idx) in quickPrompts"
+            :key="idx"
+            type="button"
+            class="p-2.5 rounded-xl bg-white dark:bg-dark-900 border border-gray-200/80 dark:border-dark-800 hover:border-sky-300 dark:hover:border-sky-700 shadow-2xs hover:shadow-xs transition-all text-xs text-gray-700 dark:text-dark-200 flex items-start gap-2.5 group cursor-pointer"
+            @click="handleQuickPrompt(prompt.text)"
+          >
+            <span class="text-sm shrink-0 pt-0.5">{{ prompt.icon }}</span>
+            <div class="flex-1 min-w-0">
+              <div
+                class="font-medium text-[11px] group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors truncate"
+              >
+                {{ prompt.title }}
+              </div>
+              <div class="text-[10px] text-gray-400 truncate mt-0.5">
+                {{ prompt.desc }}
+              </div>
+            </div>
+          </button>
+        </div>
       </div>
 
       <!-- 消息气泡循环 -->
@@ -257,12 +284,16 @@ function getToolCardSummary(evidenceId: string) {
               {{ msg.content }}
             </div>
           </div>
-          <!-- 用户头像 -->
+          <!-- 用户头像 (展示高颜值个性化头像) -->
           <div
-            class="w-8 h-8 rounded-full shrink-0 bg-gradient-to-tr from-sky-500 to-blue-600 flex items-center justify-center text-white shadow-xs ring-1 ring-white/60 dark:ring-dark-800"
+            class="w-8 h-8 rounded-full shrink-0 overflow-hidden ring-1 ring-white/80 dark:ring-dark-800 shadow-xs select-none bg-sky-100 dark:bg-sky-950"
             title="我"
           >
-            <BaseIcon name="user" class="w-4 h-4" />
+            <img
+              :src="authStore.userAvatar"
+              alt="我"
+              class="w-full h-full object-cover"
+            />
           </div>
         </div>
 
@@ -271,83 +302,16 @@ function getToolCardSummary(evidenceId: string) {
           v-else-if="msg.role === 'assistant'"
           class="flex items-start gap-2.5 max-w-[92%]"
         >
-          <!-- 可爱的助手小机器人头像 -->
+          <!-- 可爱的助手小头像 (使用吉祥物动图) -->
           <div
-            class="w-8 h-8 rounded-full shrink-0 bg-gradient-to-tr from-sky-400 via-indigo-500 to-purple-500 p-1 flex items-center justify-center shadow-xs ring-1 ring-sky-300/40 dark:ring-sky-500/20 select-none"
+            class="w-8 h-8 rounded-full shrink-0 p-0.5 bg-gradient-to-tr from-sky-200 via-indigo-200 to-purple-200 dark:from-sky-950 dark:to-purple-950 flex items-center justify-center shadow-xs ring-1 ring-sky-300/40 dark:ring-sky-500/20 select-none overflow-hidden"
             title="平台助手小精灵"
           >
-            <svg
-              viewBox="0 0 36 36"
-              fill="none"
-              class="w-full h-full text-white drop-shadow-xs"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <!-- 顶部天线与红宝石 -->
-              <line
-                x1="18"
-                y1="5"
-                x2="18"
-                y2="9"
-                stroke="white"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
-              <circle cx="18" cy="4" r="2.2" fill="#F43F5E" />
-              <!-- 机器人脸部圆角 -->
-              <rect
-                x="5"
-                y="9"
-                width="26"
-                height="20"
-                rx="7"
-                fill="white"
-                fill-opacity="0.95"
-              />
-              <!-- 两侧可爱耳机 -->
-              <rect
-                x="2.5"
-                y="15"
-                width="3"
-                height="8"
-                rx="1.5"
-                fill="#38BDF8"
-              />
-              <rect
-                x="30.5"
-                y="15"
-                width="3"
-                height="8"
-                rx="1.5"
-                fill="#A855F7"
-              />
-              <!-- 萌萌大眼睛 -->
-              <circle cx="13" cy="18" r="3.2" fill="#0284C7" />
-              <circle cx="14.2" cy="17" r="1.1" fill="white" />
-              <circle cx="23" cy="18" r="3.2" fill="#0284C7" />
-              <circle cx="24.2" cy="17" r="1.1" fill="white" />
-              <!-- 微笑小弧线 -->
-              <path
-                d="M15.5 23.5C16.8 24.8 19.2 24.8 20.5 23.5"
-                stroke="#0284C7"
-                stroke-width="1.6"
-                stroke-linecap="round"
-              />
-              <!-- 腮红 -->
-              <circle
-                cx="9"
-                cy="21"
-                r="1.6"
-                fill="#FDA4AF"
-                fill-opacity="0.9"
-              />
-              <circle
-                cx="27"
-                cy="21"
-                r="1.6"
-                fill="#FDA4AF"
-                fill-opacity="0.9"
-              />
-            </svg>
+            <img
+              src="/assistant-mascot.gif"
+              alt="AI"
+              class="w-full h-full object-contain scale-110 drop-shadow-xs"
+            />
           </div>
 
           <div class="flex flex-col space-y-1 flex-1 min-w-0">
@@ -459,7 +423,9 @@ function getToolCardSummary(evidenceId: string) {
     <!-- 底部输入栏 Composer -->
     <AssistantComposer
       :is-running="session.turnStatus.value === 'running'"
-      :disabled="session.turnStatus.value === 'awaiting_review'"
+      :disabled="
+        store.loading || session.turnStatus.value === 'awaiting_review'
+      "
       @send="handleSendMessage"
       @stop="session.stopCurrentRun"
     >
