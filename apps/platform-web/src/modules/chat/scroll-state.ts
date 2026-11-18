@@ -69,7 +69,9 @@ export function computeDynamicBottomSpacerHeight(params: {
   if (turnCount <= 1 || viewportClientHeight <= 0) {
     return 0;
   }
-  const targetBelowUserTop = Math.round(viewportClientHeight * (1 - anchorRatio));
+  const targetBelowUserTop = Math.round(
+    viewportClientHeight * (1 - anchorRatio),
+  );
   return Math.max(
     minSpacerPx,
     targetBelowUserTop - Math.max(0, Math.round(latestTurnHeightPx)),
@@ -129,4 +131,3 @@ export function isChatViewportNearContentBottom(
   }
   return false;
 }
-

@@ -18,7 +18,9 @@ describe("ChatStickyTaskPill.vue (Composer Top Tray)", () => {
       },
     });
 
-    expect(wrapper.find("[data-testid='composer-task-tray']").exists()).toBe(false);
+    expect(wrapper.find("[data-testid='composer-task-tray']").exists()).toBe(
+      false,
+    );
   });
 
   it("renders progress ring in tray bar, expands upward to show task list, and emits openTasks", async () => {
@@ -40,8 +42,12 @@ describe("ChatStickyTaskPill.vue (Composer Top Tray)", () => {
       },
     });
 
-    expect(wrapper.find("[data-testid='composer-task-tray']").exists()).toBe(true);
-    expect(wrapper.find("[data-testid='task-progress-ring']").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='composer-task-tray']").exists()).toBe(
+      true,
+    );
+    expect(wrapper.find("[data-testid='task-progress-ring']").exists()).toBe(
+      true,
+    );
     expect(wrapper.text()).toContain("正在执行：修复代码");
     expect(wrapper.text()).toContain("1/3");
 
@@ -80,11 +86,13 @@ describe("ChatStickyTaskPill.vue (Composer Top Tray)", () => {
       },
     });
 
-    expect(wrapper.find("[data-testid='task-completed-icon']").exists()).toBe(true);
-    expect(wrapper.find("[data-testid='task-progress-ring']").exists()).toBe(false);
+    expect(wrapper.find("[data-testid='task-completed-icon']").exists()).toBe(
+      true,
+    );
+    expect(wrapper.find("[data-testid='task-progress-ring']").exists()).toBe(
+      false,
+    );
     expect(wrapper.text()).toContain("已完成全部 2 项待办任务");
     expect(wrapper.text()).toContain("2/2");
   });
 });
-
-

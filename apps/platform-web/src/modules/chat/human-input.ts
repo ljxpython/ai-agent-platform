@@ -64,8 +64,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
  */
 export function isClarificationInterrupt(value: unknown): boolean {
   if (!isObject(value)) return false;
-  if (value.kind === "clarification" || value.type === "clarification") return true;
-  if (typeof value.question === "string" && Array.isArray(value.fields)) return true;
+  if (value.kind === "clarification" || value.type === "clarification")
+    return true;
+  if (typeof value.question === "string" && Array.isArray(value.fields))
+    return true;
   if (Array.isArray(value.questions) && value.questions.length > 0) return true;
   if (
     typeof value.question === "string" &&
@@ -143,8 +145,10 @@ export function parseClarifications(
           type: typeof f.type === "string" ? f.type : "text",
           label: typeof f.label === "string" ? f.label : f.name,
           required: Boolean(f.required),
-          description: typeof f.description === "string" ? f.description : undefined,
-          placeholder: typeof f.placeholder === "string" ? f.placeholder : undefined,
+          description:
+            typeof f.description === "string" ? f.description : undefined,
+          placeholder:
+            typeof f.placeholder === "string" ? f.placeholder : undefined,
           options: options.length > 0 ? options : undefined,
           default: f.default,
         });
@@ -155,13 +159,20 @@ export function parseClarifications(
       const qList = val.questions;
       if (typeof val.question === "string" && val.question.trim()) {
         topQuestion = val.question.trim();
-      } else if (qList.length === 1 && isObject(qList[0]) && typeof qList[0].question === "string") {
+      } else if (
+        qList.length === 1 &&
+        isObject(qList[0]) &&
+        typeof qList[0].question === "string"
+      ) {
         topQuestion = qList[0].question.trim();
       }
 
       qList.forEach((q, idx) => {
         if (!isObject(q)) return;
-        const qTitle = typeof q.question === "string" ? q.question.trim() : `问题 ${idx + 1}`;
+        const qTitle =
+          typeof q.question === "string"
+            ? q.question.trim()
+            : `问题 ${idx + 1}`;
         const options = parseFieldOptions(q.options);
         const isMulti = Boolean(q.is_multi_select);
         const fieldType: ClarificationFieldType = isMulti
@@ -181,9 +192,10 @@ export function parseClarifications(
           type: fieldType,
           label: qTitle,
           required: Boolean(q.required),
-          description: typeof q.description === "string" ? q.description : undefined,
+          description:
+            typeof q.description === "string" ? q.description : undefined,
           options: options.length > 0 ? options : undefined,
-          default: isMulti ? [] : options[0]?.value ?? "",
+          default: isMulti ? [] : (options[0]?.value ?? ""),
         });
       });
     }
@@ -204,7 +216,7 @@ export function parseClarifications(
         label: topQuestion,
         required: true,
         options: options.length > 0 ? options : undefined,
-        default: isMulti ? [] : options[0]?.value ?? "",
+        default: isMulti ? [] : (options[0]?.value ?? ""),
       });
     }
 
@@ -290,8 +302,14 @@ export function validateClarificationValues(
         if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
           errors[field.name] = "请输入有效的日期格式 (YYYY-MM-DD)";
         }
-      } else if (field.type === "select" && field.options && field.options.length > 0) {
-        const matched = field.options.some((opt) => opt.value === String(rawVal));
+      } else if (
+        field.type === "select" &&
+        field.options &&
+        field.options.length > 0
+      ) {
+        const matched = field.options.some(
+          (opt) => opt.value === String(rawVal),
+        );
         if (!matched) {
           errors[field.name] = "请选择有效的选项";
         }
@@ -435,18 +453,28 @@ export function isClarificationActive(
         if (!rawCall || typeof rawCall !== "object") continue;
         const call = rawCall as Record<string, unknown>;
         const callName = typeof call.name === "string" ? call.name.trim() : "";
-        const args = (call.args && typeof call.args === "object" ? call.args : {}) as Record<string, unknown>;
-        if (clarificationToolNames.has(callName) || isClarificationInterrupt(args)) {
+        const args = (
+          call.args && typeof call.args === "object" ? call.args : {}
+        ) as Record<string, unknown>;
+        if (
+          clarificationToolNames.has(callName) ||
+          isClarificationInterrupt(args)
+        ) {
           const callId = typeof call.id === "string" ? call.id.trim() : "";
-          const isCompleted = Boolean(callId && completedToolCallIds.has(callId));
+          const isCompleted = Boolean(
+            callId && completedToolCallIds.has(callId),
+          );
           if (lastClarificationCallAiIndex === -1) {
             lastClarificationCallAiIndex = i;
             lastClarificationCallCompleted = isCompleted;
           }
 
-          const qText = typeof args.question === "string" ? args.question.trim() : "";
+          const qText =
+            typeof args.question === "string" ? args.question.trim() : "";
           const firstQ =
-            Array.isArray(args.questions) && isObject(args.questions[0]) && typeof args.questions[0].question === "string"
+            Array.isArray(args.questions) &&
+            isObject(args.questions[0]) &&
+            typeof args.questions[0].question === "string"
               ? args.questions[0].question.trim()
               : "";
           const clarQText = clarification.request.question.trim();
@@ -478,12 +506,17 @@ export function isClarificationActive(
   }
 
   // 如果 interrupt.id 与 tool_call.id 不同导致未精确命中，但消息历史中最后一次澄清工具调用已有 ToolMessage 结果，说明也已被消费
-  if (!foundMatchingCall && lastClarificationCallAiIndex !== -1 && lastClarificationCallCompleted) {
+  if (
+    !foundMatchingCall &&
+    lastClarificationCallAiIndex !== -1 &&
+    lastClarificationCallCompleted
+  ) {
     return false;
   }
 
   // 3. 检查回合推进：如果该澄清所在 AI 消息（或最后一次澄清调用）之后已有新的人类输入，说明该轮次早已结束
-  const anchorAiIndex = clarifyingAiIndex !== -1 ? clarifyingAiIndex : lastClarificationCallAiIndex;
+  const anchorAiIndex =
+    clarifyingAiIndex !== -1 ? clarifyingAiIndex : lastClarificationCallAiIndex;
   if (anchorAiIndex !== -1) {
     for (let i = anchorAiIndex + 1; i < messages.length; i++) {
       const msg = messages[i];

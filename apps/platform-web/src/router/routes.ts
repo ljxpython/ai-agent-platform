@@ -399,7 +399,8 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: {
       title: "Token 看板",
       eyebrow: "Projects",
-      requiredPermissions: ["project.usage.read"],
+      permissionMode: "any",
+      requiredPermissions: ["project.usage.read", "platform.usage.read"],
       permissionProjectSource: "route",
     },
   },
@@ -501,11 +502,6 @@ const navigation: Record<
     group: "平台管理",
     label: "链路诊断",
     icon: "search",
-  },
-  "workspace-usage": {
-    group: "平台管理",
-    label: "Token 看板",
-    icon: "activity",
   },
   "workspace-project-usage": {
     group: "项目管理",

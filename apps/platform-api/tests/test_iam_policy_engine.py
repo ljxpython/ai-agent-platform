@@ -99,6 +99,32 @@ class IamPolicyEngineTest(unittest.TestCase):
 
         self.assertEqual(ctx.exception.code, "project_role_missing")
 
+    def test_super_admin_can_read_project_usage_and_audit(self) -> None:
+        actor = ActorContext(
+            user_id="user-1",
+            platform_roles=("platform_super_admin",),
+        )
+
+        usage_decision = self.engine.evaluate(
+            actor=actor,
+            authorization=AuthorizationRequest(
+                permission=PermissionCode.PROJECT_USAGE_READ,
+                project_id="p-1",
+            ),
+        )
+        self.assertTrue(usage_decision.allowed)
+        self.assertEqual(usage_decision.reason, PolicyReason.PLATFORM_SUPER_ADMIN)
+
+        audit_decision = self.engine.evaluate(
+            actor=actor,
+            authorization=AuthorizationRequest(
+                permission=PermissionCode.PROJECT_AUDIT_READ,
+                project_id="p-1",
+            ),
+        )
+        self.assertTrue(audit_decision.allowed)
+        self.assertEqual(audit_decision.reason, PolicyReason.PLATFORM_SUPER_ADMIN)
+
     def test_fixed_platform_and_project_role_matrix(self) -> None:
         viewer = ActorContext(user_id="viewer", platform_roles=("platform_viewer",))
         operator = ActorContext(

@@ -38,15 +38,8 @@ async function copy(text: string) {
 </script>
 
 <template>
-  <div
-    class="space-y-8"
-    data-testid="transcript"
-  >
-    <p
-      v-if="copyError"
-      role="alert"
-      class="text-xs text-red-600"
-    >
+  <div class="space-y-8" data-testid="transcript">
+    <p v-if="copyError" role="alert" class="text-xs text-red-600">
       {{ copyError }}
     </p>
     <article
@@ -55,14 +48,11 @@ async function copy(text: string) {
       v-memo="[JSON.stringify(turn), workOpen(turn.key), canEdit]"
       class="min-w-0 space-y-4"
     >
-      <div
-        v-if="turn.user"
-        class="pw-chat-turn items-end"
-      >
-        <div class="pw-chat-turn-heading self-end">
-          你
-        </div>
-        <div class="w-auto max-w-[90%] self-end rounded-2xl rounded-tr-sm border border-primary-200 bg-primary-50/90 px-5 py-3.5 text-primary-950 shadow-sm dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-100">
+      <div v-if="turn.user" class="pw-chat-turn items-end">
+        <div class="pw-chat-turn-heading self-end">你</div>
+        <div
+          class="w-auto max-w-[90%] self-end rounded-2xl rounded-tr-sm border border-primary-200 bg-primary-50/90 px-5 py-3.5 text-primary-950 shadow-sm dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-100"
+        >
           <MessageContent :blocks="turn.user.blocks" />
         </div>
         <button
@@ -87,9 +77,8 @@ async function copy(text: string) {
         v-if="turn.work.length || turn.answer.length"
         class="pw-chat-turn-heading"
       >
-        <span class="pw-chat-agent-mark"><BaseIcon
-          name="sparkle"
-          class="h-4 w-4"
+        <span class="pw-chat-agent-mark"
+          ><BaseIcon name="sparkle" class="h-4 w-4"
         /></span>
         <span class="font-semibold text-gray-900 dark:text-white">Agent</span>
       </div>
@@ -142,11 +131,7 @@ async function copy(text: string) {
         复制
       </button>
     </article>
-    <div
-      v-if="running"
-      class="pw-chat-live-step"
-      role="status"
-    >
+    <div v-if="running" class="pw-chat-live-step" role="status">
       <span class="pw-chat-live-dot animate-pulse" />Agent 正在处理你的消息…
     </div>
   </div>

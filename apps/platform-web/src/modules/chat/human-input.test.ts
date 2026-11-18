@@ -40,7 +40,9 @@ describe("chat/human-input", () => {
     // 场景 4: 工具审批中断（绝不能误判为澄清）
     const toolApprovalInterrupt = {
       action_requests: [{ name: "execute", args: { command: "ls" } }],
-      review_configs: [{ action_name: "execute", allowed_decisions: ["approve"] }],
+      review_configs: [
+        { action_name: "execute", allowed_decisions: ["approve"] },
+      ],
     };
     expect(isClarificationInterrupt(toolApprovalInterrupt)).toBe(false);
   });
@@ -89,7 +91,9 @@ describe("chat/human-input", () => {
     expect(err1.selection).toBeTruthy();
 
     // 包含有效值校验通过
-    const err2 = validateClarificationValues(fields as any, { selection: ["A"] });
+    const err2 = validateClarificationValues(fields as any, {
+      selection: ["A"],
+    });
     expect(Object.keys(err2)).toHaveLength(0);
   });
 
@@ -133,8 +137,12 @@ describe("chat/human-input", () => {
 
     it("filters out clarification when resolvedIds contains it", () => {
       const resolved = new Set(["call_req_chat_1"]);
-      expect(isClarificationActive(mockClarification, [], resolved)).toBe(false);
-      expect(filterActiveClarifications([mockClarification], [], resolved)).toHaveLength(0);
+      expect(isClarificationActive(mockClarification, [], resolved)).toBe(
+        false,
+      );
+      expect(
+        filterActiveClarifications([mockClarification], [], resolved),
+      ).toHaveLength(0);
     });
 
     it("keeps clarification when it is pending in current turn without tool output", () => {
@@ -153,7 +161,9 @@ describe("chat/human-input", () => {
         },
       ];
       expect(isClarificationActive(mockClarification, messages)).toBe(true);
-      expect(filterActiveClarifications([mockClarification], messages)).toHaveLength(1);
+      expect(
+        filterActiveClarifications([mockClarification], messages),
+      ).toHaveLength(1);
     });
 
     it("filters out clarification when matching request_information already has tool output", () => {
@@ -174,7 +184,10 @@ describe("chat/human-input", () => {
           type: "tool",
           name: "request_information",
           tool_call_id: "call_req_chat_1",
-          content: JSON.stringify({ status: "answered", values: { env: "prod" } }),
+          content: JSON.stringify({
+            status: "answered",
+            values: { env: "prod" },
+          }),
         },
         {
           type: "ai",
@@ -182,7 +195,9 @@ describe("chat/human-input", () => {
         },
       ];
       expect(isClarificationActive(mockClarification, messages)).toBe(false);
-      expect(filterActiveClarifications([mockClarification], messages)).toHaveLength(0);
+      expect(
+        filterActiveClarifications([mockClarification], messages),
+      ).toHaveLength(0);
     });
   });
 });
