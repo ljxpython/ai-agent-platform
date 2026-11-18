@@ -67,6 +67,16 @@ uv run --frozen python -c 'from cryptography.fernet import Fernet; print(Fernet.
 
 prod/production启动要求关闭API文档与bootstrap、覆盖内置默认JWT秘密、配置Runtime委托secret。staging不执行全部生产校验；这些校验不代表生产部署已验收，也不替部署者启用数据库或配置网络。
 
+## EvalFlow Agent连接
+
+`PLATFORM_API_EVALUATION_CONNECTION_ID`默认`default`，格式为小写字母开头、后续小写字母/数字/连字符、最多64字符。每套Agent平台使用不同标识，并与EvalFlow前端保存的连接id一致；本机现有连接保留default，服务器可单独配置server。
+
+来源回查、命令签名、交付和通知均绑定该标识；query或`X-Evalflow-Connection`只选择连接，不能替代权限。`GET /api/evaluation/internal/connection`是服务认证接口，须携带`PLATFORM_API_EVALUATION_SOURCE_TOKEN`对应的Bearer及匹配连接头，返回连接和评测项目，不接受普通匿名读取。EvalFlow保存连接前还会验证执行账号与目标快照。
+
+`PLATFORM_API_EVALUATION_RECEIVER_URL`是共同的EvalFlow API入口，前端跳转由`PLATFORM_API_EVALUATION_WEB_URL`决定；已配置的准确接收方白名单、用途和项目权限继续生效。EvalFlow里的Agent API地址则必须从EvalFlow服务器可达，例如远端回环38375经SSH转发访问本机2142。来源密钥、执行密码只进入服务端私有配置，不能写入URL或前端公开变量。
+
+连接的origin和项目保存后不可更换，换平台新增连接；任务已冻结的目标不随切换或凭据更新改变。原生EvalFlow账号与平台账号权限独立，平台管理员不会因此得到全局原生管理权。当前验证范围和服务器升级条件见[10连接任务](../../../../docs/projects/20261113-agent-eval-production-flywheel/10-agent-connection-settings.md)。
+
 ## 项目知识 MCP
 
 `PLATFORM_KNOWLEDGE_MCP_BINDINGS_JSON` 默认 `{}`，服务端配置可信 `tenant:project UUID` → Runtime MCP resource。当前平台可信tenant为 `__default`，示例 `{"__default:11111111-1111-4111-8111-111111111111":"knowledge_project_a"}`。绑定本身不含凭据，不提供浏览器绑定接口；只在新Thread/create与fork路径内部签发，旧Thread不迁移。删除映射只影响新Thread，撤销须先用现有tool-restrictions deny相关知识工具再撤知识token。

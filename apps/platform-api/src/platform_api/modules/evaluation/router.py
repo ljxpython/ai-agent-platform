@@ -43,18 +43,25 @@ def capabilities(request: Request, actor: ActorContext = Depends(get_actor_conte
         and project_id == settings.evaluation_project_id
         and actor.project_role_set(project_id)
     )
+    connection_id = getattr(settings, "evaluation_connection_id", "default")
+    web_url = getattr(settings, "evaluation_web_url", "").rstrip("/")
+    if web_url and connection_id != "default":
+        web_url += "/?connection=" + connection_id
     return {
         "workbench": available,
-        "authoring_url": (
-            getattr(settings, "evaluation_web_url", "").rstrip("/")
-            if available
-            else None
-        ),
+        "connection_id": connection_id if available else None,
+        "authoring_url": web_url if available else None,
     }
 
 
 def source_access(request: Request):
     settings = request.app.state.settings
+    if request.headers.get("x-evalflow-connection", "default") != getattr(
+        settings, "evaluation_connection_id", "default"
+    ):
+        raise ForbiddenError(
+            code="evaluation_connection_denied", message="评测连接不属于当前Agent平台。"
+        )
     token = request.headers.get("authorization", "").removeprefix("Bearer ")
     if not settings.evaluation_source_token or not hmac.compare_digest(
         token, settings.evaluation_source_token

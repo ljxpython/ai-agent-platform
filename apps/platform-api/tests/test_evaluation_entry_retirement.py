@@ -17,6 +17,9 @@ def client(setup):
     app.state.db_session_factory = factory
     app.state.settings = SimpleNamespace(
         evaluation_workbench_enabled=True,
+        evaluation_synthetic_export_enabled=False,
+        evaluation_inspection_enabled=False,
+        evaluation_connection_id="default",
         evaluation_project_id=scope[0],
         evaluation_source_token="test-only",
         evaluation_assistant_model_route="route",
@@ -103,6 +106,7 @@ def test_old_public_actions_rejected_before_forwarding(client, monkeypatch, acti
 def test_capabilities_and_evalflow_command_signing_remain(client):
     assert client.get("/api/evaluation/capabilities").json() == {
         "workbench": True,
+        "connection_id": "default",
         "authoring_url": "https://evalflow.example",
     }
     response = client.post(
@@ -115,6 +119,49 @@ def test_capabilities_and_evalflow_command_signing_remain(client):
         },
     )
     assert response.status_code == 200 and response.json()["token"]
+
+
+def test_connection_descriptor_uses_source_auth_through_global_middleware(
+    client, monkeypatch
+):
+    from platform_api.config import Settings
+    from platform_api.entrypoints.http.middleware.auth_context import (
+        register_auth_context_middleware,
+    )
+
+    app = FastAPI()
+    app.state.settings = client.app.state.settings
+    register_exception_handlers(app)
+    app.include_router(workbench.router)
+    register_auth_context_middleware(app, Settings(auth_required=True))
+
+    @app.middleware("http")
+    async def context(request, call_next):
+        request.state.platform_context = SimpleNamespace(
+            project=SimpleNamespace(project_id=None)
+        )
+        return await call_next(request)
+
+    with TestClient(app) as live:
+        path = "/api/evaluation/internal/connection"
+        assert live.get(path).status_code == 403
+        headers = {
+            "Authorization": "Bearer test-only",
+            "X-Evalflow-Connection": "default",
+        }
+        result = live.get(path, headers=headers)
+        assert result.status_code == 200
+        assert result.json() == {
+            "connection_id": "default",
+            "project_id": app.state.settings.evaluation_project_id,
+        }
+        assert (
+            live.get(
+                path, headers={**headers, "X-Evalflow-Connection": "server"}
+            ).status_code
+            == 403
+        )
+        assert live.post(path).status_code == 401
 
 
 def test_grant_and_revoke_still_use_scoped_platform_authorization(client, monkeypatch):

@@ -73,6 +73,14 @@ def enabled(request: Request):
         raise ServiceUnavailableError(
             code="evaluation_workbench_disabled", message="评测与改进尚未启用。"
         )
+    selected = request.headers.get("x-evalflow-connection")
+    if (
+        selected is not None
+        and selected != request.app.state.settings.evaluation_connection_id
+    ):
+        raise ForbiddenError(
+            code="evaluation_connection_denied", message="评测连接不属于当前Agent平台。"
+        )
 
 
 router = APIRouter(
@@ -80,6 +88,15 @@ router = APIRouter(
     tags=["evaluation-workbench"],
     dependencies=[Depends(enabled)],
 )
+
+
+@router.get("/internal/connection", dependencies=[Depends(source_access)])
+def connection_descriptor(request: Request):
+    settings = request.app.state.settings
+    return {
+        "connection_id": settings.evaluation_connection_id,
+        "project_id": settings.evaluation_project_id,
+    }
 
 
 def reject_client_source_snapshots(data):
@@ -154,6 +171,7 @@ def authoring_token(
             str(body.item_id) if body.item_id else None,
             str(body.request_id),
             body.data,
+            connection_id=request.app.state.settings.evaluation_connection_id,
         )
     }
 
@@ -193,6 +211,7 @@ async def forward(request, actor, project_id, operation, item_id, request_id, da
         item_id,
         str(request_id),
         data,
+        connection_id=settings.evaluation_connection_id,
     )
     try:
         url = urlsplit(settings.evaluation_receiver_url)
@@ -233,7 +252,11 @@ async def forward(request, actor, project_id, operation, item_id, request_id, da
                 settings.evaluation_receiver_url.rstrip("/")
                 + "/ajax-api/evalflow/internal/workbench/command",
                 json=data,
-                headers={"x-evaluation-command": token, "x-evalflow-request": "1"},
+                headers={
+                    "x-evaluation-command": token,
+                    "x-evalflow-request": "1",
+                    "x-evalflow-connection": settings.evaluation_connection_id,
+                },
             )
         if response.status_code == 403:
             raise ForbiddenError(
@@ -273,6 +296,7 @@ def authorize_command(request: Request, body: IntrospectionBody):
         body.token,
         body.body,
         request.app.state.db_session_factory,
+        connection_id=settings.evaluation_connection_id,
     )
     if claims["project_id"] != settings.evaluation_project_id:
         raise ForbiddenError(

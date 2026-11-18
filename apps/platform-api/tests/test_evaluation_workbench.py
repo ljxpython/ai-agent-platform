@@ -377,3 +377,35 @@ def test_batch_authorization_locks_sources_before_all_grants(setup):
         assert cached.status == "revoked"
     with pytest.raises(ForbiddenError):
         check_assistant_thread(factory, scope[0], execution_id)
+
+
+def test_commands_cannot_cross_connections_even_with_identical_signing_key(setup):
+    factory, actor, scope = setup
+    body = {"reason": "connection-bound"}
+    token = issue_command(
+        "test-only-secret",
+        actor,
+        scope[0],
+        "read",
+        str(uuid4()),
+        str(uuid4()),
+        body,
+        connection_id="local-dev",
+    )
+    assert (
+        verify_command(
+            "test-only-secret", token, body, factory, connection_id="local-dev"
+        )["connection_id"]
+        == "local-dev"
+    )
+    with pytest.raises(ForbiddenError):
+        verify_command("test-only-secret", token, body, factory, connection_id="server")
+
+
+def test_conversion_link_keeps_its_source_connection():
+    from platform_api.modules.evaluation.materials import authoring_url
+
+    identifier = str(uuid4())
+    assert authoring_url("https://evalflow.example", identifier, "server") == (
+        f"https://evalflow.example/#/authoring/{identifier}?connection=server"
+    )

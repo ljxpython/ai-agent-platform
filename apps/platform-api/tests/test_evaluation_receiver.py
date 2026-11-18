@@ -39,6 +39,7 @@ def test_receiver_uses_local_or_explicit_exact_origin(
 ):
     project_id = "project"
     settings = SimpleNamespace(
+        evaluation_connection_id="default",
         evaluation_project_id=project_id,
         evaluation_source_token="test-only",
         evaluation_receiver_url=receiver,
@@ -49,7 +50,9 @@ def test_receiver_uses_local_or_explicit_exact_origin(
     request = SimpleNamespace(
         app=SimpleNamespace(state=SimpleNamespace(settings=settings))
     )
-    monkeypatch.setattr(workbench, "issue_command", lambda *args: "signed-command")
+    monkeypatch.setattr(
+        workbench, "issue_command", lambda *args, **kwargs: "signed-command"
+    )
     client = AsyncMock()
     client.post.return_value = httpx.Response(
         200, json={"id": "item"}, request=httpx.Request("POST", "http://localhost")

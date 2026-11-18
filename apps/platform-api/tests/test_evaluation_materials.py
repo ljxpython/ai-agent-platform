@@ -287,7 +287,10 @@ def test_material_submission_reuses_receipt_without_reading_source_again(monkeyp
     request = SimpleNamespace(
         app=SimpleNamespace(
             state=SimpleNamespace(
-                settings=SimpleNamespace(evaluation_web_url="http://127.0.0.1:9138")
+                settings=SimpleNamespace(
+                    evaluation_connection_id="default",
+                    evaluation_web_url="http://127.0.0.1:9138",
+                )
             )
         )
     )
@@ -333,7 +336,11 @@ def test_material_batch_keeps_denied_source_out_of_forwarded_payload(monkeypatch
     monkeypatch.setattr(module, "_require_project_id", lambda _: project)
     request = SimpleNamespace(
         app=SimpleNamespace(
-            state=SimpleNamespace(settings=SimpleNamespace(evaluation_web_url=""))
+            state=SimpleNamespace(
+                settings=SimpleNamespace(
+                    evaluation_connection_id="default", evaluation_web_url=""
+                )
+            )
         )
     )
     body = module.MaterialRequest(
@@ -476,6 +483,7 @@ def test_conversion_resumes_lost_generation_receipt_without_recollecting(monkeyp
                 settings=SimpleNamespace(
                     evaluation_web_url="http://127.0.0.1:9138",
                     evaluation_assistant_model_route="managed",
+                    evaluation_connection_id="default",
                 ),
             )
         )
@@ -535,7 +543,10 @@ def test_async_mode_returns_202_accepted_and_dispatches_background_task(monkeypa
     request = SimpleNamespace(
         app=SimpleNamespace(
             state=SimpleNamespace(
-                settings=SimpleNamespace(evaluation_web_url="http://127.0.0.1:9128"),
+                settings=SimpleNamespace(
+                    evaluation_connection_id="default",
+                    evaluation_web_url="http://127.0.0.1:9128",
+                ),
                 db_session_factory=None,
             )
         )
@@ -606,7 +617,15 @@ def test_background_task_processes_and_notifies(monkeypatch):
         }
 
     def mock_notify(
-        factory, user_id, project_id, title, item_id, url, error_message=None
+        factory,
+        user_id,
+        project_id,
+        title,
+        item_id,
+        url,
+        error_message=None,
+        *,
+        connection_id="default",
     ):
         notifications.append(
             {
@@ -624,7 +643,10 @@ def test_background_task_processes_and_notifies(monkeypatch):
     monkeypatch.setattr(module, "notify_conversion_result", mock_notify)
 
     app_state = SimpleNamespace(
-        settings=SimpleNamespace(evaluation_web_url="http://127.0.0.1:9128"),
+        settings=SimpleNamespace(
+            evaluation_connection_id="default",
+            evaluation_web_url="http://127.0.0.1:9128",
+        ),
         db_session_factory=None,
     )
     body = module.MaterialRequest(

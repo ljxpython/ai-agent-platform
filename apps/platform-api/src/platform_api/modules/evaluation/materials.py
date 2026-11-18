@@ -5,6 +5,7 @@ import logging
 import types
 from datetime import UTC, datetime
 from typing import Literal
+from urllib.parse import urlencode
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 import httpx
@@ -292,6 +293,17 @@ async def snapshot(gateway, actor, project_id, thread_id, data_class="synthetic"
     return value
 
 
+def authoring_url(web_url, item_id, connection_id="default"):
+    if not web_url or not item_id:
+        return None
+    query = (
+        "?" + urlencode({"connection": connection_id})
+        if connection_id != "default"
+        else ""
+    )
+    return web_url.rstrip("/") + "/#/authoring/" + item_id + query
+
+
 def notify_conversion_result(
     session_factory,
     user_id: str,
@@ -300,6 +312,8 @@ def notify_conversion_result(
     item_id: str | None,
     evalflow_web_url: str | None,
     error_message: str | None = None,
+    *,
+    connection_id: str = "default",
 ):
     from platform_api.core.db import session_scope
     from platform_api.modules.notifications.repository import (
@@ -326,11 +340,7 @@ def notify_conversion_result(
                     project_id=UUID(project_id) if project_id else None,
                 )
             else:
-                url = (
-                    f"{evalflow_web_url.rstrip('/')}/#/authoring/{item_id}"
-                    if evalflow_web_url and item_id
-                    else None
-                )
+                url = authoring_url(evalflow_web_url, item_id, connection_id)
                 service.create_notification(
                     title=f"评测集【{title}】资料已送达",
                     content="会话资料已保存到 EvalFlow。请进入评测集查看 AI 处理状态、确认用途或整理题目；发布和运行仍需单独确认。",
@@ -389,6 +399,9 @@ async def process_materials_background(
                 None,
                 evalflow_url,
                 error_message=error_desc,
+                connection_id=getattr(
+                    app_state.settings, "evaluation_connection_id", "default"
+                ),
             )
             return
 
@@ -402,6 +415,9 @@ async def process_materials_background(
                 None,
                 evalflow_url,
                 error_message="请选择同一个Agent的会话，且需有明确Agent关联。",
+                connection_id=getattr(
+                    app_state.settings, "evaluation_connection_id", "default"
+                ),
             )
             return
 
@@ -450,6 +466,9 @@ async def process_materials_background(
             title,
             item["id"],
             evalflow_url,
+            connection_id=getattr(
+                app_state.settings, "evaluation_connection_id", "default"
+            ),
         )
         logger.info(
             "Successfully converted session materials async for item %s", item_id
@@ -466,6 +485,9 @@ async def process_materials_background(
             None,
             evalflow_url,
             error_message=getattr(exc, "message", str(exc)),
+            connection_id=getattr(
+                app_state.settings, "evaluation_connection_id", "default"
+            ),
         )
 
 
@@ -680,5 +702,7 @@ async def finish_conversion(request, actor, project_id, body, item, receipt):
         "item_id": item["id"],
         "generation_status": generation,
         "generation_error": error,
-        "url": url.rstrip("/") + "/#/authoring/" + item["id"] if url else None,
+        "url": authoring_url(
+            url, item["id"], request.app.state.settings.evaluation_connection_id
+        ),
     }

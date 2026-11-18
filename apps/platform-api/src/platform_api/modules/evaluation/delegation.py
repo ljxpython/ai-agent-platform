@@ -66,7 +66,17 @@ def _key(secret):
     return hashlib.sha256(("evalflow-workbench-v1:" + secret).encode()).digest()
 
 
-def issue_command(secret, actor, project_id, operation, item_id, request_id, body):
+def issue_command(
+    secret,
+    actor,
+    project_id,
+    operation,
+    item_id,
+    request_id,
+    body,
+    *,
+    connection_id="default",
+):
     require_action(actor, project_id, operation)
     now = int(time.time())
     return jwt.encode(
@@ -75,6 +85,7 @@ def issue_command(secret, actor, project_id, operation, item_id, request_id, bod
             "aud": "evalflow-workbench",
             "sub": actor.user_id,
             "project_id": str(UUID(project_id)),
+            "connection_id": connection_id,
             "operation": operation,
             "item_id": str(UUID(item_id)) if item_id else None,
             "jti": str(UUID(request_id)),
@@ -88,7 +99,7 @@ def issue_command(secret, actor, project_id, operation, item_id, request_id, bod
     )
 
 
-def verify_command(secret, token, body, factory):
+def verify_command(secret, token, body, factory, *, connection_id="default"):
     try:
         claims = jwt.decode(
             token,
@@ -103,13 +114,18 @@ def verify_command(secret, token, body, factory):
                     "operation",
                     "jti",
                     "body_hash",
+                    "connection_id",
                     "iat",
                     "nbf",
                     "exp",
                 ]
             },
         )
-        if claims["exp"] - claims["iat"] > 60 or claims["body_hash"] != digest(body):
+        if (
+            claims["exp"] - claims["iat"] > 60
+            or claims["body_hash"] != digest(body)
+            or claims["connection_id"] != connection_id
+        ):
             raise ValueError("command binding")
         UUID(claims["jti"])
         UUID(claims["project_id"])
