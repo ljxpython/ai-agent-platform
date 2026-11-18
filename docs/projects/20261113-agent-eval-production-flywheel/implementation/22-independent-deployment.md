@@ -2,6 +2,8 @@
 
 日期：2026-11-18。唯一任务状态在[09专题](../09-independent-deployment.md)，本文仅保存实现说明和实际证据。
 
+交付后说明：用户随后确认需求完成，两端代码已合main并推送；本次隔离服务、Worktree及测试库已删除。本文端口、原Task/Run和`.local-stack/`路径描述开发时现场，现不能据此打开旧环境；日志转存及合并回归见[23交付与清理](23-delivery-and-cleanup.md)。未验项目按用户决定回main继续。
+
 ## 环境与授权
 
 Agent：`/Users/lijiaxin/.codex/worktrees/f40b/ai-agent-platform`，基线`7081ae3e3963e12c6bf3e54a7d1e430d7a0ccbad`；独立Web26007/API24138/Runtime24493，专属PG/Redis/依赖。EvalFlow：`sshmy1:/opt/worktrees/evalflow-api-boundary-20261118`，基线`acfc89a`，独立API5011/SQLite/artifacts/venv，现场修改。两端只带入前序评测清理，无他人IAM/Usage改动。
@@ -97,6 +99,6 @@ git status --porcelain -- mlflow/
 
 09整体验收在独立双Worktree通过，5项任务状态只在09专题维护。当前/历史入口、跨机运行和回执、到期独立题库、普通执行者撤权、配置漂移、幂等、审批恢复、主动停止和超时均有真实证据。远端同步说明为`docs/projects/20261112-agent-evaluation-system/20261118-independent-deployment.md`，配置见其`docs/guides/agent-evaluation.md`。
 
-主API2142与本WT API24138健康200/ok，主Web3000与本WT Web26007为200；Runtime8123/24493健康端点返回401是原认证边界。远端主5000、隔离5011及外部9128健康200。主环境没有切换，上游mlflow/无改动；两端未提交、推送、合并或发布。隔离服务、隧道和合成资料保留供复验，浏览器scope已关闭。
+开发验收时主API2142与本WT API24138健康200/ok，主Web3000与本WT Web26007为200；Runtime8123/24493健康端点返回401是原认证边界。远端主5000、隔离5011及外部9128当时健康200，上游mlflow/无改动。随后按用户追加授权完成提交/合并/推送并回收隔离资源，详见23记录；浏览器scope已关闭。
 
-未做生产HTTPS、容量/性能、独立盲评或完整EvalFlow UI回归；EvalFlow无UI构建，题库生命周期用真实authoring API验证。08原任务仍5done/2partial，真实多页及全栈回退待原范围验收，不能因09通过改成整个历史项目完成。新契约不兼容旧服务，正式升级需要两端共同切换；开发复验仍依赖本机Agent和隧道在线。
+未做生产HTTPS、容量/性能、独立盲评或完整EvalFlow UI回归；EvalFlow无UI构建，题库生命周期用真实authoring API验证。08原任务仍5done/2partial，真实多页及全栈回退按用户决定回main继续原范围验收，不能因09通过改成整个历史项目完成。新契约不兼容旧服务，主环境验证前需要共同更新配置和运行进程；原隔离开发隧道已删除。
