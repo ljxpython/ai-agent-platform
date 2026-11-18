@@ -316,3 +316,70 @@ export interface GatewaySeriesQueryParams {
   purpose?: CallPurpose;
   scope?: CallScope;
 }
+
+// --- AI 网关预算控制 (Gateway Budgets) 契约 ---
+
+export type BudgetDurationUnit = "DAYS" | "WEEKS" | "MONTHS";
+export type BudgetTargetScope = "GLOBAL" | "PROJECT";
+export type BudgetAction = "ALERT" | "REJECT";
+export type AccountingStatus = "complete" | "unverifiable" | "reconciling";
+export type BudgetSyncStatus = "applied" | "pending";
+
+export const BudgetDurationSchema = z.object({
+  unit: z.enum(["DAYS", "WEEKS", "MONTHS"]),
+  value: z.literal(1),
+});
+export type BudgetDuration = z.infer<typeof BudgetDurationSchema>;
+
+export const BudgetPolicySchema = z.object({
+  id: z.string(),
+  scope: z.enum(["GLOBAL", "PROJECT"]),
+  project_id: z.string().nullable().optional(),
+  budget_amount: z.string(),
+  budget_unit: z.literal("USD"),
+  duration: BudgetDurationSchema,
+  action: z.enum(["ALERT", "REJECT"]),
+  version: z.number(),
+  definition_version: z.number(),
+  created_at: z.string(),
+  definition_started_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable().optional(),
+});
+export type BudgetPolicy = z.infer<typeof BudgetPolicySchema>;
+
+export const BudgetItemSchema = BudgetPolicySchema.extend({
+  accounting_status: z.enum(["complete", "unverifiable", "reconciling"]),
+  known_spend: z.string().nullable(),
+  current_spend: z.string().nullable(),
+  is_exceeded: z.boolean().nullable(),
+  window_start: z.string(),
+  window_end: z.string(),
+  as_of: z.string().nullable(),
+  sync_status: z.enum(["applied", "pending"]),
+});
+export type BudgetItem = z.infer<typeof BudgetItemSchema>;
+
+export const BudgetListResponseSchema = z.object({
+  items: z.array(BudgetItemSchema),
+  revision: z.number(),
+});
+export type BudgetListResponse = z.infer<typeof BudgetListResponseSchema>;
+
+export const BudgetSaveResponseSchema = z.object({
+  policy: BudgetPolicySchema,
+  sync_status: z.enum(["applied", "pending"]),
+});
+export type BudgetSaveResponse = z.infer<typeof BudgetSaveResponseSchema>;
+
+export interface CreateBudgetPolicyInput {
+  scope: BudgetTargetScope;
+  project_id?: string | null;
+  budget_amount: string;
+  budget_unit: "USD";
+  duration: {
+    unit: BudgetDurationUnit;
+    value: 1;
+  };
+  action: BudgetAction;
+}

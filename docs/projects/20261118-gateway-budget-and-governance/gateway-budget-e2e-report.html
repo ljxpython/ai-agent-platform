@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 网关预算控制与财务熔断治理 - 端到端全链路验收测试报告</title>
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --card-border: #30363d;
+      --text-main: #c9d1d9;
+      --text-heading: #f0f6fc;
+      --text-muted: #8b949e;
+      --accent-color: #58a6ff;
+      --success-color: #2ea043;
+      --warning-color: #d29922;
+      --danger-color: #f85149;
+      --code-bg: #21262d;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 24px;
+    }
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    header {
+      background: linear-gradient(135deg, #1f2937, #111827);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .badge-success {
+      background-color: rgba(46, 160, 67, 0.15);
+      color: var(--success-color);
+      border: 1px solid rgba(46, 160, 67, 0.4);
+    }
+    .badge-info {
+      background-color: rgba(88, 166, 255, 0.15);
+      color: var(--accent-color);
+      border: 1px solid rgba(88, 166, 255, 0.4);
+    }
+    h1 {
+      font-size: 26px;
+      color: var(--text-heading);
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .stat-card {
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .stat-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-top: 4px;
+    }
+    .stat-val.passed {
+      color: var(--success-color);
+    }
+    section {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+    h2 {
+      font-size: 18px;
+      color: var(--text-heading);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .video-wrapper {
+      position: relative;
+      background-color: #000;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 16px;
+    }
+    video {
+      width: 100%;
+      max-height: 580px;
+      display: block;
+    }
+    .case-card {
+      background-color: #1c2128;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .case-header {
+      padding: 14px 20px;
+      background-color: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .case-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-heading);
+    }
+    .case-body {
+      padding: 20px;
+    }
+    .case-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .info-item {
+      background-color: var(--code-bg);
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .info-label {
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    .info-val {
+      color: var(--text-heading);
+      font-family: ui-monospace, monospace;
+    }
+    .steps-list {
+      margin-left: 20px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .steps-list li {
+      margin-bottom: 6px;
+    }
+    .screenshot-area {
+      margin-top: 16px;
+    }
+    .screenshot-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .screenshot-img {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid var(--card-border);
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .screenshot-img:hover {
+      transform: scale(1.01);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .lightbox {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .lightbox.active {
+      display: flex;
+    }
+    .lightbox img {
+      max-width: 95%;
+      max-height: 95%;
+      border-radius: 8px;
+      border: 2px solid var(--card-border);
+    }
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <span class="badge badge-success">✓ 全链路真实端到端自动化验收通过</span>
+    <span class="badge badge-info">Worktree 隔离环境</span>
+    <h1>AI 网关预算控制与财务熔断治理 · 全链路自动化验证报告</h1>
+    <div class="subtitle">
+      测试执行引擎：Chromium + bsk (Browser Skill CLI) · 运行时间：2026-11-18 22:12 CST
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">测试状态</div>
+        <div class="stat-val passed">100% PASS</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">验证用例总数</div>
+        <div class="stat-val">7 / 7 通过</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">执行总耗时</div>
+        <div class="stat-val">232.2 秒</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">关键截图证据</div>
+        <div class="stat-val">13 张高保真图</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">环境规格</div>
+        <div class="stat-val" style="font-size: 15px; margin-top: 8px;">Web 24824 / API 26911</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 录屏展示 -->
+  <section>
+    <h2>📹 全链路操作实况录屏 (MP4 H.264 无剪辑全程录制)</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+      包含登录认证、大盘导航、预算Tab切换、已有策略完整账务呈现、编辑策略及百分比重算、删除策略二次确认、EmptyState空态恢复、新建策略输入守卫及项目作用域锁定、Chat模块契约防爆全流程。
+    </p>
+    <div class="video-wrapper">
+      <video controls poster="evidence/04-budgets-tab-existing-policy.png">
+        <source src="evidence/gateway-budget-full-lifecycle-e2e.mp4" type="video/mp4">
+        您的浏览器不支持 HTML5 video 标签，请直接打开本地文件：evidence/gateway-budget-full-lifecycle-e2e.mp4
+      </video>
+    </div>
+  </section>
+
+  <!-- 详细用例列表 -->
+  <section>
+    <h2>📋 详细测试用例与执行步骤 (Test Cases Breakdown)</h2>
+
+    <!-- Case 1 -->
+    <div class="case-card">
+      <div class="case-header">
+        <div class="case-title">Case 01: 管理员登录与系统鉴权验证</div>
+        <span class="badge badge-success">PASS</span>
+      </div>
+      <div class="case-body">
+        <div class="case-grid">
+          <div class="info-item">
+            <div class="info-label">前置条件</div>
+            <div class="info-val">Worktree Web 服务就绪 (http://127.0.0.1:24824)</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">测试凭据</div>
+            <div class="info-val">admin / admin123456 (平台超级管理员)</div>
+          </div>
+        </div>
+        <div class="info-label" style="margin-bottom: 6px;">操作步骤：</div>
+        <ol class="steps-list">
+          <li>浏览器启动并导航至平台登录页 <code>http://127.0.0.1:24824/#/login</code>。</li>
+          <li>输入管理员用户名与密码，点击【登录】按钮。</li>
+          <li>观测并校验 JWT Token 鉴权与项目上下文路由跳转。</li>
+        </ol>
+        <div class="screenshot-area">
+          <div class="screenshot-label">关键截图：登录页面与控制台总览</div>
+          <img class="screenshot-img" src="evidence/01-login-page.png" alt="登录页面" onclick="showLightbox(this.src)">
+          <div style="height: 12px;"></div>
+          <img class="screenshot-img" src="evidence/02-overview-dashboard.png" alt="登录后控制台总览" onclick="showLightbox(this.src)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Case 2 -->
+    <div class="case-card">
+      <div class="case-header">
+        <div class="case-title">Case 02: 用量中心主入口与四联 Tab 导航切换</div>
+        <span class="badge badge-success">PASS</span>
+      </div>
+      <div class="case-body">
+        <div class="case-grid">
+          <div class="info-item">
+            <div class="info-label">导航路径</div>
+            <div class="info-val">侧边栏【Token 看板】→ 进入用量中心看板</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">路由机制</div>
+            <div class="info-val">router.replace 双向驱动，防后退栈污染</div>
+          </div>
+        </div>
+        <div class="info-label" style="margin-bottom: 6px;">操作步骤：</div>
+        <ol class="steps-list">
+          <li>点击左侧导航【Token 看板】，进入当前项目用量大盘。</li>
+          <li>核验顶栏 Tab：存在【网关监控大盘】、【调用明细日志】、【预算策略与熔断】、【历史治理统计】。</li>
+          <li>点击【预算策略与熔断 (Budgets)】Tab，断言 URL Query 替换为 <code>?tab=budgets</code>，同时激活对应 Panel。</li>
+        </ol>
+        <div class="screenshot-area">
+          <div class="screenshot-label">关键截图：网关看板 Tab</div>
+          <img class="screenshot-img" src="evidence/03-gateway-usage-tab.png" alt="网关看板 Tab" onclick="showLightbox(this.src)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Case 3 -->
+    <div class="case-card">
+      <div class="case-header">
+        <div class="case-title">Case 03: 预算策略三态视觉呈现矩阵与自然周期计算</div>
+        <span class="badge badge-success">PASS</span>
+      </div>
+      <div class="case-body">
+        <div class="case-grid">
+          <div class="info-item">
+            <div class="info-label">策略状态</div>
+            <div class="info-val">complete (完整账务态)</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">账本数据</div>
+            <div class="info-val">已用 $2.500000000000 / 限额 $10.000000000000 (25.0%)</div>
+          </div>
+        </div>
+        <div class="info-label" style="margin-bottom: 6px;">操作步骤：</div>
+        <ol class="steps-list">
+          <li>进入 Budgets 页面，观察后端已存并在运行的真实项目预算。</li>
+          <li>核验作用域徽章为 <code>PROJECT</code> 且截断显示项目 ID 前 8 位。</li>
+          <li>核验自然重置周期窗口自动根据 UTC 00:00 转换并本地化展示为 <code>起: 11/18 08:00 止: 11/19 08:00</code>。</li>
+          <li>核验三态进度条处于 complete 状态，按定点纯函数计算百分比为 <code>25.0%</code> 并渲染绿色健康条。</li>
+        </ol>
+        <div class="screenshot-area">
+          <div class="screenshot-label">关键截图：Budgets 策略列表与三态进度条矩阵</div>
+          <img class="screenshot-img" src="evidence/04-budgets-tab-existing-policy.png" alt="Budgets 策略列表" onclick="showLightbox(this.src)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Case 4 -->
+    <div class="case-card">
+      <div class="case-header">
+        <div class="case-title">Case 04: 编辑预算策略、自适应锁定与进度动态重算</div>
+        <span class="badge badge-success">PASS</span>
+      </div>
+      <div class="case-body">
+        <div class="case-grid">
+          <div class="info-item">
+            <div class="info-label">修改前限额</div>
+            <div class="info-val">$10.00 (REJECT, 25.0%)</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">修改后限额</div>
+            <div class="info-val">$50.00 (ALERT, 5.0%)</div>
+          </div>
+        </div>
+        <div class="info-label" style="margin-bottom: 6px;">操作步骤：</div>
+        <ol class="steps-list">
+          <li>点击操作栏中的【编辑】按钮，调出 <code>CreateBudgetPolicyModal</code> 编辑态。</li>
+          <li>断言作用域下拉框处于 disabled 锁定状态，无法跨作用域篡改。</li>
+          <li>将金额修改为 <code>50.00</code>，将超额动作切换为 <code>ALERT (软告警通知)</code>。</li>
+          <li>点击【保存修改】，调用 <code>PUT /api/policies/budgets/:id</code>。</li>
+          <li>保存成功后表格即时刷新，进度条百分比由 25.0% 重新计算为 5.0%，动作徽标即时变为琥珀色 ALERT。</li>
+        </ol>
+        <div class="screenshot-area">
+          <div class="screenshot-label">关键截图：编辑弹窗回填、表单修改与保存后列表</div>
+          <img class="screenshot-img" src="evidence/05-edit-modal-opened.png" alt="编辑弹窗回填" onclick="showLightbox(this.src)">
+          <div style="height: 12px;"></div>
+          <img class="screenshot-img" src="evidence/06-edit-modal-modified.png" alt="表单修改" onclick="showLightbox(this.src)">
+          <div style="height: 12px;"></div>
+          <img class="screenshot-img" src="evidence/07-policy-edited-to-50.png" alt="保存后列表即时更新" onclick="showLightbox(this.src)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Case 5 -->
+    <div class="case-card">
+      <div class="case-header">
+        <div class="case-title">Case 05: 预算策略删除二次确认与 Empty State 空态恢复</div>
+        <span class="badge badge-success">PASS</span>
+      </div>
+      <div class="case-body">
+        <div class="case-grid">
+          <div class="info-item">
+            <div class="info-label">防护机制</div>
+            <div class="info-val">BaseDialog / ConfirmDialog 危险操作警示</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">删除后状态</div>
+            <div class="info-val">列表自动置空，平滑切换至 Empty State</div>
+          </div>
+        </div>
+        <div class="info-label" style="margin-bottom: 6px;">操作步骤：</div>
+        <ol class="steps-list">
+          <li>点击操作栏中的【删除】按钮。</li>
+          <li>核验二次确认对话框准确解析并呈现待删除策略的金额与周期规则。</li>
+          <li>点击【确认删除】，发送 <code>DELETE /api/policies/budgets/:id</code>。</li>
+          <li>策略删除后，页面表格平滑切换至【暂无配置预算策略】引导图与“立即创建首个策略”按钮。</li>
+        </ol>
+        <div class="screenshot-area">
+          <div class="screenshot-label">关键截图：二次确认弹窗与 Empty State 恢复</div>
+          <img class="screenshot-img" src="evidence/08-delete-confirm-dialog.png" alt="二次确认弹窗" onclick="showLightbox(this.src)">
+          <div style="height: 12px;"></div>
+          <img class="screenshot-img" src="evidence/09-empty-budgets-state.png" alt="Empty State 恢复" onclick="showLightbox(this.src)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Case 6 -->
+    <div class="case-card">
+      <div class="case-header">
+        <div class="case-title">Case 06: 新建自然月预算策略、输入守卫与本周期历史回填</div>
+        <span class="badge badge-success">PASS</span>
+      </div>
+      <div class="case-body">
+        <div class="case-grid">
+          <div class="info-item">
+            <div class="info-label">新建策略参数</div>
+            <div class="info-val">$100.00 / 每月 (MONTHS) / REJECT 熔断</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">历史记账回填</div>
+            <div class="info-val">自动继承本自然月已有 $2.50 调用 (进度 2.5%)</div>
+          </div>
+        </div>
+        <div class="info-label" style="margin-bottom: 6px;">操作步骤：</div>
+        <ol class="steps-list">
+          <li>点击空态页面中的【立即创建首个策略】按钮。</li>
+          <li>在金额输入框输入 <code>100.00</code>（正则守卫限制纯数字与单一小数点，最大 12 位小数）。</li>
+          <li>重置周期选择 <code>每月 (自然月 1 日 UTC 00:00 重置)</code>，动作保持 <code>REJECT</code>。</li>
+          <li>点击【确认创建】，调用 <code>POST /api/policies/budgets</code>。</li>
+          <li>策略保存后，前端即时拉取策略列表，展示自然月窗口（11/01 至 12/01）并准确回填本月已产生费用 $2.50。</li>
+        </ol>
+        <div class="screenshot-area">
+          <div class="screenshot-label">关键截图：新建弹窗、参数填入与创建后自然月新策略</div>
+          <img class="screenshot-img" src="evidence/10-create-modal-opened.png" alt="新建弹窗" onclick="showLightbox(this.src)">
+          <div style="height: 12px;"></div>
+          <img class="screenshot-img" src="evidence/11-create-modal-filled.png" alt="参数填入" onclick="showLightbox(this.src)">
+          <div style="height: 12px;"></div>
+          <img class="screenshot-img" src="evidence/12-new-policy-created-monthly.png" alt="创建后自然月新策略" onclick="showLightbox(this.src)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Case 7 -->
+    <div class="case-card">
+      <div class="case-header">
+        <div class="case-title">Case 07: 平台 Chat 对话工作台与 Zod 契约防爆校验</div>
+        <span class="badge badge-success">PASS</span>
+      </div>
+      <div class="case-body">
+        <div class="case-grid">
+          <div class="info-item">
+            <div class="info-label">契约防爆范围</div>
+            <div class="info-val">REASON_CODES 追加 runtime.gateway_budget.*</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">验证结果</div>
+            <div class="info-val">聊天页面正常加载，历史拉取与流式解析 0 报错</div>
+          </div>
+        </div>
+        <div class="info-label" style="margin-bottom: 6px;">操作步骤：</div>
+        <ol class="steps-list">
+          <li>点击左侧导航【Chat】，进入智能体对话工作台。</li>
+          <li>核验对话列表组件、Agent 选择区与消息视口正常初始化。</li>
+          <li>验证未发生由于 Zod 未识别错误码导致的白屏崩溃（White Screen Crash）。</li>
+        </ol>
+        <div class="screenshot-area">
+          <div class="screenshot-label">关键截图：Chat 页面正常渲染</div>
+          <img class="screenshot-img" src="evidence/13-chat-workbench.png" alt="Chat 页面正常渲染" onclick="showLightbox(this.src)">
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <footer>
+    AI Agent Platform · 智能体研发与治理平台 · 自动化质量工程团队生成
+  </footer>
+</div>
+
+<!-- Lightbox Modal -->
+<div id="lightbox" class="lightbox" onclick="hideLightbox()">
+  <img id="lightbox-img" src="" alt="放大查看">
+</div>
+
+<script>
+  function showLightbox(src) {
+    const lb = document.getElementById('lightbox');
+    const img = document.getElementById('lightbox-img');
+    img.src = src;
+    lb.classList.add('active');
+  }
+  function hideLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+  }
+</script>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 ---
 status: active
-last_verified: 2026-10-09
+last_verified: 2026-11-18
 confidence: high
 source_project: docs/projects/20260926-error-response-contract/verification.md
 ---
@@ -32,8 +32,12 @@ source_project: docs/projects/20260926-error-response-contract/verification.md
 | RunTimedOut | runtime_run_timeout | Run time limit reached |
 | TokenBudgetExceededError | runtime_token_budget_exhausted | 本次执行因 Token 额度停止，任务可能未完成。 |
 | TokenBudgetUnverifiableError | runtime_token_budget_unverifiable | 用量无法确认，本次执行已停止新增工作。 |
+| GatewayBudgetExceededError | runtime_gateway_budget_exhausted | 预算已用尽，后续模型调用已停止。 |
+| GatewayBudgetUnverifiableError | runtime_gateway_budget_unverifiable | 预算账务无法确认，后续模型调用已停止。 |
 
 Provider TimeoutError/APITimeoutError 保持泛化，不解释为 Run 超时；字符串中含类型名称也不分类。
+
+2026-11-18 预算治理扩展：平台本地在创建新 Run 前已确认跨请求 USD 超额时，返回 HTTP429 `BUDGET_LIMIT_EXCEEDED`，安全 extra 只含最早相关 `resets_at`，并通过现有安全响应头白名单返回 `Retry-After`；账务不可核实返回 HTTP503 `BUDGET_ACCOUNTING_UNAVAILABLE`。二者不是上游状态透传，不增加供应商正文或聚合金额。SSE 建立后保留原 HTTP 状态，使用上表精确类型/完整 `runtime.gateway_budget.exhausted`、`runtime.gateway_budget.unverifiable` 或对应公开码投影；历史 Run Usage 增加 nullable `gateway_budget_stop_code`，completion.reason_code 允许相同点分码。原 Run 状态、读取/停止、权限与会话登录语义不变；不把同 Idempotency-Key 已受理 Run 的只读恢复当成新模型请求。后端与前端剩余范围见[预算验证](../projects/20261118-gateway-budget-and-governance/verification.md)和[交接](../projects/20261118-gateway-budget-and-governance/frontend-handoff.md)。
 预算字段是成功 HTTP 响应/事件中的执行原因，不触发登出或权限变更。获批方案与验证见
 [执行预算专项](../projects/20261007-agent-execution-budget/verification.md)。
 

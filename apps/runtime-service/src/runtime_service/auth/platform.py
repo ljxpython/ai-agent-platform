@@ -127,6 +127,14 @@ async def authenticate_ingress(
     ):
         # The router authenticates the raw body; this ingress grants no resource scope.
         return {"identity": "usage-query-ingress", "permissions": []}
+    if (
+        not authorization
+        and method == "POST"
+        and path == "/internal/budgets/query"
+        and headers
+        and headers.get(b"x-budget-signature")
+    ):
+        return {"identity": "gateway-budget-ingress", "permissions": []}
     return await authenticate(authorization)
 
 

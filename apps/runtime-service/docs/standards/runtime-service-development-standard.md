@@ -104,6 +104,8 @@ run/thread/exit_behavior；主子图分别声明 scope，禁止合并为未实�
 
 `RUNTIME_TOKEN_BUDGET_ENABLED` 默认 false，是可选累计费用保护，不是上下文窗口水位；普通DSH式调研保持关闭，Usage可独立开启。切换开关前须排空运行；本次隔离切换只创建新Run，不接续旧Run或修改历史冻结策略。启用要求 `RUNTIME_USAGE_ENABLED=true`、Runtime 应用迁移 `0003_token_budget` 和完整受信 native Run 身份。`RUNTIME_TOKEN_BUDGET_MAX_TOKENS` 默认 100000，范围为正 JS safe integer；固定 80% 向后续模型追加已有 system 收尾指令。API/Worker 使用一致部署配置，客户端 Context 不能指定或提升此额度，schema/probe 不访问账本。
 
+跨请求 USD 预算使用独立 `RUNTIME_GATEWAY_BUDGET_ENABLED`（默认 false），依赖 Usage、应用迁移0012/0013和 Platform API 0015。启用后逐次模型请求通过受信控制面解析并持久化调用开始，结束逐调用结算；SDK 隐式重试关闭，辅助调用需保留 `usage_only_config` 中的 guard。首次预算同步激活数据库执行域门禁前须排空 running Runs；之后旧 Worker 或关闭开关的连接不能领取新 Run，回退须保留检查或暂停整个执行域，不删除粘性门禁。金额使用 Decimal / PostgreSQL 事务账本，不能使用 Trace / completion / Redis 浮点替代。启用、历史缺口、重建及回退详见[预算运维](../../../../docs/projects/20261118-gateway-budget-and-governance/backend-runbook.md)，前端和人工性能/治理验收尚未完成。
+
 复用唯一 `RuntimeUsageCallback` 与 `runtime_usage_calls`，按 model_call_id 增量去重；`RunTokenBudget` 是 Run 绑定、可恢复投影，不扫描 Thread 消息、不新增全局缓存。策略在 `runtime_usage_runs` 首写冻结，Worker 接管同 Run 时恢复消耗与停止原因，旧 attempt 未确认 started 或持久化故障按不可验证处理。四图主子、Workflow 内层及可信摘要/vision/memory 共享额度。同步派发守卫只检查，不另采集或计价；启用时 SDK max_retries=0，防止单次 callback 内发生隐藏物理重试。
 
 额度耗尽或不可验证时，拒绝新增模型/工具工作，分别传播 `TokenBudgetExceededError` / `TokenBudgetUnverifiableError`；既有取消、HITL、retry/fallback 与 Worker 基础设施恢复语义保留。自然最终回答达到/超过 cap 仍可成功，只有实际拒绝新增工作才持久记录 stop_code；可选 memory 后处理在不足时跳过并保留主回答。已在途请求可完成并超额，这是已观测 Token 保护，不是供应商账单严格封顶。

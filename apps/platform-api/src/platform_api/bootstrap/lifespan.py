@@ -40,6 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     engine = None
     evaluation_cleanup = None
+    budget_context = None
     knowledge_http = httpx.AsyncClient(
         timeout=10, trust_env=False, follow_redirects=False
     )
@@ -71,8 +72,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 evaluation_cleanup = asyncio.create_task(
                     maintain(session_factory, settings.evaluation_project_id, settings)
                 )
+        if engine is not None:
+            from platform_api.modules.runtime_policies.application.budget_maintenance import (
+                budget_maintenance,
+            )
+
+            budget_context = budget_maintenance(app.state.db_session_factory, settings)
+            await budget_context.__aenter__()
         yield
     finally:
+        if budget_context:
+            await budget_context.__aexit__(None, None, None)
         if evaluation_cleanup:
             evaluation_cleanup.cancel()
             with suppress(asyncio.CancelledError):

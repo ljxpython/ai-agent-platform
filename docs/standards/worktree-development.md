@@ -1,7 +1,7 @@
 ---
 status: active
 approved_on: 2026-10-10
-last_verified: 2026-10-13
+last_verified: 2026-11-18
 source_project: docs/projects/20261010-worktree-local-stack/
 ---
 
@@ -91,7 +91,7 @@ bash "scripts/local-stack.sh" knowledge-stop
 
 导入有完成标记后不追随主库变更，Worktree 内修改互不影响。源库停机、模型密文无法解密或白名单表结构不同会明确失败，目标事务回滚；另一个已经完成的库可在重试时复用。工具不清空已有环境来重新导入，也不自动复制未知新表。初始 Workspace 为空，依赖旧会话文件的配置需在新环境准备对应测试文件。
 
-迁移自动创建的 `runtime_usage_projection_state` 是初始化元数据，不算用户已有业务数据，也不从源库复制。Workspace 位置、资源/取消/后台回执等事实仍不复制，防止新环境认领源环境资源。
+迁移自动创建的 `runtime_usage_projection_state` 和 `runtime_budget_worker_fence` 是初始化元数据，不算用户已有业务数据，也不从源库复制；预算 Worker 门禁保留本环境迁移创建的默认未激活状态。Workspace 位置、资源/取消/后台回执等事实仍不复制，防止新环境认领源环境资源。
 
 ### 本地模型选型与默认策略
 

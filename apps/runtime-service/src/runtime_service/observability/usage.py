@@ -418,7 +418,12 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
         self._active = False
         policy = resolve_token_budget_policy()
         self.token_budget = RunTokenBudget(policy) if policy else None
-        self.run_inline = policy is not None
+        from runtime_service.gateway_budget.service import enabled
+
+        self.gateway_budget = enabled()
+        self._gateway_leases = {}
+        self._gateway_admitted = set()
+        self.run_inline = policy is not None or self.gateway_budget
         self._budget_writer = None
         self._budget_ready = False
 
@@ -575,7 +580,8 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
         if run_id == self._root:
             await self._finish_collection(
                 self._degraded
-                if isinstance(
+                if self.gateway_budget
+                or isinstance(
                     error, (TokenBudgetExceededError, TokenBudgetUnverifiableError)
                 )
                 else True
@@ -583,6 +589,16 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             self._active = False
 
     async def _finish_collection(self, degraded):
+        if self.gateway_budget:
+            from runtime_service.gateway_budget.service import release
+
+            for call_id, stop in list(self._gateway_leases.items()):
+                stop.set()
+                try:
+                    await asyncio.to_thread(release, self.identity, call_id)
+                except Exception:
+                    degraded = True
+                self._gateway_leases.pop(call_id, None)
         if self.token_budget:
             await self._write(
                 "finish_collection", degraded, self.token_budget.stop_code
@@ -691,9 +707,12 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             logger.debug("Model request profile unavailable")
         if self.token_budget:
             self.token_budget.begin_call(str(run_id))
-        await self._write("upsert_call", call)
+        if not self.gateway_budget:
+            await self._write("upsert_call", call)
 
     async def _finish_call(self, run_id, response, outcome):
+        if self.gateway_budget and run_id not in self._gateway_admitted:
+            return
         call = self._calls.get(run_id)
         if call is None:
             self._degraded = True
@@ -726,6 +745,16 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             ended_at=datetime.now(UTC).isoformat(),
         )
         await self._write("upsert_call", call)
+        if self.gateway_budget:
+            from runtime_service.gateway_budget.service import release
+
+            task = self._gateway_leases.pop(run_id, None)
+            if task:
+                task.set()
+            try:
+                await asyncio.to_thread(release, self.identity, run_id)
+            except Exception:
+                self._degraded = True
         if self.token_budget and self.token_budget.check() == "approaching":
             self._emit_budget_notice("token_budget_approaching")
 
@@ -759,6 +788,12 @@ class _TokenBudgetDispatchGuard(BaseCallbackHandler):
 def with_runtime_usage(
     graph, config, *, graph_id: str, trusted_metadata: Mapping | None = None
 ):
+    from runtime_service.gateway_budget.service import (
+        GatewayBudgetUnverifiableError,
+        enabled,
+    )
+
+    gateway_budget = enabled()
     policy = resolve_token_budget_policy()
     if not usage_enabled():
         return graph.with_config(config)
@@ -775,6 +810,8 @@ def with_runtime_usage(
     if not all(identity.values()):
         if policy:
             raise TokenBudgetUnverifiableError()
+        if gateway_budget:
+            raise GatewayBudgetUnverifiableError()
         return graph.with_config(config)
     callbacks = list(config.get("callbacks") or [])
     if not any(
@@ -784,6 +821,12 @@ def with_runtime_usage(
         usage = RuntimeUsageCallback(identity)
         if usage.token_budget:
             callbacks.append(_TokenBudgetDispatchGuard(usage))
+        if usage.gateway_budget:
+            from runtime_service.gateway_budget.service import (
+                GatewayBudgetDispatchGuard,
+            )
+
+            callbacks.append(GatewayBudgetDispatchGuard(usage))
         callbacks.append(usage)
     existing = (getattr(graph, "config", None) or {}).get("callbacks") or []
     return graph.with_config(
@@ -793,6 +836,8 @@ def with_runtime_usage(
 
 def usage_only_config(purpose: str) -> dict:
     """Preserve trusted usage handlers in hidden calls without adding content exporters."""
+    from runtime_service.gateway_budget.service import GatewayBudgetDispatchGuard
+
     try:
         callbacks = get_config().get("callbacks") or []
     except RuntimeError:
@@ -802,7 +847,14 @@ def usage_only_config(purpose: str) -> dict:
         "callbacks": [
             c
             for c in handlers
-            if isinstance(c, (RuntimeUsageCallback, _TokenBudgetDispatchGuard))
+            if isinstance(
+                c,
+                (
+                    RuntimeUsageCallback,
+                    _TokenBudgetDispatchGuard,
+                    GatewayBudgetDispatchGuard,
+                ),
+            )
         ],
         "metadata": {"runtime_usage_purpose": purpose},
     }

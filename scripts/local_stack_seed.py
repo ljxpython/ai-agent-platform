@@ -43,6 +43,7 @@ SCHEMA_TABLES = {
     "store_migrations",
     "runtime_schema",
     "runtime_usage_projection_state",
+    "runtime_budget_worker_fence",
     "_local_stack_seed",
 }
 

@@ -52,4 +52,18 @@ describe("Failure Presentation 细粒度降级策略", () => {
     expect(res.title).toBe("任务执行超时");
     expect(res.actionType).toBe("retry");
   });
+
+  it("当 reason_code 为 runtime.gateway_budget.exhausted 时正确展示预算耗尽提示", () => {
+    const res = resolveFailurePresentation({
+      status: "error",
+      reason: "business_error",
+      reason_code: "runtime.gateway_budget.exhausted",
+      model_error_code: null,
+      notification_code: null,
+    });
+
+    expect(res.title).toBe("当前周期预算限额已达上限");
+    expect(res.suggestedAction).toBe("联系管理员调整预算或等待重置");
+    expect(res.actionType).toBe("none");
+  });
 });

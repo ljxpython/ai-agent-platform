@@ -3,9 +3,14 @@ import {
   UsageDashboardV1Schema,
   UsageRunPageV1Schema,
   GatewaySeriesV1Schema,
+  BudgetListResponseSchema,
+  BudgetSaveResponseSchema,
   type UsageDashboardV1,
   type UsageRunPageV1,
   type GatewaySeriesV1,
+  type BudgetListResponse,
+  type BudgetSaveResponse,
+  type CreateBudgetPolicyInput,
   type DashboardQueryParams,
   type RunsQueryParams,
   type GatewaySeriesQueryParams,
@@ -310,6 +315,117 @@ export async function getProjectGatewaySeries(
     const enhancedError = new Error(
       fields.message || "获取项目网关时序统计失败",
     );
+    Object.assign(enhancedError, fields);
+    throw enhancedError;
+  }
+}
+
+// --- 预算策略 (Gateway Budgets) 接口 ---
+
+export async function getBudgets(
+  projectId?: string | null,
+  options: RequestOptions = {},
+): Promise<BudgetListResponse> {
+  const params: Record<string, string> = {};
+  if (projectId && projectId.trim()) {
+    params.project_id = projectId.trim();
+  }
+  try {
+    const response = await platformHttpClient.get<unknown>(
+      "/api/policies/budgets",
+      {
+        params,
+        signal: options.signal,
+      },
+    );
+    const parsed = BudgetListResponseSchema.safeParse(response.data);
+    if (!parsed.success) {
+      throw Object.assign(
+        new Error(`预算策略列表响应结构校验失败: ${parsed.error.message}`),
+        { code: "invalid_budget_dto" },
+      );
+    }
+    return parsed.data;
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    const fields = extractPlatformHttpError(error, "获取预算策略列表失败");
+    const enhancedError = new Error(fields.message || "获取预算策略列表失败");
+    Object.assign(enhancedError, fields);
+    throw enhancedError;
+  }
+}
+
+export async function createBudget(
+  input: CreateBudgetPolicyInput,
+  options: RequestOptions = {},
+): Promise<BudgetSaveResponse> {
+  try {
+    const response = await platformHttpClient.post<unknown>(
+      "/api/policies/budgets",
+      input,
+      { signal: options.signal },
+    );
+    const parsed = BudgetSaveResponseSchema.safeParse(response.data);
+    if (!parsed.success) {
+      throw Object.assign(
+        new Error(`创建预算策略响应结构校验失败: ${parsed.error.message}`),
+        { code: "invalid_budget_save_dto" },
+      );
+    }
+    return parsed.data;
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    const fields = extractPlatformHttpError(error, "创建预算策略失败");
+    const enhancedError = new Error(fields.message || "创建预算策略失败");
+    Object.assign(enhancedError, fields);
+    throw enhancedError;
+  }
+}
+
+export async function updateBudget(
+  policyId: string,
+  input: CreateBudgetPolicyInput,
+  options: RequestOptions = {},
+): Promise<BudgetSaveResponse> {
+  try {
+    const response = await platformHttpClient.put<unknown>(
+      `/api/policies/budgets/${encodeURIComponent(policyId)}`,
+      input,
+      { signal: options.signal },
+    );
+    const parsed = BudgetSaveResponseSchema.safeParse(response.data);
+    if (!parsed.success) {
+      throw Object.assign(
+        new Error(`更新预算策略响应结构校验失败: ${parsed.error.message}`),
+        { code: "invalid_budget_save_dto" },
+      );
+    }
+    return parsed.data;
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    const fields = extractPlatformHttpError(error, "更新预算策略失败");
+    const enhancedError = new Error(fields.message || "更新预算策略失败");
+    Object.assign(enhancedError, fields);
+    throw enhancedError;
+  }
+}
+
+export async function deleteBudget(
+  policyId: string,
+  options: RequestOptions = {},
+): Promise<{ deleted_at: string; id: string }> {
+  try {
+    const response = await platformHttpClient.delete<{
+      deleted_at: string;
+      id: string;
+    }>(`/api/policies/budgets/${encodeURIComponent(policyId)}`, {
+      signal: options.signal,
+    });
+    return response.data;
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    const fields = extractPlatformHttpError(error, "删除预算策略失败");
+    const enhancedError = new Error(fields.message || "删除预算策略失败");
     Object.assign(enhancedError, fields);
     throw enhancedError;
   }

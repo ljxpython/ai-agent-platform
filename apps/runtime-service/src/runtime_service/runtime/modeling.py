@@ -311,7 +311,12 @@ def build_model(
 
     # SDK retries run inside one callback and cannot report separate usage facts.
     budget_policy = resolve_token_budget_policy()
-    kwargs = _generation_kwargs(config, max_retries=0 if budget_policy else max_retries)
+    from runtime_service.gateway_budget.service import enabled as gateway_budget_enabled
+
+    kwargs = _generation_kwargs(
+        config,
+        max_retries=0 if budget_policy or gateway_budget_enabled() else max_retries,
+    )
     if budget_policy:
         connection_capacity = (
             connection.get("context_window_tokens") if connection else None

@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-18（10连接配置4done/1partial：两仓已推送、相关服务已升级；两环境转换/AI候选与独立题库运行分段通过，双标签/旧资产已验，新候选完整链与故障组合待补。09done、08为6done/1partial，全栈回退未验保持）
+> **最后更新：** 2026-11-18（预算治理仅独立Worktree：Task1/2/4 done，3/5 partial；前端全栈实施及用量中心47项单测/构建/类型检查通过，后端专项与可控HTTP/重启通过，未合并/部署。原10为4done/1partial、09done、08为6done/1partial，既有待验保持）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -9,6 +9,18 @@
 
 
 2026-11-13 Git交付：用户追加授权将EvalFlow主环境适配及中文/品牌修复提交并推送远端；本仓同步对应的项目状态与验收文档，无Agent服务代码改动。生产部署未授权，A04沙箱准入阻塞保留；最终提交与远端状态以Git记录为准。
+
+## 当前增补：AI网关预算治理独立Worktree（2026-11-18）
+
+用户授权建立 `../ai-agent-platform-gateway-budget`、分支 `feat/gateway-budget-and-governance` 并完成后端；前端交同事。环境 `wt_1c4f0f7fb905`，回环Web/API/Runtime端口24824/26911/24254，双库/Redis/Workspace独立。未提交、推送、合并或部署；以下主工作区服务现状不因该Worktree改动而改变。
+
+| 服务 | 本Worktree当前状态（2026-11-18） |
+|---|---|
+| platform-api | 预算策略/权限/受信同步、429/503及幂等通知实现；专项30通过，真实认证可控HTTP与重启恢复通过。扩大回归1项HEAD既有投影失败保留 |
+| runtime-service | 精确调用账本、回填/未知/恢复、逐调用guard、outbox及粘性Worker栅栏实现；真实PG专项34通过，重启/重建保留2.5USD。扩大回归1项HEAD既有Token失败及Resilience工具循环风险保留 |
+| platform-web | 全栈能力已落地：聊天模块防爆与友好提示（5项单测全绿）、定点高精度计算 Composable（8项单测全绿）、三态进度条、作用域自适应弹窗及用量大盘 Tab 双向路由联动（3项单测全绿）；用量全量47项单测 100% 通过，vue-tsc 类型检查 0 错误，生产构建打包成功 |
+
+项目仍partial：真实maomaoai请求403额度不足，真实主备/异步恢复组合、已确认阈值下完整性能、版本包全栈回退和人工联合Final待补。Worker栅栏覆盖整个Runtime执行域，空策略能力同步也会激活；关开关不能撤销，回退须保留保护或暂停执行域。当前任务、全部证据与运行边界见[项目入口](projects/20261118-gateway-budget-and-governance/README.md)。
 
 ## 当前增补：同一 EvalFlow 的前端 Agent 连接配置（2026-11-18）
 
@@ -109,6 +121,7 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 
 ## 活跃项目
 
+- [AI网关预算控制与财务熔断治理](projects/20261118-gateway-budget-and-governance/README.md)：partial；Task1/2完成，Task3真实组合待验，Task4前端已交接，Task5联合Final待补。后端只在独立Worktree，未合并/部署。
 - [AI 网关使用看板与综合可观测重构](projects/20261117-gateway-observability-usage/README.md)：`已完成（done）`（2026-11-18 全栈实施与验证完成，5 项任务 100% 验收通过）；对标 mlflow-eval-platform 重构网关黄金三要素（吞吐、延迟分布、错误率）、单请求 Token 均值与 Prompt Cache 效能，落地图表到 Logs 毫秒级下钻穿透。
 
 - [会话转评测集后台异步任务与通知闭环](projects/20261117-evaluation-materials-async-task/README.md)：`done`（2026-11-17 全栈闭环与端到端验证通过）；将大体量业务会话转评测集的同步阻塞请求重构为基于 BackgroundTasks 的异步任务，弹窗秒级关闭 + 全局 Toast 提示，完成后通过平台通知中心（🔔）推送直达链接，彻底根治前端 30 秒超时与弹窗卡死问题。

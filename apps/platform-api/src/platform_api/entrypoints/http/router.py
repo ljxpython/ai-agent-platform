@@ -42,6 +42,9 @@ from platform_api.modules.runtime_gateway.presentation.completion_http import (
 from platform_api.modules.runtime_policies.presentation import (
     router as runtime_policies_router,
 )
+from platform_api.modules.runtime_policies.presentation.budgets import (
+    router as budgets_router,
+)
 from platform_api.modules.scheduled_tasks.router import router as scheduled_tasks_router
 from platform_api.modules.service_accounts.router import (
     router as service_accounts_router,
@@ -50,6 +53,7 @@ from platform_api.modules.usage_analytics.router import router as usage_analytic
 from platform_api.modules.users.router import router as users_router
 
 api_router = APIRouter()
+api_router.include_router(budgets_router)
 
 
 @api_router.get("/metrics", include_in_schema=False)

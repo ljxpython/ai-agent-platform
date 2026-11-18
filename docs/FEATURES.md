@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| AI网关Budgets预算页面与财务熔断治理 | 已完成：用量中心Budgets Tab与双向路由联动、高精度定点计算Composable、三态进度条矩阵、作用域自适应弹窗、聊天模块429/SSE白名单防爆与友好提示；47项单测100%全绿，vue-tsc与生产打包成功 | [前端交接](projects/20261118-gateway-budget-and-governance/frontend-handoff.md) · [任务](projects/20261118-gateway-budget-and-governance/tasks.md) |
 | 平台内置助手全局面板与错误现场入口 | 原错误现场/指南/权限交互保留；追加追踪未配置时的持久失败任务、审批摘要与日志来源/关联显示，0条及来源不可用分开。新增证据组件5项与类型通过；原连续浏览器链保持原范围，本轮新增状态未浏览器复验，未生产发布 | [前端交接](projects/20261116-platform-assistant/frontend-handoff.md) · [验证](projects/20261116-platform-assistant/verification.md) |
 | AI协作评测旧流程与Agent入口收敛 | 08部分完成：6项done/1项partial。旧工作台、回答评价和重复助手已清理；main双入口、真实多页/批量、通知/幂等、普通成员交付/管理者授权及题库修订/发布/运行/同证据重评通过，保留共享授权与执行证据。仅V8.7隔离全栈回退与再升级未验，原05历史结论保留 | [08任务与验证](projects/20261113-agent-eval-production-flywheel/08-agent-evaluation-entry-cleanup.md) · [05历史任务](projects/20261113-agent-eval-production-flywheel/05-ai-assisted-evaluation-workflow.md) |
 | Agent与EvalFlow独立部署、题库独立资产 | 09开发与技术验收5项done，原代码已合main并推送、隔离资源回收；本轮main业务主线浏览器补验通过。API快照/绑定运行替代源码/.env/venv依赖；来源到期资产可用、撤权/漂移/审批/停止有隔离实证。远端恢复后旧错误提示已修复，39项回归通过且修复/经验已推送e7ff155；生产HTTPS、容量/独立盲评与08全栈回退未验 | [09任务与验收](projects/20261113-agent-eval-production-flywheel/09-independent-deployment.md) |
@@ -102,6 +103,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| AI网关预算策略与通知 | 后端本地实现：GLOBAL/PROJECT策略CRUD、权限/审计、受信同步、429/503及幂等通知已接线；专项30项、可控HTTP/Worker和恢复通过。仅预算Worktree，未合并/部署；前端、真实主备组合及人工Final待验 | [方案与进度](projects/20261118-gateway-budget-and-governance/README.md) · [证据](projects/20261118-gateway-budget-and-governance/implementation/01-backend-validation.md) |
 | 平台助手只读数据库分析、日志授权与查询审计 | 本地技术验收done：目标Run绑定checkpoint、Trace/可信执行请求/Run受控日志关联及每轮可读能力摘要，保留当前目标ACL/时间/脱敏边界；最终相关API96项、原旧Run实际读取通过。六篇指南更新可继续会话；生产与真实Loki未验 | [方案与任务](projects/20261116-platform-assistant/README.md) · [排障补强证据](projects/20261116-platform-assistant/implementation/04-real-diagnostics-followup.md) · [跨项目排障变更](../apps/platform-api/docs/changes/20261117-assistant-cross-project-diagnostics.md) |
 | 新会话媒体引用投影与授权读取 | 本地功能已完成：复用 State/History/Workspace 与 Thread 权限，图片按引用鉴权预览；真实 state、预览和刷新恢复通过 | [项目方案](projects/20261107-session-hydration-and-artifact-offloading/plan.md) |
 | 会话与运行数据生命周期管理及自动清理治理 | 已实现并完成隔离栈验收，已提交 `5635e621` 并合并 `main`：GraphHarbor post48 执行 TTL/可靠删除；平台定义闲置 30 天、查看/发送续期；Workspace 随会话删除、未确认资源保留重试；详情 30 天/去重 90 天；维护默认预览、100 条/批、上限 1000；专属服务和测试资源已清理，未部署现役 | [项目概览](projects/20261030-session-and-runtime-retention-governance/README.md) · [运维手册](runbooks/session-retention-maintenance.md) |
@@ -134,6 +136,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| AI网关精确预算记账与逐调用准入 | 后端本地实现：PG/Decimal逐调用账本、回填/重建/未知状态、首次事件及执行域级Worker栅栏；专项34项通过。仅预算Worktree；完整主备/恢复、性能/回退门禁未齐。栅栏粘性生效，回退须保留保护或暂停执行域 | [方案与任务](projects/20261118-gateway-budget-and-governance/plan.md) · [启用/回退](projects/20261118-gateway-budget-and-governance/backend-runbook.md) |
 | 平台多功能助手Agent | 本地技术验收done：单create_agent、按目录读当前指南，原历史/写审批保留；每轮刷新可读资料说明，按Run失败状态和本轮证据回答，不从review/not_configured/空目录猜根因。补强Runtime24项与真实模型四轮通过并已重载本地API/Worker；正式业务写工具为空 | [交付证据](projects/20261116-platform-assistant/verification.md) |
 | 新工具结果媒体外置与模型临时解析 | 本地功能已完成：平台 Runtime 在工具结果发出前引用化，模型调用时临时解析；同步/异步 read_file、真实 xiaok DeepSeek 和公开 state 无 Base64 均通过；GraphHarbor 不承担媒体业务 | [任务与验证](projects/20261107-session-hydration-and-artifact-offloading/tasks.md) |
 | 有界调研委派与模型输入治理 | 已完成并经用户人工验收（2026-10-30），已快进合并main、停止服务并清理所属Worktree/测试库：复用官方task+只读general-purpose，撤除自研报告/合成/原文校验，保留预算/PII/Usage/取消/并发，修复子额度异常穿透。扩大回归560通过/13跳过/1项local后端复验通过；正式烟测主峰31.1%、root自动整理观测值0、28/28 Usage完整。原五项明确语义覆盖3/5，不宣称稳定质量或统计收益，未发布 | [项目](projects/20261028-subagent-fanout-and-prefix-caching/README.md) |

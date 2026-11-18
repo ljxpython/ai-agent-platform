@@ -256,6 +256,8 @@ def _redact_sse_frame(frame: bytes, *, protocol: bool = True) -> bytes:
         if isinstance(projected, dict) and projected.get("code") in {
             "runtime_token_budget_exhausted",
             "runtime_token_budget_unverifiable",
+            "runtime_gateway_budget_exhausted",
+            "runtime_gateway_budget_unverifiable",
         }:
             event_data = {**event_data, "error": projected}
     elif (
@@ -651,8 +653,10 @@ def get_runtime_gateway_service(
             logger.exception("runtime correlation log failed")
 
     from platform_api.modules.platform_assistant.evidence import require_history_access
+    from platform_api.modules.runtime_policies.application.budgets import BudgetService
 
     return RuntimeGatewayService(
+        budget_preflight=BudgetService(session_factory, settings).preflight,
         assistant_access_validator=lambda current_actor,
         current_project,
         thread_id,

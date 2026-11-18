@@ -200,6 +200,12 @@ class RuntimeRunUsage(UsageSummary):
     finalized: Annotated[bool, Field(strict=True)]
     calls: CallPage
     token_budget: TokenBudgetSummary | None = None
+    gateway_budget_stop_code: (
+        Literal[
+            "runtime.gateway_budget.exhausted", "runtime.gateway_budget.unverifiable"
+        ]
+        | None
+    ) = None
 
 
 class RunUsage(RuntimeRunUsage):

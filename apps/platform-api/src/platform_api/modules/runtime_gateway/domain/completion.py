@@ -33,6 +33,8 @@ ReasonCode = (
         "runtime.model.stream_interrupted",
         "runtime.model.provider_rejected",
         "runtime.model.fallback_incompatible",
+        "runtime.gateway_budget.exhausted",
+        "runtime.gateway_budget.unverifiable",
     ]
 )
 

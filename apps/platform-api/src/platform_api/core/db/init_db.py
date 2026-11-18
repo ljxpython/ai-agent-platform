@@ -18,6 +18,7 @@ def import_core_models() -> None:
     import platform_api.modules.projects.models  # noqa: F401
     import platform_api.modules.runtime_catalog.infra.sqlalchemy.models  # noqa: F401
     import platform_api.modules.runtime_gateway.infra.sqlalchemy.models  # noqa: F401
+    import platform_api.modules.runtime_policies.infra.sqlalchemy.budgets  # noqa: F401
     import platform_api.modules.runtime_policies.infra.sqlalchemy.models  # noqa: F401
     import platform_api.modules.service_accounts.models  # noqa: F401
 

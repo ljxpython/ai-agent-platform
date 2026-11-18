@@ -156,6 +156,16 @@ const REASON_CODE_MAP: Record<
     action: "查看诊断详情（谨慎重试有副作用的操作）",
     actionType: "inspect",
   },
+  "runtime.gateway_budget.exhausted": {
+    label: "当前周期预算限额已达上限",
+    action: "联系管理员调整预算或等待重置",
+    actionType: "none",
+  },
+  "runtime.gateway_budget.unverifiable": {
+    label: "预算账务状态受阻",
+    action: "等待系统校准后重试",
+    actionType: "retry",
+  },
 };
 
 /**

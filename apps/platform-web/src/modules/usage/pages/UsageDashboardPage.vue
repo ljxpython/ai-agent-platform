@@ -24,6 +24,7 @@ import UsageTrend from "../components/UsageTrend.vue";
 import UsageBreakdown from "../components/UsageBreakdown.vue";
 import GatewayUsageTab from "../components/GatewayUsageTab.vue";
 import GatewayLogsTable from "../components/GatewayLogsTable.vue";
+import GatewayBudgetsTab from "../components/GatewayBudgetsTab.vue";
 import type { GatewayMetricPoint } from "../types";
 import RunUsage from "@/modules/chat/components/trajectory/RunUsage.vue";
 import BaseDrawer from "@/components/base/BaseDrawer.vue";
@@ -75,13 +76,58 @@ function handleSetScopeMode(mode: "project" | "platform") {
   });
 }
 
-// 当前主 Tab：'gateway' (网关大盘) | 'logs' (调用日志) | 'governance' (历史治理)
-const activeTab = ref<"gateway" | "logs" | "governance">("gateway");
+// 当前主 Tab：'gateway' (网关大盘) | 'logs' (调用日志) | 'budgets' (预算熔断) | 'governance' (历史治理)
+export type UsageDashboardTab = "gateway" | "logs" | "budgets" | "governance";
+const VALID_TABS: UsageDashboardTab[] = [
+  "gateway",
+  "logs",
+  "budgets",
+  "governance",
+];
+
+const initialQueryTab = route.query.tab as UsageDashboardTab;
+const activeTab = ref<UsageDashboardTab>(
+  VALID_TABS.includes(initialQueryTab) ? initialQueryTab : "gateway",
+);
+
 const activeFilterRange = ref<{ from: string; to: string } | null>(null);
 
-function setActiveTab(tab: "gateway" | "logs" | "governance") {
+// 监听路由 query.tab 变化同步 Tab 状态（如浏览器后退/前进）
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (
+      newTab &&
+      VALID_TABS.includes(newTab as UsageDashboardTab) &&
+      activeTab.value !== newTab
+    ) {
+      activeTab.value = newTab as UsageDashboardTab;
+    }
+  },
+);
+
+function setActiveTab(tab: UsageDashboardTab) {
   activeTab.value = tab;
+  router.replace({
+    query: {
+      ...route.query,
+      tab: tab === "gateway" ? undefined : tab,
+    },
+  });
 }
+
+// 预算权限计算
+const canManageGlobalBudgets = computed(() =>
+  authorization.can("platform.super_admin.manage"),
+);
+const canManageProjectBudgets = computed(() =>
+  authorization.can("project.runtime.write"),
+);
+const canManageBudgets = computed(() =>
+  selectedScopeMode.value === "platform"
+    ? canManageGlobalBudgets.value
+    : canManageProjectBudgets.value,
+);
 
 defineExpose({
   activeTab,
@@ -98,6 +144,12 @@ function handleDrilldownToLogs(payload: {
 }) {
   activeFilterRange.value = { from: payload.from, to: payload.to };
   activeTab.value = "logs";
+  router.replace({
+    query: {
+      ...route.query,
+      tab: "logs",
+    },
+  });
   loadFirstPage();
 }
 
@@ -495,6 +547,33 @@ const runsErrorMessage = computed(() => {
 
       <button
         type="button"
+        data-testid="tab-btn-budgets"
+        class="flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition"
+        :class="
+          activeTab === 'budgets'
+            ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+            : 'border-transparent text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+        "
+        @click="setActiveTab('budgets')"
+      >
+        <svg
+          class="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+          />
+        </svg>
+        <span>预算策略与熔断 (Budgets)</span>
+      </button>
+
+      <button
+        type="button"
         data-testid="tab-btn-governance"
         class="flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition"
         :class="
@@ -544,7 +623,17 @@ const runsErrorMessage = computed(() => {
       />
     </div>
 
-    <!-- Tab 3: 传统治理统计 (Governance) -->
+    <!-- Tab 3: 预算策略与财务熔断治理 (Budgets) -->
+    <div v-show="activeTab === 'budgets'" data-testid="tab-pane-budgets">
+      <GatewayBudgetsTab
+        :scope-mode="selectedScopeMode"
+        :current-project-id="targetRunsProjectId"
+        :can-write="canManageBudgets"
+        :can-manage-global="canManageGlobalBudgets"
+      />
+    </div>
+
+    <!-- Tab 4: 传统治理统计 (Governance) -->
     <div
       v-if="activeTab === 'governance'"
       data-testid="tab-pane-governance"

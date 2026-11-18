@@ -72,6 +72,8 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
     }
     public_path_methods = {
         ("POST", "/api/platform-assistant/internal/read"),
+        ("POST", "/api/runtime/internal/budgets/resolve"),
+        ("POST", "/api/runtime/internal/budgets/events"),
         ("GET", "/api/evaluation/internal/export"),
         ("GET", "/api/evaluation/internal/connection"),
         ("POST", "/api/evaluation/internal/projection"),

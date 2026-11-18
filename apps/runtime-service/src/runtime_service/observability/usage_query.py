@@ -225,6 +225,7 @@ async def query_run_usage(identity, *, limit=50, cursor=None):
         "finalized": False,
         "calls": {"items": [], "next_cursor": None},
         "token_budget": None,
+        "gateway_budget_stop_code": None,
     }
     try:
         summary, rows = await asyncio.to_thread(
@@ -243,6 +244,7 @@ async def query_run_usage(identity, *, limit=50, cursor=None):
             and not summary["incomplete_call_count"]
             and not summary["degraded"],
             "token_budget": project_token_budget(summary),
+            "gateway_budget_stop_code": summary.get("gateway_budget_stop_code"),
             "calls": {
                 "items": [project_call(row) for row in page],
                 "next_cursor": _cursor(page[-1]) if len(rows) > limit else None,

@@ -21,12 +21,16 @@ TOKEN_FIELDS = (
 
 
 @contextmanager
-def _connection(*, readonly=False):
+def _connection(*, readonly=False, budget=False):
     with psycopg.connect(
         normalize_dsn(),
         row_factory=dict_row,
         connect_timeout=1,
-        options="-c statement_timeout=750 -c lock_timeout=250 -c timezone=UTC",
+        options=(
+            "-c statement_timeout=2000 -c lock_timeout=1000 -c timezone=UTC"
+            if budget
+            else "-c statement_timeout=750 -c lock_timeout=250 -c timezone=UTC"
+        ),
     ) as conn:
         if readonly:
             conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
@@ -85,6 +89,41 @@ def finish_collection(identity, degraded, stop_code=None):
 
 
 def upsert_call(identity, call):
+    from runtime_service.gateway_budget.ledger import locked
+
+    with _connection(budget=True) as conn:
+        locked(conn, identity["tenant_id"])
+        _begin(conn, identity)
+        _upsert_call(conn, identity, call)
+
+
+def _upsert_call(conn, identity, call):
+    prior = conn.execute(
+        "SELECT pricing_snapshot FROM runtime_usage_calls WHERE tenant_id=%s AND project_id=%s AND run_id=%s AND model_call_id=%s",
+        (
+            identity["tenant_id"],
+            identity["project_id"],
+            identity["run_id"],
+            call["model_call_id"],
+        ),
+    ).fetchone()
+    if prior is not None and prior["pricing_snapshot"] != call["pricing_snapshot"]:
+        from runtime_service.observability.usage import estimate_usage_cost
+
+        cost, reason = estimate_usage_cost(
+            {
+                "quality": call["quality"],
+                "tokens": call["tokens"],
+                "details": call.get("token_details", {}),
+            },
+            prior["pricing_snapshot"],
+        )
+        call = {
+            **call,
+            "pricing_snapshot": prior["pricing_snapshot"],
+            "estimated_cost_usd": cost,
+            "cost_reason": reason,
+        }
     values = {
         **identity,
         **{k: v for k, v in call.items() if k != "tokens"},
@@ -97,20 +136,25 @@ def upsert_call(identity, call):
     )
     columns = list(values)
     updates = [
-        k for k in columns if k not in {*identity, "model_call_id", "started_at"}
+        k
+        for k in columns
+        if k not in {*identity, "model_call_id", "started_at", "pricing_snapshot"}
     ]
-    with _connection() as conn:
-        _begin(conn, identity)
-        conn.execute(
-            f"INSERT INTO runtime_usage_calls ({','.join(columns)}) "
-            f"VALUES ({','.join('%(' + k + ')s' for k in columns)}) "
-            "ON CONFLICT (tenant_id,project_id,run_id,model_call_id) DO UPDATE SET "
-            + ",".join(f"{k}=EXCLUDED.{k}" for k in updates)
-            + " WHERE runtime_usage_calls.outcome='started' OR "
-            "(runtime_usage_calls.quality IN ('missing','partial','invalid') "
-            "AND EXCLUDED.quality IN ('reported','derived_from_reported'))",
-            values,
-        )
+    result = conn.execute(
+        f"INSERT INTO runtime_usage_calls ({','.join(columns)}) "
+        f"VALUES ({','.join('%(' + k + ')s' for k in columns)}) "
+        "ON CONFLICT (tenant_id,project_id,run_id,model_call_id) DO UPDATE SET "
+        + ",".join(f"{k}=EXCLUDED.{k}" for k in updates)
+        + " WHERE runtime_usage_calls.outcome='started' OR "
+        "(runtime_usage_calls.quality IN ('missing','partial','invalid') "
+        "AND EXCLUDED.quality IN ('reported','derived_from_reported')) RETURNING *",
+        values,
+    ).fetchone()
+
+    if result is not None:
+        from runtime_service.gateway_budget.ledger import record_call
+
+        record_call(conn, identity, result)
 
 
 def read_budget(identity):
@@ -198,7 +242,7 @@ def read_run_usage(identity, limit, cursor):
     with _connection(readonly=True) as conn:
         summary = _summary(conn, where, values)
         budget = conn.execute(
-            "SELECT token_budget_policy, token_budget_stop_code "
+            "SELECT token_budget_policy, token_budget_stop_code, gateway_budget_stop_code "
             "FROM runtime_usage_runs r WHERE " + where,
             values,
         ).fetchone()
@@ -208,6 +252,9 @@ def read_run_usage(identity, limit, cursor):
                 if budget
                 else None,
                 "token_budget_stop_code": budget["token_budget_stop_code"]
+                if budget
+                else None,
+                "gateway_budget_stop_code": budget["gateway_budget_stop_code"]
                 if budget
                 else None,
             }

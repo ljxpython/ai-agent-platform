@@ -47,6 +47,8 @@ export const REASON_CODES = [
   "runtime.workspace.backend_invalid",
   "runtime.workspace.image_invalid",
   "runtime.workspace.execution_outcome_unknown",
+  "runtime.gateway_budget.exhausted",
+  "runtime.gateway_budget.unverifiable",
 ] as const;
 export type ReasonCode = (typeof REASON_CODES)[number];
 export const ReasonCodeSchema = z.enum(REASON_CODES).nullable();

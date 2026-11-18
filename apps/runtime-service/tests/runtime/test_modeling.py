@@ -210,7 +210,10 @@ def test_build_model_uses_catalog_connection(monkeypatch: pytest.MonkeyPatch) ->
     assert calls["base_url"] == "https://catalog.test/v1"
 
 
-def test_token_budget_disables_unobservable_sdk_retries(monkeypatch):
+@pytest.mark.parametrize(
+    "flag", ["RUNTIME_TOKEN_BUDGET_ENABLED", "RUNTIME_GATEWAY_BUDGET_ENABLED"]
+)
+def test_token_budget_disables_unobservable_sdk_retries(monkeypatch, flag):
     calls = {}
     monkeypatch.setattr(
         modeling,
@@ -218,14 +221,14 @@ def test_token_budget_disables_unobservable_sdk_retries(monkeypatch):
         lambda **kwargs: calls.update(kwargs) or object(),
     )
     monkeypatch.setenv("RUNTIME_USAGE_ENABLED", "true")
-    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_ENABLED", "true")
+    monkeypatch.setenv(flag, "true")
     modeling.build_model(
         _resolved("openai:test"),
         connection={"base_url": "https://fixture.invalid", "api_key": "synthetic"},
         max_retries=3,
     )
     assert calls["max_retries"] == 0
-    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_ENABLED", "false")
+    monkeypatch.setenv(flag, "false")
     modeling.build_model(
         _resolved("openai:test"),
         connection={"base_url": "https://fixture.invalid", "api_key": "synthetic"},

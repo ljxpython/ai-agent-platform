@@ -136,12 +136,22 @@ _EXECUTION_ERROR_TYPES = frozenset(
         "ModelCallLimitExceededError",
         "ToolCallLimitExceededError",
         "RunTimedOut",
+        "GatewayBudgetExceededError",
+        "GatewayBudgetUnverifiableError",
         "TokenBudgetExceededError",
         "TokenBudgetUnverifiableError",
     }
 )
 
 _BUDGET_EXECUTION_ERRORS = {
+    "GatewayBudgetExceededError": (
+        "runtime_gateway_budget_exhausted",
+        "预算已用尽，后续模型调用已停止。",
+    ),
+    "GatewayBudgetUnverifiableError": (
+        "runtime_gateway_budget_unverifiable",
+        "预算账务无法确认，后续模型调用已停止。",
+    ),
     "GraphRecursionError": (
         "runtime_graph_step_limit_reached",
         "Graph step limit reached",
@@ -166,6 +176,10 @@ _BUDGET_EXECUTION_ERRORS = {
 }
 
 _TOKEN_BUDGET_ERRORS = {
+    "runtime.gateway_budget.exhausted": "GatewayBudgetExceededError",
+    "runtime.gateway_budget.unverifiable": "GatewayBudgetUnverifiableError",
+    "runtime_gateway_budget_exhausted": "GatewayBudgetExceededError",
+    "runtime_gateway_budget_unverifiable": "GatewayBudgetUnverifiableError",
     "runtime.token_budget.exhausted": "TokenBudgetExceededError",
     "runtime.token_budget.unverifiable": "TokenBudgetUnverifiableError",
     "runtime_token_budget_exhausted": "TokenBudgetExceededError",
@@ -539,6 +553,8 @@ def redact_runtime_private_fields(
             )
             if privacy is None:
                 if isinstance(projected, dict) and projected.get("code") in {
+                    "runtime_gateway_budget_exhausted",
+                    "runtime_gateway_budget_unverifiable",
                     "runtime_token_budget_exhausted",
                     "runtime_token_budget_unverifiable",
                 }:

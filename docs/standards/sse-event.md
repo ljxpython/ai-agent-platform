@@ -1,12 +1,14 @@
 ---
 status: draft
-last_verified: 2026-10-11
+last_verified: 2026-11-18
 confidence: medium
 source_project: docs/projects/20260926-sse-event-contract/verification.md
 note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容量(S11)因HTTP/1.1入口阻塞，持续容量/堆增长/三段脱敏样例未验
 ---
 
 # SSE 事件格式契约（draft）
+
+2026-11-18 预算治理仅扩展现有 error / tools.error 安全投影：`GatewayBudgetExceededError` / `runtime.gateway_budget.exhausted` 对外为 `runtime_gateway_budget_exhausted`；不可核实对应 `GatewayBudgetUnverifiableError` / `runtime.gateway_budget.unverifiable` → `runtime_gateway_budget_unverifiable`。只精确匹配类型或完整机器码，固定安全文案，不公开金额/提示词/堆栈，不新增 SSE 类型、HTTP 流内状态或 Run 终态。真实可控模型 HTTP/Worker 流内拦截及历史原因回读已验，前端与原 S11 容量门禁仍待接续，草案不毕业。见[预算交接](../projects/20261118-gateway-budget-and-governance/frontend-handoff.md)。
 
 > **适用服务：** runtime-service（产出）、platform-api（网关脱敏/心跳）、platform-web（消费）
 > **验证证据：** API 事件脱敏 11 passed；Web Vitest 391 passed；受控 Playwright 15 passed；真实 SDK 链路通过

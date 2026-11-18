@@ -457,6 +457,24 @@ def _resolve_action(
                 clean_str(segments[5]),
             )
 
+    if segments[:3] == ["api", "policies", "budgets"] and method in {
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+    }:
+        action = {
+            "GET": "listed",
+            "POST": "created",
+            "PUT": "updated",
+            "DELETE": "deleted",
+        }[method]
+        return (
+            f"runtime.budget.{action}",
+            "runtime_budget_policy",
+            clean_str(segments[3]) if len(segments) > 3 else None,
+        )
+
     if len(segments) >= 2 and segments[:2] == ["api", "langgraph"]:
         if segments[2:] == ["dear", "memory"] and method in {"GET", "POST"}:
             action = (

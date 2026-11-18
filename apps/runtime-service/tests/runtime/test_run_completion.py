@@ -38,6 +38,8 @@ def test_provider_categories_are_safe_final_codes(code):
         "runtime.model.stream_interrupted",
         "runtime.model.provider_rejected",
         "runtime.model.fallback_incompatible",
+        "runtime.gateway_budget.exhausted",
+        "runtime.gateway_budget.unverifiable",
         "runtime.workspace.unavailable",
         "runtime.workspace.execution_unavailable",
         "runtime.workspace.backend_invalid",

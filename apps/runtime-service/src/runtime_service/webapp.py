@@ -20,6 +20,7 @@ from runtime_service.auth.acl_client import acl_client_lifespan
 from runtime_service.auth.platform import authenticate
 from runtime_service.background_tasks.service import background_tasks_lifespan
 from runtime_service.errors import RuntimePrivacyError, RuntimeWorkspaceError
+from runtime_service.gateway_budget.service import budget_lifespan
 from runtime_service.http.background_tasks import router as background_tasks_router
 from runtime_service.http.crons import router as crons_router
 from runtime_service.http.dear_governance import router as dear_governance_router
@@ -27,6 +28,7 @@ from runtime_service.http.dear_memory import router as dear_memory_router
 from runtime_service.http.dear_skills import router as dear_skills_router
 from runtime_service.http.diagnostics import router as diagnostics_router
 from runtime_service.http.documents import router as documents_router
+from runtime_service.http.gateway_budgets import router as gateway_budgets_router
 from runtime_service.http.images import router as images_router
 from runtime_service.http.run_control import router as run_control_router
 from runtime_service.http.suggestions import router as suggestions_router
@@ -72,6 +74,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             diagnostics_client_lifespan(),
             run_control_lifespan(),
             usage_projection_lifespan(),
+            budget_lifespan(),
             environment_retention_lifespan(),
             background_tasks_lifespan(),
         ):
@@ -99,6 +102,7 @@ app.include_router(title_summary_router)
 app.include_router(suggestions_router)
 app.include_router(diagnostics_router)
 app.include_router(usage_router)
+app.include_router(gateway_budgets_router)
 app.include_router(usage_analytics_router)
 app.include_router(run_control_router)
 app.include_router(background_tasks_router)

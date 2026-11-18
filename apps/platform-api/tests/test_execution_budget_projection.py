@@ -50,6 +50,8 @@ class ExecutionBudgetProjectionTest(unittest.TestCase):
             ("UnknownCanary", "runtime_execution_failed"),
             ("TokenBudgetExceededError", "runtime_token_budget_exhausted"),
             ("TokenBudgetUnverifiableError", "runtime_token_budget_unverifiable"),
+            ("GatewayBudgetExceededError", "runtime_gateway_budget_exhausted"),
+            ("GatewayBudgetUnverifiableError", "runtime_gateway_budget_unverifiable"),
         ):
             for field in ("type", "error"):
                 with self.subTest(kind=kind, field=field):
