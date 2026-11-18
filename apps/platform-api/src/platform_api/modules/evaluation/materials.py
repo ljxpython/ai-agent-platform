@@ -58,7 +58,6 @@ class SessionQuery(BaseModel):
     agent_id: UUID
     since: AwareDatetime | None = None
     until: AwareDatetime | None = None
-    feedback: Literal["all", "positive", "negative", "none"] = "all"
     status: Literal["all", "idle", "busy", "interrupted", "error"] = "all"
     offset: int = Field(default=0, ge=0, le=10000)
 
@@ -69,34 +68,6 @@ class SessionQuery(BaseModel):
         return self
 
 
-def feedback_by_thread(factory, actor, project_id, thread_ids):
-    from sqlalchemy import select
-
-    from platform_api.core.db import session_scope
-    from platform_api.modules.evaluation.models import FeedbackEvent
-
-    latest = {}
-    with session_scope(factory) as session:
-        events = session.scalars(
-            select(FeedbackEvent)
-            .where(
-                FeedbackEvent.project_id == project_id,
-                FeedbackEvent.actor_id == actor.user_id,
-                FeedbackEvent.thread_id.in_(thread_ids),
-            )
-            .order_by(FeedbackEvent.revision.desc())
-        )
-        for event in events:
-            latest.setdefault(
-                (event.thread_id, event.message_id), event.payload.get("rating")
-            )
-    ratings = {}
-    for (thread_id, _), rating in latest.items():
-        if rating in {"positive", "negative"}:
-            ratings.setdefault(thread_id, set()).add(rating)
-    return ratings
-
-
 @router.post("/sessions")
 async def list_material_sessions(
     request: Request,
@@ -104,8 +75,6 @@ async def list_material_sessions(
     actor: ActorContext = Depends(get_actor_context),
     gateway=Depends(get_runtime_gateway_service),
 ):
-    from starlette.concurrency import run_in_threadpool
-
     project_id = _require_project_id(request)
     require_action(actor, project_id, "create")
     rows = await gateway.search_threads(
@@ -120,13 +89,6 @@ async def list_material_sessions(
             **({"status": body.status} if body.status != "all" else {}),
         },
     )
-    ratings = await run_in_threadpool(
-        feedback_by_thread,
-        request.app.state.db_session_factory,
-        actor,
-        project_id,
-        [row["thread_id"] for row in rows],
-    )
     selected = []
     for row in rows:
         created = (
@@ -138,21 +100,12 @@ async def list_material_sessions(
             body.until and (not created or created > body.until)
         ):
             continue
-        feedback = sorted(ratings.get(row["thread_id"], set()))
-        if (
-            body.feedback == "none"
-            and feedback
-            or body.feedback not in {"all", "none"}
-            and body.feedback not in feedback
-        ):
-            continue
         selected.append(
             {
                 "thread_id": row["thread_id"],
                 "title": row.get("metadata", {}).get("title") or row["thread_id"],
                 "created_at": row.get("created_at"),
                 "status": row.get("status"),
-                "feedback": feedback,
             }
         )
     return {
@@ -162,7 +115,7 @@ async def list_material_sessions(
         if len(rows) == 100 and body.offset < 10000
         else None,
         "limited": body.offset == 10000 and len(rows) == 100,
-        "notice": "按当前项目和Agent筛选有权查看的会话；反馈仅指你自己的有效反馈。每批检查100条，可继续查找。",
+        "notice": "按当前项目和Agent筛选有权查看的会话。每批检查100条，可继续查找。",
     }
 
 
@@ -379,8 +332,8 @@ def notify_conversion_result(
                     else None
                 )
                 service.create_notification(
-                    title=f"评测集【{title}】已生成完毕",
-                    content="会话历史与执行证据已处理完毕，AI 建议用例草稿已就绪，点击即可前往查看与调整。",
+                    title=f"评测集【{title}】资料已送达",
+                    content="会话资料已保存到 EvalFlow。请进入评测集查看 AI 处理状态、确认用途或整理题目；发布和运行仍需单独确认。",
                     level=NotificationLevel.INFO,
                     category=NotificationCategory.EVAL,
                     recipient_user_id=UUID(user_id) if user_id else None,

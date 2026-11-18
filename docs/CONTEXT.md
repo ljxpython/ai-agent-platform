@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-18（AI网关使用看板与综合可观测重构已全栈实施并通过全部前后端单测、类型校验与生产构建；对标 mlflow-eval-platform 成功实现网关黄金三要素、Token均值/Prompt Caching以及图表至Logs毫秒级下钻穿透；平台助手与会话转评测集异步优化完成）
+> **最后更新：** 2026-11-18（09独立部署5项done，独立双Worktree真实跨机/到期题库/撤权/审批/停止通过；未提交或发布主环境。08仍5项done/2项partial，真实多页与全栈回退待验，原AI网关看板和平台助手结论保留）
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -9,6 +9,22 @@
 
 
 2026-11-13 Git交付：用户追加授权将EvalFlow主环境适配及中文/品牌修复提交并推送远端；本仓同步对应的项目状态与验收文档，无Agent服务代码改动。生产部署未授权，A04沙箱准入阻塞保留；最终提交与远端状态以Git记录为准。
+
+## 当前开发：评测独立部署（2026-11-18）
+
+用户批准建立Worktree并开发，不做旧契约兼容。[09专题](projects/20261113-agent-eval-production-flywheel/09-independent-deployment.md)5项done（隔离开发与技术验收）：Agent工作区f40b，EvalFlow在sshmy1的`/opt/worktrees/evalflow-api-boundary-20261118`现场改验；新增目标快照/绑定运行API替代跨仓源码、.env及虚拟环境依赖，复用原认证、幂等、审批、执行取证和停止。来源过期后题库仍可读/编辑/发布/真实运行，原始源隐藏且取源403；新运行检查当前权限。
+
+Agent Web26007/API24138/Runtime24493，远端隔离EvalFlow5011；本机65156与远端46187为开发SSH回环传输，私有资源不串主环境。两个保留入口由浏览器各提交一次且AI候选完成；真实跨机任务、过期资产任务及普通执行者任务均passed，Run/Trace/回执匹配。撤执行者后其自己题库新运行403；配置漂移409、相同key同Run、单文件审批2Run同目标、停止/超时stopped回执通过。远端548及末次22、Runtime34通过；API163通过/3跳过/72子断言，1项原HEAD同样失败的旧ACL断言保留。EvalFlow增量lint0新增/51旧诊断。详见[22证据](projects/20261113-agent-eval-production-flywheel/implementation/22-independent-deployment.md)。
+
+两端服务和合成证据保留，浏览器scope已关闭。未Git提交/推送、合并或发布主环境；主API健康200/ok、主Web200、远端主/隔离健康200，上游mlflow/无变更。08真实多页和全栈回退仍待原验收；未做生产HTTPS、容量或完整EvalFlow UI回归，主环境旧代码的同机阻塞不因隔离通过而视为已上线解决。
+
+## 08现场记录：Agent评测入口清理与远端联调（2026-11-18，主环境尚未升级09）
+
+[08唯一任务进度](projects/20261113-agent-eval-production-flywheel/08-agent-evaluation-entry-cleanup.md)为5项done/2项partial。Agent仅保留当前/历史会话转评测集及历史批量转换；12个旧前端文件、旧公开写入口、旧Runtime评测助手及远端两处旧助手派发已清理。删除前旧项/旧图Run盘点为0；保留历史数据库、共享授权、来源ACL、签名、用途、脱敏、幂等、通知和执行维护。真实当前/历史/双会话批量交付、请求恢复和普通执行者权限通过；新通知仅表示“资料已送达”，不误报AI完成。真实出题、采纳/手改及独立发布成功；批量条目的AI首稿结构失败保留。Web51、API188及末次60、Runtime91及目录15、远端585及末次22项分别通过，范围重叠不加总。
+
+当前Agent3000/API2142/Runtime8123连接远端EvalFlow http://49.233.222.54:9128（内部5000），精确放行已获批origin与出口111.227.13.240；回调通过远端回环38375的SSH反向隧道接本机API。配置已备份，保留签名与实时权限；HTTP无TLS，依赖出口IP稳定、本机API和隧道在线。按批准补齐远端缺失依赖，原有包仅click8.5.0→8.3.3；新增一个仅属该项目的执行者测试账号，凭据只在本机私有文件。未删除业务数据、模型或迁移，未执行Git提交/推送，未改其他用户权限。
+
+**08当时剩余与后续：** 当时远端运行因agent_repo仍为Mac路径、缺所属Runtime源码而被验真阻止，操作已cancelled，08该轮没有成功评测Run。现有回调只转发HTTP，不共享Mac文件。09已在独立双Worktree完成跨机运行、审批及来源到期题库补证，主环境未升级；08真实多页和全栈回退仍待原验收。用户重申题库独立、来源授权到期后仍可用；此前将早期到期封闭套用于题库并列为政策待决是判断错误。08隔离API已完成当前→旧HEAD→当前加载、登录、保留路由及历史摘要一致，不能替代全栈恢复。[阶段证据](projects/20261113-agent-eval-production-flywheel/implementation/21-agent-evaluation-entry-cleanup.md)。
 
 ## EvalFlow Copilot联调补丁（2026-11-17）
 
@@ -87,7 +103,7 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 
 - [平台内置助手](projects/20261116-platform-assistant/README.md)：T01–T25批准开发与本地技术验收`done`。原指南/连续浏览器链保持原范围；追加Run绑定持久失败、缺Trace时可信执行请求/Run日志关联、每轮可读资料摘要与误判回归。最终相关API96、Runtime24、证据抽屉5项及类型/指定静态检查通过；真实模型四轮/11个工具结果经答案复核。原旧Run只读定位技能准备失败，根因仍未知，固定旧日志为empty。主环境无未结Run后已重载Runtime API/Worker，API自动重载且未迁移；未改模型凭据或业务库。原API既有ACL断言失败保留；当前追踪未配置、历史采集未知，生产Loki/容量及本轮新增状态真实浏览器复验未覆盖，没有本轮Git交付或生产部署。详见项目tasks/verification及implementation/04。
 
-- [Agent生产评测飞轮](projects/20261113-agent-eval-production-flywheel/README.md)：06本地16/16、07本地4/4 done，含业务会话转换、正式页面与登录；用户已于2026-11-16确认验收通过。原01–04为22 done/3 deferred；原失败与AI裁判局限保留。原16图/5视频与新增8图/1视频及主线手册齐备，验收通过并合并推送，测试服务和资源已回收，未生产部署。
+- [Agent生产评测飞轮](projects/20261113-agent-eval-production-flywheel/README.md)：08部分完成：5项done/2项partial，旧入口/重复助手已清理；两个转换入口及远端资料交付/出题/发布、真实执行者权限已验。跨机主动运行受源码验真阻塞，题库独立保留已确认，到期回归、真实多页及全栈回退待验。本轮未提交推送；原06/07和344c已交付回收的历史结论保留。
 - [Agent 自动化评测体系](projects/20261112-agent-evaluation-system/README.md)：done，已合main并清理测试Worktree/专属数据库；EvalFlow执行器、20题、真实基线、门禁、Badcase审核与页面验证通过。Agent仍有KnowledgeRetention质量失败；真实CI、生产发布、新盲测集后置。
 - [MLflow 链路追踪与会话评测适配](projects/20261108-mlflow-tracing-adaptation/README.md)：`done`；全栈完成 MLflow / EvalFlow 平台平滑接入，支持动态环境变量热切换（langfuse/mlflow/both/none）。落地三大场景：1) 前端安全防御守护（none 模式下追踪 UI 彻底消失零报错）；2) Project 维度项目物理隔离（动态自动创建 `project-{project_id}` 独立实验）；3) 超级链接原生直达线程 ID（直接进入 `#/experiments/{id}/chat-sessions/{sessionId}` 全景对话卡片）。单测 153 项全绿、Vue-tsc 0 报错、browser-skill 真实浏览器端到端实测验证通过。
 - [Runtime Agent 开发指南与入口纠偏](projects/20261108-runtime-development-harness-governance/README.md)：done（文档范围，2026-11-08 用户人工验收通过）；52 篇全文审查完成，经验已沉淀；文档提交 5ea9ea8c、整合提交 2b434585 已推送并合入 main，主干原有功能保留，f335 Worktree 已清理，无所属服务/测试数据库。CI 不在本期，产品测试未重跑。
@@ -149,7 +165,7 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 - [LangGraph v3 默认消费与 DeltaChannel 评估](projects/20261004-langgraph-v3-delta-evaluation/README.md)：partial；后端默认 v3、前端交接、离线 Spike 和本地 PostgreSQL 体积测量已完成，回滚门禁和前端浏览器验收待执行；节点 timeout/error_handler/RunControl 暂不实施。
 - [Chat 会话状态机加固与流式体验优化](projects/20261004-chat-session-state-and-stream-hardening/README.md)：done；彻底解决切屏失焦权限刷新误踢、空队列误弹排队 0 黄条、中断等待澄清时底部悬挂正在处理矛盾提示、以及 DeepSeek 思维链首轮流式卡顿假死四大顽疾；前端 22 项单测全绿、静态类型检查与生产打包全绿。
 
-## 当前飞轮 Worktree 服务状态（344c，非生产）
+## 历史飞轮 Worktree 服务状态（344c，已回收，非当前连接）
 
 | 服务 | 最后更新 | 本轮能力与验证 |
 |---|---|---|
@@ -165,9 +181,9 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-11-17 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。2026-11-17平台助手：单create_agent/无执行沙箱，六篇当前指南及原持久历史/强制写审批保留；追加每轮可读资料刷新、失败阶段/未知根因与本轮引用规则。补强24项及真实模型四轮通过；最终提示/工具已在无未结Run后重载本地Runtime API/Worker，未改模型或生产。EvalFlow题库v2既有运行包指纹一致并passed的联调结论保留。 |
-| platform-api | 2026-11-17 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。2026-11-17平台助手：原只读SQL/指南/当前目标ACL/查询审计保留；新增Run绑定checkpoint安全摘要、Trace/执行请求/Run受控日志关联及可读能力说明。最终相关96项通过；本地固定三个日志源已接入，旧Run状态连续读回准确、对应旧窗口日志0条如实标empty。8秒状态查询上限低于工具15秒；API自动重载、未迁移，原扩大回归1项既有ACL断言失败保留，生产权限未改。 |
-| platform-web | 2026-11-17 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。2026-11-17平台助手：原全局抽屉/错误现场/指南/项目竞态及403缓存修复保留；追加持久失败阶段、审批摘要、日志来源/关联与空/不可用状态，相关抽屉5项及vue-tsc/Prettier通过。原68项及连续浏览器链保持原范围，本轮新增状态未真实浏览器复验；Vite主服务未重启，助手未生产发布。 |
+| runtime-service | 2026-11-18 | 升级部署至 `05dd20eb`；GraphHarbor post48 正式接管，014 Retention 与 Workspace 回收 Schema 迁移完成。生产服务运行正常，端口 8123 探针通过。2026-11-17平台助手：单create_agent/无执行沙箱，六篇当前指南及原持久历史/强制写审批保留；追加每轮可读资料刷新、失败阶段/未知根因与本轮引用规则。补强24项及真实模型四轮通过；最终提示/工具已在无未结Run后重载本地Runtime API/Worker，未改模型或生产。EvalFlow题库v2既有运行包指纹一致并passed的联调结论保留。 2026-11-18：08旧评测图、实现及专属注册已删除，执行证据与dearflow_agent维护权限保留。91项通过/1项Docker不可用跳过，追加目录基线15项通过；API/Worker已重载，目录5图/83工具，无旧助手；管理员浏览器及执行者HTTP合成聊天成功。 |
+| platform-api | 2026-11-18 | 升级知识库 DocumentId 正则放宽与多状态 Schema；补齐全量模型定价与历史 151 条调用快照重算；端口 2142 探针全量通过。2026-11-17平台助手：原只读SQL/指南/当前目标ACL/查询审计保留；新增Run绑定checkpoint安全摘要、Trace/执行请求/Run受控日志关联及可读能力说明。最终相关96项通过；本地固定三个日志源已接入，旧Run状态连续读回准确、对应旧窗口日志0条如实标empty。8秒状态查询上限低于工具15秒；API自动重载、未迁移，原扩大回归1项既有ACL断言失败保留，生产权限未改。 2026-11-18：08旧公开入口及桥接已裁剪，保留EvalFlow身份、签名、来源、用途及执行维护；准确远端origin和禁止重定向已覆盖，通知改为资料送达。188项及末次60项通过，已重载；真实执行者交付/权限、管理员授撤权及幂等通过，远端运行仍受源码验真阻塞。 |
+| platform-web | 2026-11-18 | 知识库文档列表动态状态徽章呈现与接口类型契约对齐；生产产物已更新部署至 `/www/wwwroot/agent-platform`，Nginx 端口 80 访问与线上探针全量正常。2026-11-17平台助手：原全局抽屉/错误现场/指南/项目竞态及403缓存修复保留；追加持久失败阶段、审批摘要、日志来源/关联与空/不可用状态，相关抽屉5项及vue-tsc/Prettier通过。原68项及连续浏览器链保持原范围，本轮新增状态未真实浏览器复验；Vite主服务未重启，助手未生产发布。 2026-11-18：08旧工作台/回答反馈/巡检入口已删除，旧URL为受控迁移页；保留当前/历史/批量转换、能力与执行权限，移除好差评筛选。9套51项、正常构建及增量ESLint通过；真实聊天、两个入口和批量通知直达远端已验，真实多页连续翻页待验。 |
 | AI Harness（AGENTS.md + Skills + 文档） | 2026-11-13 | Agent生产评测飞轮本轮批准范围已在双Worktree完成，22 done / 3 deferred，联合Final通过；未提交、合并或生产部署，主工作区服务未变更。Agent 自动化评测首期与D01–D06已合main，测试资源已回收；详见项目记录。既有运行规则： 知识授权回调纳入本环境生成，旧Worktree缺/空新增回调从本登记API派生，显式跨环境拒绝；全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收；知识MCP/独立Ollama新增登记/所属启停，4项自检及真实重启通过。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

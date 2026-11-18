@@ -2,6 +2,16 @@
 
 普通 Run 网关公开前缀为 `/api/langgraph`，入口见[router](../../src/platform_api/modules/runtime_gateway/presentation/http.py)。Platform负责身份/项目授权、参数决议、幂等记录和受控转发；GraphHarbor持有执行事实，Runtime负责图、模型与工具。GraphHarbor不实现平台业务JWT。
 
+## 评测专用目标绑定（2026-11-18）
+
+`POST /api/evaluation/targets/snapshot`在当前项目Runtime execute权限下返回`evaluation-target/v1`：Agent公开配置、有效context、模型连接修订、执行者有效工具策略、Runtime所属资源声明及双方构建清单；不返回模型凭据。服务各自报告自身构建，不从另一仓库读源码、环境文件或虚拟环境。
+
+`POST /api/evaluation/threads/{thread_id}/runs`接收`{target,run}`，要求平台Bearer、`X-Project-Id`及`Idempotency-Key`。它复用现有Thread/Run权限、并发、执行请求与停止机制；新Run的context须等于冻结context。API提交/恢复前重查目标，Runtime调用模型和工具前核对项目、图、参数、资源与版本，正式回执包含`evaluation_target_hash`。
+
+`evaluation_target`是服务端私有metadata，客户端普通input/config/metadata不能注入；服务端独立参数验证后才附加。审批恢复从原Run取回目标和context并重新校验，不能替换。快照无效/参数覆盖400、目标漂移409、缺失契约503；项目/Thread执行权限仍按原策略拒绝。幂等摘要绑定新Run目标，恢复保留原恢复算法，不通过换key自动重放。
+
+EvalFlow与Agent新协议需一起升级，不回退旧跨仓读盘。复用原JWT operation及SSE格式，不增加新权限体系。契约、部署与真实跨机/过期资产验证见[独立部署专题](../../../../docs/projects/20261113-agent-eval-production-flywheel/09-independent-deployment.md)。
+
 ## 当前公开面
 
 下列路径相对前缀；t表示 `{thread_id}`，r表示 `{run_id}`，实际请求必须替换为ID。

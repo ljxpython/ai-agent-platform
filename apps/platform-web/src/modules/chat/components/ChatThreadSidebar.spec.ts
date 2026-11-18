@@ -217,12 +217,20 @@ describe("ChatThreadSidebar compact search & batch mode", () => {
     await batchToggleBtn.trigger("click");
     expect(wrapper.text()).toContain("已选 0 项");
 
-    // 全选（应该只勾选有删除权限的 th-1）
+    // 全选可读会话；包含无删除权限的会话时不能批量删除。
     const selectAllBtn = wrapper
       .findAll("button")
       .find((b) => b.text() === "全选");
     expect(selectAllBtn).toBeDefined();
     await selectAllBtn!.trigger("click");
+    expect(wrapper.text()).toContain("已选 2 项");
+    expect(
+      wrapper
+        .findAll("button")
+        .find((b) => b.text().includes("删除 (2)"))
+        ?.attributes("disabled"),
+    ).toBeDefined();
+    await wrapper.get('[data-thread-id="th-2"]').trigger("click");
     expect(wrapper.text()).toContain("已选 1 项");
 
     // 点击删除按钮触发 batch-delete
@@ -232,5 +240,56 @@ describe("ChatThreadSidebar compact search & batch mode", () => {
     expect(deleteBtn).toBeDefined();
     await deleteBtn!.trigger("click");
     expect(wrapper.emitted("batch-delete")?.[0]).toEqual([["th-1"]]);
+  });
+
+  it("only offers batch conversion when evaluation is permitted", async () => {
+    const wrapper = mount(ChatThreadSidebar, { props: batchProps });
+    await wrapper.get('button[title="批量管理会话"]').trigger("click");
+    expect(
+      wrapper.find('button[title="最多选择20个会话转为评测集"]').exists(),
+    ).toBe(false);
+    await wrapper.setProps({ canEvaluation: true });
+    const button = wrapper.get('button[title="最多选择20个会话转为评测集"]');
+    expect(button.attributes("disabled")).toBeDefined();
+    await wrapper.get('[data-thread-id="th-1"]').trigger("click");
+    await button.trigger("click");
+    expect(wrapper.emitted("send-evaluation")).toEqual([[["th-1"]]]);
+    await wrapper.setProps({ canEvaluation: false });
+    expect(
+      wrapper.find('button[title="最多选择20个会话转为评测集"]').exists(),
+    ).toBe(false);
+    wrapper.unmount();
+  });
+
+  it("disables batch conversion above 20 selected sessions", async () => {
+    const wrapper = mount(ChatThreadSidebar, {
+      props: {
+        ...batchProps,
+        canEvaluation: true,
+        groups: [
+          {
+            ...batchProps.groups[0],
+            items: Array.from({ length: 21 }, (_, i) => ({
+              ...batchProps.groups[0].items[0],
+              id: `thread-${i}`,
+            })),
+          },
+        ],
+      },
+    });
+    await wrapper.get('button[title="批量管理会话"]').trigger("click");
+    await wrapper
+      .findAll("button")
+      .find((b) => b.text() === "全选")!
+      .trigger("click");
+    const button = wrapper.get('button[title="最多选择20个会话转为评测集"]');
+    expect(button.attributes("disabled")).toBeDefined();
+    await button.trigger("click");
+    expect(wrapper.emitted("send-evaluation")).toBeUndefined();
+    await wrapper.get('[data-thread-id="thread-20"]').trigger("click");
+    expect(button.attributes("disabled")).toBeUndefined();
+    await button.trigger("click");
+    expect(wrapper.emitted("send-evaluation")?.[0][0]).toHaveLength(20);
+    wrapper.unmount();
   });
 });

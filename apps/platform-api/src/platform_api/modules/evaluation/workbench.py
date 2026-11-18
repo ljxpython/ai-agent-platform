@@ -1,10 +1,10 @@
 """Platform identity and authorization bridge to EvalFlow's evaluation business records."""
 
 from urllib.parse import urlsplit
-from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
+from uuid import UUID, uuid4
 
 import httpx
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from starlette.concurrency import run_in_threadpool
 
@@ -33,7 +33,6 @@ from platform_api.modules.evaluation.workbench_grants import (
 from platform_api.modules.identity.actors import load_user_actor
 from platform_api.modules.runtime_gateway.presentation.http import (
     _require_project_id,
-    get_runtime_gateway_service,
 )
 
 
@@ -195,18 +194,30 @@ async def forward(request, actor, project_id, operation, item_id, request_id, da
         str(request_id),
         data,
     )
-    url = urlsplit(settings.evaluation_receiver_url)
+    try:
+        url = urlsplit(settings.evaluation_receiver_url)
+        _ = url.port
+        trusted = (
+            url.scheme == "http" and url.hostname in {"127.0.0.1", "localhost"}
+        ) or f"{url.scheme}://{url.netloc}" in getattr(
+            settings, "evaluation_receiver_allowed_origins", ()
+        )
+    except ValueError:
+        trusted = False
     if (
-        url.scheme != "http"
-        or url.hostname not in {"127.0.0.1", "localhost"}
+        not trusted
+        or url.scheme not in {"http", "https"}
         or url.username
+        or url.password
+        or url.path not in {"", "/"}
         or url.query
         or url.fragment
+        or any(char.isspace() for char in settings.evaluation_receiver_url)
         or not settings.evaluation_receiver_username
         or not settings.evaluation_receiver_password
     ):
         raise ServiceUnavailableError(
-            code="evaluation_receiver_invalid", message="尚未配置本地受管评测服务。"
+            code="evaluation_receiver_invalid", message="尚未配置受信的评测服务地址。"
         )
     try:
         async with httpx.AsyncClient(
@@ -302,127 +313,6 @@ def authoring_member(request: Request, body: MemberBody):
     }
 
 
-@router.get("/work-items")
-async def list_items(
-    request: Request,
-    query: str = "",
-    status: str = "",
-    agent_id: str = "",
-    created_by: str = "",
-    group: str = "",
-    offset: int = Query(default=0, ge=0),
-    limit: int = Query(default=20, ge=1, le=100),
-    actor: ActorContext = Depends(get_actor_context),
-):
-    project_id = _require_project_id(request)
-    return await forward(
-        request,
-        actor,
-        project_id,
-        "list",
-        None,
-        uuid4(),
-        {
-            "query": query[:120],
-            "status": status,
-            "agent_id": agent_id,
-            "created_by": created_by,
-            "group": group,
-            "offset": offset,
-            "limit": limit,
-        },
-    )
-
-
-@router.get("/workbench-summary")
-async def workbench_summary(
-    request: Request, actor: ActorContext = Depends(get_actor_context)
-):
-    return await forward(
-        request, actor, _require_project_id(request), "summary", None, uuid4(), {}
-    )
-
-
-@router.get("/work-items/{item_id}")
-async def read_item(
-    request: Request,
-    item_id: UUID,
-    actor: ActorContext = Depends(get_actor_context),
-    gateway=Depends(get_runtime_gateway_service),
-):
-    from platform_api.modules.evaluation.assistant_bridge import reconcile_assistant
-
-    project_id = _require_project_id(request)
-    item = await forward(request, actor, project_id, "read", str(item_id), uuid4(), {})
-    return await reconcile_assistant(request, actor, project_id, item, gateway)
-
-
-@router.post("/work-items")
-async def create_item(
-    request: Request,
-    body: CommandBody,
-    actor: ActorContext = Depends(get_actor_context),
-):
-    import json
-
-    from platform_api.modules.agents.infra.sqlalchemy.models import AgentRecord
-
-    project_id = _require_project_id(request)
-    require_action(actor, project_id, "create")
-    data = body.data
-    reject_client_source_snapshots(data)
-    # Reject sensitive synthetic submissions before forwarding; never silently change their meaning.
-    raw = json.dumps(data, ensure_ascii=False)
-    require_safe_material(raw)
-
-    def check():
-        with session_scope(request.app.state.db_session_factory) as session:
-            try:
-                agent_id = UUID(data.get("agent_id", ""))
-            except (ValueError, TypeError):
-                raise BadRequestError(
-                    code="evaluation_agent_required", message="请选择要验证的Agent。"
-                ) from None
-            agent = session.get(AgentRecord, agent_id)
-            if (
-                not agent
-                or str(agent.project_id) != project_id
-                or agent.status != "active"
-            ):
-                raise ForbiddenError(
-                    code="evaluation_agent_denied", message="当前Agent不可用。"
-                )
-            if data.get("source_thread_id"):
-                service.authorize(
-                    session, actor, project_id, data["source_thread_id"], "read"
-                )
-
-    await run_in_threadpool(check)
-    item_id = str(
-        uuid5(
-            NAMESPACE_URL,
-            "evaluation:"
-            + project_id
-            + ":"
-            + actor.user_id
-            + ":"
-            + str(body.request_id),
-        )
-    )
-    result = await forward(
-        request, actor, project_id, "create", item_id, body.request_id, data
-    )
-    await run_in_threadpool(
-        record_action,
-        request.app.state.db_session_factory,
-        actor,
-        project_id,
-        body.request_id,
-        "created",
-    )
-    return result
-
-
 @router.post("/work-items/{item_id}/{action}")
 async def item_action(
     request: Request,
@@ -430,99 +320,55 @@ async def item_action(
     action: str,
     body: CommandBody,
     actor: ActorContext = Depends(get_actor_context),
-    gateway=Depends(get_runtime_gateway_service),
 ):
     project_id = _require_project_id(request)
-    if action not in {
-        "grant",
-        "revoke",
-        "generate",
-        "revise",
-        "edit",
-        "approve",
-        "run",
-        "cancel",
-        "dispute",
-        "assign",
-        "defer",
-        "withdraw",
-        "regression",
-        "tool_decision",
-        "explain",
-        "compare",
-    }:
+    if action not in {"grant", "revoke"}:
         raise BadRequestError(
-            code="evaluation_action_invalid", message="不支持该评测操作。"
+            code="evaluation_action_invalid",
+            message="此入口仅用于资料用途授权与撤销，请在EvalFlow操作评测。",
         )
     require_action(actor, project_id, action)
     data = body.data
-    if action in {"generate", "revise", "edit", "dispute", "defer", "withdraw"}:
-        import json
-
-        require_safe_material(json.dumps(data, ensure_ascii=False))
-    if action in {"grant", "revoke", "assign"}:
-        item = await forward(
-            request, actor, project_id, "read", str(item_id), uuid4(), {}
+    item = await forward(request, actor, project_id, "read", str(item_id), uuid4(), {})
+    if action == "grant":
+        try:
+            grant = GrantBody.model_validate(data)
+        except ValidationError:
+            raise BadRequestError(
+                code="evaluation_grant_invalid",
+                message="请选择有效的资料用途和授权期限。",
+            ) from None
+        saved = await run_in_threadpool(
+            create_grant,
+            request.app.state.db_session_factory,
+            actor,
+            project_id,
+            item,
+            grant,
+            request.app.state.settings.evaluation_assistant_model_route,
         )
-        if action == "grant":
-            try:
-                grant = GrantBody.model_validate(data)
-            except ValidationError:
-                raise BadRequestError(
-                    code="evaluation_grant_invalid",
-                    message="请选择有效的资料用途和授权期限。",
-                ) from None
-            saved = await run_in_threadpool(
-                create_grant,
-                request.app.state.db_session_factory,
-                actor,
-                project_id,
-                item,
-                grant,
-                request.app.state.settings.evaluation_assistant_model_route,
+        data = {"grant_id": saved["grant_id"]}
+    else:
+        try:
+            grant_id = str(UUID(data["grant_id"]))
+        except (KeyError, ValueError, TypeError):
+            raise BadRequestError(
+                code="evaluation_grant_invalid", message="请选择要撤销的资料用途。"
+            ) from None
+        if grant_id not in item["grants"].values():
+            raise ForbiddenError(
+                code="evaluation_grant_denied", message="授权不属于本工作项。"
             )
-            data = {"grant_id": saved["grant_id"]}
-        elif action == "revoke":
-            try:
-                grant_id = str(UUID(data["grant_id"]))
-            except (KeyError, ValueError, TypeError):
-                raise BadRequestError(
-                    code="evaluation_grant_invalid", message="请选择要撤销的资料用途。"
-                ) from None
-            if grant_id not in item["grants"].values():
-                raise ForbiddenError(
-                    code="evaluation_grant_denied", message="授权不属于本工作项。"
-                )
-            return await run_in_threadpool(
-                revoke_grant,
-                request.app.state.db_session_factory,
-                actor,
-                project_id,
-                grant_id,
-            )
-        else:
-            assignee = await run_in_threadpool(
-                load_user_actor,
-                session_factory=request.app.state.db_session_factory,
-                user_id=str(data.get("assignee", "")),
-                project_id=project_id,
-            )
-            require_action(assignee, project_id, "approve")
+        return await run_in_threadpool(
+            revoke_grant,
+            request.app.state.db_session_factory,
+            actor,
+            project_id,
+            grant_id,
+        )
     result = await forward(
         request, actor, project_id, action, str(item_id), body.request_id, data
     )
-    if action in {"generate", "revise", "explain"} or (
-        action == "dispute" and data.get("kind") == "evidence_review"
-    ):
-        from platform_api.modules.evaluation.assistant_bridge import start_assistant
-
-        result = await start_assistant(
-            request, actor, project_id, result, body.request_id, gateway
-        )
-    elif action == "cancel" and data.get("kind") == "assistant":
-        from platform_api.modules.evaluation.assistant_bridge import reconcile_assistant
-
-        result = await reconcile_assistant(request, actor, project_id, result, gateway)
     await run_in_threadpool(
         record_action,
         request.app.state.db_session_factory,

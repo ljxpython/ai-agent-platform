@@ -121,19 +121,19 @@ def test_session_filter_uses_authorized_page_and_exposes_pagination(monkeypatch)
 
     monkeypatch.setattr(module, "require_action", lambda *args: None)
     monkeypatch.setattr(module, "_require_project_id", lambda _: project)
-    monkeypatch.setattr(module, "feedback_by_thread", lambda *args: {"3": {"negative"}})
     request = SimpleNamespace(
         app=SimpleNamespace(state=SimpleNamespace(db_session_factory=None))
     )
     result = asyncio.run(
         module.list_material_sessions(
             request,
-            SessionQuery(agent_id=agent, feedback="negative"),
+            SessionQuery(agent_id=agent),
             SimpleNamespace(user_id="actor"),
             Gateway(),
         )
     )
-    assert [row["thread_id"] for row in result["items"]] == ["3"]
+    assert len(result["items"]) == 100
+    assert all("feedback" not in row for row in result["items"])
     assert result["next_offset"] == 100 and result["scanned"] == 100
     assert seen[0]["project_id"] == project and seen[0]["payload"]["metadata"] == {
         "agent_id": agent
@@ -156,7 +156,7 @@ def test_filter_rejects_inverted_or_unzoned_dates():
 def test_snapshot_separates_later_uploads_and_changed_files_from_initial_state():
     class Gateway:
         async def get_thread(self, **kwargs):
-            return {"metadata": {"agent_id": str(uuid4())}}
+            return {"metadata": {"agent_id": "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"}}
 
         async def get_thread_state(self, **kwargs):
             return {
@@ -186,7 +186,14 @@ def test_snapshot_separates_later_uploads_and_changed_files_from_initial_state()
                 }
             }
 
-    value = asyncio.run(snapshot(Gateway(), None, str(uuid4()), str(uuid4())))
+    value = asyncio.run(
+        snapshot(
+            Gateway(),
+            None,
+            "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb",
+            "cccccccc-cccc-4ccc-cccc-cccccccccccc",
+        )
+    )
     assert value["environment"]["initial_files"] == {"sales.csv": "original"}
     assert value["environment"]["later_uploads"] == [
         {
@@ -643,3 +650,25 @@ def test_background_task_processes_and_notifies(monkeypatch):
     assert len(notifications) == 1
     assert notifications[0]["item_id"] == "item-123"
     assert notifications[0]["error"] is None
+
+
+def test_conversion_notification_only_confirms_delivery(setup):
+    from sqlalchemy import select
+
+    from platform_api.core.db import session_scope
+    from platform_api.modules.evaluation.materials import notify_conversion_result
+    from platform_api.modules.notifications.models import NotificationRecord
+
+    factory, actor, scope = setup
+    item_id = str(uuid4())
+    notify_conversion_result(
+        factory, actor.user_id, scope[0], "算术", item_id, "https://evalflow.example"
+    )
+    with session_scope(factory) as session:
+        notification = session.scalar(select(NotificationRecord))
+        assert notification.title == "评测集【算术】资料已送达"
+        assert "查看 AI 处理状态" in notification.content
+        assert "草稿已就绪" not in notification.content
+        assert (
+            notification.action_url == f"https://evalflow.example/#/authoring/{item_id}"
+        )

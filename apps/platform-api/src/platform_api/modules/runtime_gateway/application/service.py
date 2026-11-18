@@ -1716,6 +1716,25 @@ class RuntimeGatewayService:
             thread_id, resource, payload=payload, query=query
         )
 
+    async def evaluation_capabilities(self, *, project_id: str, graph_id: str) -> dict:
+        if not self._delegation_headers_factory:
+            raise ServiceUnavailableError(
+                code="runtime_delegation_not_configured",
+                message="Runtime delegation required",
+            )
+        headers = await run_in_threadpool(
+            self._delegation_headers_factory,
+            project_id=project_id,
+            agent_key=graph_id,
+            thread_id=None,
+            context_hash=empty_runtime_context_hash(),
+            operation="read",
+        )
+        capabilities = await self._upstream.with_forwarded_headers(
+            headers
+        ).get_graph_capabilities(graph_id)
+        return capabilities.get("evaluation", {})
+
     async def get_thread_capabilities(
         self,
         *,
@@ -2143,6 +2162,7 @@ class RuntimeGatewayService:
         scheduled_config: dict[str, Any] | None = None,
         completion_config: dict[str, Any] | None = None,
         model_resilience_snapshot: ModelResilienceSettings | None = None,
+        evaluation_target: dict[str, Any] | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
         thread_action = (
@@ -2205,7 +2225,11 @@ class RuntimeGatewayService:
                 code="assistant_id_required", message="assistant_id is required"
             )
         _execution_config(upstream_payload)
-        digest = _request_digest(command)
+        digest = _request_digest(
+            {**command, "evaluation_target_hash": evaluation_target["config_hash"]}
+            if evaluation_target is not None and interrupt_id is None
+            else command
+        )
         factory = self._require_session_factory()
 
         def known_request():
@@ -2215,6 +2239,30 @@ class RuntimeGatewayService:
                 )
 
         known = await run_in_threadpool(known_request)
+        if evaluation_target is not None:
+            from platform_api.modules.evaluation.targets import validate_target
+
+            await validate_target(self, actor, project_id, evaluation_target)
+            if (
+                ensure_dict(thread.get("metadata")).get("agent_id")
+                != evaluation_target["agent"]["id"]
+                or agent_key != evaluation_target["agent"]["graph_id"]
+                or any(
+                    ensure_dict(upstream_payload.get("context")).get(name)
+                    != evaluation_target["context"].get(name)
+                    for name in (
+                        "model_id",
+                        "temperature",
+                        "max_tokens",
+                        "top_p",
+                        "execution_mode",
+                    )
+                )
+            ):
+                raise ConflictError(
+                    code="evaluation_target_changed",
+                    message="运行会话或参数与评测目标不一致。",
+                )
         next_context = dict(ensure_dict(upstream_payload.get("context")))
         if not interrupt_id:
             if "plan_execution_id" in next_context:
@@ -2484,6 +2532,11 @@ class RuntimeGatewayService:
         payload["metadata"] = {
             **ensure_dict(payload.get("metadata")),
             "platform_build": dict(STARTUP_MANIFEST),
+            **(
+                {"evaluation_target": evaluation_target}
+                if evaluation_target is not None
+                else {}
+            ),
         }
         payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
         payload.setdefault("version", "v3")
@@ -4097,6 +4150,7 @@ class RuntimeGatewayService:
         payload: dict[str, Any] | None,
         idempotency_key: str | None = None,
         scheduled_config: dict[str, Any] | None = None,
+        evaluation_target: dict[str, Any] | None = None,
     ) -> Any:
         raw = _normalize_payload(payload)
         if "command" in raw:
@@ -4122,6 +4176,7 @@ class RuntimeGatewayService:
                         "assistant_id": raw.get("assistant_id"),
                     },
                 },
+                evaluation_target=evaluation_target,
             )
             # Approval does not grant access to the resumed Run's private input/config.
             return {"thread_id": thread_id, "run_id": result["result"]["run_id"]}
@@ -4164,6 +4219,7 @@ class RuntimeGatewayService:
             command=command,
             upstream_payload=next_payload,
             idempotency_key=idempotency_key or str(uuid4()),
+            evaluation_target=evaluation_target,
         )
         return result
 
@@ -4216,6 +4272,7 @@ class RuntimeGatewayService:
         thread_id: str,
         payload: dict[str, Any],
         idempotency_key: str | None = None,
+        evaluation_target: dict[str, Any] | None = None,
     ) -> Any:
         thread = await self._load_thread(
             actor=actor,
@@ -4373,6 +4430,18 @@ class RuntimeGatewayService:
                 )
             source_run_id = previous.parent_run_id if previous else parent.run_id
             parent_run = await self._upstream.get_thread_run(thread_id, source_run_id)
+            parent_target = ensure_dict(parent_run.get("metadata")).get(
+                "evaluation_target"
+            )
+            if evaluation_target is not None and (
+                not isinstance(parent_target, dict)
+                or parent_target.get("config_hash")
+                != evaluation_target.get("config_hash")
+            ):
+                raise ConflictError(
+                    code="evaluation_target_changed",
+                    message="审批恢复必须沿用原评测目标。",
+                )
             if previous is None:
                 if (
                     not isinstance(parent_run, dict)
@@ -4455,6 +4524,7 @@ class RuntimeGatewayService:
                 parent_run_id=previous.parent_run_id if previous else parent.run_id,
                 interrupt_id=interrupt_id,
                 model_resilience_snapshot=resume_policy,
+                evaluation_target=parent_target,
             )
             for reply in plan_replies:
                 self._emit_correlation(

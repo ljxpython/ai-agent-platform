@@ -64,7 +64,7 @@ def test_maintenance_never_reads_assistant_content(
             },
         },
     )
-    if allowed:
+    if allowed and graph_id == "dearflow_agent":
         assert asyncio.run(
             platform.deny_image_scope_on_server_resources(ctx, value)
         ) == {"project_id": "p"}

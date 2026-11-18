@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 import pytest
-from test_evaluation_feedback import setup as _feedback_setup
+from evaluation_fixtures import setup as _feedback_setup
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import session_scope

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { AnyStream, AssembledToolCall } from "@langchain/vue";
 import type { ChatMessageMetadata } from "../branching";
@@ -7,8 +7,6 @@ import BaseIcon from "@/components/base/BaseIcon.vue";
 import MessageContent from "./MessageContent.vue";
 import ToolResult from "./ToolResult.vue";
 import FollowUpSuggestions from "./FollowUpSuggestions.vue";
-import MessageFeedback from "./MessageFeedback.vue";
-import { platformHttpClient } from "@/services/http/client";
 import {
   buildTranscript,
   type MessageItem,
@@ -25,12 +23,6 @@ import {
   isTracingEnabled,
 } from "@/services/observability/langfuse-url";
 import { env } from "@/config/env";
-const evaluationCapabilities = ref({
-  workbench: false,
-  feedback: false,
-  synthetic_export: false,
-  quality_inspection: false,
-});
 const props = defineProps<{
   messages: readonly BaseMessage[];
   calls: readonly AssembledToolCall[];
@@ -52,32 +44,6 @@ const props = defineProps<{
   followUpDisabled?: boolean;
   models?: Array<{ id: string; name?: string }>;
 }>();
-watch(
-  () => props.projectId,
-  async (projectId, _prior, onCleanup) => {
-    let cancelled = false;
-    onCleanup(() => {
-      cancelled = true;
-    });
-    evaluationCapabilities.value = {
-      workbench: false,
-      feedback: false,
-      synthetic_export: false,
-      quality_inspection: false,
-    };
-    if (!projectId) return;
-    try {
-      const { data } = await platformHttpClient.get(
-        "/api/evaluation/capabilities",
-        { headers: { "x-project-id": projectId } },
-      );
-      if (!cancelled) evaluationCapabilities.value = data;
-    } catch {
-      /* Optional feedback must not interrupt chat. */
-    }
-  },
-  { immediate: true },
-);
 const emit = defineEmits<{
   inspect: [tool: ToolItem];
   edit: [id: string, text: string];
@@ -496,23 +462,6 @@ function getMessageTraceUrl(entry: any): string {
           />
 
           <template v-else>
-            <MessageFeedback
-              v-if="
-                (evaluationCapabilities.feedback ||
-                  evaluationCapabilities.workbench) &&
-                displayEntry.author === 'agent' &&
-                displayEntry.messageId &&
-                projectId &&
-                threadId &&
-                !isRunning
-              "
-              :project-id="projectId"
-              :thread-id="threadId"
-              :message-id="displayEntry.messageId"
-              :allow-export="evaluationCapabilities.synthetic_export"
-              :allow-inspection="evaluationCapabilities.quality_inspection"
-              :allow-improvement="evaluationCapabilities.workbench"
-            />
             <div class="space-y-4">
               <details
                 v-if="displayEntry.work.length"

@@ -434,4 +434,15 @@ async def graph_capability(
         or facts.get("runtime_scope", {}).get("operation") == "usage-read"
     ):
         raise HTTPException(403, "graph scope denied")
-    return graph_capabilities(graph_id)
+    result = graph_capabilities(graph_id)
+    if graph_id == "dearflow_agent":
+        from runtime_service.observability.evaluation_target import capabilities
+
+        scope = facts["runtime_scope"]
+        result = {
+            **result,
+            "evaluation": await asyncio.to_thread(
+                capabilities, scope["tenant_id"], scope["project_id"]
+            ),
+        }
+    return result

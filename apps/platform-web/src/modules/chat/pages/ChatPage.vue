@@ -26,6 +26,7 @@ import {
 import BaseDialog from "@/components/base/BaseDialog.vue";
 import SendSessionMaterials from "@/modules/evaluation/components/SendSessionMaterials.vue";
 import PickSessionMaterials from "@/modules/evaluation/components/PickSessionMaterials.vue";
+import { useEvaluationCapabilities } from "@/modules/evaluation/useEvaluationCapabilities";
 import ThreadAccessControl from "@/modules/chat/components/ThreadAccessControl.vue";
 import ThreadActionsMenu from "@/modules/chat/components/ThreadActionsMenu.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
@@ -70,6 +71,15 @@ const auth = useAuthStore();
 const chatSessionStore = useChatSessionStore();
 const { activeProjectId, activeProject } = useWorkspaceProjectContext();
 const { can } = useAuthorization();
+const {
+  available: evaluationAvailable,
+  unavailableReason: evaluationUnavailableReason,
+} = useEvaluationCapabilities(activeProjectId);
+const canUseEvaluation = computed(
+  () =>
+    evaluationAvailable.value &&
+    can("project.evaluation.execute", activeProjectId.value),
+);
 const canWrite = computed(() =>
   can("project.runtime.execute", activeProjectId.value),
 );
@@ -81,6 +91,14 @@ const canTakeover = computed(
 const accessRevision = ref(0);
 const evaluationThreads = ref<string[]>([]);
 const pickEvaluationMaterials = ref(false);
+watch([activeProjectId, canUseEvaluation], () => {
+  evaluationThreads.value = [];
+  pickEvaluationMaterials.value = false;
+});
+function sendEvaluation(threadIds: string[]) {
+  if (canUseEvaluation.value && threadIds.length && threadIds.length <= 20)
+    evaluationThreads.value = threadIds;
+}
 type ChatTarget = {
   graphId: string;
   agentId?: string;
@@ -1090,11 +1108,12 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
               canWrite && threadCan(id, 'edit') && threadCan(id, 'comment')
           "
           :summarizing-thread-id="summarizingThreadId || ''"
+          :can-evaluation="canUseEvaluation"
           @start-new-thread="newThread"
           @select-thread="openThread"
           @delete-thread="requestDelete"
           @batch-delete="requestBatchDelete"
-          @send-evaluation="evaluationThreads = $event"
+          @send-evaluation="sendEvaluation"
           @rename-thread="handleRenameThread"
           @ai-summarize-title="handleAiSummarizeTitle"
           @collapse="sidebarCollapsed = true"
@@ -1172,17 +1191,14 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
                 :can-delete="
                   Boolean(selectedThread && threadCan(selectedThread, 'delete'))
                 "
-                :can-evaluation="
-                  Boolean(
-                    selectedThread &&
-                    can('project.evaluation.execute', activeProjectId),
-                  )
-                "
+                :can-evaluation="Boolean(selectedThread && canUseEvaluation)"
                 :can-pick-evaluation="
-                  Boolean(
-                    target?.agentId &&
-                    can('project.evaluation.execute', activeProjectId),
-                  )
+                  Boolean(target?.agentId && canUseEvaluation)
+                "
+                :evaluation-unavailable-reason="
+                  can('project.evaluation.execute', activeProjectId)
+                    ? evaluationUnavailableReason
+                    : ''
                 "
                 :offload-disabled="!sessionRef?.canOffload"
                 :offload-disabled-reason="
@@ -1207,7 +1223,7 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
                 @delete-thread="selectedThread && requestDelete(selectedThread)"
                 @offload-conversation="sessionRef?.offloadConversation()"
                 @send-evaluation="
-                  selectedThread && (evaluationThreads = [selectedThread])
+                  selectedThread && sendEvaluation([selectedThread])
                 "
                 @pick-evaluation="pickEvaluationMaterials = true"
               />

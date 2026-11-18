@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from test_evaluation_feedback import setup as _feedback_setup
+from evaluation_fixtures import setup as _feedback_setup
 
 from platform_api.core.db import session_scope
 from platform_api.core.errors import ForbiddenError

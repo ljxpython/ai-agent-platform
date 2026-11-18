@@ -33,6 +33,47 @@ from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
 
 
 class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
+    async def test_evaluation_resume_keeps_frozen_target_and_revalidates_it(self):
+        target = {
+            "agent": {"id": "agent-id", "graph_id": "agent-1"},
+            "context": {
+                "model_id": "model-1",
+                "temperature": 0.0,
+                "max_tokens": 4096,
+                "top_p": 1.0,
+                "execution_mode": "standard",
+            },
+            "config_hash": "frozen",
+        }
+        self.service._load_thread.return_value["metadata"]["agent_id"] = "agent-id"
+        with patch(
+            "platform_api.modules.evaluation.targets.validate_target",
+            new_callable=AsyncMock,
+        ) as validate:
+            await self.service.create_thread_run(
+                actor=self.actor,
+                project_id="project-1",
+                thread_id="thread-1",
+                payload={"assistant_id": "agent-1", "context": target["context"]},
+                idempotency_key="evaluation",
+                evaluation_target=target,
+            )
+            self.upstream.get_thread_run.return_value = {
+                "run_id": "run-1",
+                "status": "interrupted",
+                "metadata": {"evaluation_target": target},
+            }
+            self.upstream.create_thread_run.return_value = {"run_id": "run-2"}
+            await self.service.create_thread_run(
+                actor=self.actor,
+                project_id="project-1",
+                thread_id="thread-1",
+                payload={"command": {"resume": {"interrupt-1": True}}},
+            )
+            sent = self.upstream.create_thread_run.call_args.args[1]
+            self.assertEqual(sent["metadata"]["evaluation_target"], target)
+            self.assertEqual(validate.await_count, 2)
+
     async def test_correlation_tracks_reuse_unknown_and_observer_failure(self):
         events = []
         self.service._on_correlation = lambda event, fields: events.append(

@@ -233,6 +233,9 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
         startup.authorize(config, facts)
         with startup.phase("factory.context_resolution"):
+            from runtime_service.observability.evaluation_target import assert_target
+
+            await asyncio.to_thread(assert_target, config, facts)
             context = parse_runtime_context(config.get("context"))
             if context.offload_conversation and not context_management_enabled():
                 raise RuntimeAuthError("runtime.context.offload_disabled")

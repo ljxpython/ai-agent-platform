@@ -151,7 +151,7 @@ async def deny_image_scope_on_server_resources(
         permitted = (
             _user_value(ctx.user, "role") == "platform_maintenance"
             and isinstance(scope, dict)
-            and scope.get("assistant_id") in {"evaluation_assistant", "dearflow_agent"}
+            and scope.get("assistant_id") == "dearflow_agent"
             and str(ctx.resource) == "threads"
             and str(value.get("thread_id")) == scope.get("thread_id")
             and (

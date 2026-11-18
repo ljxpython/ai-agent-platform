@@ -22,6 +22,7 @@ const props = defineProps<{
   threadCount: number;
   filteredCount: number;
   canStartThread: boolean;
+  canEvaluation?: boolean;
   activeThreadId: string;
   deletingThreadId: string;
   groups: ChatThreadSummaryGroup[];
@@ -518,9 +519,13 @@ function jumpToPage() {
           删除 ({{ selectedThreadIds.length }})
         </button>
         <button
+          v-if="canEvaluation"
           type="button"
           class="px-2 py-1 text-xs rounded border border-gray-200 disabled:opacity-40"
-          :disabled="selectedThreadIds.length === 0"
+          :disabled="
+            selectedThreadIds.length === 0 || selectedThreadIds.length > 20
+          "
+          title="最多选择20个会话转为评测集"
           @click="emit('send-evaluation', [...selectedThreadIds])"
         >
           转为评测集

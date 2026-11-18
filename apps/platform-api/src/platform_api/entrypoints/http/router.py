@@ -8,9 +8,6 @@ from platform_api.entrypoints.http.system import router as system_router
 from platform_api.modules.agents.presentation import router as assistants_router
 from platform_api.modules.announcements.router import router as announcements_router
 from platform_api.modules.audit.router import router as audit_router
-from platform_api.modules.evaluation.assistant_bridge import (
-    router as evaluation_assistant_router,
-)
 from platform_api.modules.evaluation.materials import (
     router as evaluation_materials_router,
 )
@@ -73,7 +70,6 @@ api_router.include_router(announcements_router)
 api_router.include_router(evaluation_router)
 api_router.include_router(evaluation_workbench_router)
 api_router.include_router(evaluation_materials_router)
-api_router.include_router(evaluation_assistant_router)
 api_router.include_router(assistants_router)
 api_router.include_router(audit_router)
 api_router.include_router(runtime_catalog_router)

@@ -70,6 +70,15 @@ def record_execution(config, resolved, facts, graph_id, workspace=None):
                             "runtime": STARTUP_MANIFEST,
                             "platform": metadata.get("platform_build"),
                             "configuration": runtime_config_snapshot(resolved),
+                            **(
+                                {
+                                    "evaluation_target_hash": metadata[
+                                        "evaluation_target"
+                                    ]["config_hash"]
+                                }
+                                if metadata.get("evaluation_target")
+                                else {}
+                            ),
                             **({"environment": environment} if environment else {}),
                         }
                     ),

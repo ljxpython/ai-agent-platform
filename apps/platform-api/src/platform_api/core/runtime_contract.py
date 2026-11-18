@@ -65,6 +65,7 @@ PROTOCOL_V2_EVENT_CHANNELS = {
 PROTOCOL_V2_RUN_DURABILITY = {"sync", "async", "exit"}
 PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
 PRIVATE_RUNTIME_STATE_KEYS = {
+    "evaluation_target",
     "runtime_resource_bindings",
     "__graphharbor_thread_metadata",
     "runtime_plan",

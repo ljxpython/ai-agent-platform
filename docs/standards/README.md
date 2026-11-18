@@ -27,6 +27,8 @@
 
 ## 更新规则
 
+2026-11-18评测独立部署复用原Runtime read/run-create、停止及恢复委托；新增目标快照和绑定运行接口，`evaluation_target`仅由服务端验证后注入，未新增JWT operation或SSE事件。准确契约在[网关标准](../../apps/platform-api/docs/standards/runtime-gateway-interface-standard.md#评测专用目标绑定2026-11-18)，真实跨机与资产到期结果见[09专题](../projects/20261113-agent-eval-production-flywheel/09-independent-deployment.md)。原JWT/SSE草案不因本专题完成而自动毕业。
+
 2026-10-07 补充已批准的 Context v5、受控维护与整理 custom 契约，证据见 [上下文专项](../projects/20261006-agent-context-window-governance/verification.md)。此补充不代表上面原专项的剩余门禁通过。
 
 2026-10-09 补充已批准且完成非前端验证的 F01 Token 精确错误码、三类 custom 和 Run Usage 可选摘要，证据见 [F01](../projects/20260913-dearflow-agent/15-token-budget-governance.md)。前端及联合 Final 待接续，SSE/JWT 原草案状态不毕业。
