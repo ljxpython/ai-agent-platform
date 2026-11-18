@@ -11,6 +11,7 @@
   <img src="https://img.shields.io/badge/Vue-3%20管理控制台-42B883" alt="Vue 3" />
   <img src="https://img.shields.io/badge/LightRAG-原生知识中台-059669" alt="LightRAG" />
   <img src="https://img.shields.io/badge/MLflow-原生链路追踪-0284C7" alt="MLflow" />
+  <img src="https://img.shields.io/badge/EvalFlow-持续评测飞轮-8B5CF6" alt="EvalFlow" />
   <img src="https://img.shields.io/badge/Docker-流式沙箱-2563EB" alt="Docker Sandbox" />
   <img src="https://img.shields.io/badge/HITL-人机协同审批-DC2626" alt="HITL" />
   <a href="https://www.bilibili.com/video/BV1hFW36LEDv/" target="_blank"><img src="https://img.shields.io/badge/Bilibili-哔哩哔哩实测-00A1D6?logo=bilibili&logoColor=white" alt="Bilibili Demo" /></a>
@@ -50,15 +51,16 @@
 
 ## 系统总览
 
-整个系统由五大核心支柱体系分层构建，各司其职：
+整个系统由六大核心支柱体系分层构建，各司其职：
 
 | 服务 / 子系统 | 目录 | 职责定位 | 核心技术栈 |
 |---|---|---|---|
 | **Platform API** | `apps/platform-api` | **控制面核心**：认证鉴权、双层 RBAC、项目隔离、审计日志、模型 Catalog 治理、PII 脱敏网关、Token 聚合读模型、60s 委托反向代理 | FastAPI + SQLAlchemy + PostgreSQL |
-| **Platform Web** | `apps/platform-web` | **工业级管理控制台**：工作区总览四联看板、无界流式对话、沉浸式沙箱 Workspace、Canvas 图谱工坊、就地排障诊断中心 | Vue 3 + Vite + Tailwind CSS + Pinia |
+| **Platform Web** | `apps/platform-web` | **工业级管理控制台**：工作区总览四联看板、无界流式对话、沉浸式沙箱 Workspace、Canvas 图谱工坊、就地排障诊断中心、全新 AI 网关时序大盘 | Vue 3 + Vite + Tailwind CSS + Pinia + ECharts |
 | **Runtime Service** | `apps/runtime-service` | **Agent 执行引擎**：LangGraph 图注册、工具与 MCP 装配、会话调度、六大防爆中间件、SSE 事件流保活推送 | Python 3.11+ + LangGraph + GraphHarbor + Redis |
 | **Native Knowledge Studio** | 跨服务原生集成 | **原生知识中台**：多模态文档解析、Graph Studio 2.0 Canvas 力导向图谱工坊、单向免隧道 Scoped HMAC 鉴权、只读知识检索 MCP | LightRAG + Canvas 2.0 + PostgreSQL |
-| **Unified Observability** | `deploy/observability` + 全栈 | **全链路可观测中心**：W3C traceparent 跨微服务穿透、**MLflow / EvalFlow 原生链路追踪（支持热切）**、Loki TSDB 毫秒日志穿透、Prometheus + Grafana Kiosk 大盘 | MLflow + Langfuse + Loki + Prometheus + Grafana |
+| **Unified Observability** | `deploy/observability` + 全栈 | **全链路可观测中心**：W3C traceparent 跨微服务穿透、**MLflow / EvalFlow 原生链路追踪（支持热切）**、Loki TSDB 毫秒日志穿透、Prometheus + Grafana Kiosk 大盘、AI 网关指标聚合 | MLflow + Langfuse + Loki + Prometheus + Grafana + ECharts |
+| **Continuous Evaluation Flywheel** | 跨服务协同 + 外部 EvalFlow | **持续评测飞轮**：真实业务会话一键转评测集、FastAPI BackgroundTasks 异步 202 与通知中心直达闭环、AI 辅助出题/修订/扩题、独立题库版本化发布与全链路裁判诊断 | EvalFlow + MLflow + BackgroundTasks + PII Sanitizer |
 
 <a id="architecture-diagrams"></a>
 
@@ -123,6 +125,10 @@
   - 沙箱文件归档淘汰 Base64 JSON 全内存缓冲，采用 `ZIP_STORED` 零内存流式连接池直出传输，9.4MB 产物归档耗时从 21.5s 压降至 0.36s（提速 98.3%）。
 - ⏳ **会话与运行时数据生命周期治理 (Retention Governance)**：
   - 支持 30 天闲置/查看发送自动续期与通用 TTL；会话物理回收时级联清理绑定的 Workspace 沙箱目录与临时状态，杜绝磁盘堆积。
+- ⚡ **长耗时任务异步非阻塞化与通知直达 (BackgroundTasks & Notification Center)**：
+  - 业务会话转评测集等长耗时操作彻底切除前端 30 秒超时报错（`timeout of 30000ms exceeded`）；重构为 FastAPI BackgroundTasks 异步非阻塞调度，0.3s 极速响应 202 Accepted 并平滑关闭弹窗，任务完成后通过平台全局通知中心（🔔）推送一键直达卡片。
+- 🔄 **会话状态机收敛与交互防倒挂 (State Machine & Anti-Replay)**：
+  - 彻底消除会话 Stop 取消后乐观消息幽灵残留导致的跨回合时序颠倒，规范为草稿安全回填；万帧 SSE 历史事件全量回放（Replay Immunity）收敛过渡态，杜绝已结束会话误触发“正在整理上下文”；侧边栏三段式工业级排版与并发度 3 纯前端批量删除队列。
 
 ---
 
@@ -130,9 +136,7 @@
 
 ## 内置智能体生态与技能矩阵
 
-新增 [平台助手后端与前端交接](docs/projects/20261116-platform-assistant/README.md)：单create_agent支持获准SQL、诊断、日志、文档和对话；无助手执行沙箱。后端已完成本地技术验证，前端页面及人工验收待接续，未部署生产。
-
-仓库内置了两套具有不同使命的智能体示例，兼顾了快速上手学习与极端复杂场景落地：
+仓库内置了三套具有不同使命的智能体示例，兼顾了教学上手、复杂工程任务与平台自动化运维排障：
 
 ### 1. 教学入门智能体：`showcase_demo`
 - **定位**：初学者了解平台机制的最小样板间。
@@ -153,7 +157,16 @@
   - 🛡️ **安全沙箱隔离工作区**：本地隔离沙箱与 Docker 容器沙箱双模式，原生支持文件树浏览、代码高亮预览与成果 Smart Zip 流式下载。
   - 💻 **交互式终端 (PTY)**：基于 xterm 的真实终端会话，支持命令审计、防越权拦截、终端划词一键入 Chat 与多终端保活。
 
-### 3. 企业级 20+ Skills 矩阵
+### 3. 平台内置运维与排障智能体：`Platform Assistant` (平台助手)
+- **定位**：面向平台治理、业务排障与系统知识问答的原生内置助手。
+- **源码位置**：`apps/platform-web/src/modules/platform-assistant/` 与 `apps/platform-api/src/platform_api/services/assistant/`
+- **设计范式与核心能力**：
+  - 🔍 **跨项目与全链路排障**：基于单一 `create_agent` 原生架构，专职负责平台运行指标诊断、受管只读 SQL 查询、跨微服务 Trace 与结构化日志穿透排障。
+  - 📚 **系统知识库与使用指南即时检索**：内置动态使用指南检索能力，按用户所处界面上下文精准召回操作规范并标注权威来源。
+  - 🎨 **Clean Architecture 交互革新**：前端落地整洁架构，提供全局浮动唤起抽屉、`BaseDrawer` 拖拽无级拉伸（580px ⇄ 960px）、一键宽屏、实时错误胶囊（Context Pill）、免手写理由专职审批卡（仅执行/不执行）与证据穿透二级抽屉。
+  - 🔒 **严格安全边界与脱敏审计**：无沙箱安全隔离设计，执行严格的租户/项目 ACL 反查与敏感字段脱敏审计，严防越权数据渗透。
+
+### 4. 企业级 20+ Skills 矩阵
 已全量完成对齐与触发验证的生产级技能矩阵，开箱即用：
 
 | 领域分类 | 核心 Skills | 能力说明 |
@@ -231,21 +244,45 @@
 
 ---
 
-### 4. 分布式链路排障中心 (Trace & Logs DevTools)
+### 4. 全新 AI 网关使用看板与时序大盘 (AI Gateway Usage Dashboard)
+对标 `mlflow-eval-platform` 工业级监控大盘，基于 Vue 3 + ECharts 原生重构，全面适配深浅双主题：
+- **黄金三要素看板**：实时吞吐量面积图、P50/P90/P99 延迟分位数折线、错误率与精准成本核算。
+- **时序智能推导与防爆**：自适应聚合时间桶（1m/5m/1h/1d），支持 Token 堆叠、Prompt Caching 命中率与 Tokens per Request 均值走势。
+- **毫秒级穿透闭环**：图表 Tooltip 悬停下钻直接直达 Logs 标签页，并一键调起底层 Trace 链路抽屉，彻底打通宏观监控到微观排障闭环。
+
+---
+
+### 5. 分布式链路排障中心 (Trace & Logs DevTools)
 对标大厂体验，基于 W3C `traceparent` 标准，输入全局 Trace ID 即可一键穿透跨微服务毫秒级对齐的上下文日志流与耗时瀑布，支持 **MLflow / EvalFlow 原生全景追踪树** 与 Langfuse 双轨秒级直达：
 
 ![分布式链路排障中心](docs/assets/ui-observability-trace.png)
 
 ---
 
-### 5. 平台与项目级 Token 用量看板 (Token Dashboard)
+### 6. 平台内置助手全局排障抽屉 (Platform Assistant)
+基于 Clean Architecture 解耦架构打造，全局浮动常驻随时唤起：
+- **无级拖拽与一键宽屏**：BaseDrawer 支持自由拖拽拉伸（580px ⇄ 960px）与宽度持久化，支持一键切换宽屏排障视野。
+- **错误现场上下文胶囊 (Context Pill)**：当业务会话报错时自动生成错误上下文芯片，一键点击带入助手即刻分析。
+- **专职审批与证据穿透**：免手写理由的极简二选一审批卡（仅执行/不执行），搭配证据二级抽屉，诊断过程全透明。
+
+---
+
+### 7. 持续评测飞轮与题库工作台 (Continuous Evaluation Flywheel)
+将生产运行与质量评测深度咬合的工业级工程飞轮：
+- **业务会话一键转用例**：在日常对话中一键点击“转为评测集”，后台异步抓取与敏感信息精准脱敏，秒级响应 202 并全局通知闭环。
+- **AI 辅助出题与多分支扩展**：与 AI 协同修订题目、设定复杂分支用例与多维度裁判指标。
+- **版本化独立题库与跨机运行**：题库独立资产化管理，支持多环境 Agent 连接绑定与隔离执行，提供全链路 Session / Trace / 裁判诊断报告。
+
+---
+
+### 8. 平台与项目级 Token 用量看板 (Token Dashboard)
 支持多时区按日切片、输入输出 Tokens 堆叠、缓存读命中统计与原文字符串级 12 位高精度成本核算，可按模型、Agent、项目下钻分析：
 
 ![Token 用量与成本分析看板](docs/assets/ui-token-dashboard.png)
 
 ---
 
-### 6. 全局模型连接与 Catalog 治理 (Model Management)
+### 9. 全局模型连接与 Catalog 治理 (Model Management)
 统一治理全平台与项目共用的模型连接、端点防重、凭据隔离与 BYOK（自带密钥）资产库，支持 OpenAI、Claude、DeepSeek、Qwen、Doubao 等多 Provider 动态接入与无感热切换：
 
 ![全局模型连接管理](docs/assets/ui-model-management.png)
@@ -361,15 +398,18 @@ ai-agent-platform/
 
 ## 当前状态与工程基线
 
-- **生产环境运行状态**：核心全栈（Platform Web、Platform API、Runtime API、Runtime Worker）已稳定部署在生产主机（`sshmy1`），基于 Native Systemd 守护集群热重启运行，Nginx 反代流式超时调优至 600s，PostgreSQL 每日定时轮转冷备份。
+- **生产环境运行状态**：核心全栈（Platform Web、Platform API、Runtime API、Runtime Worker）已稳定部署在生产主机（`sshmy1`），基于 Native Systemd 守护集群热重启运行，Nginx 反代流式超时调优至 600s，PostgreSQL 每日定时轮转冷备份；已完成 EvalFlow 评测连接升级与多环境安全隔离配置。
 - **全栈特性已交付闭环**：
+  - **持续评测飞轮**：Agent 与 EvalFlow 独立解耦部署，生产业务会话一键异步转评测集，AI 出题/修订/扩题、独立题库版本化发布、跨环境受信连接绑定与全链路裁判诊断全栈上线。
+  - **平台内置助手**：基于单 `create_agent` 与 Clean Architecture 解耦架构落地，全局常驻抽屉、580px ⇄ 960px 无级拉伸、错误现场胶囊注入、受管只读 SQL 与跨项目 Trace/日志穿透排障。
+  - **全新 AI 网关大盘**：ECharts 原生重构网关时序大盘，黄金三要素、Token 堆叠、Prompt Cache 命中率分析与图表毫秒级穿透下钻 Logs/Trace 闭环。
   - **全链路可观测体系**：MLflow / EvalFlow 原生链路追踪与会话评测适配全栈上线，支持环境变量热切换，多租户项目物理隔离；Prometheus + Grafana Kiosk 大盘内嵌；Loki TSDB 毫秒日志与 W3C `traceparent` 全链路对齐。
   - **原生知识中台**：LightRAG 体系原生集成，Canvas 2.0 力导向图谱工坊、智能问答 Studio、多模态文档解析状态透出与 Scoped HMAC 免隧道单向自治已全量通过实测。
-  - **控制面与治理**：双层 RBAC、项目隔离、PII 脱敏、Token 看板可重建聚合读模型全量实装。
-  - **智能体运行时韧性**：六大防爆中间件（溢出落盘、虚拟折叠、50行截断、预算软停机、调研刹车、弹性 MCP）全部投入生产。
+  - **控制面与治理**：双层 RBAC、项目隔离、PII 脱敏、Token 看板可重建聚合读模型、会话与运行时数据 30 天生命周期（TTL）自动清理全量实装。
+  - **智能体运行时韧性**：防爆中间件（溢出落盘、虚拟折叠、50行截断、预算软停机、调研刹车、弹性 MCP）全部投入生产。
 - **代码质量与门禁总检**：
   - **Python 后端全仓**：Ruff 100% 格式化清零（0 errors），保持端到端可执行契约回归全绿。
-  - **前端 Platform Web**：全仓 161 套测试套件、979+ 项 Vitest 单元测试全部通过（100% pass），`vue-tsc` 0 错误，ESLint 0 错误，生产构建一次性成功。
+  - **前端 Platform Web**：全仓 180 套测试套件、1070+ 项 Vitest 单元测试全部覆盖（1068+ pass），`vue-tsc` 0 错误，ESLint 0 错误，生产构建一次性成功。
 
 ---
 

@@ -9,6 +9,7 @@
   <img src="https://img.shields.io/badge/GraphHarbor-State%20Persistence-F59E0B" alt="GraphHarbor" />
   <img src="https://img.shields.io/badge/FastAPI-Platform%20API-009688" alt="FastAPI" />
   <img src="https://img.shields.io/badge/Vue-3%20Console-42B883" alt="Vue 3 Console" />
+  <img src="https://img.shields.io/badge/EvalFlow-Continuous%20Evaluation-8B5CF6" alt="EvalFlow" />
   <img src="https://img.shields.io/badge/MCP-Tool%20Extension-7C3AED" alt="MCP Tool Extension" />
   <img src="https://img.shields.io/badge/Skills-Agent%20Skills-0F766E" alt="Skills" />
   <img src="https://img.shields.io/badge/Memory-Memory%20Loop-2563EB" alt="Memory" />
@@ -47,11 +48,16 @@ This project delivers an **enterprise-ready engineering foundation built for sec
 
 ## System Overview
 
-| Service | Directory | Responsibilities | Core Stack |
+The platform is structured across six core pillars:
+
+| Service / System | Directory | Responsibilities | Core Stack |
 |---|---|---|---|
-| **Platform API** | `apps/platform-api` | **Control Plane**: Auth, project isolation, audit logs, model catalog, managed contract gateway | FastAPI + SQLAlchemy + PostgreSQL |
-| **Platform Web** | `apps/platform-web` | **Console UI**: Workspace layout, agent chat stream, access controls, multi-turn rendering | Vue 3 + Vite + Tailwind CSS + Pinia |
-| **Runtime Service** | `apps/runtime-service` | **Agent Runtime**: LangGraph graph registry, tool & MCP binding, session dispatch, SSE streaming | Python 3.11+ + LangGraph + GraphHarbor + Redis |
+| **Platform API** | `apps/platform-api` | **Control Plane**: Auth, RBAC, project isolation, audit logs, model catalog, PII sanitizer, Token read models, 60s delegation proxy | FastAPI + SQLAlchemy + PostgreSQL |
+| **Platform Web** | `apps/platform-web` | **Console UI**: Workspace overview, fluid agent chat stream, sandbox workspace, Canvas graph studio, diagnostic drawer, AI Gateway dashboard | Vue 3 + Vite + Tailwind CSS + Pinia + ECharts |
+| **Runtime Service** | `apps/runtime-service` | **Agent Runtime**: LangGraph graph registry, tool & MCP binding, session dispatch, six resilience middlewares, SSE keep-alive stream | Python 3.11+ + LangGraph + GraphHarbor + Redis |
+| **Native Knowledge Studio** | Cross-service native | **Native Knowledge Studio**: Multimodal doc parsing, Canvas 2.0 force-directed graph, zero-tunnel Scoped HMAC auth, read-only search MCP | LightRAG + Canvas 2.0 + PostgreSQL |
+| **Unified Observability** | `deploy/observability` + Fullstack | **Observability Center**: W3C traceparent distributed tracing, native MLflow / EvalFlow tracing, Loki TSDB log drill-down, Prometheus + Grafana | MLflow + Langfuse + Loki + Prometheus + Grafana + ECharts |
+| **Continuous Evaluation Flywheel** | Cross-service + EvalFlow | **Continuous Evaluation Flywheel**: One-click session-to-eval dataset export, FastAPI BackgroundTasks async 202 flow, notification center integration, AI testcase authoring & benchmark runs | EvalFlow + MLflow + BackgroundTasks + PII Sanitizer |
 
 ---
 
@@ -123,6 +129,14 @@ To demonstrate the platform's production capability, architectural depth, and in
   - 💻 **Interactive PTY Terminal**: Real xterm terminal sessions, command auditing, and permission guards.
   - 🧰 **Production Skill Matrix**: Comprehensive tool suite for code analysis, search, and operations.
 
+### 3. Built-in Diagnostic & Governance Agent: `Platform Assistant`
+- **Location**: `apps/platform-web/src/modules/platform-assistant/` & `apps/platform-api/src/platform_api/services/assistant/`
+- **Key Capabilities**:
+  - 🔍 **Cross-Project Troubleshooting**: Built on a clean `create_agent` architecture for managed read-only SQL diagnostics, error log extraction, and cross-service W3C trace correlation.
+  - 📚 **Contextual Documentation Retrieval**: Instant semantic retrieval of platform runbooks and guides directly mapped to the user's current UI context.
+  - 🎨 **Clean Architecture Frontend**: Global floating drawer, stepless resize (`BaseDrawer` 580px ⇄ 960px), one-click widescreen, real-time error context pill, and secondary evidence drill-down drawer.
+  - 🔒 **Zero Sandbox & Strict ACL**: Hardened security boundaries with project ACL reverse-lookup and PII sanitization.
+
 ---
 
 <a id="secondary-development"></a>
@@ -164,11 +178,17 @@ bash "scripts/local-stack.sh" stop
 
 ## Current Status & Engineering Baseline
 
-- **Current Official Release**: `v0.5.0` (See [CHANGELOG.md](docs/CHANGELOG.md))
+- **Production Deployment**: Core fullstack (Platform Web, Platform API, Runtime API, Runtime Worker) running on production host (`sshmy1`) via Native Systemd with 600s SSE streaming proxy timeout and daily automated PostgreSQL cold backups.
+- **Enterprise Features Delivered**:
+  - **Continuous Evaluation Flywheel**: Decoupled EvalFlow architecture, one-click session-to-eval dataset export with async BackgroundTasks 202, AI testcase authoring, independent dataset versioning, and full benchmark diagnosis.
+  - **Built-in Platform Assistant**: Built on clean `create_agent` architecture with stepless resize drawer (580px ⇄ 960px), contextual error pill injection, managed read-only SQL diagnostics, and W3C trace correlation.
+  - **AI Gateway Usage Dashboard**: Vue 3 + ECharts rewrite featuring Golden Signals, token distribution, prompt caching hit-rates, and millisecond drill-down to Logs & Traces.
+  - **Unified Observability**: W3C `traceparent` propagation, native MLflow / EvalFlow hot-switchable tracing, Loki TSDB log correlation, and Prometheus + Grafana Kiosk dashboards.
+  - **Native Knowledge Studio**: LightRAG architecture, Canvas 2.0 graph workshop, and zero-tunnel Scoped HMAC auth.
+  - **Data Retention & Lifecycle**: Automated 30-day idle renewal, GraphHarbor post48 TTL, and cascaded workspace sandbox cleanup.
 - **Quality & CI Gates**:
-  - Python: 570+ files formatted with Ruff and zero diagnostic errors (0 errors)
-  - Frontend: Full Vitest test suites passing for chat session state machines
-  - Backend: End-to-end executable contracts verified
+  - Python Backend: Ruff 100% formatted (0 errors), end-to-end executable contracts verified.
+  - Frontend Platform Web: 180 test suites, 1070+ Vitest tests covered (1068+ passed), `vue-tsc` 0 errors, ESLint 0 errors, production build verified.
 
 <a id="acknowledgements"></a>
 
