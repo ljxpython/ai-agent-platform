@@ -1,22 +1,22 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-19（全面修复 GitHub Actions CI 全部流水线暗雷：重构文档体系并转换为相对路径，使 docs 检查 100% 通过；校准 platform-api 路由矩阵断言、私有脱敏白名单与线程元数据增量契约，根除 7 个历史遗留单测失败；提取助手鉴权 lambda 彻底消除 ruff 格式化歧义，CI 四大 Job [code-quality, docs, platform-web, platform-api] 彻底达成 All Green 状态）
+> **最后更新：** 2026-11-19（全面修复 GitHub Actions CI 全部流水线暗雷：重构文档体系并转换为相对路径，使 docs 检查 100% 通过；校准 platform-api 路由矩阵断言、私有脱敏白名单与线程元数据增量契约，根除 7 个历史遗留单测失败；提取助手鉴权 lambda 彻底消除 ruff 格式化歧义，CI 四大 Job [code-quality, docs, platform-web, platform-api] 彻底达成 All Green 状态）；通用出题治理Task1–5done，合并版689项及全链路Final通过，EvalFlow main已推送并同步镜像，所属Worktree/服务/10个SQLite库已回收，未重启生产部署
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-## 活跃治理项目：通用 Agent 评测集转化与出题治理（2026-11-19）
+## 已完成：通用 Agent 评测集转化与出题治理（2026-11-19，未部署）
 
 用户已确认两步推进及职责边界修订：第一步清理通用提示词与 Schema 描述污染，补非退款/真实退款正例回归；第二步在 EvalFlow 解耦通用出题、已有回答评分和按需新运行。能力信息为可选出题参考，不要求来源 Agent 在线、具备完整工具清单或已支持重新执行；文件类和纯文本类素材均应能独立成库。详见[项目入口](projects/20261119-universal-agent-eval-authoring-governance/README.md)。
 
 | 服务 | 当前状态（2026-11-19） |
 |---|---|
-| eval_platform (mlflow-eval-platform) | 远端Worktree已实现提示词去污染、历史评分与新运行解耦；独立环境及进程修复测试通过，阶段100/156项通过，真实模型/发布/回退待验 |
-| platform-api / runtime-service | 已识别重新执行路径的名称限制和能力列表局限，资料交付主路径未直接调用目标快照；先核对实际接口缺口，不预设两个服务必改或新增非文件型执行接入 |
+| eval_platform (mlflow-eval-platform) | 批准范围Task1–5done；实现50c2d26、普通合并0291419保留10d400a，main9373c1e已推送并同步Mac。合并回归689项及两类真实模型出题/修订/委托AI采纳/发布/历史评分、混合缺证据和新运行Final通过，21 Span完整；原固定十题AI质量10/10保留。所属服务/Worktree/登记和10个SQLite库已回收，共享生产库保留，未重启生产部署 |
+| platform-api / runtime-service | 现有交付、evaluation-target/v1、绑定及Worker回执接口足够，本轮未改产品代码。用户批准后将Platform预算一行revision0→2并原生签名同步，Runtime=2、synced_revision=2、last_error=null，空策略保持；新任务passed，1 Session/1 Run/1 Trace及目标一致，生产进程未变 |
 
-保留 Task 1–4。Task 3.3 的接口核查为必做，跨仓执行接入改为需求与范围获准后启动的条件分支，不再阻塞核心出题验收，也不冒记为已实现。用户已批准完整开发验证、所属测试服务操作和合成/脱敏真实模型调用，允许复用生产数据库；未授权Git交付或生产部署。当前修改仅在sshmy1远端Worktree，生产主服务未重启；“历史单测倒灌”的因果尚未核实。
+实施准备及Task1–5均done，唯一进度见项目tasks.md。合并后原资产/旧版、管理员200与匿名401已再验，历史评分来源无重跑；新任务bbd5de5b passed，1 Session/1 Run/1 Trace、21 Span完整，ConversationalGEval=1.0。用户委托AI复核采纳，非独立人审；原12批及失败保留，第10/11/12批为9/10、8/10、10/10，不外推任意Agent。369份原证据核对后归档至主仓私有deliveries目录，5011/9138与45011均已停，生产四服务身份/NRestarts不变、5000健康200。获准经验同步原经验库，其他Worktree和Mac原有演示脚本不变。未重跑完整浏览器交互、独立盲评或大规模压测；生产未为新版重启，“历史单测倒灌”因果仍未核实。
 
 2026-11-13 Git交付：用户追加授权将EvalFlow主环境适配及中文/品牌修复提交并推送远端；本仓同步对应的项目状态与验收文档，无Agent服务代码改动。生产部署未授权，A04沙箱准入阻塞保留；最终提交与远端状态以Git记录为准。
 

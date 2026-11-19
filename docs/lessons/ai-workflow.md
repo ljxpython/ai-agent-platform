@@ -66,6 +66,8 @@
 - **正确：** 共享 uv cache / pnpm store，各服务、各 Worktree 按自己的锁文件独立安装，并核验应用实际导入路径；具体规则见 [Worktree 开发规范](../standards/worktree-development.md)
 - **日期：** 2026-10-10（用户批准）
 
+2026-11-19 用户确认补充：EvalFlow 现场再次核实生产 editable 指向主仓；Worktree独立安装后逐项检查应用 import 路径，uv缓存可共享，安装目录不能因此共用。见[本次环境证据](../projects/20261119-universal-agent-eval-authoring-governance/implementation/01-remote-implementation-and-validation.md#开发环境及影响范围)。评测源码冻结及共享预算版本经验维护在关联EvalFlow仓 `docs/lessons/eval-architecture.md`，不重复维护。
+
 ---
 
 ## [坑] HTTP 健康检查不能证明 Worker 隔离
