@@ -4,7 +4,7 @@
 
 ## 1. 本地环境
 
-Worktree：`/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform-gateway-budget`，分支 `feat/gateway-budget-and-governance`；环境 `wt_1c4f0f7fb905`。Web `http://127.0.0.1:24824`、Platform API `http://127.0.0.1:26911`、Runtime `http://127.0.0.1:24254`。端口只对应本环境，以 `.local-stack/environment.json` 和 `local-stack.sh status` 为当前事实。
+Worktree：`/Users/<name>/PyCharmMiscProject/ai-agent-platform-gateway-budget`，分支 `feat/gateway-budget-and-governance`；环境 `wt_1c4f0f7fb905`。Web `http://127.0.0.1:24824`、Platform API `http://127.0.0.1:26911`、Runtime `http://127.0.0.1:24254`。端口只对应本环境，以 `.local-stack/environment.json` 和 `local-stack.sh status` 为当前事实。
 
 数据库和 Redis / Workspace / 依赖均独立；不使用主工作区的 `.venv` 或 `node_modules`。私有配置、凭据和运行日志位于 `.local-stack/`，不要复制进交接、Git 或截图。
 

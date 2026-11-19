@@ -2,7 +2,7 @@
 
 > **模块定位与核心价值**：建立企业的**高精度算力成本核算、AI 网关指标聚合与大容量时序读模型体系**。
 > 彻底攻克在海量调用下实时 `GROUP BY` 扫爆数据库连接池与引发 504 慢查询超时的“B01 容量瓶颈”；基于 **CQRS 读写分离与可重建聚合投影（Rebuildable Projection Read Model）**，实现跨项目与单项目双级看板毫秒级直出；支持 1m/5m/1h/1d 多分辨率时序分析、P50/P90/P99 分位延迟度量、HTTP 状态码分布、12 位高精度金额对账，以及**治理层汇总权限与用户内容访问权限的严格安全解耦**。
-> 本篇作为控制面后端核心模块剖析，承接 [02-cross-cutting/04-trace-and-observability.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/04-trace-and-observability.md) 的可观测追踪体系，为系统提供端到端的财务成本核算与网关运维大盘。
+> 本篇作为控制面后端核心模块剖析，承接 [02-cross-cutting/04-trace-and-observability.md](../02-cross-cutting/04-trace-and-observability.md) 的可观测追踪体系，为系统提供端到端的财务成本核算与网关运维大盘。
 
 ---
 
@@ -92,15 +92,15 @@ flowchart TD
 
 | 模块职责 | 核心代码绝对路径 | 关键类 / 函数 / 契约 |
 |---|---|---|
-| **用量分析路由与限流切面** | [router.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/router.py) | `router`, `get_usage_service`, `asyncio.Semaphore(2)`, `parse_query` |
-| **核心用量分析与权限解耦服务** | [service.py (API)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/service.py) | `UsageAnalyticsService`, 解耦会话内容权限, 组装时序数据 |
-| **不可变时序 DTO 与严格校验器** | [contracts.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/contracts.py) | `GatewaySeriesV1`, `UsageMetrics`, `TokenCounts`, `UsageCost`, `Coverage` |
-| **游标分页与上下文绑定引擎** | [cursor.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/cursor.py) | `encode_cursor`, `decode_cursor`, 游标哈希校验与防篡改绑定 |
-| **运行时端用量收集与读模型投影** | [usage.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/usage.py)<br>[usage_projection.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/usage_projection.py) | `UsageCollector`, `UsageProjectionRepository`, 增量投影原子写入 |
-| **前端用量看板主入口页面** | [UsageDashboardPage.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/pages/UsageDashboardPage.vue) | 租户级/项目级双重视角切换、时间范围选择器 |
-| **前端 ECharts 网关走势与状态分布**| [GatewayUsageTab.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/components/GatewayUsageTab.vue) | 1m/5m/1h/1d 分辨率无缝缩放、状态码分布直方图、点击下钻抽屉 |
-| **前端网关日志下钻抽屉与排障表** | [GatewayLogsTable.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/components/GatewayLogsTable.vue) | 采样 Trace ID 关联展示、Loki 跨服务对齐日志瀑布流联动 |
-| **预算策略管理与配置模态框** | [CreateBudgetPolicyModal.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/components/CreateBudgetPolicyModal.vue) | 软限额告警、硬限额熔断迫降策略配置 |
+| **用量分析路由与限流切面** | [router.py](../../../apps/platform-api/src/platform_api/modules/usage_analytics/router.py) | `router`, `get_usage_service`, `asyncio.Semaphore(2)`, `parse_query` |
+| **核心用量分析与权限解耦服务** | [service.py (API)](../../../apps/platform-api/src/platform_api/modules/usage_analytics/service.py) | `UsageAnalyticsService`, 解耦会话内容权限, 组装时序数据 |
+| **不可变时序 DTO 与严格校验器** | [contracts.py](../../../apps/platform-api/src/platform_api/modules/usage_analytics/contracts.py) | `GatewaySeriesV1`, `UsageMetrics`, `TokenCounts`, `UsageCost`, `Coverage` |
+| **游标分页与上下文绑定引擎** | [cursor.py](../../../apps/platform-api/src/platform_api/modules/usage_analytics/cursor.py) | `encode_cursor`, `decode_cursor`, 游标哈希校验与防篡改绑定 |
+| **运行时端用量收集与读模型投影** | [usage.py](../../../apps/runtime-service/src/runtime_service/observability/usage.py)<br>[usage_projection.py](../../../apps/runtime-service/src/runtime_service/observability/usage_projection.py) | `UsageCollector`, `UsageProjectionRepository`, 增量投影原子写入 |
+| **前端用量看板主入口页面** | [UsageDashboardPage.vue](../../../apps/platform-web/src/modules/usage/pages/UsageDashboardPage.vue) | 租户级/项目级双重视角切换、时间范围选择器 |
+| **前端 ECharts 网关走势与状态分布**| [GatewayUsageTab.vue](../../../apps/platform-web/src/modules/usage/components/GatewayUsageTab.vue) | 1m/5m/1h/1d 分辨率无缝缩放、状态码分布直方图、点击下钻抽屉 |
+| **前端网关日志下钻抽屉与排障表** | [GatewayLogsTable.vue](../../../apps/platform-web/src/modules/usage/components/GatewayLogsTable.vue) | 采样 Trace ID 关联展示、Loki 跨服务对齐日志瀑布流联动 |
+| **预算策略管理与配置模态框** | [CreateBudgetPolicyModal.vue](../../../apps/platform-web/src/modules/usage/components/CreateBudgetPolicyModal.vue) | 软限额告警、硬限额熔断迫降策略配置 |
 
 ---
 

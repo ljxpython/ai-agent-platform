@@ -4,7 +4,7 @@
 
 ## 环境与边界
 
-- Agent：`/Users/lijiaxin/.codex/worktrees/344c/ai-agent-platform`，环境 `wt_517a1ace499a`，Web 28808 / API 25087 / Runtime 26645。
+- Agent：`/Users/<name>/.codex/worktrees/344c/ai-agent-platform`，环境 `wt_517a1ace499a`，Web 28808 / API 25087 / Runtime 26645。
 - EvalFlow：同级 `mlflow-eval-platform`，Web 9138 / API 5011，独立 SQLite/auth 库、`.venv` 与前端依赖。
 - 数据限定为专用项目中的人工合成资料；主工作区、生产部署及上游 `mlflow/` 未修改。生产外发/干预和真实 CI 尚未验收。
 

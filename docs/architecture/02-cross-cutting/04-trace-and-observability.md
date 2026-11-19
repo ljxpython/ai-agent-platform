@@ -2,7 +2,7 @@
 
 > **模块定位与核心价值**：建立整套系统的**分布式链路追踪、结构化日志关联、双轨 APM 与 AI 网关毫秒级下钻大盘**。
 > 全面落实 W3C `traceparent`（`00-{trace_id}-{span_id}-01`）标准协议在跨微服务（Web -> API -> Runtime -> Worker）间的透明传导与派生；全链路实现 `[service] [trace_id] [span_id]` 结构化日志打标；基于 Grafana Loki + Promtail 建立超轻量微服务日志中心（4 容器常驻内存仅约 186 MiB）；彻底淘汰脆弱的“Grafana iframe 嵌板”，实装基于 **Vue 3 + ECharts 自研的 AI 网关用量与可观测大盘**，实现从“时序图表异常毛刺”到“毫秒级微服务对齐日志与 Trace 抽屉”的精细化下钻闭环。
-> 本篇作为横切规范的核心篇章，承接 [01-communication-matrix.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/01-communication-matrix.md) 确立的 8 大通信干线规范，并为后续展开控制面 Token 用量读模型 [04-platform-api/05-token-usage-and-read-models.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/05-token-usage-and-read-models.md) 与场景回放奠定可观测基石。
+> 本篇作为横切规范的核心篇章，承接 [01-communication-matrix.md](01-communication-matrix.md) 确立的 8 大通信干线规范，并为后续展开控制面 Token 用量读模型 [04-platform-api/05-token-usage-and-read-models.md](../04-platform-api/05-token-usage-and-read-models.md) 与场景回放奠定可观测基石。
 
 ---
 
@@ -122,17 +122,17 @@ async def naive_logging(request: Request, call_next):
 
 | 模块职责 | 核心代码绝对路径 | 关键类 / 函数 / 变量 |
 |---|---|---|
-| **W3C 追踪中间件 (Platform-API)** | [observability.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/core/observability.py) | `TracePropagationMiddleware`, `current_trace_id_ctx`, `current_span_id_ctx` |
-| **W3C 追踪中间件 (Runtime-Service)**| [trace.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/api/middleware/trace.py) | `TraceparentMiddleware`, 继承 Trace 并派生下游子 Span |
-| **结构化日志格式化器** | [logging.py (API)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/core/logging.py)<br>[logging.py (Runtime)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/logging.py) | `StructuredLogFormatter`, 注入 `[service] [trace_id] [span_id]` 统一前缀 |
-| **Prometheus 监控指标暴露** | [metrics.py (API)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/core/metrics.py)<br>[metrics.py (Runtime)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/api/metrics.py) | `/metrics` 路由端点, 路径归一化 `normalize_metric_path` |
-| **Loki 排障代理与自回声阻断** | [service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/observability/service.py) | `ObservabilityService.query_trace_logs()`, 过滤规则 `!~ "loki/api/v1/query"` |
-| **MLflow 集中实验追踪适配器** | [mlflow_tracer.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/mlflow_tracer.py) | `MLflowTracer`, 管理评测 Runs、Parameters、Metrics 与 Artifacts |
-| **Langfuse APM 追踪适配器** | [langfuse.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/langfuse.py) | `setup_agent_trace()`, OTLP 异步非阻塞上报 |
-| **AI 网关用量时序读模型后端** | [service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/service.py)<br>[router.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/router.py) | `UsageAnalyticsService.get_usage_trend()`, 1m/5m/1h/1d 分辨率聚合 |
-| **前端自研 AI 网关用量看板** | [UsageDashboardPage.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/pages/UsageDashboardPage.vue)<br>[GatewayUsageTab.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/components/GatewayUsageTab.vue) | Vue 3 + ECharts 原生大盘，多分辨率切换、状态码过滤、图表毛刺点击下钻 |
-| **前端 Trace-to-Logs 诊断穿透抽屉**| [GatewayLogsTable.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/components/GatewayLogsTable.vue) | 毫秒级日志流水瀑布流、跨微服务时序对齐甘特图、异常高亮与脱敏排障包导出 |
-| **前端有界错误缓冲区** | [errorBuffer.ts](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/core/errors/errorBuffer.ts) | `ErrorRingBuffer(capacity=10)`, 全局 ErrorBoundary 防白屏守护 |
+| **W3C 追踪中间件 (Platform-API)** | [observability.py](../../../apps/platform-api/src/platform_api/core/observability.py) | `TracePropagationMiddleware`, `current_trace_id_ctx`, `current_span_id_ctx` |
+| **W3C 追踪中间件 (Runtime-Service)**| [trace.py](../../../apps/runtime-service/src/runtime_service/api/middleware/trace.py) | `TraceparentMiddleware`, 继承 Trace 并派生下游子 Span |
+| **结构化日志格式化器** | [logging.py (API)](../../../apps/platform-api/src/platform_api/core/logging.py)<br>[logging.py (Runtime)](../../../apps/runtime-service/src/runtime_service/logging.py) | `StructuredLogFormatter`, 注入 `[service] [trace_id] [span_id]` 统一前缀 |
+| **Prometheus 监控指标暴露** | [metrics.py (API)](../../../apps/platform-api/src/platform_api/core/metrics.py)<br>[metrics.py (Runtime)](../../../apps/runtime-service/src/runtime_service/api/metrics.py) | `/metrics` 路由端点, 路径归一化 `normalize_metric_path` |
+| **Loki 排障代理与自回声阻断** | [service.py](../../../apps/platform-api/src/platform_api/modules/observability/service.py) | `ObservabilityService.query_trace_logs()`, 过滤规则 `!~ "loki/api/v1/query"` |
+| **MLflow 集中实验追踪适配器** | [mlflow_tracer.py](../../../apps/runtime-service/src/runtime_service/observability/mlflow_tracer.py) | `MLflowTracer`, 管理评测 Runs、Parameters、Metrics 与 Artifacts |
+| **Langfuse APM 追踪适配器** | [langfuse.py](../../../apps/runtime-service/src/runtime_service/observability/langfuse.py) | `setup_agent_trace()`, OTLP 异步非阻塞上报 |
+| **AI 网关用量时序读模型后端** | [service.py](../../../apps/platform-api/src/platform_api/modules/usage_analytics/service.py)<br>[router.py](../../../apps/platform-api/src/platform_api/modules/usage_analytics/router.py) | `UsageAnalyticsService.get_usage_trend()`, 1m/5m/1h/1d 分辨率聚合 |
+| **前端自研 AI 网关用量看板** | [UsageDashboardPage.vue](../../../apps/platform-web/src/modules/usage/pages/UsageDashboardPage.vue)<br>[GatewayUsageTab.vue](../../../apps/platform-web/src/modules/usage/components/GatewayUsageTab.vue) | Vue 3 + ECharts 原生大盘，多分辨率切换、状态码过滤、图表毛刺点击下钻 |
+| **前端 Trace-to-Logs 诊断穿透抽屉**| [GatewayLogsTable.vue](../../../apps/platform-web/src/modules/usage/components/GatewayLogsTable.vue) | 毫秒级日志流水瀑布流、跨微服务时序对齐甘特图、异常高亮与脱敏排障包导出 |
+| **前端有界错误缓冲区** | [errorBuffer.ts](../../../apps/platform-web/src/core/errors/errorBuffer.ts) | `ErrorRingBuffer(capacity=10)`, 全局 ErrorBoundary 防白屏守护 |
 
 ---
 

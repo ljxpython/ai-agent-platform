@@ -2,7 +2,7 @@
 
 > **模块定位与核心价值**：建立整套系统的**嵌入式运维辅助、会话故障诊断、只读数据分析与证据链合规审计智能体**。
 > 彻底攻克业界常见的“普通运维机器人权限失控导致删库、缺乏可信证据无法溯源、以及脱离业务现场跳转排障成本极高”三大核心痛点；基于 **SQL 静态抽象语法树（AST）深度审查、纯只读数据源绑定与不可变证据链（Evidence Audit Chain: `AssistantEvidenceRecord`）**，实现用户在任意控制台页面通过悬浮交互随时调起助手；助手自适应感知当前路由上下文（Route Context），在严格受限的沙箱内安全调用只读诊断、Loki 日志聚合与白名单 SQL 检索，输出附带证据出处（Citations）的精准排障建议。
-> 本篇作为智能体实现层（Agents Layer）的平台级元智能体专篇，承接 [05-runtime-service/05-context-blowup-defense-and-resilience.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/05-context-blowup-defense-and-resilience.md) 的韧性中间件规范与 [02-cross-cutting/01-communication-matrix.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/01-communication-matrix.md) 的干线 8 契约，为全平台运营提供可信 AI 领航员。
+> 本篇作为智能体实现层（Agents Layer）的平台级元智能体专篇，承接 [05-runtime-service/05-context-blowup-defense-and-resilience.md](../05-runtime-service/05-context-blowup-defense-and-resilience.md) 的韧性中间件规范与 [02-cross-cutting/01-communication-matrix.md](../02-cross-cutting/01-communication-matrix.md) 的干线 8 契约，为全平台运营提供可信 AI 领航员。
 
 ---
 
@@ -109,15 +109,15 @@ flowchart TD
 
 | 模块职责 | 核心代码绝对路径 | 关键类 / 函数 / 契约 |
 |---|---|---|
-| **助手路由与范围鉴权切面** | [router.py (Assistant)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/router.py) | `APIRouter(prefix="/api/platform-assistant")`, `_target_gateway()`, 租户范围校验 |
-| **助手核心业务与能力分发器** | [service.py (Assistant)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/service.py) | `read()`, `require_scope()`, `sources()`, `readable_capabilities()` |
-| **SQL 静态 AST 审查与只读执行**| [database.py (Assistant)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/database.py) | `validated_sql()`, `sqlglot.parse()`, `_FUNCTIONS` 白名单, `_SLOTS = BoundedSemaphore(4)` |
-| **不可变证据链数据模型与写入** | [models.py (Assistant)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/models.py)<br>[evidence.py (Assistant)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/evidence.py) | `AssistantEvidenceRecord`, `record_evidence()`, SHA-256 结果去重与审计 |
-| **助手输入 DTO 与操作定义** | [contracts.py (Assistant)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/contracts.py) | `ReadRequest`, `InternalReadRequest`, `AssistantDatabase`, 10 大只读操作枚举 |
-| **运行态诊断与快照提取器** | [diagnostics.py (Assistant)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/diagnostics.py) | `read_checkpoint()`, 过滤敏感凭据并返回结构化诊断快照 |
-| **前端助手全局悬浮抽屉主组件** | [PlatformAssistantDrawer.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/platform-assistant/components/PlatformAssistantDrawer.vue) | 全局常驻抽屉，深浅色主题适配，双向打字机流式交互 |
-| **前端当前路由上下文胶囊** | [AssistantContextPill.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/platform-assistant/components/AssistantContextPill.vue) | 自动捕获当前页面状态、显示项目名称与当前选中 Thread |
-| **前端证据快照深钻抽屉** | [EvidenceDetailDrawer.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/platform-assistant/components/EvidenceDetailDrawer.vue) | 点击文本中的 `[1]`, `[2]` 弹出底层证据明细（SQL、日志流水或错误快照） |
+| **助手路由与范围鉴权切面** | [router.py (Assistant)](../../../apps/platform-api/src/platform_api/modules/platform_assistant/router.py) | `APIRouter(prefix="/api/platform-assistant")`, `_target_gateway()`, 租户范围校验 |
+| **助手核心业务与能力分发器** | [service.py (Assistant)](../../../apps/platform-api/src/platform_api/modules/platform_assistant/service.py) | `read()`, `require_scope()`, `sources()`, `readable_capabilities()` |
+| **SQL 静态 AST 审查与只读执行**| [database.py (Assistant)](../../../apps/platform-api/src/platform_api/modules/platform_assistant/database.py) | `validated_sql()`, `sqlglot.parse()`, `_FUNCTIONS` 白名单, `_SLOTS = BoundedSemaphore(4)` |
+| **不可变证据链数据模型与写入** | [models.py (Assistant)](../../../apps/platform-api/src/platform_api/modules/platform_assistant/models.py)<br>[evidence.py (Assistant)](../../../apps/platform-api/src/platform_api/modules/platform_assistant/evidence.py) | `AssistantEvidenceRecord`, `record_evidence()`, SHA-256 结果去重与审计 |
+| **助手输入 DTO 与操作定义** | [contracts.py (Assistant)](../../../apps/platform-api/src/platform_api/modules/platform_assistant/contracts.py) | `ReadRequest`, `InternalReadRequest`, `AssistantDatabase`, 10 大只读操作枚举 |
+| **运行态诊断与快照提取器** | [diagnostics.py (Assistant)](../../../apps/platform-api/src/platform_api/modules/platform_assistant/diagnostics.py) | `read_checkpoint()`, 过滤敏感凭据并返回结构化诊断快照 |
+| **前端助手全局悬浮抽屉主组件** | [PlatformAssistantDrawer.vue](../../../apps/platform-web/src/modules/platform-assistant/components/PlatformAssistantDrawer.vue) | 全局常驻抽屉，深浅色主题适配，双向打字机流式交互 |
+| **前端当前路由上下文胶囊** | [AssistantContextPill.vue](../../../apps/platform-web/src/modules/platform-assistant/components/AssistantContextPill.vue) | 自动捕获当前页面状态、显示项目名称与当前选中 Thread |
+| **前端证据快照深钻抽屉** | [EvidenceDetailDrawer.vue](../../../apps/platform-web/src/modules/platform-assistant/components/EvidenceDetailDrawer.vue) | 点击文本中的 `[1]`, `[2]` 弹出底层证据明细（SQL、日志流水或错误快照） |
 
 ---
 

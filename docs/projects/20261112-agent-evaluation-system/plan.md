@@ -20,7 +20,7 @@
 | 多轮评分 | EvalFlow `mlflow/genai/evaluation/session_utils.py` 拒绝普通 predict_fn 与会话级 scorer 直接混用 | 固定多轮用例先执行、收集带 session 的 Traces，再评分 |
 | 隔离 | 当前使用持久 Thread、PostgreSQL、Redis、Workspace、知识与可选记忆 | 本地临时目录不能替代真实状态隔离 |
 
-背景文章：`/Users/lijiaxin/PyCharmMiscProject/ai-research/ai-learn/01-interview-qa/06-engineering/evaluation/02-agent-evaluation-and-langsmith-guide.md`。文章中的分数、成本与模型能力描述仅作示例，不作为本项目验收基线。
+背景文章：`/Users/<name>/PyCharmMiscProject/ai-research/ai-learn/01-interview-qa/06-engineering/evaluation/02-agent-evaluation-and-langsmith-guide.md`。文章中的分数、成本与模型能力描述仅作示例，不作为本项目验收基线。
 
 ## 2. 职责与部署边界
 

@@ -61,9 +61,9 @@ flowchart TD
 
 ## 导航与文档索引
 
-- [方案与架构设计 (plan.md)](file:///Users/lijiaxin/.codex/worktrees/gateway-observability-usage/ai-agent-platform/docs/projects/20261117-gateway-observability-usage/plan.md)：业务背景、架构方案、API 契约、前端组件解耦与非功能边界。
-- [实施任务进度 (tasks.md)](file:///Users/lijiaxin/.codex/worktrees/gateway-observability-usage/ai-agent-platform/docs/projects/20261117-gateway-observability-usage/tasks.md)：各阶段原子任务分解、执行状态与验收依据。
-- [验证规范与方案 (verification.md)](file:///Users/lijiaxin/.codex/worktrees/gateway-observability-usage/ai-agent-platform/docs/projects/20261117-gateway-observability-usage/verification.md)：单测、集成测试、时间桶边界与端到端真实场景验收标准。
+- [方案与架构设计 (plan.md)](plan.md)：业务背景、架构方案、API 契约、前端组件解耦与非功能边界。
+- [实施任务进度 (tasks.md)](tasks.md)：各阶段原子任务分解、执行状态与验收依据。
+- [验证规范与方案 (verification.md)](verification.md)：单测、集成测试、时间桶边界与端到端真实场景验收标准。
 
 ---
 

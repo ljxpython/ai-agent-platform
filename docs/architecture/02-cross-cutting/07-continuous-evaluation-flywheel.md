@@ -2,7 +2,7 @@
 
 > **模块定位与核心价值**：建立整套系统的**数据回流、AI 题库逆向萃取、LLM-as-a-Judge 裁判与集中式实验追踪闭环**。
 > 彻底终结业界常见的“依赖人工手写测试集、上线即盲盒、算法迭代无据可依”的工程死穴；基于 **两权物理彻底分离架构（Two-Tier Decoupled Governance）**，实现 Agent 平台端负责“权限校验、隐私脱敏、202 异步非阻塞资料抽取”，EvalFlow 独立服务（`5000/9128`）负责“AI 逆向提炼用例、题库版本发布、真实运行基准测试、自动化裁判与 MLflow 实验对比”；实现从生产真实会话到高质量算法评测资产的端到端自动化飞轮演进。
-> 本篇作为横切规范的核心深潜篇，承接 [02-cross-cutting/01-communication-matrix.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/01-communication-matrix.md) 的干线 7 规范，并为后文深入解析会话生命周期 [02-cross-cutting/08-session-and-runtime-retention-ttl.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/08-session-and-runtime-retention-ttl.md) 与场景大闭环 [06-scenarios/08-session-to-eval-flywheel-flow.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/06-scenarios/08-session-to-eval-flywheel-flow.md) 奠定核心机制。
+> 本篇作为横切规范的核心深潜篇，承接 [02-cross-cutting/01-communication-matrix.md](01-communication-matrix.md) 的干线 7 规范，并为后文深入解析会话生命周期 [02-cross-cutting/08-session-and-runtime-retention-ttl.md](08-session-and-runtime-retention-ttl.md) 与场景大闭环 [06-scenarios/08-session-to-eval-flywheel-flow.md](../06-scenarios/08-session-to-eval-flywheel-flow.md) 奠定核心机制。
 
 ---
 
@@ -115,15 +115,15 @@ flowchart TD
 
 | 模块职责 | 核心代码绝对路径 | 关键类 / 函数 / 契约 |
 |---|---|---|
-| **会话转评测物化端点 (API)** | [materials.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/evaluation/materials.py) | `submit_materials()`, `MaterialRequest`, 202 异步调度, 幂等判定 |
-| **评测路由与权限控制 (API)** | [router.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/evaluation/router.py) | `APIRouter(prefix="/api/evaluation")`, `require_action(actor, "create")` |
-| **隐私合规与数据脱敏 (API)** | [privacy.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/evaluation/privacy.py) | `prepare_business_material()`, `require_synthetic()`, 手机号/密钥脱敏 |
-| **评测执行目标与凭据换发 (API)** | [targets.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/evaluation/targets.py) | `EvaluationRun`, `TargetRequest`, 绑定受控只读运行环境 |
-| **前端转评测弹窗组件 (Web)** | [SendSessionMaterials.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/evaluation/components/SendSessionMaterials.vue) | 收集转换标题、数据类型声明（`synthetic_attestation`）、提交反馈 |
-| **前端单会话与批量勾选入口 (Web)**| [ThreadActionsMenu.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/ThreadActionsMenu.vue)<br>[ChatThreadSidebar.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/ChatThreadSidebar.vue) | 单会话“转为评测集”、侧边栏批量勾选（最多 20 个会话）触发入口 |
-| **前端评测迁移引导页 (Web)** | [EvaluationMovedPage.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/evaluation/EvaluationMovedPage.vue) | 提示操作已收敛至 EvalFlow，展示跳转指引与权限状态说明 |
-| **运行时端评测目标与环境适配** | [evaluation_target.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/evaluation_target.py)<br>[evaluation_environment.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/evaluation_environment.py) | 运行时受限沙箱执行、证据快照捕获与环境隔离校验 |
-| **MLflow 集中实验追踪适配器** | [mlflow_tracer.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/mlflow_tracer.py) | `MLflowTracer`, 管理评测 Runs、Parameters、Metrics 与 Artifacts |
+| **会话转评测物化端点 (API)** | [materials.py](../../../apps/platform-api/src/platform_api/modules/evaluation/materials.py) | `submit_materials()`, `MaterialRequest`, 202 异步调度, 幂等判定 |
+| **评测路由与权限控制 (API)** | [router.py](../../../apps/platform-api/src/platform_api/modules/evaluation/router.py) | `APIRouter(prefix="/api/evaluation")`, `require_action(actor, "create")` |
+| **隐私合规与数据脱敏 (API)** | [privacy.py](../../../apps/platform-api/src/platform_api/modules/evaluation/privacy.py) | `prepare_business_material()`, `require_synthetic()`, 手机号/密钥脱敏 |
+| **评测执行目标与凭据换发 (API)** | [targets.py](../../../apps/platform-api/src/platform_api/modules/evaluation/targets.py) | `EvaluationRun`, `TargetRequest`, 绑定受控只读运行环境 |
+| **前端转评测弹窗组件 (Web)** | [SendSessionMaterials.vue](../../../apps/platform-web/src/modules/evaluation/components/SendSessionMaterials.vue) | 收集转换标题、数据类型声明（`synthetic_attestation`）、提交反馈 |
+| **前端单会话与批量勾选入口 (Web)**| [ThreadActionsMenu.vue](../../../apps/platform-web/src/modules/chat/components/ThreadActionsMenu.vue)<br>[ChatThreadSidebar.vue](../../../apps/platform-web/src/modules/chat/components/ChatThreadSidebar.vue) | 单会话“转为评测集”、侧边栏批量勾选（最多 20 个会话）触发入口 |
+| **前端评测迁移引导页 (Web)** | [EvaluationMovedPage.vue](../../../apps/platform-web/src/modules/evaluation/EvaluationMovedPage.vue) | 提示操作已收敛至 EvalFlow，展示跳转指引与权限状态说明 |
+| **运行时端评测目标与环境适配** | [evaluation_target.py](../../../apps/runtime-service/src/runtime_service/observability/evaluation_target.py)<br>[evaluation_environment.py](../../../apps/runtime-service/src/runtime_service/observability/evaluation_environment.py) | 运行时受限沙箱执行、证据快照捕获与环境隔离校验 |
+| **MLflow 集中实验追踪适配器** | [mlflow_tracer.py](../../../apps/runtime-service/src/runtime_service/observability/mlflow_tracer.py) | `MLflowTracer`, 管理评测 Runs、Parameters、Metrics 与 Artifacts |
 
 ---
 

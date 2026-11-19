@@ -2,7 +2,7 @@
 
 > **模块定位与核心价值**：建立智能体在极端复杂对抗环境下的**防死循环、防上下文撑爆与自愈平飞迫降体系**。
 > 彻底终结业界常见的“大模型一次工具调用读取 50MB 日志撑爆 Context Window、逻辑死循环反复重试烧干数千元 Token、以及步数耗尽直接抛未捕获异常白屏崩溃”三大致命工程灾难；基于 **虚拟上下文折叠（Virtual Context Folding）与 6 大韧性中间件（Resilience Middlewares Pipeline）**，在完全不破坏持久化 Checkpoint 原始真实性的前提下，实现大工具输出首尾 50 行保留智能截断、参数指纹死循环探测（3 告警 5 掐死）、以及步数与 Token 预算临界下的**平飞迫降协议（Safe Wrapup Protocol: `jump_to="end"`）**。
-> 本篇作为执行引擎层（Runtime Service）最硬核的防御专篇，承接 [02-cross-cutting/08-session-and-runtime-retention-ttl.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/08-session-and-runtime-retention-ttl.md) 的底层存储治理，并为后文平台内置全局助手 [07-agents/03-platform-assistant-agent.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/03-platform-assistant-agent.md) 的高可靠沙箱运行立下防线。
+> 本篇作为执行引擎层（Runtime Service）最硬核的防御专篇，承接 [02-cross-cutting/08-session-and-runtime-retention-ttl.md](../02-cross-cutting/08-session-and-runtime-retention-ttl.md) 的底层存储治理，并为后文平台内置全局助手 [07-agents/03-platform-assistant-agent.md](../07-agents/03-platform-assistant-agent.md) 的高可靠沙箱运行立下防线。
 
 ---
 
@@ -89,12 +89,12 @@ flowchart TD
 
 | 模块职责 | 核心代码绝对路径 | 关键类 / 函数 / 契约 |
 |---|---|---|
-| **虚拟上下文折叠中间件** | [tool_output_pruning.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/tool_output_pruning.py) | `prune_messages_for_model()`, `_prune_tool_content()`, `keep_recent=4`, 保留首尾 4/5 与 1/5 |
-| **溢出落盘与首尾 50 行截断** | [filesystem.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/filesystem.py) | `truncate_tool_output_text()`, `head_lines=50`, `tail_lines=50`, `max_chars=16000` |
-| **死循环与参数指纹探测器** | [loop_detection.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/loop_detection.py) | `_json_signature()`, `LoopDetectionState`, `WARN_THRESHOLD=3`, `HARD_LIMIT=5` |
-| **执行步数预算与迫降收尾** | [execution_budget.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/execution_budget.py) | `RemainingStepsManager`, `WRAPUP_INSTRUCTION`, `add_wrapup_instruction()` |
-| **Token 预算与平飞终止中间件** | [token_budget.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/token_budget.py) | `TokenBudgetMiddleware`, `@hook_config(can_jump_to=["end"])`, `jump_to="end"` |
-| **会话历史卸载与深层压缩** | [conversation_offloading.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/conversation_offloading.py) | 跨轮次超长上下文有界压缩、无损会话结构维系 |
+| **虚拟上下文折叠中间件** | [tool_output_pruning.py](../../../apps/runtime-service/src/runtime_service/middlewares/tool_output_pruning.py) | `prune_messages_for_model()`, `_prune_tool_content()`, `keep_recent=4`, 保留首尾 4/5 与 1/5 |
+| **溢出落盘与首尾 50 行截断** | [filesystem.py](../../../apps/runtime-service/src/runtime_service/middlewares/filesystem.py) | `truncate_tool_output_text()`, `head_lines=50`, `tail_lines=50`, `max_chars=16000` |
+| **死循环与参数指纹探测器** | [loop_detection.py](../../../apps/runtime-service/src/runtime_service/middlewares/loop_detection.py) | `_json_signature()`, `LoopDetectionState`, `WARN_THRESHOLD=3`, `HARD_LIMIT=5` |
+| **执行步数预算与迫降收尾** | [execution_budget.py](../../../apps/runtime-service/src/runtime_service/middlewares/execution_budget.py) | `RemainingStepsManager`, `WRAPUP_INSTRUCTION`, `add_wrapup_instruction()` |
+| **Token 预算与平飞终止中间件** | [token_budget.py](../../../apps/runtime-service/src/runtime_service/middlewares/token_budget.py) | `TokenBudgetMiddleware`, `@hook_config(can_jump_to=["end"])`, `jump_to="end"` |
+| **会话历史卸载与深层压缩** | [conversation_offloading.py](../../../apps/runtime-service/src/runtime_service/middlewares/conversation_offloading.py) | 跨轮次超长上下文有界压缩、无损会话结构维系 |
 
 ---
 

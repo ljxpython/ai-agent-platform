@@ -2,7 +2,7 @@
 
 > **场景定位与核心价值**：建立整套系统的**就地故障诊断、智能自愈建议、只读数据检索与不可变证据链回溯全链路**。
 > 彻底攻克业界“控制台报错需要跳出页面人工复制粘贴、模型排障建议凭空捏造不可考据、以及传统运维机器人权限失控引发删库隐患”三大致命工程痛点；贯穿 **`platform-web`（全局悬浮抽屉与证据抽屉）**、**`platform-api`（助手路由与静态 AST 安全网关）**、**`PostgreSQL`（只读副本与不可变证据事实源）** 与 **`Loki TSDB`（微服务日志中心）**；全链路展现用户在任意报错页面唤醒助手、自动注入当前路由上下文胶囊、控制面 `require_scope` 实时身份重验、`sqlglot` 静态 AST 深度只读审查、不可变证据链持久化、以及前台打字机流式输出并支持点击引用胶囊（Citations）秒级深钻底层证据的端到端闭环。
-> 本篇作为场景时序大闭环的第二篇，承接 [07-agents/03-platform-assistant-agent.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/03-platform-assistant-agent.md) 的底层智能体架构，为平台运营与开发者提供极致的可信排障体验。
+> 本篇作为场景时序大闭环的第二篇，承接 [07-agents/03-platform-assistant-agent.md](../07-agents/03-platform-assistant-agent.md) 的底层智能体架构，为平台运营与开发者提供极致的可信排障体验。
 
 ---
 
@@ -11,9 +11,9 @@
 在深入阅读具体的跨服务调用时序前，必须理清三大认知输入，以及本场景在整个知识拓扑中的承上启下关系。
 
 ### 1. 认知输入（前置模块依赖）
-- 依赖 [07-agents/03-platform-assistant-agent.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/03-platform-assistant-agent.md)：掌握平台全局助手的只读沙箱架构、`sqlglot` 语法树静态审查规约与不可变证据模型 `AssistantEvidenceRecord`。
-- 依赖 [02-cross-cutting/01-communication-matrix.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/01-communication-matrix.md)：掌握干线 8（平台内置助手诊断通道）的通信契约与只读凭据约束。
-- 依赖 [02-cross-cutting/04-trace-and-observability.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/04-trace-and-observability.md)：掌握通过 LogQL 穿透 Loki TSDB 的防自回声检索语法。
+- 依赖 [07-agents/03-platform-assistant-agent.md](../07-agents/03-platform-assistant-agent.md)：掌握平台全局助手的只读沙箱架构、`sqlglot` 语法树静态审查规约与不可变证据模型 `AssistantEvidenceRecord`。
+- 依赖 [02-cross-cutting/01-communication-matrix.md](../02-cross-cutting/01-communication-matrix.md)：掌握干线 8（平台内置助手诊断通道）的通信契约与只读凭据约束。
+- 依赖 [02-cross-cutting/04-trace-and-observability.md](../02-cross-cutting/04-trace-and-observability.md)：掌握通过 LogQL 穿透 Loki TSDB 的防自回声检索语法。
 
 ### 2. 本章核心流转
 - **就地唤醒与隐式路由胶囊注入**：用户在会话出错页面点击右下角悬浮吉祥物，前端自动提取当前 URL 路由中的 `project_id`, `thread_id`, `run_id`，作为上下文胶囊（`AssistantContextPill.vue`）注入助手。
@@ -23,7 +23,7 @@
 - **流式解答与引用胶囊秒级下钻**：前端打字机流式渲染 Markdown 解答，文本末尾挂载引用胶囊 `[1]`；用户点击胶囊直接滑出 `EvidenceDetailDrawer.vue` 证据抽屉，核验底层真实 SQL、执行结果与错误堆栈。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [10-gateway-usage-to-trace-flow.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/06-scenarios/10-gateway-usage-to-trace-flow.md) 提供用量分析看板如何与助手证据链进行联动诊断的技术支撑。
+- 为 [10-gateway-usage-to-trace-flow.md](10-gateway-usage-to-trace-flow.md) 提供用量分析看板如何与助手证据链进行联动诊断的技术支撑。
 
 ---
 
@@ -42,20 +42,20 @@
 ## 二、 源码精准坐标映射（Code Pointer Map）
 
 ### 1. 前端交互与证据抽屉
-- [apps/platform-web/src/modules/platform-assistant/components/PlatformAssistantDrawer.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/platform-assistant/components/PlatformAssistantDrawer.vue)：全局常驻悬浮抽屉主组件，负责会话状态与流式渲染。
-- [apps/platform-web/src/modules/platform-assistant/components/AssistantContextPill.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/platform-assistant/components/AssistantContextPill.vue)：路由上下文胶囊，自动解析当前 URL 绑定的 `project_id`, `thread_id`, `run_id`。
-- [apps/platform-web/src/modules/platform-assistant/components/EvidenceDetailDrawer.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/platform-assistant/components/EvidenceDetailDrawer.vue)：不可变证据详情抽屉，展示底层的真实 SQL 语句、查询结果与日志快照。
+- [apps/platform-web/src/modules/platform-assistant/components/PlatformAssistantDrawer.vue](../../../apps/platform-web/src/modules/platform-assistant/components/PlatformAssistantDrawer.vue)：全局常驻悬浮抽屉主组件，负责会话状态与流式渲染。
+- [apps/platform-web/src/modules/platform-assistant/components/AssistantContextPill.vue](../../../apps/platform-web/src/modules/platform-assistant/components/AssistantContextPill.vue)：路由上下文胶囊，自动解析当前 URL 绑定的 `project_id`, `thread_id`, `run_id`。
+- [apps/platform-web/src/modules/platform-assistant/components/EvidenceDetailDrawer.vue](../../../apps/platform-web/src/modules/platform-assistant/components/EvidenceDetailDrawer.vue)：不可变证据详情抽屉，展示底层的真实 SQL 语句、查询结果与日志快照。
 
 ### 2. 控制面后端与只读安全网关
-- [apps/platform-api/src/platform_api/modules/platform_assistant/router.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/router.py)：`/api/platform-assistant` 路由，处理 `read` 请求与租户上下文隔离。
-- [apps/platform-api/src/platform_api/modules/platform_assistant/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/service.py)：`read()`, `require_scope()`，实时核验用户身份与项目状态。
-- [apps/platform-api/src/platform_api/modules/platform_assistant/database.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/database.py)：`validated_sql()`，基于 `sqlglot` 的静态 AST 审查器与 `BoundedSemaphore(4)` 信号量限流。
-- [apps/platform-api/src/platform_api/modules/platform_assistant/evidence.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/evidence.py)：`record_evidence()`，持久化证据记录并生成 SHA-256 操作指纹。
-- [apps/platform-api/src/platform_api/modules/platform_assistant/models.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/models.py)：`AssistantEvidenceRecord` 实体模型定义。
+- [apps/platform-api/src/platform_api/modules/platform_assistant/router.py](../../../apps/platform-api/src/platform_api/modules/platform_assistant/router.py)：`/api/platform-assistant` 路由，处理 `read` 请求与租户上下文隔离。
+- [apps/platform-api/src/platform_api/modules/platform_assistant/service.py](../../../apps/platform-api/src/platform_api/modules/platform_assistant/service.py)：`read()`, `require_scope()`，实时核验用户身份与项目状态。
+- [apps/platform-api/src/platform_api/modules/platform_assistant/database.py](../../../apps/platform-api/src/platform_api/modules/platform_assistant/database.py)：`validated_sql()`，基于 `sqlglot` 的静态 AST 审查器与 `BoundedSemaphore(4)` 信号量限流。
+- [apps/platform-api/src/platform_api/modules/platform_assistant/evidence.py](../../../apps/platform-api/src/platform_api/modules/platform_assistant/evidence.py)：`record_evidence()`，持久化证据记录并生成 SHA-256 操作指纹。
+- [apps/platform-api/src/platform_api/modules/platform_assistant/models.py](../../../apps/platform-api/src/platform_api/modules/platform_assistant/models.py)：`AssistantEvidenceRecord` 实体模型定义。
 
 ### 3. 底座日志与运行诊断服务
-- [apps/platform-api/src/platform_api/modules/observability/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/observability/service.py)：`ObservabilityService.query_trace_logs()`，执行防自回声的 LogQL 查询。
-- [apps/platform-api/src/platform_api/modules/platform_assistant/diagnostics.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/platform_assistant/diagnostics.py)：`read_checkpoint()`，从底层提取过滤脱敏后的运行态现场快照。
+- [apps/platform-api/src/platform_api/modules/observability/service.py](../../../apps/platform-api/src/platform_api/modules/observability/service.py)：`ObservabilityService.query_trace_logs()`，执行防自回声的 LogQL 查询。
+- [apps/platform-api/src/platform_api/modules/platform_assistant/diagnostics.py](../../../apps/platform-api/src/platform_api/modules/platform_assistant/diagnostics.py)：`read_checkpoint()`，从底层提取过滤脱敏后的运行态现场快照。
 
 ---
 

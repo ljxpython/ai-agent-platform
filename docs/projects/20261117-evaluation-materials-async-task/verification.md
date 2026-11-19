@@ -61,7 +61,7 @@
      - 直达链接：`http://127.0.0.1:9128/#/authoring/3b312131-81c8-5be1-b6bc-a1f7b5126c43`
   5. **EvalFlow 一键直达**：在浏览器中打开直达链接，成功进入 EvalFlow 评测集工作区（`http://127.0.0.1:9128/#/authoring/...`），完整展示从原会话自动提炼的题目摘要、指标阈值配置、Facts 证据链及 AI 评测 Copilot 面板。
 - **留存全景证据与高清录屏**：
-  - 🎥 **高清无损录屏视频**：[evaluation-async-conversion.mp4](file:///Users/lijiaxin/.gemini/antigravity/brain/0fb16951-2b02-4b29-81a6-bc451ce4814f/evaluation-async-conversion.mp4)（1920x976 Clear 画质，完整录制操作全过程）
+  - 🎥 **高清无损录屏视频**：`evaluation-async-conversion.mp4`（1920x976 Clear 画质，完整录制操作全过程）
   - 弹窗提交前：`e2e-modal-before-submit.png`
   - 弹窗秒关后恢复对话：`e2e-dialog-closed.png`
   - 直达 EvalFlow 详情页：`e2e-evalflow-authoring.png`

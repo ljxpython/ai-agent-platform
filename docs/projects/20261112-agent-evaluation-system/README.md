@@ -8,8 +8,8 @@
 - **状态：** 原首期及D/M扩展已完成；当前A01–A03完成，A04 partial（2026-11-16获批/24准入已恢复，单题链路通过，原定完整验收待重跑）。原本地验证结论保留：Agent 开发集存在 KnowledgeRetention 质量失败，不能据此宣称达到发布标准。真实 CI、生产部署和全新盲测集后置。
 - **改动级别：** 链路改动。首期不改生产架构、权限机制或数据库结构；若能力缺口需要此类改动，单列治理子任务，经人工评审后实施。
 - **工作量：** 首期暂估 10–14 人天，包含兼容性排查、隔离环境、20 题、真实模型验证和复盘；Phase 0 后依据实测调整，不承诺原定三天全量交付。
-- **主要开发仓库：** `/Users/lijiaxin/PyCharmMiscProject/mlflow-eval-platform`。
-- **业务仓库：** `/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform`；仅按证实的能力缺口做最小适配。
+- **主要开发仓库：** `/Users/<name>/PyCharmMiscProject/mlflow-eval-platform`。
+- **业务仓库：** `/Users/<name>/PyCharmMiscProject/ai-agent-platform`；仅按证实的能力缺口做最小适配。
 
 ## 阅读与执行顺序
 

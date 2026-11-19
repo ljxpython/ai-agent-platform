@@ -4,7 +4,7 @@
 
 ## 1. 实施环境与范围
 
-Worktree 为 `/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform-gateway-budget`，分支 `feat/gateway-budget-and-governance`，基线 `84d41a46`，环境 `wt_1c4f0f7fb905`。Platform API / Runtime 使用所属独立 PostgreSQL，Web/API/Runtime 地址分别为回环端口24824/26911/24254，Redis、Workspace和依赖安装目录独立。未提交、推送、合并或部署生产。
+Worktree 为 `/Users/<name>/PyCharmMiscProject/ai-agent-platform-gateway-budget`，分支 `feat/gateway-budget-and-governance`，基线 `84d41a46`，环境 `wt_1c4f0f7fb905`。Platform API / Runtime 使用所属独立 PostgreSQL，Web/API/Runtime 地址分别为回环端口24824/26911/24254，Redis、Workspace和依赖安装目录独立。未提交、推送、合并或部署生产。
 
 保持 GLOBAL / PROJECT、USD、UTC 日/周日/月初、ALERT / REJECT 与首次超额通知范围。金额为 Decimal / `numeric(28,12)`，HTTP 用字符串。费用是调用开始时价格快照计算的估算，未知不补零；不做预占，已准入在途调用可造成超支。
 

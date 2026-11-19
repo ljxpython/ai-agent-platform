@@ -2,7 +2,7 @@
 
 > **场景定位与核心价值**：建立整套系统的**线上真实会话数据回流、合规脱敏、AI 逆向出题、自动化裁判与集中实验归档的完整闭环**。
 > 彻底攻克业界“缺乏真实评测语料、人工造题成本极高、线上长尾故障无法复现、算法改动缺乏基线对比”四大痛点；贯穿 **`platform-web`（前端）**、**`platform-api`（控制面）**、**`runtime-service`（执行引擎）**、**`EvalFlow`（独立评测系统）** 与 **`MLflow`（集中实验追踪）** 五大独立组件；全链路展现从用户在会话列表批量勾选会话、合规授权、HTTP 202 异步脱敏物化，到 EvalFlow AI 自动化逆向提炼用例、发布题库、驱动 Agent 运行基准、LLM 裁判打分与实验大盘对比的工业级全生命周期。
-> 本篇作为场景时序大闭环的第一篇，承接 [02-cross-cutting/07-continuous-evaluation-flywheel.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/07-continuous-evaluation-flywheel.md) 的底层评测飞轮机制，为平台智能化质检与算法迭代提供端到端工程标准。
+> 本篇作为场景时序大闭环的第一篇，承接 [02-cross-cutting/07-continuous-evaluation-flywheel.md](../02-cross-cutting/07-continuous-evaluation-flywheel.md) 的底层评测飞轮机制，为平台智能化质检与算法迭代提供端到端工程标准。
 
 ---
 
@@ -11,9 +11,9 @@
 在深入阅读具体的跨服务调用时序前，必须理清三大认知输入，以及本场景在整个知识拓扑中的承上启下关系。
 
 ### 1. 认知输入（前置模块依赖）
-- 依赖 [02-cross-cutting/01-communication-matrix.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/01-communication-matrix.md)：掌握干线 7（持续评测飞轮流水线通信）的 HMAC 签名校验、202 异步状态与只读目标调用契约。
-- 依赖 [02-cross-cutting/07-continuous-evaluation-flywheel.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/07-continuous-evaluation-flywheel.md)：掌握两权物理分离原则（*Supply authorized Session evidence. Test case authoring belongs to EvalFlow.*）与数据分级（synthetic/business）。
-- 依赖 [02-cross-cutting/04-trace-and-observability.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/04-trace-and-observability.md)：掌握 MLflow 集中式实验追踪的 Runs、Metrics 与 Trace 上报机制。
+- 依赖 [02-cross-cutting/01-communication-matrix.md](../02-cross-cutting/01-communication-matrix.md)：掌握干线 7（持续评测飞轮流水线通信）的 HMAC 签名校验、202 异步状态与只读目标调用契约。
+- 依赖 [02-cross-cutting/07-continuous-evaluation-flywheel.md](../02-cross-cutting/07-continuous-evaluation-flywheel.md)：掌握两权物理分离原则（*Supply authorized Session evidence. Test case authoring belongs to EvalFlow.*）与数据分级（synthetic/business）。
+- 依赖 [02-cross-cutting/04-trace-and-observability.md](../02-cross-cutting/04-trace-and-observability.md)：掌握 MLflow 集中式实验追踪的 Runs、Metrics 与 Trace 上报机制。
 
 ### 2. 本章核心流转
 - **前端意图收集**：单会话菜单或侧边栏多选（最多 20 个会话），收集用例集标题与合规授权声明。
@@ -23,7 +23,7 @@
 - **驱动基准运行与 LLM-as-a-Judge 裁判归档**：EvalFlow Batch Runner 调用 Agent 只读接口执行测试，专用裁判模型多维度打分，指标与执行树自动归档至 MLflow 集中大盘，生成算法演进雷达图。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [09-platform-assistant-diagnostics-flow.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/06-scenarios/09-platform-assistant-diagnostics-flow.md) 提供评测资产如何被平台全局助手作为辅助参考资料进行故障溯源的依据。
+- 为 [09-platform-assistant-diagnostics-flow.md](09-platform-assistant-diagnostics-flow.md) 提供评测资产如何被平台全局助手作为辅助参考资料进行故障溯源的依据。
 
 ---
 
@@ -42,19 +42,19 @@
 ## 二、 源码精准坐标映射（Code Pointer Map）
 
 ### 1. 前端交互与入口
-- [apps/platform-web/src/modules/chat/components/ThreadActionsMenu.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/ThreadActionsMenu.vue)：单会话上下文菜单中的“转为评测集”入口。
-- [apps/platform-web/src/modules/chat/components/ChatThreadSidebar.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/ChatThreadSidebar.vue)：侧边栏多会话批量选择器（最多限制 20 个）。
-- [apps/platform-web/src/modules/evaluation/components/SendSessionMaterials.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/evaluation/components/SendSessionMaterials.vue)：收集转换标题、数据类型确认与提交弹窗。
-- [apps/platform-web/src/modules/evaluation/EvaluationMovedPage.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/evaluation/EvaluationMovedPage.vue)：指引用户前往 EvalFlow 工作台的受控迁移页。
+- [apps/platform-web/src/modules/chat/components/ThreadActionsMenu.vue](../../../apps/platform-web/src/modules/chat/components/ThreadActionsMenu.vue)：单会话上下文菜单中的“转为评测集”入口。
+- [apps/platform-web/src/modules/chat/components/ChatThreadSidebar.vue](../../../apps/platform-web/src/modules/chat/components/ChatThreadSidebar.vue)：侧边栏多会话批量选择器（最多限制 20 个）。
+- [apps/platform-web/src/modules/evaluation/components/SendSessionMaterials.vue](../../../apps/platform-web/src/modules/evaluation/components/SendSessionMaterials.vue)：收集转换标题、数据类型确认与提交弹窗。
+- [apps/platform-web/src/modules/evaluation/EvaluationMovedPage.vue](../../../apps/platform-web/src/modules/evaluation/EvaluationMovedPage.vue)：指引用户前往 EvalFlow 工作台的受控迁移页。
 
 ### 2. 控制面网关与脱敏投递
-- [apps/platform-api/src/platform_api/modules/evaluation/materials.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/evaluation/materials.py)：`submit_materials()`，202 异步调度，`process_materials_background()` 异步任务。
-- [apps/platform-api/src/platform_api/modules/evaluation/privacy.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/evaluation/privacy.py)：`sanitize_message_content()`，手机号与凭据脱敏流水线。
-- [apps/platform-api/src/platform_api/modules/evaluation/router.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/evaluation/router.py)：`/api/evaluation/materials` 路由与 `require_action(actor, "create")` 鉴权。
+- [apps/platform-api/src/platform_api/modules/evaluation/materials.py](../../../apps/platform-api/src/platform_api/modules/evaluation/materials.py)：`submit_materials()`，202 异步调度，`process_materials_background()` 异步任务。
+- [apps/platform-api/src/platform_api/modules/evaluation/privacy.py](../../../apps/platform-api/src/platform_api/modules/evaluation/privacy.py)：`sanitize_message_content()`，手机号与凭据脱敏流水线。
+- [apps/platform-api/src/platform_api/modules/evaluation/router.py](../../../apps/platform-api/src/platform_api/modules/evaluation/router.py)：`/api/evaluation/materials` 路由与 `require_action(actor, "create")` 鉴权。
 
 ### 3. 底座运行时与只读目标
-- [apps/runtime-service/src/runtime_service/observability/evaluation_target.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/evaluation_target.py)：向 EvalFlow 暴露的只读评测 Agent 目标配置。
-- [apps/runtime-service/src/runtime_service/observability/mlflow_tracer.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/mlflow_tracer.py)：集中式 MLflow 实验数据追踪器。
+- [apps/runtime-service/src/runtime_service/observability/evaluation_target.py](../../../apps/runtime-service/src/runtime_service/observability/evaluation_target.py)：向 EvalFlow 暴露的只读评测 Agent 目标配置。
+- [apps/runtime-service/src/runtime_service/observability/mlflow_tracer.py](../../../apps/runtime-service/src/runtime_service/observability/mlflow_tracer.py)：集中式 MLflow 实验数据追踪器。
 
 ---
 

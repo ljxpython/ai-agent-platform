@@ -17,7 +17,7 @@
 
 ## 修改落在哪里
 
-关联仓：`/Users/lijiaxin/.codex/worktrees/344c/mlflow-eval-platform/`。
+关联仓：`/Users/<name>/.codex/worktrees/344c/mlflow-eval-platform/`。
 
 | 文件（相对于关联仓） | 改动 |
 |---|---|

@@ -2,7 +2,7 @@
 
 > **场景定位与核心价值**：建立整套系统的**宏观指标大盘监控、微观异常毛刺捕获、跨微服务毫秒日志穿透与会话现场溯源的完整闭环**。
 > 彻底攻克业界“指标大盘与日志系统相互割裂、发现时序尖刺无法关联具体调用、以及排障定位需要跨越多个独立平台翻找”三大痛点；贯穿 **`platform-web`（自研 Vue 3 + ECharts 用量看板）**、**`platform-api`（时序读模型与防自回声可观测代理）**、**`Loki TSDB`（微服务日志中心）** 与 **`runtime-service`（执行引擎 Checkpoint 现场）**；全链路展现运维人员在用量看板选择 1m/5m/1h/1d 分辨率观察指标走势、发现 5xx 状态码红色异常毛刺、点击图表柱体提取 `sample_trace_ids`、右侧联动滑出排障抽屉穿透查询跨服务毫秒对齐日志、并一键回溯原始会话执行现场的端到端教科书级闭环。
-> 本篇作为场景时序大闭环的第三篇，承接 [04-platform-api/05-token-usage-and-read-models.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/05-token-usage-and-read-models.md) 的读模型设计与 [02-cross-cutting/04-trace-and-observability.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/04-trace-and-observability.md) 的可观测体系，为系统提供极致的运维排障下钻体验。
+> 本篇作为场景时序大闭环的第三篇，承接 [04-platform-api/05-token-usage-and-read-models.md](../04-platform-api/05-token-usage-and-read-models.md) 的读模型设计与 [02-cross-cutting/04-trace-and-observability.md](../02-cross-cutting/04-trace-and-observability.md) 的可观测体系，为系统提供极致的运维排障下钻体验。
 
 ---
 
@@ -11,9 +11,9 @@
 在深入阅读具体的跨服务下钻时序前，必须理清三大认知输入，以及本场景在整个知识拓扑中的承上启下关系。
 
 ### 1. 认知输入（前置模块依赖）
-- 依赖 [04-platform-api/05-token-usage-and-read-models.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/05-token-usage-and-read-models.md)：掌握多分辨率时序聚合读模型、`GatewaySeriesV1` 报文结构与 `asyncio.Semaphore(2)` 插槽保护机制。
-- 依赖 [02-cross-cutting/04-trace-and-observability.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/04-trace-and-observability.md)：掌握 W3C `traceparent` 派生规约与 Loki `!~ "loki/api/v1/query"` 防自回声过滤语法。
-- 依赖 [01-overview/02-tech-stack.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/01-overview/02-tech-stack.md)：掌握为什么坚持采用自研 Vue 3 + ECharts 原生组件深钻而非 Grafana iframe 嵌板的深层考量。
+- 依赖 [04-platform-api/05-token-usage-and-read-models.md](../04-platform-api/05-token-usage-and-read-models.md)：掌握多分辨率时序聚合读模型、`GatewaySeriesV1` 报文结构与 `asyncio.Semaphore(2)` 插槽保护机制。
+- 依赖 [02-cross-cutting/04-trace-and-observability.md](../02-cross-cutting/04-trace-and-observability.md)：掌握 W3C `traceparent` 派生规约与 Loki `!~ "loki/api/v1/query"` 防自回声过滤语法。
+- 依赖 [01-overview/02-tech-stack.md](../01-overview/02-tech-stack.md)：掌握为什么坚持采用自研 Vue 3 + ECharts 原生组件深钻而非 Grafana iframe 嵌板的深层考量。
 
 ### 2. 本章核心流转
 - **多分辨率时序看板拉取**：前端看板按 5m 分辨率拉取指标，控制面定点读取预聚合表，<8ms 直出 Token 消耗、QPS、分位延迟（P50/P90/P99）与状态码分布。
@@ -42,20 +42,20 @@
 ## 二、 源码精准坐标映射（Code Pointer Map）
 
 ### 1. 前端看板与日志抽屉
-- [apps/platform-web/src/modules/usage/pages/UsageDashboardPage.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/pages/UsageDashboardPage.vue)：AI 网关用量看板主入口页面，处理平台与项目双重视角切换。
-- [apps/platform-web/src/modules/usage/components/GatewayUsageTab.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/components/GatewayUsageTab.vue)：ECharts 核心图表组件，处理多分辨率缩放、点击事件监听与抽屉联动。
-- [apps/platform-web/src/modules/usage/components/GatewayLogsTable.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/components/GatewayLogsTable.vue)：日志穿透抽屉与排障表，渲染微服务毫秒对齐流水与甘特条。
-- [apps/platform-web/src/modules/usage/components/GatewayFilterToolbar.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/usage/components/GatewayFilterToolbar.vue)：时间范围与 1m/5m/1h/1d 分辨率选择工具栏。
+- [apps/platform-web/src/modules/usage/pages/UsageDashboardPage.vue](../../../apps/platform-web/src/modules/usage/pages/UsageDashboardPage.vue)：AI 网关用量看板主入口页面，处理平台与项目双重视角切换。
+- [apps/platform-web/src/modules/usage/components/GatewayUsageTab.vue](../../../apps/platform-web/src/modules/usage/components/GatewayUsageTab.vue)：ECharts 核心图表组件，处理多分辨率缩放、点击事件监听与抽屉联动。
+- [apps/platform-web/src/modules/usage/components/GatewayLogsTable.vue](../../../apps/platform-web/src/modules/usage/components/GatewayLogsTable.vue)：日志穿透抽屉与排障表，渲染微服务毫秒对齐流水与甘特条。
+- [apps/platform-web/src/modules/usage/components/GatewayFilterToolbar.vue](../../../apps/platform-web/src/modules/usage/components/GatewayFilterToolbar.vue)：时间范围与 1m/5m/1h/1d 分辨率选择工具栏。
 
 ### 2. 控制面后端用量与可观测服务
-- [apps/platform-api/src/platform_api/modules/usage_analytics/router.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/router.py)：`/api/usage` 路由，注入 `Cache-Control: no-store` 与 `asyncio.Semaphore(2)` 限流切面。
-- [apps/platform-api/src/platform_api/modules/usage_analytics/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/service.py)：`UsageAnalyticsService.get_gateway_usage_series()`，定点扫描预聚合读模型。
-- [apps/platform-api/src/platform_api/modules/usage_analytics/contracts.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/usage_analytics/contracts.py)：`GatewaySeriesV1` 严格 DTO 契约。
-- [apps/platform-api/src/platform_api/modules/observability/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/observability/service.py)：`ObservabilityService.query_trace_logs()`，执行带防自回声规则的 LogQL 查询。
+- [apps/platform-api/src/platform_api/modules/usage_analytics/router.py](../../../apps/platform-api/src/platform_api/modules/usage_analytics/router.py)：`/api/usage` 路由，注入 `Cache-Control: no-store` 与 `asyncio.Semaphore(2)` 限流切面。
+- [apps/platform-api/src/platform_api/modules/usage_analytics/service.py](../../../apps/platform-api/src/platform_api/modules/usage_analytics/service.py)：`UsageAnalyticsService.get_gateway_usage_series()`，定点扫描预聚合读模型。
+- [apps/platform-api/src/platform_api/modules/usage_analytics/contracts.py](../../../apps/platform-api/src/platform_api/modules/usage_analytics/contracts.py)：`GatewaySeriesV1` 严格 DTO 契约。
+- [apps/platform-api/src/platform_api/modules/observability/service.py](../../../apps/platform-api/src/platform_api/modules/observability/service.py)：`ObservabilityService.query_trace_logs()`，执行带防自回声规则的 LogQL 查询。
 
 ### 3. 底座日志与执行引擎
-- [apps/platform-api/src/platform_api/core/observability.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/core/observability.py)：`TracePropagationMiddleware`，W3C `traceparent` 解析与生成。
-- [apps/runtime-service/src/runtime_service/api/middleware/trace.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/api/middleware/trace.py)：`TraceparentMiddleware`，跨服务子 Span 派生。
+- [apps/platform-api/src/platform_api/core/observability.py](../../../apps/platform-api/src/platform_api/core/observability.py)：`TracePropagationMiddleware`，W3C `traceparent` 解析与生成。
+- [apps/runtime-service/src/runtime_service/api/middleware/trace.py](../../../apps/runtime-service/src/runtime_service/api/middleware/trace.py)：`TraceparentMiddleware`，跨服务子 Span 派生。
 
 ---
 

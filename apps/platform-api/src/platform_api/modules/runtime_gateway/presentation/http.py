@@ -660,8 +660,15 @@ def get_runtime_gateway_service(
         assistant_access_validator=lambda current_actor,
         current_project,
         thread_id,
-        access: require_history_access(
-            session_factory, settings, current_actor, current_project, thread_id, access
+        access: (
+            require_history_access(
+                session_factory,
+                settings,
+                current_actor,
+                current_project,
+                thread_id,
+                access,
+            )
         ),
         session_factory=session_factory,
         upstream=upstream,

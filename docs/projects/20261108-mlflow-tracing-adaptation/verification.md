@@ -39,7 +39,7 @@
 - **实测生成实验**：
   - 实验 ID：`8`
   - 实验名称：`project-5a5b7239-43e3-40e6-bba3-e64d96057607`
-  - Artifacts 路径：`/Users/lijiaxin/PyCharmMiscProject/mlflow-eval-platform/data/artifacts/8`
+  - Artifacts 路径：`/Users/<name>/PyCharmMiscProject/mlflow-eval-platform/data/artifacts/8`
   - 仅包含属于该项目的链路追踪（1 条真实 Trace，8.8s，OK）。
 - **截图凭证**：`evalflow_project_experiment_8.png` 与 `evalflow_experiment_8_traces.png`。
 

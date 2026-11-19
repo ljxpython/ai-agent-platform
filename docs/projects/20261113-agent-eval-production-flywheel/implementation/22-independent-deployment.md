@@ -6,7 +6,7 @@
 
 ## 环境与授权
 
-Agent：`/Users/lijiaxin/.codex/worktrees/f40b/ai-agent-platform`，基线`7081ae3e3963e12c6bf3e54a7d1e430d7a0ccbad`；独立Web26007/API24138/Runtime24493，专属PG/Redis/依赖。EvalFlow：`sshmy1:/opt/worktrees/evalflow-api-boundary-20261118`，基线`acfc89a`，独立API5011/SQLite/artifacts/venv，现场修改。两端只带入前序评测清理，无他人IAM/Usage改动。
+Agent：`/Users/<name>/.codex/worktrees/f40b/ai-agent-platform`，基线`7081ae3e3963e12c6bf3e54a7d1e430d7a0ccbad`；独立Web26007/API24138/Runtime24493，专属PG/Redis/依赖。EvalFlow：`sshmy1:/opt/worktrees/evalflow-api-boundary-20261118`，基线`acfc89a`，独立API5011/SQLite/artifacts/venv，现场修改。两端只带入前序评测清理，无他人IAM/Usage改动。
 
 开发传输为本机65156→远端5011、远端46187→本机24138的SSH回环隧道。主环境3000/2142/8123与远端9128未切换。密钥、账号和进程信息只在各自Git忽略的`.local-stack/`，不进入本文。
 

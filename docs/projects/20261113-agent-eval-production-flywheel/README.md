@@ -180,8 +180,8 @@ Agent所属服务继续由 `scripts/local-stack.sh` 管理；EvalFlow核心后�
 前置项目：[Agent 自动化评测体系](../20261112-agent-evaluation-system/README.md)、[既有方案](../20261112-agent-evaluation-system/plan.md)、[验收记录](../20261112-agent-evaluation-system/verification.md)。
 
 路径约定：
-- `Agent:` 表示本仓库 `/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform`。
-- `EvalFlow:` 表示关联仓库 `/Users/lijiaxin/PyCharmMiscProject/mlflow-eval-platform`。
+- `Agent:` 表示本仓库 `/Users/<name>/PyCharmMiscProject/ai-agent-platform`。
+- `EvalFlow:` 表示关联仓库 `/Users/<name>/PyCharmMiscProject/mlflow-eval-platform`。
 - 下表及专题方案中的「现有/拟新增」保留2026-11-13设计基线；当前是否实现/验证看逐项任务状态与证据，不能将原设计措辞当作当前进度。
 
 | 能力 | 已存在的实现 | 本期增量 |
@@ -245,7 +245,7 @@ Agent所属服务继续由 `scripts/local-stack.sh` 管理；EvalFlow核心后�
 
 核心闭环验收与阶段 4 扩展分别记录。未完成的批准范围继续列明，不能用阶段完成将整个项目标为 done；若用户决定取消/后置范围，记录具体批准及影响。
 
-实施使用 `/Users/lijiaxin/.codex/worktrees/344c/ai-agent-platform` 与同级 `mlflow-eval-platform`，两仓分支均为 `feat/agent-eval-production-flywheel`。基线分别为 `4d5c9ec5` / `89dba506`。默认仅操作登记的隔离资源与合成数据；生产部署、实际生产资料导出、告警外发和生产循环干预仍须单独批准。任务进度继续维护于四专题；全项目尚未验收。
+实施使用 `/Users/<name>/.codex/worktrees/344c/ai-agent-platform` 与同级 `mlflow-eval-platform`，两仓分支均为 `feat/agent-eval-production-flywheel`。基线分别为 `4d5c9ec5` / `89dba506`。默认仅操作登记的隔离资源与合成数据；生产部署、实际生产资料导出、告警外发和生产循环干预仍须单独批准。任务进度继续维护于四专题；全项目尚未验收。
 
 ## 开工与上线条件
 

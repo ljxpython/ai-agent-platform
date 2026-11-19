@@ -1,7 +1,7 @@
 # 统一技术栈全景与选型考量
 
 > 了解一个工业级 AI Agent 基础设施的技术栈，最忌讳只看名词清单吹牛皮。关键是要知道**为什么挑了这个库、它在整个盘子里解决什么问题、以及为什么没有选市面上其他看似时髦的替代方案**。
-> 本篇作为架构全景的第二篇，承接 [01-system-topology.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/01-overview/01-system-topology.md) 确立的六大核心支柱拓扑，全面厘清各个子系统真实使用的技术选型、真实版本基线以及底层工程权衡，并为后文 [02-cross-cutting/01-communication-matrix.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/01-communication-matrix.md) 展开跨服务通信矩阵奠定规范基石。
+> 本篇作为架构全景的第二篇，承接 [01-system-topology.md](01-system-topology.md) 确立的六大核心支柱拓扑，全面厘清各个子系统真实使用的技术选型、真实版本基线以及底层工程权衡，并为后文 [02-cross-cutting/01-communication-matrix.md](../02-cross-cutting/01-communication-matrix.md) 展开跨服务通信矩阵奠定规范基石。
 
 ---
 
@@ -92,4 +92,4 @@ LangGraph 本质上是一个**有状态的有向图（StateGraph）**。它把�
 ## 承上启下
 
 本篇全面梳理了各子系统的核心技术选型、真实版本基线与七大深层权衡逻辑。
-这些技术选型直接决定了各个子系统在运行态如何协同、通信与隔离。在下一篇 **[02-cross-cutting/01-communication-matrix.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/01-communication-matrix.md)** 中，我们将正式展开系统内部的 **8 大骨干通信干线**，深入剖析每一条干线的调用协议、报文 Schema、超时熔断与安全防雪崩机制。
+这些技术选型直接决定了各个子系统在运行态如何协同、通信与隔离。在下一篇 **[02-cross-cutting/01-communication-matrix.md](../02-cross-cutting/01-communication-matrix.md)** 中，我们将正式展开系统内部的 **8 大骨干通信干线**，深入剖析每一条干线的调用协议、报文 Schema、超时熔断与安全防雪崩机制。

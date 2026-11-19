@@ -8,8 +8,8 @@
 
 ## 本轮交付对象
 
-- Agent：`/Users/lijiaxin/.codex/worktrees/344c/ai-agent-platform`，分支`feat/agent-eval-production-flywheel`。
-- EvalFlow：`/Users/lijiaxin/.codex/worktrees/344c/mlflow-eval-platform`，同名分支。
+- Agent：`/Users/<name>/.codex/worktrees/344c/ai-agent-platform`，分支`feat/agent-eval-production-flywheel`。
+- EvalFlow：`/Users/<name>/.codex/worktrees/344c/mlflow-eval-platform`，同名分支。
 - Agent专属环境`wt_517a1ace499a`，PostgreSQL库/角色`wt_517a1ace499a_platform`及`wt_517a1ace499a_runtime`，端口28808/25087/26645/26450。
 - EvalFlow专属端口9138/5011及Worktree内部SQLite、评测产物和临时配置。主环境数据库和其他Worktree不删除。
 

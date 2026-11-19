@@ -12,7 +12,7 @@ Agent 负责源资料与 ACL、目标配置及构建信息、执行和实际回�
 
 目标快照由 Agent API 获取，含配置和服务构建摘要；评测运行绑定预期快照，执行边界检查，实际 Worker 回执再核对。新契约缺失、摘要缺失或版本漂移明确失败，不回退跨仓磁盘读取。环境依赖由所属服务报告，不读对方 `.env`。网络地址可配置，同机异机使用相同 API；认证、禁止重定向及来源保护保留。临时 SSH 隧道只作开发传输。
 
-开发时的本地 Agent Worktree：`/Users/lijiaxin/.codex/worktrees/f40b/ai-agent-platform`；远端 EvalFlow Worktree：`sshmy1:/opt/worktrees/evalflow-api-boundary-20261118`，现均已回收。起点仅携带前序评测清理；交付时先合入main后续变化，保留已有聊天、IAM及用量看板功能。独立依赖、数据库、队列及端口按local-stack初始化；远端后端现场修改、现场验证，没有从Mac镜像覆盖。
+开发时的本地 Agent Worktree：`/Users/<name>/.codex/worktrees/f40b/ai-agent-platform`；远端 EvalFlow Worktree：`sshmy1:/opt/worktrees/evalflow-api-boundary-20261118`，现均已回收。起点仅携带前序评测清理；交付时先合入main后续变化，保留已有聊天、IAM及用量看板功能。独立依赖、数据库、队列及端口按local-stack初始化；远端后端现场修改、现场验证，没有从Mac镜像覆盖。
 
 初始批准范围为实现、隔离联调和合成验证；2026-11-18用户追加批准Git提交/推送、合入主工作区、停止本次服务、删除本次测试库和清理Worktree。没有删除主业务数据或执行生产部署。新旧契约需两端共同升级，不做兼容层。
 

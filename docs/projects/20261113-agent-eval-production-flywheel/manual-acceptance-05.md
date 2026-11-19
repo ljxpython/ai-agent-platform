@@ -72,7 +72,7 @@ http://127.0.0.1:28808
 选择文件时，在Mac文件窗口按 **Command + Shift + G**，粘贴下面的文件夹路径，再选择这两个CSV：
 
 ~~~text
-/Users/lijiaxin/.codex/worktrees/344c/ai-agent-platform/docs/projects/20261113-agent-eval-production-flywheel/acceptance-fixtures
+/Users/<name>/.codex/worktrees/344c/ai-agent-platform/docs/projects/20261113-agent-eval-production-flywheel/acceptance-fixtures
 ~~~
 
 这些文件不含真实客户、业务资料或密钥。不要用自己的真实业务文件替换。

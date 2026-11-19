@@ -2,7 +2,7 @@
 
 > **模块定位与核心价值**：建立整套系统的**海量执行快照自动清理、存储容量防爆与多级生命周期治理体系**。
 > 彻底解决智能体多步执行在底层累积数百万条 Checkpoint 快照引发的“B02 存储膨胀与 IOPS 枯竭瓶颈”；基于 **平台策略注册与 GraphHarbor 原生到期淘汰（Platform Policy Registration & Engine-Owned Expiry）**，确立业务元数据（Platform DB）与增量执行状态（Runtime DB）的**跨库弱引用（Weak Reference）与优雅降级机制**；全链路通过 **PostgreSQL 咨询锁（Advisory Lock）、有界时间预算（Bounded Budget）与沙箱临时资源调和**，实现零锁表、零停机、全自动的存储自愈闭环。
-> 本篇作为横切规范的核心篇章，承接 [02-cross-cutting/07-continuous-evaluation-flywheel.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/07-continuous-evaluation-flywheel.md) 的评测资产锁定原则，并为后文剖析执行引擎防撑爆韧性 [05-runtime-service/05-context-blowup-defense-and-resilience.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/05-context-blowup-defense-and-resilience.md) 奠定存储层治理基石。
+> 本篇作为横切规范的核心篇章，承接 [02-cross-cutting/07-continuous-evaluation-flywheel.md](07-continuous-evaluation-flywheel.md) 的评测资产锁定原则，并为后文剖析执行引擎防撑爆韧性 [05-runtime-service/05-context-blowup-defense-and-resilience.md](../05-runtime-service/05-context-blowup-defense-and-resilience.md) 奠定存储层治理基石。
 
 ---
 
@@ -86,13 +86,13 @@ flowchart TD
 
 | 模块职责 | 核心代码绝对路径 | 关键类 / 函数 / 契约 |
 |---|---|---|
-| **控制面策略注册维护器** | [retention.py (API)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/application/retention.py) | `register_missing()`, `maintenance_lock(74013001)`, `POLICY`, 有界预算控制 |
-| **会话访问控制与状态元数据表**| [models.py (API)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/infra/sqlalchemy/models.py) | `ThreadAccessRecord`, `retention_configured_at`, `retention_attempted_at` |
-| **上游网关策略下发客户端** | [runtime_gateway_upstream.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/adapters/langgraph/runtime_gateway_upstream.py) | `set_thread_retention()`, `PATCH /threads/{id}/retention` |
-| **运行时端沙箱与日志维护脚本** | [maintenance.py (Runtime)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/maintenance.py) | `maintain()`, `pg_try_advisory_lock(74013003)`, `reconcile_remote_resources` |
-| **运行时策略鉴权切面** | [platform.py (Auth)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/auth/platform.py) | 校验 `operation == "thread-retention"` 与 `platform-retention-maintenance` 角色 |
-| **评测资料保留与豁免扫描器** | [retention.py (Eval)](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/evaluation/retention.py) | `maintain()`, `sweep()`, 评测锁定资产免受清理，合规日志保留审计 |
-| **运行时环境生命周期守护** | [evaluation_environment.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/evaluation_environment.py) | `environment_retention_lifespan()`, 运行时常驻协程维护 |
+| **控制面策略注册维护器** | [retention.py (API)](../../../apps/platform-api/src/platform_api/modules/runtime_gateway/application/retention.py) | `register_missing()`, `maintenance_lock(74013001)`, `POLICY`, 有界预算控制 |
+| **会话访问控制与状态元数据表**| [models.py (API)](../../../apps/platform-api/src/platform_api/modules/runtime_gateway/infra/sqlalchemy/models.py) | `ThreadAccessRecord`, `retention_configured_at`, `retention_attempted_at` |
+| **上游网关策略下发客户端** | [runtime_gateway_upstream.py](../../../apps/platform-api/src/platform_api/adapters/langgraph/runtime_gateway_upstream.py) | `set_thread_retention()`, `PATCH /threads/{id}/retention` |
+| **运行时端沙箱与日志维护脚本** | [maintenance.py (Runtime)](../../../apps/runtime-service/src/runtime_service/maintenance.py) | `maintain()`, `pg_try_advisory_lock(74013003)`, `reconcile_remote_resources` |
+| **运行时策略鉴权切面** | [platform.py (Auth)](../../../apps/runtime-service/src/runtime_service/auth/platform.py) | 校验 `operation == "thread-retention"` 与 `platform-retention-maintenance` 角色 |
+| **评测资料保留与豁免扫描器** | [retention.py (Eval)](../../../apps/platform-api/src/platform_api/modules/evaluation/retention.py) | `maintain()`, `sweep()`, 评测锁定资产免受清理，合规日志保留审计 |
+| **运行时环境生命周期守护** | [evaluation_environment.py](../../../apps/runtime-service/src/runtime_service/observability/evaluation_environment.py) | `environment_retention_lifespan()`, 运行时常驻协程维护 |
 
 ---
 

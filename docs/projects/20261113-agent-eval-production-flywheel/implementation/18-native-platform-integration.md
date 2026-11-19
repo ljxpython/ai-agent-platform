@@ -10,7 +10,7 @@
 
 ## 实际改动位置
 
-代码位于`/Users/lijiaxin/.codex/worktrees/344c/mlflow-eval-platform`；本Agent仓本轮同步项目文档，没有修改Agent服务实现。
+代码位于`/Users/<name>/.codex/worktrees/344c/mlflow-eval-platform`；本Agent仓本轮同步项目文档，没有修改Agent服务实现。
 
 | 文件或模块 | 调整 |
 |---|---|
@@ -77,7 +77,7 @@ NODE_OPTIONS=--max-old-space-size=8192 GENERATE_SOURCEMAP=false DISABLE_ESLINT_P
 
 ## 录像和交付
 
-桌面沿用`/Users/lijiaxin/Desktop/评测演示/打开演示.html`，新增“11月16日更新”区域；原16步截图、5段业务录像及可复制输入保留。
+桌面沿用`/Users/<name>/Desktop/评测演示/打开演示.html`，新增“11月16日更新”区域；原16步截图、5段业务录像及可复制输入保留。
 
 - 新视频：`07-平台内导航与登录-20261116.mp4`，1920×886，338.009601秒；录制状态complete，手动停止，402采集帧/335掉帧，不能称流畅30fps录像。
 - 覆盖：登录回跳、菜单、搜索、来源、历史结果、完整Session、时间线、新建页未保存提醒。录像止于提醒；之后已放弃临时输入，返回评测集入口时平台登录已失效，页面要求重新登录，没有建立新草稿。

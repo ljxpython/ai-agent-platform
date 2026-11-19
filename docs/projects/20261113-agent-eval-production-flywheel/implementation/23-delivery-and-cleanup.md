@@ -4,7 +4,7 @@
 
 ## Git交付与主分支保护
 
-Agent主工作区为`/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform`。交付前main为`b067fc1dd5c6e09c8cf7ae4ddd2603612f62d16a`，已含前序评测清理、后续聊天、用量看板和超级管理员权限改动；Worktree起点为`7081ae3e`。没有用Worktree目录覆盖主目录。
+Agent主工作区为`/Users/<name>/PyCharmMiscProject/ai-agent-platform`。交付前main为`b067fc1dd5c6e09c8cf7ae4ddd2603612f62d16a`，已含前序评测清理、后续聊天、用量看板和超级管理员权限改动；Worktree起点为`7081ae3e`。没有用Worktree目录覆盖主目录。
 
 Agent实现提交`2f13a76e`先推到`origin/feat/evalflow-independent-deployment-20261118`，在Worktree三方合入最新main形成`9972a0b50cb498e3435e04192e44b9ae9d720d55`，回归后再次推送分支，再将主工作区main快进到该提交并推送origin/main。分支远端保留作交付记录，本地分支和Worktree已回收。
 
