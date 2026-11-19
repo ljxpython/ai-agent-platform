@@ -135,6 +135,7 @@ def authoring_token(
         "tool_decision",
         "defer",
         "regression",
+        "delete",
     }:
         raise ForbiddenError(
             code="evaluation_command_denied", message="不允许此评测操作。"

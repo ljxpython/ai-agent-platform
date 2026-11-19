@@ -39,6 +39,7 @@ OPERATIONS = {
     "summary": PermissionCode.PROJECT_EVALUATION_REVIEW,
     "explain": PermissionCode.PROJECT_EVALUATION_EXECUTE,
     "compare": PermissionCode.PROJECT_EVALUATION_READ,
+    "delete": PermissionCode.PROJECT_EVALUATION_MANAGE,
 }
 
 
