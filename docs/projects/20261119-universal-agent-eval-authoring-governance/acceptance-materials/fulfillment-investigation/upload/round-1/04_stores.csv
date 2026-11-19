@@ -1,0 +1,7 @@
+store_id,store_name,region,active,is_test
+S01,上海直营店,华东,true,false
+S02,杭州经销店,华东,true,false
+S03,广州直营店,华南,true,false
+S04,南区测试店,华南,true,true
+S05,武汉直营店,华中,true,false
+S06,已停用门店,华中,false,false

@@ -1,0 +1,5 @@
+metric,value,unit,as_of,scope_note
+eligible_orders,20,orders,2026-11-18T18:00:00+08:00,旧看板待核对值_不是标准答案
+eligible_amount,6800.00,CNY,2026-11-18T18:00:00+08:00,旧看板待核对值_不是标准答案
+overdue_unshipped,3,orders,2026-11-18T18:00:00+08:00,旧看板待核对值_不是标准答案
+overdue_rate_pct,15.00,percent,2026-11-18T18:00:00+08:00,旧看板待核对值_不是标准答案

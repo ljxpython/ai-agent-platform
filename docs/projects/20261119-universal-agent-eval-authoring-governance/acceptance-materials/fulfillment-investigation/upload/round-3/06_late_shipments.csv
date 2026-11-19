@@ -1,0 +1,4 @@
+shipment_id,event_version,order_id,status,shipped_at,updated_at
+SHP004,2,O004,shipped,2026-11-18T16:00:00+08:00,2026-11-18T16:05:00+08:00
+SHP006,1,O006,shipped,2026-11-18T18:00:00+08:00,2026-11-18T18:00:00+08:00
+SHP010,1,O010,shipped,2026-11-18T17:00:00+08:00,2026-11-18T17:05:00+08:00

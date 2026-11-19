@@ -1,0 +1,149 @@
+{
+  "status": "passed",
+  "versions": {
+    "V1": {
+      "eligible_orders": 18,
+      "eligible_amount": "6367.80",
+      "on_time": [
+        "O001",
+        "O008",
+        "O016",
+        "O017",
+        "O022",
+        "O026"
+      ],
+      "shipped_late": [
+        "O003",
+        "O009"
+      ],
+      "overdue_unshipped": [
+        "O002",
+        "O004",
+        "O006",
+        "O007",
+        "O018",
+        "O024",
+        "O025"
+      ],
+      "pending_not_due": [
+        "O005",
+        "O010",
+        "O023"
+      ],
+      "overdue_amount": "2122.59",
+      "overdue_rate_pct": "38.89"
+    },
+    "V2": {
+      "eligible_orders": 18,
+      "eligible_amount": "6367.80",
+      "on_time": [
+        "O001",
+        "O004",
+        "O006",
+        "O008",
+        "O010",
+        "O016",
+        "O017",
+        "O022",
+        "O026"
+      ],
+      "shipped_late": [
+        "O003",
+        "O009"
+      ],
+      "overdue_unshipped": [
+        "O002",
+        "O007",
+        "O018",
+        "O024",
+        "O025"
+      ],
+      "pending_not_due": [
+        "O005",
+        "O023"
+      ],
+      "overdue_amount": "1472.09",
+      "overdue_rate_pct": "27.78"
+    },
+    "V3": {
+      "eligible_orders": 16,
+      "eligible_amount": "5066.50",
+      "on_time": [
+        "O001",
+        "O004",
+        "O006",
+        "O010",
+        "O016",
+        "O017",
+        "O022",
+        "O026"
+      ],
+      "shipped_late": [
+        "O003",
+        "O009"
+      ],
+      "overdue_unshipped": [
+        "O002",
+        "O018",
+        "O024",
+        "O025"
+      ],
+      "pending_not_due": [
+        "O005",
+        "O023"
+      ],
+      "overdue_amount": "871.49",
+      "overdue_rate_pct": "25.00"
+    }
+  },
+  "final_regions": {
+    "华东": {
+      "eligible_orders": 9,
+      "eligible_amount": "1812.63",
+      "on_time": 6,
+      "shipped_late": 1,
+      "overdue_unshipped": 2,
+      "pending_not_due": 0
+    },
+    "华南": {
+      "eligible_orders": 4,
+      "eligible_amount": "1311.93",
+      "on_time": 1,
+      "shipped_late": 0,
+      "overdue_unshipped": 1,
+      "pending_not_due": 2
+    },
+    "华中": {
+      "eligible_orders": 3,
+      "eligible_amount": "1941.94",
+      "on_time": 1,
+      "shipped_late": 1,
+      "overdue_unshipped": 1,
+      "pending_not_due": 0
+    }
+  },
+  "final_exclusions": {
+    "excluded_test_store": 2,
+    "cancelled": 1,
+    "not_fully_paid": 4,
+    "out_of_window": 1,
+    "unknown_store": 1,
+    "inactive_store": 1
+  },
+  "overdue_priority": [
+    "O002",
+    "O025",
+    "O024",
+    "O018"
+  ],
+  "due_orders": 13,
+  "due_only_overdue_rate_pct": "30.77",
+  "input_sha256": {
+    "upload/round-1/01_orders.csv": "4061ddfb004765d5e74b2011ea4db49953e59894f14e7e4474eb63612a7d84af",
+    "upload/round-1/02_payments.csv": "de0f0a14b50549a0dcc6c1949849594abfa077c2fb2777f37d43d7116b027f92",
+    "upload/round-1/03_shipments.csv": "8e5da380ad51f0c6a5295397b9cf91d934e8db1157f9318ac7e55cf9aba6d12c",
+    "upload/round-1/04_stores.csv": "437e96791b728542ff3a525ea7632bd19277f8815f0b8c357b703c76551d3003",
+    "upload/round-1/05_dashboard_snapshot.csv": "002f6d2f810772a31c86dba3f4ea5fc24b641fe418a47e2b5cb0279040a7929f",
+    "upload/round-3/06_late_shipments.csv": "9a5ad7253f010ce22547f433c52f3d3ba035e7bb1a3f9647a3ea29ec3e9460c0"
+  }
+}

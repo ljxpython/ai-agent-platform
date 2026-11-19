@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-11-19（全面修复 GitHub Actions CI 全部流水线暗雷：重构文档体系并转换为相对路径，使 docs 检查 100% 通过；校准 platform-api 路由矩阵断言、私有脱敏白名单与线程元数据增量契约，根除 7 个历史遗留单测失败；提取助手鉴权 lambda 彻底消除 ruff 格式化歧义，CI 四大 Job [code-quality, docs, platform-web, platform-api] 彻底达成 All Green 状态）；通用出题治理Task1–6工程done，合并版689项及全链路Final保留；正式EvalFlow于15:46:59重载新版，server可用，逐步人工验收手册已交付，用户验收待填写
+> **最后更新：** 2026-11-19（全面修复 GitHub Actions CI 全部流水线暗雷：重构文档体系并转换为相对路径，使 docs 检查 100% 通过；校准 platform-api 路由矩阵断言、私有脱敏白名单与线程元数据增量契约，根除 7 个历史遗留单测失败；提取助手鉴权 lambda 彻底消除 ruff 格式化歧义，CI 四大 Job [code-quality, docs, platform-web, platform-api] 彻底达成 All Green 状态）；通用出题治理Task1–7工程交付done，合并版689项及全链路Final保留；正式EvalFlow于15:46:59重载新版，手册已补六轮表格排查及六个可上传CSV，材料复算通过，用户实际验收待填写
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -13,10 +13,10 @@
 
 | 服务 | 当前状态（2026-11-19） |
 |---|---|
-| eval_platform (mlflow-eval-platform) | Task1–6工程done；合并产品9373c1e保留既有功能，689项及真实模型全链路Final、21 Span和十题AI质量10/10证据保留。所属开发服务/Worktree/10个SQLite库已回收，共享生产库保留。正式服务15:46:59重载，新PID2308114、5000/9128健康200，源码属主仓、三份配置与十份工作项哈希不变；server旧资产可读。手册已交付，用户验收待填写；default回源503、9128代理默认身份边界保留 |
+| eval_platform (mlflow-eval-platform) | Task1–7工程交付done；合并产品9373c1e保留既有功能，689项及真实模型全链路Final、21 Span和十题AI质量10/10证据保留。所属开发服务/Worktree/10个SQLite库已回收，共享生产库保留。Task6正式服务15:46:59重载，新PID2308114、5000/9128健康200，源码属主仓、三份配置与十份工作项哈希不变；server旧资产可读。Task7已补六轮表格排查和六个可直接上传CSV，独立复算通过，用户实际操作结果待填写；default回源503、9128代理默认身份边界保留 |
 | platform-api / runtime-service | 现有交付、evaluation-target/v1、绑定及Worker回执接口足够，本轮未改产品代码。用户批准后将Platform预算一行revision0→2并原生签名同步，Runtime=2、synced_revision=2、last_error=null，空策略保持；新任务passed，1 Session/1 Run/1 Trace及目标一致，生产进程未变 |
 
-实施准备及Task1–6工程done，唯一进度见项目tasks.md。合并版原资产/旧版、管理员200与后端匿名401、历史评分来源无重跑已验；新任务bbd5de5b passed，1 Session/1 Run/1 Trace、21 Span完整，ConversationalGEval=1.0。委托AI复核非独立人审，原12批及失败保留，不外推任意Agent。369份原证据归档，5011/9138与45011均已停，其他Worktree和Mac原有演示脚本保持。用户追加重载授权后，仅正式EvalFlow重启，Agent三服务身份不变；server旧题／结果及开考弹窗已核对，用户新聊天／模型操作验收待填写，见[逐步手册](projects/20261119-universal-agent-eval-authoring-governance/manual-acceptance.md)。9128既有Nginx无凭据注入默认身份，不能称公网匿名拒绝；default回源503，未改配置恢复。未重跑完整浏览器链、独立盲评或大规模压测，“历史单测倒灌”因果仍未核实。
+实施准备及Task1–7工程交付done，唯一进度见项目tasks.md。合并版原资产/旧版、管理员200与后端匿名401、历史评分来源无重跑已验；新任务bbd5de5b passed，1 Session/1 Run/1 Trace、21 Span完整，ConversationalGEval=1.0。委托AI复核非独立人审，原12批及失败保留，不外推任意Agent。369份原证据归档，5011/9138与45011均已停，其他Worktree和Mac原有演示脚本保持。Task6仅正式EvalFlow重启，Agent三服务身份不变；server旧题／结果及开考弹窗已核对。Task7新增真实CSV上传、补传、口径变更、四文件产出和读回复核的六轮操作全文，V1/V2/V3材料独立复算通过；本轮未调用模型或代跑用户验收，见[逐步手册](projects/20261119-universal-agent-eval-authoring-governance/manual-acceptance.md)。9128既有Nginx无凭据注入默认身份，不能称公网匿名拒绝；default回源503，未改配置恢复。未重跑完整浏览器链、独立盲评或大规模压测，“历史单测倒灌”因果仍未核实。
 
 2026-11-13 Git交付：用户追加授权将EvalFlow主环境适配及中文/品牌修复提交并推送远端；本仓同步对应的项目状态与验收文档，无Agent服务代码改动。生产部署未授权，A04沙箱准入阻塞保留；最终提交与远端状态以Git记录为准。
 
