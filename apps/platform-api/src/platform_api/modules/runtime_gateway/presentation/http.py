@@ -655,21 +655,19 @@ def get_runtime_gateway_service(
     from platform_api.modules.platform_assistant.evidence import require_history_access
     from platform_api.modules.runtime_policies.application.budgets import BudgetService
 
+    def _validate_assistant_access(current_actor, current_project, thread_id, access):
+        return require_history_access(
+            session_factory,
+            settings,
+            current_actor,
+            current_project,
+            thread_id,
+            access,
+        )
+
     return RuntimeGatewayService(
         budget_preflight=BudgetService(session_factory, settings).preflight,
-        assistant_access_validator=lambda current_actor,
-        current_project,
-        thread_id,
-        access: (
-            require_history_access(
-                session_factory,
-                settings,
-                current_actor,
-                current_project,
-                thread_id,
-                access,
-            )
-        ),
+        assistant_access_validator=_validate_assistant_access,
         session_factory=session_factory,
         upstream=upstream,
         runtime_base_url=settings.langgraph_upstream_url,
