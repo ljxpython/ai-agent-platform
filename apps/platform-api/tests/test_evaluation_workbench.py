@@ -205,15 +205,13 @@ def test_role_actions(role, operation, allowed):
             require_action(actor, project, operation)
 
 
-def test_platform_super_admin_cannot_skip_project_membership():
-    with pytest.raises(ForbiddenError):
-        require_action(
-            ActorContext(
-                user_id=str(uuid4()), platform_roles=("platform_super_admin",)
-            ),
-            str(uuid4()),
-            "read",
-        )
+def test_platform_super_admin_can_execute_project_evaluation():
+    # 超级管理员拥有绝对权限，可直接进行评测操作
+    require_action(
+        ActorContext(user_id=str(uuid4()), platform_roles=("platform_super_admin",)),
+        str(uuid4()),
+        "read",
+    )
 
 
 def test_command_content_audience_and_current_membership(setup):

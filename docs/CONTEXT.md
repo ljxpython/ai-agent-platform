@@ -12,7 +12,7 @@
 
 ## 当前增补：AI网关预算治理独立Worktree（2026-11-18）
 
-用户授权建立 `../ai-agent-platform-gateway-budget`、分支 `feat/gateway-budget-and-governance` 并完成后端；前端交同事。环境 `wt_1c4f0f7fb905`，回环Web/API/Runtime端口24824/26911/24254，双库/Redis/Workspace独立。未提交、推送、合并或部署；以下主工作区服务现状不因该Worktree改动而改变。
+用户授权建立 `../ai-agent-platform-gateway-budget`、分支 `feat/gateway-budget-and-governance` 并完成前后端核心功能。环境 `wt_1c4f0f7fb905`，回环Web/API/Runtime端口24824/26911/24254，双库/Redis/Workspace独立。代码已合并至 main 分支，生产部署未执行。
 
 | 服务 | 本Worktree当前状态（2026-11-18） |
 |---|---|
@@ -121,7 +121,7 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 
 ## 活跃项目
 
-- [AI网关预算控制与财务熔断治理](projects/20261118-gateway-budget-and-governance/README.md)：partial；Task1/2完成，Task3真实组合待验，Task4前端已交接，Task5联合Final待补。后端只在独立Worktree，未合并/部署。
+- [AI网关预算控制与财务熔断治理](projects/20261118-gateway-budget-and-governance/README.md)：`部分完成（partial）`；Task 1/2/4 完成（done），Task 3 核心链路接线与本地 HTTP/Worker、通知恢复已验，全链路 browser-skill 端到端验收通过；代码已合并进 main 分支，Task 5 待外部供应商配额补齐后完成人工整体验收。
 - [AI 网关使用看板与综合可观测重构](projects/20261117-gateway-observability-usage/README.md)：`已完成（done）`（2026-11-18 全栈实施与验证完成，5 项任务 100% 验收通过）；对标 mlflow-eval-platform 重构网关黄金三要素（吞吐、延迟分布、错误率）、单请求 Token 均值与 Prompt Cache 效能，落地图表到 Logs 毫秒级下钻穿透。
 
 - [会话转评测集后台异步任务与通知闭环](projects/20261117-evaluation-materials-async-task/README.md)：`done`（2026-11-17 全栈闭环与端到端验证通过）；将大体量业务会话转评测集的同步阻塞请求重构为基于 BackgroundTasks 的异步任务，弹窗秒级关闭 + 全局 Toast 提示，完成后通过平台通知中心（🔔）推送直达链接，彻底根治前端 30 秒超时与弹窗卡死问题。

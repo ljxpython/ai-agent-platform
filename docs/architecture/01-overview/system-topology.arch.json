@@ -30,12 +30,19 @@
         "label": "全链路可观测体系",
         "focus": ["api", "rt_api", "observability"],
         "note": "W3C traceparent 穿透、MLflow 原生链路树直达与 Loki 毫秒日志对齐。"
+      },
+      {
+        "id": "continuous-evaluation",
+        "label": "持续评测飞轮",
+        "focus": ["web", "api", "evalflow"],
+        "note": "真实业务会话一键异步转评测集、AI 辅助出题、独立题库版本化发布与裁判诊断闭环。"
       }
     ]
   },
   "components": [
     { "id": "browser", "type": "external", "label": "用户浏览器", "sublabel": "Browser Client", "pos": [40, 260], "size": [120, 60] },
     { "id": "web", "type": "frontend", "label": "Platform Web", "sublabel": "Vue 3 :3000", "pos": [220, 260], "size": [130, 60], "tag": "Chat & Admin" },
+    { "id": "evalflow", "type": "external", "label": "持续评测飞轮", "sublabel": "EvalFlow Hub", "pos": [220, 410], "size": [130, 60], "tag": "Continuous Eval" },
     { "id": "api", "type": "backend", "label": "Platform API", "sublabel": "FastAPI :2142", "pos": [430, 260], "size": [130, 60], "tag": "Control Plane" },
     { "id": "db_platform", "type": "database", "label": "平台业务库", "sublabel": "PostgreSQL :5432", "pos": [430, 110], "size": [130, 60], "tag": "IAM & Models" },
     { "id": "knowledge", "type": "backend", "label": "原生知识中台", "sublabel": "LightRAG Engine", "pos": [430, 410], "size": [130, 60], "tag": "Canvas Graph" },
@@ -48,13 +55,15 @@
     { "id": "llm", "type": "cloud", "label": "大模型供应商", "sublabel": "DeepSeek / Claude", "pos": [1060, 260], "size": [130, 60], "tag": "Inference" }
   ],
   "boundaries": [
-    { "kind": "security-group", "label": "Client Layer (前端工作台)", "wraps": ["browser", "web"] },
-    { "kind": "security-group", "label": "Control Plane (平台控制面与知识中台)", "wraps": ["api", "db_platform", "knowledge"] },
+    { "kind": "security-group", "label": "Client Layer (前端工作台与排障助手)", "wraps": ["browser", "web"] },
+    { "kind": "security-group", "label": "Control Plane & Evaluation (控制面中枢与评测中台)", "wraps": ["api", "db_platform", "knowledge", "evalflow"] },
     { "kind": "security-group", "label": "Execution Plane (运行时执行面与沙箱)", "wraps": ["rt_api", "rt_worker", "db_runtime", "redis", "sandbox"] }
   ],
   "connections": [
     { "id": "browser-to-web", "from": "browser", "to": "web", "label": "HTTP :3000", "variant": "emphasis" },
     { "id": "web-to-api", "from": "web", "to": "api", "label": "JWT / SSE", "variant": "emphasis", "labelDy": -20 },
+    { "id": "web-to-eval", "from": "web", "to": "evalflow", "label": "转评测集", "fromSide": "bottom", "toSide": "top", "labelDy": 25, "variant": "dashed" },
+    { "id": "api-to-eval", "from": "api", "to": "evalflow", "label": "异步 202 投递", "fromSide": "left", "toSide": "right", "variant": "dashed" },
     { "id": "api-to-db", "from": "api", "to": "db_platform", "label": "SQL", "fromSide": "top", "toSide": "bottom", "labelDy": -25 },
     { "id": "api-to-knowledge", "from": "api", "to": "knowledge", "label": "HMAC 验签", "fromSide": "bottom", "toSide": "top", "labelDy": 25 },
     { "id": "api-to-rt", "from": "api", "to": "rt_api", "label": "Delegation JWT", "variant": "security" },
@@ -68,11 +77,11 @@
   "cards": [
     {
       "dot": "cyan",
-      "title": "前端工作台 (Web)",
+      "title": "前端工作台与助手 (Web & Assistant)",
       "items": [
-        "Vue 3 + Vite 单页管理台、工作区总览看板与通透对话流",
-        "ChatSessionPool 多会话持久池，切 Tab 不断流且秒级水合",
-        "内嵌原生 Canvas 2.0 图谱工坊与 DiagnosticDetailModal 毫秒排障"
+        "Vue 3 + Vite 单页管理台、工作区总览四联看板与通透对话流",
+        "平台内置排障助手 (Platform Assistant, 580~960px 无级伸缩抽屉与错误胶囊)",
+        "全新 AI 网关大盘 (Vue 3 + ECharts 时序大盘，毫秒级下钻 Logs/Trace 抽屉)"
       ]
     },
     {
@@ -81,17 +90,25 @@
       "items": [
         "FastAPI 处理双层 RBAC、BYOK 密钥隔离与 PII 脱敏网关",
         "生成 60 秒临时 Delegation JWT，隔离底层长期用户凭据",
-        "流式反向代理，执行 8MiB 截断保护与保活心跳注入"
+        "会话转评测集 FastAPI BackgroundTasks 异步 202 调度与全局通知直达"
       ]
     },
     {
       "dot": "rose",
-      "title": "执行引擎与中台 (Runtime)",
+      "title": "执行引擎与沙箱 (Runtime)",
       "items": [
         "LangGraph 状态机驱动，覆盖六大防爆与 Token 软停机韧性",
+        "20+ 企业级 Skills 技能矩阵（学术、数据分析、代码、深度调研刹车）",
+        "Docker 对话级沙箱 Smart Zip 零内存流式直出压缩与 PTY 交互终端"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "评测飞轮与知识中台 (EvalFlow & Knowledge)",
+      "items": [
         "原生知识中台（LightRAG + Scoped HMAC 免隧道单向验签）",
-        "Docker 对话级沙箱 Smart Zip 零内存流式直出压缩与 PTY 终端",
-        "MLflow / Langfuse 双轨链路追踪与 Loki 毫秒日志精准穿透"
+        "持续评测飞轮（EvalFlow 解耦部署、题库独立资产与全自动裁判诊断）",
+        "W3C traceparent 穿透、MLflow / Langfuse 双轨链路树与 Loki 毫秒日志对齐"
       ]
     }
   ]

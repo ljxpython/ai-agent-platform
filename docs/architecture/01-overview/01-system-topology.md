@@ -2,11 +2,12 @@
 
 如果第一次看这个仓库的代码，很容易被各种目录绕晕。其实只要把整套系统当成一个**分工明确的现代化数字工厂**，它的结构就很直观：
 
-- **`platform-web`（前厅接待与工作台）**：前端界面，用户在这里打字聊天、沉浸式操作沙箱 Workspace、查阅 Token 用量与可观测大屏。
-- **`platform-api`（控制面中枢与安全防线）**：处理用户登录、双层 RBAC 权限裁决、审计留痕、模型 Catalog 与 BYOK 密文治理、向后签发零信任短时凭证。它绝不下厨炒菜（不装载任何 LangGraph 依赖）。
-- **`runtime-service`（智能体执行车间）**：真正调度大模型、驱动 LangGraph 状态图、装配弹性工具/MCP、执行记忆闭环与人机协同（HITL）审批。
+- **`platform-web`（前厅接待、工作台与排障助手）**：前端界面，用户在这里打字聊天、沉浸式操作沙箱 Workspace、查阅 Token 用量与 AI 网关时序大盘，并可随时唤起 Clean Architecture 架构的平台内置排障助手（Platform Assistant）。
+- **`platform-api`（控制面中枢与安全防线）**：处理用户登录、双层 RBAC 权限裁决、审计留痕、模型 Catalog 与 BYOK 密文治理、向后签发零信任短时凭证；同时作为安全网关代理 Loki 穿透排障，并调度会话转评测集的异步非阻塞导出任务。
+- **`runtime-service`（智能体执行车间）**：真正调度大模型、驱动 LangGraph 状态图、装配弹性工具/MCP/20+ Skills 矩阵、执行记忆闭环与人机协同（HITL）审批中断。
 - **`knowledge-studio`（原生知识中台）**：结合 LightRAG 图结构，负责多模态知识上传、异步图谱提取（Graph Studio 2.0）、零隧道单向验签与项目级只读 MCP 检索。
-- **`observability-stack`（工业级可观测双轨制大盘）**：对标大厂体验，基于 W3C `traceparent` 标准头贯穿微服务，由 Prometheus + Grafana + Loki + Promtail 超轻量矩阵（常驻内存仅 186MB）与 Langfuse 共同提供毫秒级链路穿透。
+- **`observability-stack`（工业级可观测双轨制大盘）**：对标大厂体验，基于 W3C `traceparent` 标准头贯穿微服务，由 Prometheus + Grafana + Loki + Promtail 超轻量矩阵（常驻内存仅 186MB）与 MLflow / EvalFlow 原生全景追踪树共同提供毫秒级链路穿透，内嵌 AI 网关指标时序大盘。
+- **`evalflow`（持续评测飞轮与质检中台）**：支持生产业务会话一键转为评测集、FastAPI BackgroundTasks 异步 202 调度与全局通知直达、AI 辅助出题/扩题、独立题库版本化发布与真实多环境 Agent 评测运行及全链路裁判诊断。
 
 ---
 
@@ -24,7 +25,8 @@
 flowchart TB
     subgraph Browser["用户浏览器 (Client Layer)"]
         User["人类用户 / 平台管理员"]
-        WebUI["Vue 3 + Vite 单页应用 (端口: 3000)\n(流式对话 / 沉浸式沙箱 / 轨迹排障 / Token看板 / 可观测大盘)"]
+        WebUI["Vue 3 + Vite 单页应用 (端口: 3000)\n(流式对话 / 沉浸式沙箱 / 轨迹排障 / Token看板 / AI网关大盘)"]
+        AssistantUI["平台内置排障助手 (Clean Architecture)\n(580-960px 无级伸缩 / 错误胶囊 / 专职审批 / 证据穿透)"]
     end
 
     subgraph ControlPlane["控制面集群: platform-api (默认端口: 2142)"]
@@ -33,6 +35,7 @@ flowchart TB
         TokenReadModel["Token 用量可重建聚合投影读模型"]
         KnowledgeAuth["知识库 Scoped HMAC/JWT 动态凭据签发器"]
         PlatformDB[(平台业务库 PostgreSQL\n用户/组织/RBAC/审计/模型Catalog)]
+        AssistantEngine["助手只读排障引擎 (受管只读 SQL / 日志穿透审计)"]
     end
 
     subgraph ExecutionPlane["执行面集群: runtime-service (默认端口: 8123)"]
@@ -40,6 +43,7 @@ flowchart TB
         RT_Worker["Runtime Worker (LangGraph 1.2 状态机 / HITL 审批恢复)"]
         MemoryEngine["三层记忆引擎 (异步提取 <5ms / MMR 双池重排 / 平滑淘汰)"]
         ResilientMCP["弹性 MCP 客户端 (10s 装配故障隔离 / 运行期软降级)"]
+        SkillMatrix["企业级 20+ Skills 矩阵 (学术 / 数据分析 / 调研刹车 / 代码设计)"]
         RuntimeDB[(运行时专库 PostgreSQL\nCheckpoints / MessageInbox / Skills)]
         RuntimeRedis[(Redis 缓存 & 任务调度队列)]
     end
@@ -54,14 +58,24 @@ flowchart TB
         GraphEngine["Canvas 力导向图谱工坊 2.0 (单向验签自治)"]
     end
 
+    subgraph EvalFlywheel["持续评测飞轮 (EvalFlow 体系)"]
+        EvalFlowSvc["EvalFlow 评测工作台 (独立部署 / 题库资产解耦)"]
+        AsyncMaterials["BackgroundTasks 异步材料抽取与脱敏 (202 Accepted)"]
+        BenchmarkRunner["全自动 AI 出题 / 扩用例 / 裁判多轮质检"]
+    end
+
     subgraph ObservabilityCenter["工业级可观测性中心 (常驻总内存 < 190MB)"]
         PromLoki["Loki (TSDB 毫秒日志) + Promtail 采集"]
-        Prometheus["Prometheus (指标抓取 /metrics) + Grafana (大盘内嵌)"]
-        LangfuseSvc["Langfuse APM (分布式链路追踪树)"]
+        Prometheus["Prometheus (指标抓取 /metrics) + Grafana (Kiosk 大盘)"]
+        LangfuseSvc["MLflow / Langfuse APM (分布式全景链路追踪树)"]
+        GatewayUsage["AI 网关时序聚合大盘 (毫秒级直达 Logs/Trace 抽屉)"]
     end
 
     User -->|"HTTP / WebSocket"| WebUI
+    User -.->|"唤起抽屉"| AssistantUI
     WebUI -->|"1. Bearer User JWT (REST / SSE)"| Gateway
+    AssistantUI -->|"只读排障请求"| AssistantEngine
+    AssistantEngine -->|"只读 SQL"| PlatformDB
     Gateway --> IAM
     IAM --> PlatformDB
     Gateway -->|"2. 签发 60s Delegation JWT (携带操作白名单与项目绑定)"| RT_API
@@ -69,10 +83,17 @@ flowchart TB
     RT_API -->|"4. 派发执行任务"| RuntimeRedis
     RuntimeRedis --> RT_Worker
     RT_Worker -->|"5. 驱动图节点流转"| MemoryEngine
-    RT_Worker -->|"6. 弹性装配工具调用"| ResilientMCP
+    RT_Worker -->|"6. 弹性装配工具与技能"| ResilientMCP
+    RT_Worker -->|"装配复合技能"| SkillMatrix
     RT_Worker -->|"7. 调度代码执行与终端交互"| SandboxEnv
     RT_Worker -->|"8. 跨服务检索项目资料 (只读 MCP)"| KnowledgeSystem
     RT_Worker -->|"9. 写入状态快照 Checkpoint"| RuntimeDB
+
+    %% 评测飞轮连线
+    WebUI -->|"一键转评测集"| AsyncMaterials
+    AsyncMaterials -->|"异步 202 投递"| EvalFlowSvc
+    EvalFlowSvc --> BenchmarkRunner
+    BenchmarkRunner -->|"多环境连接绑定回归"| RT_API
 
     %% 可观测与日志流向
     Gateway -.->|"W3C traceparent (00-trace_id-span_id-01)"| RT_API
@@ -82,6 +103,7 @@ flowchart TB
     Gateway -.->|"代理查询 TSDB (带自回声过滤)"| PromLoki
     Gateway -.->|"暴露 /metrics"| Prometheus
     RT_API -.->|"暴露 /metrics"| Prometheus
+    WebUI -.->|"指标分析与下钻"| GatewayUsage
 
     %% 知识中台交互
     WebUI -->|"动态凭据签发"| KnowledgeAuth
@@ -96,11 +118,12 @@ flowchart TB
 
 | 进程 / 服务 | 所在目录 / 容器 | 默认端口 | 核心定位与职责 |
 |---|---|---|---|
-| **Platform Web** | `apps/platform-web` | `3000` (Vite) | 工业级前端工作台。承接管理后台、流式对话、沉浸式沙箱、轨迹甘特图与日志排障大盘。 |
-| **Platform API** | `apps/platform-api` | `2142` (FastAPI) | 平台控制面核心。负责 IAM、双层 RBAC、模型 Catalog 治理、PII 脱敏网关、Token 聚合读模型及受管反向代理。 |
+| **Platform Web** | `apps/platform-web` | `3000` (Vite) | 工业级前端工作台。承接管理后台、流式对话、沙箱 Workspace、AI 网关大盘与平台排障助手。 |
+| **Platform API** | `apps/platform-api` | `2142` (FastAPI) | 平台控制面核心。负责 IAM、双层 RBAC、模型 Catalog、PII 脱敏网关、Token 聚合读模型及受管反代。 |
 | **Runtime API** | `apps/runtime-service` | `8123` (FastAPI) | 智能体接口接入层。只认 Delegation JWT，负责会话初始化、MessageInbox 咨询锁入队与对外 SSE 推流。 |
-| **Runtime Worker** | `apps/runtime-service` | 无外部端口 | 状态机执行工人。消费 Redis 任务，驱动 LangGraph 状态机运转、执行工具调用与异步记忆提取。 |
+| **Runtime Worker** | `apps/runtime-service` | 无外部端口 | 状态机执行工人。消费 Redis 任务，驱动 LangGraph 状态机运转、执行工具/Skills与异步记忆提取。 |
 | **LightRAG Service** | `lightrag-service` | `8000` | 知识检索服务。提供多模态知识图谱解析、单向自治验签与项目级只读检索 MCP。 |
+| **EvalFlow 持续评测中台** | `evalflow-service` (跨机/独立部署) | `5000` / `9128` | 持续评测飞轮。承接会话材料转题库、AI 自动出题扩题、多环境连接绑定与全链路裁判诊断。 |
 | **Observability 矩阵** | `deploy/docker-compose.observability.yml` | `3100`(Loki)<br>`9090`(Prom)<br>`3001`(Grafana) | 分布式可观测性。Loki + Promtail + Prometheus + Grafana 四容器协同，常驻总内存仅 186.47MB。 |
 
 除了上述计算进程，系统严格采用**三轨物理隔离存储**：

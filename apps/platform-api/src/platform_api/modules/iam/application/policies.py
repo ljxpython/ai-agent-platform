@@ -211,6 +211,10 @@ class IamPolicyEngine:
             ) and permission in {
                 PermissionCode.PROJECT_USAGE_READ,
                 PermissionCode.PROJECT_AUDIT_READ,
+                PermissionCode.PROJECT_EVALUATION_READ,
+                PermissionCode.PROJECT_EVALUATION_EXECUTE,
+                PermissionCode.PROJECT_EVALUATION_REVIEW,
+                PermissionCode.PROJECT_EVALUATION_MANAGE,
             }:
                 return PolicyDecision(
                     allowed=True, reason=PolicyReason.PLATFORM_SUPER_ADMIN

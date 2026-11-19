@@ -125,6 +125,16 @@ class IamPolicyEngineTest(unittest.TestCase):
         self.assertTrue(audit_decision.allowed)
         self.assertEqual(audit_decision.reason, PolicyReason.PLATFORM_SUPER_ADMIN)
 
+        eval_decision = self.engine.evaluate(
+            actor=actor,
+            authorization=AuthorizationRequest(
+                permission=PermissionCode.PROJECT_EVALUATION_MANAGE,
+                project_id="p-1",
+            ),
+        )
+        self.assertTrue(eval_decision.allowed)
+        self.assertEqual(eval_decision.reason, PolicyReason.PLATFORM_SUPER_ADMIN)
+
     def test_fixed_platform_and_project_role_matrix(self) -> None:
         viewer = ActorContext(user_id="viewer", platform_roles=("platform_viewer",))
         operator = ActorContext(
