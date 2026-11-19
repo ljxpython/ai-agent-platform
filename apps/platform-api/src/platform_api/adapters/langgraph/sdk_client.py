@@ -681,6 +681,7 @@ def redact_runtime_private_fields(
                     "token_budget_stop_code",
                     "runtime_loop_state",
                     "platform_background_completion",
+                    "evaluation_target",
                 }
             )
         }

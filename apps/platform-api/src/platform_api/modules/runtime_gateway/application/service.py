@@ -2966,18 +2966,13 @@ class RuntimeGatewayService:
             actor, dict(ensure_dict(next_payload.get("metadata")))
         )
         metadata["tenant_id"] = self._tenant_id
-        top_graph_id = (
-            raw.get("graph_id") or raw.get("graphId") or raw.get("assistant_id")
-        )
-        if top_graph_id and not metadata.get("graph_id"):
-            metadata["graph_id"] = str(top_graph_id)
-        if "graphId" in metadata and not metadata.get("graph_id"):
-            metadata["graph_id"] = str(metadata["graphId"])
         if (
             opt_in
             and self._automatic_titles_enabled()
             and not raw.get("supersteps")
             and not metadata.get("forked_from")
+            and raw.get("graph_id") != "platform_assistant"
+            and raw.get("assistant_id") != "platform_assistant"
         ):
             initial_title = text_content(metadata.get("title"))[:80] or "新对话"
             metadata.update({"title": initial_title, TITLE_SEED_KEY: initial_title})
@@ -3739,9 +3734,7 @@ class RuntimeGatewayService:
         upstream = await self._thread_upstream(
             project_id=project_id, thread=thread, operation="thread-edit"
         )
-        merged_metadata = dict(metadata)
-        merged_metadata.update(updated_fields)
-        saved = await upstream.update_thread(thread_id, {"metadata": merged_metadata})
+        saved = await upstream.update_thread(thread_id, {"metadata": updated_fields})
         if isinstance(saved, dict) and isinstance(saved.get("metadata"), dict):
             metadata.update(saved["metadata"])
         return {"thread_id": thread_id, "metadata": public_title_metadata(metadata)}
