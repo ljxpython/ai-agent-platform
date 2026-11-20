@@ -21,7 +21,7 @@
 
 独立项目[P01–P07](projects/20261120-checkpoint-storage-governance/tasks.md)负责平台接入与业务决定；GraphHarbor同名项目S01–S07负责通用引擎，已正式发布双包0.13.0.post49。核心未加入平台Agent、模型、工具、Workspace或保留天数；反向JSON Patch与维护预算均由用户批准。
 
-平台所有产品开发与联调在feat/checkpoint-storage-governance、登记wt_3b7f1734875d完成，双库、Redis、Workspace及安装独立。P01–P06done，P07本地Git交付收尾；全部功能和必要验收通过后合回本地main，并作合并后回归。保留主工作区AGENTS及并行修改，不推远端、不执行GraphHarbor Git或现役部署。
+平台所有产品开发与联调在feat/checkpoint-storage-governance、登记wt_3b7f1734875d完成，双库、Redis、Workspace及安装独立。P01–P07done；实现d460137，合入main并行改动的代码提交cff8feb3，合并版33项及浏览器2项通过，迁回本地main后同提交隔离回归14项通过。主工作区旧规划有具名stash备份，AGENTS修改哈希保持；未推远端、执行GraphHarbor Git或切换主工作区/现役安装与服务。
 
 | 服务 | 本阶段当前状态 |
 |---|---|

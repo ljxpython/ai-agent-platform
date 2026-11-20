@@ -132,5 +132,48 @@
       11.542,
       4.172
     ]
+  },
+  "merged_validation": {
+    "code_commit": "cff8feb3b49160f43ad5f351fb6e2f5edc3e01af",
+    "main_baseline": "6165026c752581781148701065ff842107fb3a7a",
+    "implementation_commit": "d460137",
+    "merged_unit_passed": 33,
+    "merged_browser_passed": 2,
+    "post_main_passed": 14,
+    "agents_sha256_preserved": "e03992e02819e3b4d57b2fb264a81893c9ae5dec63a3212de7eb748710531649",
+    "main_services_or_dependencies_restarted": false,
+    "browser": {
+      "reference": {
+        "threadId": "7e660b88-3a74-47cd-b109-25efaff3c56d",
+        "projectId": "3b9670ee-f0bb-4b98-a4d3-4b2af0532bc2",
+        "messageIds": [
+          "7d774d81-96dd-43d8-a60e-d8717532ed5f",
+          "lc_run--01a1fa0b-1279-7b73-83cd-4ebdb3775c52",
+          "08ef3f19-c4d6-4898-836f-1cac171498e4",
+          "lc_run--01a1fa0b-3627-7a20-8f71-1294a42ee515"
+        ],
+        "historyBefore": 30,
+        "historyAfter": 45,
+        "checks": [
+          "real-model-two-turns",
+          "stable-message-ids",
+          "reload-full-history",
+          "native-edit-fork",
+          "old-checkpoint-retained"
+        ]
+      },
+      "retention": {
+        "project": "657a33fb-9e55-4f0d-b3e5-cac9e9f1c643",
+        "thread": "5fc639a0-6c5f-42c2-a8de-9f80b2bf8d35",
+        "activityReports": 2,
+        "checks": [
+          "view-renews",
+          "background-reads-do-not-renew",
+          "return-renews",
+          "send-renews",
+          "real-model-success"
+        ]
+      }
+    }
   }
 }
