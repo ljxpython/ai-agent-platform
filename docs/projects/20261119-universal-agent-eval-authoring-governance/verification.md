@@ -11,7 +11,7 @@
 
 两仓已正常合并main，Agent dbc656a9／EvalFlow 69d0584；并行提交7d3cb7f、0a5b89b均为EvalFlow main祖先，Agent原有AGENTS.md未提交改动保留。合并版后端756 passed／27 warnings，Runtime专项7 passed，前端4套41 passed、类型检查通过。默认前端构建仍因既有全局lint失败；关闭lint插件后的编译通过，不称默认构建通过。
 
-浏览器真实六轮会话转换返回202后，后台Runtime读取401，转换失败通知可见；正在补复现并最小修复。一次性六表通过粘贴资料、完整配置编辑、保存、确认授权及独立发布，页面确认“已发布，尚未运行”；主动点击运行后产生ab32aebe任务和9d366044会话。此时为修复来源问题编辑API源码，恢复写文件前触发target_configuration_changed，原任务停止且回执no_active_run。此尝试不是业务通过证据，修复合入与源码冻结后须重新运行。原始文件上传的浏览器自动化受CDP限制，不冒称通过。完整录屏、截图和逐例HTML仍在制作；本节是阶段记录，不能替代最终Final。详细复现、修复前后回归和合并证据见[合并版浏览器记录](implementation/09-main-browser-acceptance.md)。
+浏览器六轮来源首次转换因后台委托过期失败；ce091a93修复逐次签发后，复验改为history大页读取超时，正补小分页修复与真实复验。小分页保持2000上限，关联75项及181子断言通过。冻结ce091a93的客观任务df3e5461完成5 Run/5完整Trace、17工具与4受限审批，裁判/模拟调用0；四产物中三份完全正确，订单表四条排除状态为空，独立核对与artifact_correct=0一致，completion/protected_unchanged=1，业务正常failed。前一ab32aebe的目标漂移错误保留。原生文件选择自动化受CDP限制，制作使用粘贴资料，执行六份实际上传回执已取得。逐例HTML仍在制作，本节仍为阶段证据。详见[合并版浏览器记录](implementation/09-main-browser-acceptance.md)。
 
 ## 1. 范围与通过原则
 

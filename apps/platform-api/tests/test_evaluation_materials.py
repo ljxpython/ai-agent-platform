@@ -2,6 +2,8 @@ import asyncio
 from types import SimpleNamespace
 from uuid import uuid4
 
+import pytest
+
 from platform_api.modules.evaluation.materials import snapshot
 
 
@@ -62,6 +64,56 @@ def test_empty_history_is_explicitly_incomplete():
     value = asyncio.run(snapshot(Gateway(), None, str(uuid4()), str(uuid4())))
     assert not value["history_complete"]
     assert value["missing"]
+
+
+@pytest.mark.parametrize("history_count", [23, 2000, 2001])
+def test_snapshot_pages_large_history_without_losing_order_or_capture_limit(
+    history_count,
+):
+    class Gateway:
+        calls = 0
+
+        async def get_thread(self, **kwargs):
+            return {"metadata": {"agent_id": str(uuid4())}}
+
+        async def get_thread_state(self, **kwargs):
+            return {
+                "checkpoint": {"checkpoint_id": str(history_count)},
+                "values": {"messages": [{"id": "answer", "content": "frozen"}]},
+            }
+
+        async def get_thread_history(self, **kwargs):
+            payload = kwargs["payload"]
+            assert payload["limit"] <= 10
+            self.calls += 1
+            before = int(payload["before"]["checkpoint_id"])
+            return [
+                {
+                    "checkpoint": {"checkpoint_id": str(index)},
+                    "values": {
+                        "messages": [
+                            {"id": str(index), "content": str(index)},
+                            {"id": "answer", "content": "historical"},
+                        ]
+                    },
+                }
+                for index in range(before - 1, max(-1, before - 11), -1)
+            ]
+
+        async def list_thread_runs(self, **kwargs):
+            return []
+
+    gateway = Gateway()
+    value = asyncio.run(snapshot(gateway, None, str(uuid4()), str(uuid4())))
+    assert gateway.calls == min(200, (history_count + 9) // 10)
+    assert [m["id"] for m in value["messages"] if m["id"] != "answer"] == [
+        str(index) for index in range(max(0, history_count - 2000), history_count)
+    ]
+    assert (
+        next(m for m in value["messages"] if m["id"] == "answer")["content"] == "frozen"
+    )
+    assert value["history_complete"] is (history_count < 2000)
+    assert bool(value["missing"]) is (history_count >= 2000)
 
 
 def test_later_snapshot_cannot_be_misrepresented_as_session_initial_state():

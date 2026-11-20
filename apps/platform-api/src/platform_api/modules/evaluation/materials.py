@@ -127,14 +127,15 @@ async def snapshot(gateway, actor, project_id, thread_id, data_class="synthetic"
     cutoff = state.get("checkpoint") or {}
     captured_at = datetime.now(UTC)
     checkpoints, before, complete = [], cutoff or None, False
-    for _ in range(20):
+    # Each checkpoint repeats accumulated state; keep pages small without reducing the cap.
+    for _ in range(200):
         page = await gateway.get_thread_history(
-            **scope, payload={"limit": 100, **({"before": before} if before else {})}
+            **scope, payload={"limit": 10, **({"before": before} if before else {})}
         )
         if not isinstance(page, list):
             raise ValueError("会话历史接口格式不完整。")
         checkpoints.extend(page)
-        if len(page) < 100:
+        if len(page) < 10:
             complete = True
             break
         next_cursor = page[-1].get("checkpoint")
