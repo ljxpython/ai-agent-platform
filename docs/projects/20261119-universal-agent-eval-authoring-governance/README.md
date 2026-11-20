@@ -6,6 +6,8 @@
 
 有界Trace、事实复用、按需正文与Runtime去重已实现并完成合并后联合Final。原19 Trace/837 Span及四规则保持，86158adc两题五项语义按原阈值pass；新六轮必要事实和文件保持，逐轮及会话业务failed如实保留。Loki两小时无非预期OOM/新增stream超限，最低可用650,804KiB，swap未持续积累；应用回退/再升级通过。Agent32646240、EvalFlow d0cb23d已合main推送；正式EvalFlow已加载，正式Agent未重载Runtime去重。桌面报告9案例/26视频/32截图、58/58实际媒体核对通过；所属临时验收服务已停止。唯一进度见[tasks.md](tasks.md)，证据与限制见[verification.md](verification.md)。
 
+2026-11-21用户批准后，OOM相关经验已按两仓职责写回现有经验库，覆盖采集去重、有界取证、软内存阈值与Loki标签治理，入口见[经验库索引](../../lessons/index.md)。本次仅补文档，未改变代码、服务或验收结论。
+
 > **项目标识：** `20261119-universal-agent-eval-authoring-governance`
 > **启动时间：** 2026-11-19
 > **当前状态：** 已完成（done，2026-11-21）。Task1–21的批准工程范围及必要验收完成。平台验收通过不等于Agent每题通过；旧0.7/0.8及新六轮0.6/0.8失败保留，正式Agent未重载新采集代码，长期容量不在两小时实测结论内。
