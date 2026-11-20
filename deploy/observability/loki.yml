@@ -18,6 +18,16 @@ common:
     kvstore:
       store: inmemory
 
+ingester:
+  chunk_idle_period: 5m
+  wal:
+    replay_memory_ceiling: 64MB
+
+chunk_store_config:
+  chunk_cache_config:
+    embedded_cache:
+      max_size_mb: 16
+
 schema_config:
   configs:
     - from: 2024-01-01
@@ -31,9 +41,13 @@ schema_config:
 limits_config:
   retention_period: 7d
   max_query_length: 720h
-  max_query_parallelism: 4
+  max_query_parallelism: 1
+  tsdb_max_query_parallelism: 1
   reject_old_samples: true
   reject_old_samples_max_age: 168h
+
+querier:
+  max_concurrent: 1
 
 compactor:
   working_directory: /loki/compactor

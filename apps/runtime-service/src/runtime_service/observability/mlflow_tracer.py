@@ -14,6 +14,20 @@ from runtime_service.build_info import STARTUP_PACKAGE_DIGEST
 
 logger = logging.getLogger(__name__)
 
+
+def _chain_state_reference(value: Any, parent_run_id: Any) -> dict[str, Any]:
+    # Repeated graph state is available through the root, model/tool spans and execution snapshots.
+    return {
+        "_runtime_chain_state": {
+            "schema": "chain-state-ref/v1",
+            "payload_recorded": False,
+            "parent_run_id": str(parent_run_id),
+            "value_type": type(value).__name__,
+            "source": "root_and_model_tool_spans",
+        }
+    }
+
+
 _DEFAULT_EXPERIMENT_NAME = "ai-agent-platform-traces"
 _mlflow_initialized = False
 _mlflow_lock = threading.Lock()
@@ -97,6 +111,7 @@ class MLflowFailSoftCallback(BaseCallbackHandler):
         self._graph_id = graph_id
         self._metadata = dict(bound_metadata or {})
         self._tracer = None
+        self._internal_chain_runs: dict[Any, Any] = {}
         self.raise_error = False
         # Observation events need the caller's active span, not an executor-thread context.
         self.run_inline = os.getenv("AGENT_LOOP_OBSERVATION_ENABLED") == "1"
@@ -137,6 +152,9 @@ class MLflowFailSoftCallback(BaseCallbackHandler):
         if self._tracer is None:
             return None
         try:
+            if parent_run_id is not None:
+                self._internal_chain_runs[run_id] = parent_run_id
+                inputs = _chain_state_reference(inputs, parent_run_id)
             result = self._tracer.on_chain_start(
                 serialized,
                 inputs,
@@ -151,6 +169,7 @@ class MLflowFailSoftCallback(BaseCallbackHandler):
                 self._enrich_trace()
             return result
         except Exception as err:
+            self._internal_chain_runs.pop(run_id, None)
             logger.warning(
                 "runtime_mlflow_on_chain_start_failed", extra={"error": str(err)}
             )
@@ -200,6 +219,11 @@ class MLflowFailSoftCallback(BaseCallbackHandler):
         if self._tracer is None:
             return None
         try:
+            parent = self._internal_chain_runs.pop(run_id, None)
+            if parent is not None:
+                outputs = _chain_state_reference(outputs, parent)
+                if "inputs" in kwargs:
+                    kwargs["inputs"] = _chain_state_reference(kwargs["inputs"], parent)
             return self._tracer.on_chain_end(outputs, run_id=run_id, **kwargs)
         except Exception as err:
             logger.warning(
@@ -213,6 +237,9 @@ class MLflowFailSoftCallback(BaseCallbackHandler):
         if self._tracer is None:
             return None
         try:
+            parent = self._internal_chain_runs.pop(run_id, None)
+            if parent is not None and "inputs" in kwargs:
+                kwargs["inputs"] = _chain_state_reference(kwargs["inputs"], parent)
             return self._tracer.on_chain_error(error, run_id=run_id, **kwargs)
         except Exception as err:
             logger.warning(

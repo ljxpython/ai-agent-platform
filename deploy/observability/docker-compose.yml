@@ -49,10 +49,13 @@ services:
       - ./loki.yml:/etc/loki/local-config.yaml:ro
       - loki-data:/loki
     command: -config.file=/etc/loki/local-config.yaml
+    environment:
+      GOMEMLIMIT: 192MiB
+    memswap_limit: 384M
     deploy:
       resources:
         limits:
-          memory: 120M
+          memory: 256M
 
   promtail:
     image: grafana/promtail:2.9.4

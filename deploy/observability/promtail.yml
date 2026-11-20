@@ -23,14 +23,9 @@ scrape_configs:
         target_label: 'service'
         replacement: 'platform-api'
       - source_labels: ['__journal__systemd_unit']
-        regex: 'agent-runtime-service\.service'
+        regex: 'agent-runtime-(service|api|worker)\.service'
         target_label: 'service'
         replacement: 'runtime-service'
-    pipeline_stages:
-      - regex:
-          expression: '(?P<trace_id>[0-9a-f]{32})'
-      - labels:
-          trace_id:
 
   - job_name: app-file-logs
     static_configs:
@@ -40,7 +35,6 @@ scrape_configs:
           __path__: /var/log/ai-agent-platform/*.log
     pipeline_stages:
       - regex:
-          expression: '\[(?P<service>platform-api|runtime-service)\](?:\[trace_id=(?P<trace_id>[0-9a-f]{32})\])?'
+          expression: '\[(?P<service>platform-api|runtime-service)\]'
       - labels:
           service:
-          trace_id:
