@@ -59,3 +59,13 @@ d0cb23d已合main推送并23:45:09正式加载，PID134216/NRestarts0，1024/115
 所属临时384MiB服务从8914aeb8c回退后再升级当前版本，两次health及实验25读取均200，配置与原报告hash不变，正式身份未变。隔离恢复三份日志配置后Compose/Loki/Promtail原生校验通过；未在生产重施已知不够的旧内存值。证据application-rollback.json、configuration-rollback.json。首次归档目录断言与系统Python缺psutil均在停止服务前失败，改用项目原虚拟环境后完成，未计作通过。
 
 桌面报告已扩充9案例/26录像/32关键截图，browser-skill实际播放/加载58/58通过，视频均观察到播放进度。新增25/26明显丢帧、18 partial及各时长上限保持披露；完整后台新六轮与两小时窗口未录制连续录像。检查用专用窗口已关闭，原报告不依赖外部资源。
+
+## 合并后联合验收与环境收尾
+
+Agent实现7bf7475c先推所属分支，再正常合main为32646240并推送；主仓原AGENTS、README及Checkpoint规划的CONTEXT/FEATURES与4份新文档均保留为原未提交工作，没有代为提交。原文件副本与逐项核对在所属私有main-before-oom-merge目录。冻结的6份Runtime/测试/日志配置与main逐字节一致，合并后Runtime11项通过。
+
+EvalFlow d0cb23d正式源码的81份后端与3332份前端跟踪文件和已验Worktree逐字节一致，合并后资源、有界读取及会话证据18项通过，上游mlflow产品源码无修改。00:20:19独立Final另行读取任务、正常认证下原生Run、report SHA、原19 Run、五项语义评分、稳定性和回退证据，20项通过；不是把阶段测试改名Final。00:26再次确认正式API2142、Runtime8123、EvalFlow5000/9128及Loki均200，四个systemd服务active/running，EvalFlow PID134216/NRestarts0。
+
+原生历史评分Run为ab41c28e545148c2b5ae6740b7ff5415，新六轮Run为c262ca99fb3048bab9e259876dd19976，均FINISHED；业务passed/failed分别保持。最初目录diff误含ignored编译产物，改为Git跟踪清单比对；Mac本地别名的错误探针另存oom-local-alias-probe-attempt.json，正式sshmy1健康证据为oom-formal-agent-final-health.json。两次错误检查均未当作产品故障或通过证据。
+
+所属临时5011、回退/再升级与采样单元、Mac所属Agent验收栈和本轮SSH转发已按身份停止，其他转发、正式服务、私有状态、业务数据库及日志卷保留。正式EvalFlow已加载修复；正式Agent没有重载Runtime采集去重，合main不代表正式部署。最终任务状态和剩余边界以原tasks/verification为准。

@@ -138,7 +138,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 复杂评测内存保护与Trace去重 | 已实现并分阶段验证：旧19 Trace事实保留、评分与新六轮无OOM；日志稳定窗口及复杂页面Final进行中 | [原任务](projects/20261119-universal-agent-eval-authoring-governance/tasks.md) |
+| 复杂评测内存保护与Trace去重 | 已完成：旧19 Trace事实保持、按需原文及评分通过，日志两小时无非预期OOM；合main并完成联合Final。正式EvalFlow已加载，正式Agent未重载采集去重，Agent业务低分保持 | [原任务](projects/20261119-universal-agent-eval-authoring-governance/tasks.md) |
 | 流式工具名称兼容修复 | 独立Worktree验证：空名称增量不再覆盖首片工具名，4行修复后关联56项／边界7项通过；真实六轮发生75次工具调用、13次审批恢复并生成四文件，已合main、合并版专项7项通过，未正式发布 | [Task13与证据](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-13修复真实模型工具响应未被运行时执行的问题) |
 | AI网关精确预算记账与逐调用准入 | 后端本地实现：PG/Decimal逐调用账本、回填/重建/未知状态、首次事件及执行域级Worker栅栏；专项34项通过。仅预算Worktree；完整主备/恢复、性能/回退门禁未齐。栅栏粘性生效，回退须保留保护或暂停执行域 | [方案与任务](projects/20261118-gateway-budget-and-governance/plan.md) · [启用/回退](projects/20261118-gateway-budget-and-governance/backend-runbook.md) |
 | 平台多功能助手Agent | 本地技术验收done：单create_agent、按目录读当前指南，原历史/写审批保留；每轮刷新可读资料说明，按Run失败状态和本轮证据回答，不从review/not_configured/空目录猜根因。补强Runtime24项与真实模型四轮通过并已重载本地API/Worker；正式业务写工具为空 | [交付证据](projects/20261116-platform-assistant/verification.md) |
