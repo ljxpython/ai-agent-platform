@@ -6,10 +6,10 @@
 |---|---|---|
 | [ai-workflow.md](ai-workflow.md) | AI 工作流、Harness、Skill 设计、文档规范与后续验收同步纠偏、Worktree 隔离/配置复用/审计验收、发布协作与宿主机生产Systemd沙箱实战 | 13 |
 | [cross-service.md](cross-service.md) | Platform API、Runtime Service、GraphHarbor 跨服务契约与 Delegation | 2 |
-| [runtime-service.md](runtime-service.md) | runtime-service 服务内部、模块导入、工具治理、审批/回调恢复、迁移链保留、混合测试环境、聚合负载、Docker日志、全链路性能验收、同快照脏记录清理、远端文件路由与容器/数据分开回收、零隧道单向自治与LLM空内容防护 | 19 |
+| [runtime-service.md](runtime-service.md) | runtime-service 服务内部、模块导入、工具治理、审批/回调恢复、迁移链保留、混合测试环境、聚合负载、Docker日志、全链路性能验收、同快照脏记录清理、远端文件路由与容器/数据分开回收、零隧道单向自治、LLM空内容防护与流式工具名增量兼容 | 20 |
 | [platform-web.md](platform-web.md) | 权限状态、刷新作用域、组件 watch 响应式解构防崩与撤权回归 | 2 |
 
-评测开发经验维护在关联 `mlflow-eval-platform` 仓库的 `docs/lessons/eval-architecture.md`（2026-11-13用户确认），覆盖原生页面复用、结果契约、取消与幂等、Agent配置身份/审批恢复参数、原生Dataset冻结；2026-11-18追加契约配置/进程同步、集中实验初始化及后台恢复状态核对（e7ff155）；2026-11-19用户确认追加独立editable环境、运行期间冻结评测源码及共享预算版本单调同步。本仓仅保留引用，不重复维护。
+评测开发经验维护在关联 `mlflow-eval-platform` 仓库的 `docs/lessons/eval-architecture.md`（用户已确认），覆盖原生页面复用、结果契约、取消幂等、配置与审批恢复、Dataset冻结、源码／预算版本；2026-11-20追加审批预算、文件哈希职责、长Trace完整取证及客观／语义验收按需选择。本仓只保留引用，不重复维护。
 
 ## 新增经验的流程
 

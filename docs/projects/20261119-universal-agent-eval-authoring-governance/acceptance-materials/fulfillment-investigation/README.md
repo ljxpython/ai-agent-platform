@@ -1,10 +1,10 @@
-# 六轮订单履约排查：上传材料
+# 订单履约排查：一次性客观任务与必要六轮交互材料
 
 所有订单、门店和金额均为本次验收虚构，不含客户或生产数据。CSV为UTF-8文本，既可作为真实附件上传，也可用Excel打开；不用安装依赖、不用运行生成命令。
 
 完整对话见[人工验收手册的复杂案例](../../manual-acceptance.md#复杂案例上传表格完成六轮履约排查)。不要把整份手册、参考答案或校验脚本上传给被测Agent；每轮只复制标明的用户输入，按指定轮次上传文件。
 
-## 上传顺序
+## 六轮案例的上传顺序
 
 | 轮次 | 文件 | 数据行数（不含表头） | 用途 |
 |---|---|---:|---|
@@ -37,6 +37,13 @@ open "docs/projects/20261119-universal-agent-eval-authoring-governance/acceptanc
 
 ## 给验收者的核对材料
 
+- [一次性客观用例JSONL](objective-case.jsonl)：推荐先验。沿用同六表和冻结最终口径，全部初态、一次完整输入，输出三CSV与summary.json；只选三规则、不调用模拟或裁判。仅交给EvalFlow，不能作为被测Agent聊天附件。
+- [客观用例构建器](reference/build_objective_case.py)：复用原六轮材料和最终CSV参考，单独生成客观基线，不修改旧版本。操作入口及完整方案JSON转换见[开发版路线](../../manual-acceptance.md#开发版自动执行路线)。
+- [完整可执行用例JSONL](executable-case.jsonl)：仅导入EvalFlow，不能上传给被测Agent；内含隐藏参考、分轮材料和精确文件审批。自动执行步骤见[开发版路线](../../manual-acceptance.md#开发版自动执行路线)。
+- [可执行用例构建器](reference/build_executable_case.py)：读取手册、CSV和冻结参考，生成确定性用例；不调用模型。第五／六轮只批准四个交付路径，前四轮及原件均不批准写入。
+
+自动化用例由评测器核对上传字节SHA256及结束后的原件，Agent实际读取原件和交付文件核对业务内容；不要求文件工具计算哈希，不开放终端。原手工六轮中的哈希步骤继续保留，隐藏参考和上传材料均未因此修改。
+
 - [冻结的分阶段参考结果](reference/expected-results.json)：V1是第2轮，V2是第3轮补传后，V3是第4轮排除测试门店后。
 - [实际文件复算结果及SHA256](reference/verification.json)：从这六个真实CSV独立读取计算的结果。
 - [只读复算脚本](reference/verify_materials.py)：仅使用Python标准库，不连平台、不调用模型、不写上传材料。
@@ -47,4 +54,4 @@ open "docs/projects/20261119-universal-agent-eval-authoring-governance/acceptanc
 python3 "docs/projects/20261119-universal-agent-eval-authoring-governance/acceptance-materials/fulfillment-investigation/reference/verify_materials.py"
 ```
 
-复算通过只说明样本与参考结果一致，不说明Agent已通过该案例。用户实际上传、六轮处理、生成文件和转评测集的结果均待用户执行。
+复算通过只说明样本与参考结果一致，不说明Agent已通过。后续开发已另行取得真实结果：客观任务842be548三规则1.0／passed，原六轮c80efddf四规则1.0但会话0.7／0.8正常failed；详见[真实验证](../../implementation/08-executable-evaluation-validation.md)。用户亲自操作结果仍待填写；两类任务分开发布和统计，不以客观基线代替六轮会话检验。
