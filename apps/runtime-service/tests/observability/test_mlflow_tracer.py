@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -128,3 +130,45 @@ def test_mlflow_fail_soft_on_error(monkeypatch: pytest.MonkeyPatch) -> None:
         # 不应抛出异常，返回 None
         result = cb.on_chain_start({"name": "foo"}, {}, run_id="r1")
         assert result is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [{"messages": ["x" * 100_000], "files": {"a": "data"}}, ["x" * 100_000], None],
+)
+@pytest.mark.parametrize("failed", [False, True])
+def test_internal_chain_state_is_referenced_without_changing_execution(payload, failed):
+    original = copy.deepcopy(payload)
+    with patch("mlflow.langchain.langchain_tracer.MlflowLangchainTracer") as factory:
+        delegate = factory.return_value
+        callback = mlflow_tracer.MLflowFailSoftCallback(graph_id="test")
+        with patch("mlflow.update_current_trace"):
+            callback.on_chain_start({}, payload, run_id="root")
+        assert delegate.on_chain_start.call_args.args[1] is payload
+        callback.on_chain_start({}, payload, run_id="child", parent_run_id="root")
+        captured = delegate.on_chain_start.call_args.args[1]
+        assert len(json.dumps(captured)) < 1024
+        assert captured["_runtime_chain_state"]["payload_recorded"] is False
+        assert captured["_runtime_chain_state"]["parent_run_id"] == "root"
+        if failed:
+            error = RuntimeError("synthetic failure")
+            callback.on_chain_error(error, run_id="child", inputs=payload)
+            assert delegate.on_chain_error.call_args.args[0] is error
+            assert (
+                len(json.dumps(delegate.on_chain_error.call_args.kwargs["inputs"]))
+                < 1024
+            )
+        else:
+            callback.on_chain_end(payload, run_id="child", inputs=payload)
+            assert len(json.dumps(delegate.on_chain_end.call_args.args[0])) < 1024
+            assert (
+                len(json.dumps(delegate.on_chain_end.call_args.kwargs["inputs"])) < 1024
+            )
+        callback.on_chain_end(payload, run_id="root")
+        assert delegate.on_chain_end.call_args.args[0] is payload
+        assert not callback._internal_chain_runs
+        callback.on_llm_start({}, [payload], run_id="model", parent_run_id="root")
+        assert delegate.on_llm_start.call_args.args[1][0] is payload
+        callback.on_tool_start({}, "input", run_id="tool", inputs=payload)
+        assert delegate.on_tool_start.call_args.kwargs["inputs"] is payload
+        assert payload == original
