@@ -148,11 +148,12 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
         self.upstream.upload_thread_image.assert_not_awaited()
 
         # Verify delegation token
-        self.assertEqual(len(self.delegation_calls), 1)
-        self.assertEqual(self.delegation_calls[0]["operation"], "image-upload")
-        self.assertEqual(self.delegation_calls[0]["project_id"], "proj-1")
-        self.assertEqual(self.delegation_calls[0]["agent_key"], "showcase_demo")
-        self.assertEqual(self.delegation_calls[0]["thread_id"], "thread-1")
+        self.assertEqual(len(self.delegation_calls), 2)
+        self.assertEqual(self.delegation_calls[0]["operation"], "read")
+        self.assertEqual(self.delegation_calls[-1]["operation"], "image-upload")
+        self.assertEqual(self.delegation_calls[-1]["project_id"], "proj-1")
+        self.assertEqual(self.delegation_calls[-1]["agent_key"], "showcase_demo")
+        self.assertEqual(self.delegation_calls[-1]["thread_id"], "thread-1")
 
     async def test_upload_image_validations(self):
         async with httpx.AsyncClient(
@@ -264,11 +265,12 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.content, b"image-data-chunk")
 
         # Verify delegation token
-        self.assertEqual(len(self.delegation_calls), 1)
-        self.assertEqual(self.delegation_calls[0]["operation"], "image-read")
-        self.assertEqual(self.delegation_calls[0]["project_id"], "proj-1")
-        self.assertEqual(self.delegation_calls[0]["agent_key"], "showcase_demo")
-        self.assertEqual(self.delegation_calls[0]["thread_id"], "thread-1")
+        self.assertEqual(len(self.delegation_calls), 2)
+        self.assertEqual(self.delegation_calls[0]["operation"], "read")
+        self.assertEqual(self.delegation_calls[-1]["operation"], "image-read")
+        self.assertEqual(self.delegation_calls[-1]["project_id"], "proj-1")
+        self.assertEqual(self.delegation_calls[-1]["agent_key"], "showcase_demo")
+        self.assertEqual(self.delegation_calls[-1]["thread_id"], "thread-1")
 
     async def test_read_image_validations(self):
         async with httpx.AsyncClient(

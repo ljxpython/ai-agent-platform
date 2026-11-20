@@ -256,6 +256,14 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                 )
                 # Identity/catalog fixtures are locked; all workspace IO and delegation validation are real.
                 upstream.get_thread = self.upstream.get_thread
+                original_scope = upstream.with_forwarded_headers
+
+                def scoped_fixture(headers):
+                    scoped = original_scope(headers)
+                    scoped.get_thread = self.upstream.get_thread
+                    return scoped
+
+                upstream.with_forwarded_headers = scoped_fixture
                 self.service._upstream = upstream
                 server = uvicorn.Server(
                     uvicorn.Config(self.app, log_level="error", lifespan="off")

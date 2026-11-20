@@ -133,11 +133,14 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(body["path"], f"/workspace/uploads/{sha}.pdf")
 
         # 验证 delegation token 为 workspace-file-upload
-        self.assertEqual(len(self.delegation_calls), 1)
-        self.assertEqual(self.delegation_calls[0]["operation"], "workspace-file-upload")
-        self.assertEqual(self.delegation_calls[0]["project_id"], "proj-1")
-        self.assertEqual(self.delegation_calls[0]["agent_key"], "showcase_demo")
-        self.assertEqual(self.delegation_calls[0]["thread_id"], "thread-1")
+        self.assertEqual(len(self.delegation_calls), 2)
+        self.assertEqual(self.delegation_calls[0]["operation"], "read")
+        self.assertEqual(
+            self.delegation_calls[-1]["operation"], "workspace-file-upload"
+        )
+        self.assertEqual(self.delegation_calls[-1]["project_id"], "proj-1")
+        self.assertEqual(self.delegation_calls[-1]["agent_key"], "showcase_demo")
+        self.assertEqual(self.delegation_calls[-1]["thread_id"], "thread-1")
 
     async def test_upload_file_validations(self):
         async with httpx.AsyncClient(
@@ -361,11 +364,12 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.content, b"%PDF-1.4 file content")
 
         # 验证 delegation token 为 workspace-file-read
-        self.assertEqual(len(self.delegation_calls), 1)
-        self.assertEqual(self.delegation_calls[0]["operation"], "workspace-file-read")
-        self.assertEqual(self.delegation_calls[0]["project_id"], "proj-1")
-        self.assertEqual(self.delegation_calls[0]["agent_key"], "showcase_demo")
-        self.assertEqual(self.delegation_calls[0]["thread_id"], "thread-1")
+        self.assertEqual(len(self.delegation_calls), 2)
+        self.assertEqual(self.delegation_calls[0]["operation"], "read")
+        self.assertEqual(self.delegation_calls[-1]["operation"], "workspace-file-read")
+        self.assertEqual(self.delegation_calls[-1]["project_id"], "proj-1")
+        self.assertEqual(self.delegation_calls[-1]["agent_key"], "showcase_demo")
+        self.assertEqual(self.delegation_calls[-1]["thread_id"], "thread-1")
 
     async def test_read_file_validations(self):
         async with httpx.AsyncClient(

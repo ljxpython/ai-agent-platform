@@ -1095,7 +1095,11 @@ class RuntimeGatewayService:
                 project_id=project_id,
                 thread_id=thread_id,
             )
-        thread = await self._upstream.get_thread(thread_id)
+        # Background evidence collection can outlive the initial request token.
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread={"thread_id": thread_id}, operation="read"
+        )
+        thread = await upstream.get_thread(thread_id)
         self._assert_thread_project_scope(project_id=project_id, thread=thread)
         if _thread_graph_id(thread) == "platform_assistant" and action != "delete":
             if self._assistant_access_validator is None:
@@ -4604,7 +4608,10 @@ class RuntimeGatewayService:
             thread_id=thread_id,
             write=False,
         )
-        snapshot = await self._upstream.get_thread_run(thread_id, run_id)
+        reader = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="read"
+        )
+        snapshot = await reader.get_thread_run(thread_id, run_id)
         if (
             not isinstance(snapshot, dict)
             or snapshot.get("thread_id") != thread_id
@@ -4848,15 +4855,16 @@ class RuntimeGatewayService:
         thread_id: str,
         params: dict[str, Any] | None,
     ) -> Any:
-        await self._load_thread(
+        thread = await self._load_thread(
             actor=actor,
             project_id=project_id,
             thread_id=thread_id,
             write=False,
         )
-        return await self._upstream.list_thread_runs(
-            thread_id, _normalize_payload(params)
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="read"
         )
+        return await upstream.list_thread_runs(thread_id, _normalize_payload(params))
 
     async def manage_thread_run_queue(
         self,
