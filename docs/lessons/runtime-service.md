@@ -5,6 +5,15 @@
 
 ---
 
+## [坑] 流式空工具名增量会覆盖首片有效名称
+
+- **场景：** OpenAI兼容提供方在首片给工具名，后续参数片给空字符串；Graph v3累积与普通流式结果可能不同。
+- **错误：** 只看finish_reason或Trace调用意图便认定工具已执行，或根据参数猜名称；实际状态tool_calls可能为空。
+- **正确：** 对照原始片段、适配消息、Graph累积和真实ToolNode执行，在模型适配层将空名称规范为本片未提供名称；覆盖交错多工具、流式／普通响应和思考内容，不猜工具或放宽权限。
+- **日期：** 2026-11-20；用户批准沉淀，4行修复及真实执行见[本轮验证](../projects/20261119-universal-agent-eval-authoring-governance/implementation/08-executable-evaluation-validation.md)。
+
+---
+
 ## [坑] 纯 Re-export 中间模块未声明 `__all__` 导致符号被静态工具误删
 
 - **场景：** 对 Python 模块执行 `ruff check --fix` 或启用 `F401`（未使用的 import）自动清理时。

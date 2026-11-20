@@ -79,6 +79,10 @@ class ChatOpenAIWithReasoning(ChatOpenAI):
             and isinstance(result.message, AIMessageChunk)
             and chunk.get("choices")
         ):
+            # 空名称表示增量未提供名称，避免 v3 累积时覆盖首片的工具名。
+            for tool_chunk in result.message.tool_call_chunks:
+                if tool_chunk.get("name") == "":
+                    tool_chunk["name"] = None
             result.message.response_metadata = {
                 **result.message.response_metadata,
                 "model_provider": "openai_compatible",
