@@ -283,10 +283,13 @@ async def snapshot(gateway, actor, project_id, thread_id, data_class="synthetic"
         + (["采集期间会话发生变化，请重新选择截止点"] if changed else []),
     }
     if data_class == "business":
-        value, privacy = prepare_business_material(value)
+        # Captured sources include full tool messages; manual authoring keeps its smaller cap.
+        value, privacy = prepare_business_material(value, max_bytes=1_000_000)
         value["privacy"] = privacy
     else:
-        require_synthetic(json.dumps(value, ensure_ascii=False, default=str))
+        require_synthetic(
+            json.dumps(value, ensure_ascii=False, default=str), max_bytes=1_000_000
+        )
     value["data_class"] = data_class
     value["content_hash"] = digest(
         {key: part for key, part in value.items() if key != "captured_at"}

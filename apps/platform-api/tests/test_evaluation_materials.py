@@ -66,6 +66,64 @@ def test_empty_history_is_explicitly_incomplete():
     assert value["missing"]
 
 
+@pytest.mark.parametrize("data_class", ["synthetic", "business"])
+@pytest.mark.parametrize(
+    ("suffix", "error_code"),
+    [("", None), (" api_key=live-sensitive-value", "evaluation_export_secret")],
+)
+def test_long_source_snapshot_preserves_content_and_privacy(
+    data_class, suffix, error_code
+):
+    from platform_api.core.errors import BadRequestError
+
+    content = ("a" * 79 + "\n") * 7500 + suffix
+
+    class Gateway:
+        async def get_thread(self, **kwargs):
+            return {"metadata": {"agent_id": str(uuid4())}}
+
+        async def get_thread_state(self, **kwargs):
+            return {"values": {"messages": [{"id": "u1", "content": content}]}}
+
+        async def get_thread_history(self, **kwargs):
+            return []
+
+        async def list_thread_runs(self, **kwargs):
+            return []
+
+    def collect():
+        return asyncio.run(
+            snapshot(Gateway(), None, str(uuid4()), str(uuid4()), data_class)
+        )
+
+    if error_code:
+        with pytest.raises(BadRequestError) as exc:
+            collect()
+        assert exc.value.code == error_code
+    else:
+        assert collect()["messages"][0]["content"] == content
+
+
+def test_source_capacity_keeps_manual_limits_and_full_privacy_scan():
+    from platform_api.core.errors import BadRequestError
+    from platform_api.modules.evaluation.privacy import (
+        prepare_business_material,
+        require_safe_material,
+        require_synthetic,
+    )
+
+    for check in (prepare_business_material, require_safe_material, require_synthetic):
+        with pytest.raises(BadRequestError):
+            check("a" * 250_001)
+    with pytest.raises(BadRequestError) as exc:
+        prepare_business_material("a" * 1_000_001, max_bytes=1_000_000)
+    assert exc.value.code == "evaluation_material_too_large"
+    clean, report = prepare_business_material(
+        ("a" * 79 + "\n") * 7500 + " example@example.com", max_bytes=1_000_000
+    )
+    assert "example@example.com" not in clean and report["redacted_occurrences"] == 1
+
+
 @pytest.mark.parametrize("history_count", [23, 2000, 2001])
 def test_snapshot_pages_large_history_without_losing_order_or_capture_limit(
     history_count,

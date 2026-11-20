@@ -68,10 +68,10 @@ PII = re.compile(
 )
 
 
-def require_synthetic(value: str) -> None:
+def require_synthetic(value: str, *, max_bytes: int = 250_000) -> None:
     normalized = unicodedata.normalize("NFKC", value)
     normalized = "".join(c for c in normalized if unicodedata.category(c) != "Cf")
-    if len(value.encode()) > 250_000 or clean_synthetic(value) != normalized:
+    if len(value.encode()) > max_bytes or clean_synthetic(value) != normalized:
         raise BadRequestError(
             code="evaluation_synthetic_invalid",
             message="请仅提交不含个人信息或密钥的合成说明和文件。",
@@ -110,12 +110,12 @@ def require_safe_material(value: str) -> None:
         raise
 
 
-def prepare_business_material(value):
+def prepare_business_material(value, *, max_bytes: int = 250_000):
     """Redact consistent personal identifiers before persisting an exported copy."""
-    if len(json.dumps(value, ensure_ascii=False, default=str).encode()) > 250_000:
+    if len(json.dumps(value, ensure_ascii=False, default=str).encode()) > max_bytes:
         raise BadRequestError(
             code="evaluation_material_too_large",
-            message="会话资料超过250KB，请缩小范围。",
+            message=f"会话资料超过{max_bytes // 1000}KB，请缩小范围。",
         )
     count = 0
     secret_keys = {
