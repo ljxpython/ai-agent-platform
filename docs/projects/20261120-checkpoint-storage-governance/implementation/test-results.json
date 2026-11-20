@@ -1,0 +1,444 @@
+{
+  "platform-unit": {
+    "suites": [
+      {
+        "tests": "23",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "127.956"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_delta_preserves_message_ids_batches_tools_and_historical_forks",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_delta_snapshot_transition_survives_real_process_restart",
+        "status": "passed"
+      },
+      {
+        "name": "test_approval_survives_process_restart[approve-1]",
+        "status": "passed"
+      },
+      {
+        "name": "test_approval_survives_process_restart[reject-0]",
+        "status": "passed"
+      },
+      {
+        "name": "test_approval_survives_process_restart[revoked-0]",
+        "status": "passed"
+      },
+      {
+        "name": "test_probe_has_real_tools_without_database_or_model_network",
+        "status": "passed"
+      },
+      {
+        "name": "test_sql_toolkit_adapter_keeps_execution_at_platform",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_write_approval_waits_and_resumes_original_action[approve-1]",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_write_approval_waits_and_resumes_original_action[reject-0]",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_write_approval_waits_and_resumes_original_action[edit-0]",
+        "status": "passed"
+      },
+      {
+        "name": "test_public_search_cannot_invent_keywords_from_private_tool_results",
+        "status": "passed"
+      },
+      {
+        "name": "test_authorization_refreshes_catalog_without_mutating_request[False]",
+        "status": "passed"
+      },
+      {
+        "name": "test_authorization_refreshes_catalog_without_mutating_request[True]",
+        "status": "passed"
+      },
+      {
+        "name": "test_document_and_run_log_tools_forward_selected_ids_and_window",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_declares_reliability_middleware_in_order",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_explicitly_composes_model_reliability_adapters",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_retries_idempotent_tool",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_surfaces_recoverable_tool_error_to_model",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_surfaces_tool_error_after_retry_budget",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_does_not_swallow_unknown_tool_error",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_uses_explicit_model_fallback",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_retries_model_when_explicitly_enabled",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_propagates_model_retry_exhaustion",
+        "status": "passed"
+      }
+    ]
+  },
+  "unit-final": {
+    "suites": [
+      {
+        "tests": "20",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "1",
+        "time": "6.037"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_reference_agent_declares_reliability_middleware_in_order",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_explicitly_composes_model_reliability_adapters",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_retries_idempotent_tool",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_surfaces_recoverable_tool_error_to_model",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_surfaces_tool_error_after_retry_budget",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_does_not_swallow_unknown_tool_error",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_uses_explicit_model_fallback",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_retries_model_when_explicitly_enabled",
+        "status": "passed"
+      },
+      {
+        "name": "test_reference_agent_graph_propagates_model_retry_exhaustion",
+        "status": "passed"
+      },
+      {
+        "name": "test_probe_has_real_tools_without_database_or_model_network",
+        "status": "passed"
+      },
+      {
+        "name": "test_sql_toolkit_adapter_keeps_execution_at_platform",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_write_approval_waits_and_resumes_original_action[approve-1]",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_write_approval_waits_and_resumes_original_action[reject-0]",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_write_approval_waits_and_resumes_original_action[edit-0]",
+        "status": "passed"
+      },
+      {
+        "name": "test_public_search_cannot_invent_keywords_from_private_tool_results",
+        "status": "passed"
+      },
+      {
+        "name": "test_authorization_refreshes_catalog_without_mutating_request[False]",
+        "status": "passed"
+      },
+      {
+        "name": "test_authorization_refreshes_catalog_without_mutating_request[True]",
+        "status": "passed"
+      },
+      {
+        "name": "test_document_and_run_log_tools_forward_selected_ids_and_window",
+        "status": "passed"
+      },
+      {
+        "name": "test_delta_preserves_message_ids_batches_tools_and_historical_forks",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_delta_snapshot_transition_survives_real_process_restart",
+        "status": "skipped"
+      }
+    ]
+  },
+  "compiled-graphs": {
+    "suites": [
+      {
+        "tests": "3",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "5.646"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_primary_and_children_share_pressure_gated_pruning",
+        "status": "passed"
+      },
+      {
+        "name": "test_context_wrapper_is_explicit_for_root_and_all_children",
+        "status": "passed"
+      },
+      {
+        "name": "test_workflow_demo_static_topology_is_stable",
+        "status": "passed"
+      }
+    ]
+  },
+  "approval-delta-official": {
+    "suites": [
+      {
+        "tests": "5",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "86.878"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_delta_preserves_message_ids_batches_tools_and_historical_forks",
+        "status": "passed"
+      },
+      {
+        "name": "test_native_delta_snapshot_transition_survives_real_process_restart",
+        "status": "passed"
+      },
+      {
+        "name": "test_approval_survives_process_restart[approve-1]",
+        "status": "passed"
+      },
+      {
+        "name": "test_approval_survives_process_restart[reject-0]",
+        "status": "passed"
+      },
+      {
+        "name": "test_approval_survives_process_restart[revoked-0]",
+        "status": "passed"
+      }
+    ]
+  },
+  "delta-parallel": {
+    "suites": [
+      {
+        "tests": "1",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "3.600"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_delta_preserves_parallel_batches_empty_writes_and_explicit_clear",
+        "status": "passed"
+      }
+    ]
+  },
+  "delta-queue-final": {
+    "suites": [
+      {
+        "tests": "21",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "56.504"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_parallel_enqueue_claim_ack_and_recovery",
+        "status": "passed"
+      },
+      {
+        "name": "test_checkpoint_reconciliation_is_idempotent",
+        "status": "passed"
+      },
+      {
+        "name": "test_pending_summary_guard_covers_queued_and_claimed_only",
+        "status": "passed"
+      },
+      {
+        "name": "test_idempotency_and_expired_lease",
+        "status": "passed"
+      },
+      {
+        "name": "test_claim_automatically_recovers_expired_lease",
+        "status": "passed"
+      },
+      {
+        "name": "test_committed_history_reconciliation_and_run_isolation",
+        "status": "passed"
+      },
+      {
+        "name": "test_running_tool_then_root_model_receives_queue[True]",
+        "status": "passed"
+      },
+      {
+        "name": "test_running_tool_then_root_model_receives_queue[False]",
+        "status": "passed"
+      },
+      {
+        "name": "test_running_tool_then_root_model_receives_queue[unavailable]",
+        "status": "passed"
+      },
+      {
+        "name": "test_process_crash_resumes_one_human_message[before_checkpoint]",
+        "status": "passed"
+      },
+      {
+        "name": "test_process_crash_resumes_one_human_message[after_checkpoint]",
+        "status": "passed"
+      },
+      {
+        "name": "test_receipt_http_reconciles_before_terminal_close",
+        "status": "passed"
+      },
+      {
+        "name": "test_message_intake_rejects_untrusted_content[]",
+        "status": "passed"
+      },
+      {
+        "name": "test_message_intake_rejects_untrusted_content[  ]",
+        "status": "passed"
+      },
+      {
+        "name": "test_message_intake_rejects_untrusted_content[content2]",
+        "status": "passed"
+      },
+      {
+        "name": "test_message_intake_rejects_untrusted_content[content3]",
+        "status": "passed"
+      },
+      {
+        "name": "test_message_intake_rejects_untrusted_content[content4]",
+        "status": "passed"
+      },
+      {
+        "name": "test_message_intake_rejects_untrusted_content[content5]",
+        "status": "passed"
+      },
+      {
+        "name": "test_limits_sender_isolation_metrics_and_additive_recovery",
+        "status": "passed"
+      },
+      {
+        "name": "test_transaction_failure_never_returns_receipt",
+        "status": "passed"
+      },
+      {
+        "name": "test_two_child_agents_do_not_claim_root_inbox",
+        "status": "passed"
+      }
+    ]
+  },
+  "reliability-critical": {
+    "suites": [
+      {
+        "tests": "2",
+        "errors": "0",
+        "failures": "1",
+        "skipped": "0",
+        "time": "269.786"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_http_retry_task_partial_security_and_diagnostics[stack0]",
+        "status": "passed"
+      },
+      {
+        "name": "test_worker_crash_windows_checkpoint_cancel_and_rollback[stack0]",
+        "status": "failed"
+      }
+    ]
+  },
+  "reliability-final": {
+    "suites": [
+      {
+        "tests": "1",
+        "errors": "0",
+        "failures": "1",
+        "skipped": "0",
+        "time": "137.183"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_worker_crash_windows_checkpoint_cancel_and_rollback[stack0]",
+        "status": "failed"
+      }
+    ]
+  },
+  "reliability-deadline-final": {
+    "suites": [
+      {
+        "tests": "1",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "150.766"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_worker_crash_windows_checkpoint_cancel_and_rollback[stack0]",
+        "status": "passed"
+      }
+    ]
+  },
+  "retention-stack-isolated": {
+    "suites": [
+      {
+        "tests": "1",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "time": "74.094"
+      }
+    ],
+    "cases": [
+      {
+        "name": "test_session_retention_stack",
+        "status": "passed"
+      }
+    ]
+  }
+}

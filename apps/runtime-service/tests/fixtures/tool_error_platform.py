@@ -248,7 +248,9 @@ def platform_app(spec):
                         platform_roles=(),
                         must_change_password=False,
                     )
-                    session.add(TenantRecord(id=tenant, name="fixture", slug="fixture"))
+                    session.add(
+                        TenantRecord(id=tenant, name="fixture", slug="__default")
+                    )
                     session.flush()
                     session.add(
                         ProjectRecord(id=project, tenant_id=tenant, name="fixture")

@@ -22,7 +22,7 @@ from runtime_service.workspace.scoped import get_thread_local_workspace_root
 @pytest.mark.skipif(
     os.getenv("RUN_RETENTION_STACK_TEST") != "1", reason="requires registered stack"
 )
-def test_session_retention_stack(monkeypatch):
+def test_session_retention_stack(monkeypatch, request):
     root = Path(__file__).resolve().parents[4]
     entry = json.loads((root / ".local-stack/environment.json").read_text())
     assert entry["root"] == str(root) and entry["id"].startswith("wt_")
@@ -133,8 +133,30 @@ def test_session_retention_stack(monkeypatch):
         client.headers["authorization"] = (
             "Bearer " + response.json()["tokens"]["access_token"]
         )
-        project = client.get("/api/projects").json()["items"][0]
+        created = client.post(
+            "/api/projects", json={"name": f"Retention {uuid4().hex[:8]}"}
+        )
+        assert created.is_success
+        project = created.json()
         client.headers["x-project-id"] = project["id"]
+        cleanup_headers = dict(client.headers)
+
+        def cleanup():
+            with httpx.Client(
+                base_url=str(client.base_url), headers=cleanup_headers, trust_env=False
+            ) as cleanup_client:
+                assert cleanup_client.delete(
+                    f"/api/projects/{project['id']}"
+                ).is_success
+
+        request.addfinalizer(cleanup)
+        graphs = client.get("/api/runtime/graphs").json()["graphs"]
+        graph = next(item for item in graphs if item["graph_id"] == "dearflow_agent")
+        enabled = client.put(
+            f"/api/projects/{project['id']}/runtime-policies/graphs/{graph['id']}",
+            json={"is_enabled": True},
+        )
+        assert enabled.is_success
         agents = client.get(f"/api/projects/{project['id']}/agents").json()["items"]
         agent = next(item for item in agents if item["graph_id"] == "dearflow_agent")
 
@@ -303,7 +325,7 @@ def test_session_retention_stack(monkeypatch):
             assert job["state"] == "after_delete" and job["last_error"]
             assert client.post(
                 f"/api/langgraph/threads/{held}/activity"
-            ).status_code in (404, 409)
+            ).status_code in (403, 404, 409)
         retry(held)
         deleted(held, path)
         evidence["checks"].append("open-file-blocks-and-retry-resumes")

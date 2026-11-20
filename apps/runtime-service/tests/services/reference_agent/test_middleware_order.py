@@ -49,7 +49,9 @@ def test_reference_agent_declares_reliability_middleware_in_order(monkeypatch) -
 
     def capture_create_agent(**kwargs):
         captured.update(kwargs)
-        return real_create_agent(**kwargs)
+        compiled = real_create_agent(**kwargs)
+        captured["compiled"] = compiled
+        return compiled
 
     monkeypatch.setattr(agent, "create_agent", capture_create_agent)
     asyncio.run(
@@ -65,6 +67,10 @@ def test_reference_agent_declares_reliability_middleware_in_order(monkeypatch) -
     )
 
     middleware = captured["middleware"]
+    from langgraph.channels import DeltaChannel
+
+    assert isinstance(captured["compiled"].channels["messages"], DeltaChannel)
+    assert captured["compiled"].channels["messages"].snapshot_frequency == 50
     assert [type(item).__name__ for item in middleware] == [
         "RuntimeConfigMiddleware",
         "TokenBudgetMiddleware",

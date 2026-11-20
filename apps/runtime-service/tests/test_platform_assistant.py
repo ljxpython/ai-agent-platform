@@ -22,6 +22,10 @@ def test_probe_has_real_tools_without_database_or_model_network(monkeypatch):
     monkeypatch.delenv("PLATFORM_RUNTIME_MODEL_CONFIG_URL", raising=False)
     agent = asyncio.run(get_agent({"configurable": {"graph_id": "platform_assistant"}}))
     assert agent.name == "platform_assistant"
+    from langgraph.channels import DeltaChannel
+
+    assert isinstance(agent.channels["messages"], DeltaChannel)
+    assert agent.channels["messages"].snapshot_frequency == 50
     assert set(graph_tools("platform_assistant")) == {t.name for t in make_tools(None)}
     caps = graph_capabilities("platform_assistant")
     assert not any(

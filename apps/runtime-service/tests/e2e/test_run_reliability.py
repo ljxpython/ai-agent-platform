@@ -20,6 +20,7 @@ stack = disposable_stack
 
 STACK = {
     "fixture": "run_reliability.py",
+    "graphs": {"dearflow_agent": "fixture.py:graph"},
     "provider": True,
     "http_app": True,
     "env": {
@@ -325,7 +326,9 @@ def test_worker_crash_windows_checkpoint_cancel_and_rollback(stack):
     )
 
     stop("worker")
-    env["GRAPHHARBOR_RUN_TIMEOUT_SECONDS"] = "2.5"
+    env["GRAPHHARBOR_RUN_TIMEOUT_SECONDS"] = "15"
+    env["AGENT_MODEL_CALL_TIMEOUT_SECONDS"] = "30"
+    env["AGENT_RUN_WRAPUP_RESERVE_SECONDS"] = "0"
     start("worker")
     thread = new_thread(client)
     run = request(

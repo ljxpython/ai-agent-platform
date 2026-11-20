@@ -236,8 +236,11 @@ def test_workflow_demo_uses_latest_user_message_in_same_thread() -> None:
 
 
 def test_workflow_demo_static_topology_is_stable() -> None:
+    from langgraph.channels import BinaryOperatorAggregate
+
     first = _graph()
     second = _graph()
+    assert isinstance(first.channels["messages"], BinaryOperatorAggregate)
     first_graph = first.get_graph()
     second_graph = second.get_graph()
 

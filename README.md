@@ -125,6 +125,8 @@
   - 沙箱文件归档淘汰 Base64 JSON 全内存缓冲，采用 `ZIP_STORED` 零内存流式连接池直出传输，9.4MB 产物归档耗时从 21.5s 压降至 0.36s（提速 98.3%）。
 - ⏳ **会话与运行时数据生命周期治理 (Retention Governance)**：
   - 支持 30 天闲置/查看发送自动续期与通用 TTL；会话物理回收时级联清理绑定的 Workspace 沙箱目录与临时状态，杜绝磁盘堆积。
+- **长会话存储治理（功能验收通过，本地交付收尾）**：
+  - 所属Worktree接入正式GraphHarbor post49/head015，Reference/平台助手迁移Delta50；最小回滚边界、引用安全GC、消息/审批/队列/真实浏览器和备份恢复已验证，保留原文及idle30天，无活跃自动裁剪。本地main交付见[项目任务](docs/projects/20261120-checkpoint-storage-governance/tasks.md)。
 - ⚡ **长耗时任务异步非阻塞化与通知直达 (BackgroundTasks & Notification Center)**：
   - 业务会话转评测集等长耗时操作彻底切除前端 30 秒超时报错（`timeout of 30000ms exceeded`）；重构为 FastAPI BackgroundTasks 异步非阻塞调度，0.3s 极速响应 202 Accepted 并平滑关闭弹窗，任务完成后通过平台全局通知中心（🔔）推送一键直达卡片。
 - 🔄 **会话状态机收敛与交互防倒挂 (State Machine & Anti-Replay)**：

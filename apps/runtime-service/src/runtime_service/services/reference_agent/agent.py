@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from deepagents.graph import DeepAgentState
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
     ModelFallbackMiddleware,
@@ -359,6 +360,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             system_prompt=_DEFAULTS.system_prompt,
             middleware=middleware,
             context_schema=RuntimeContext,
+            state_schema=DeepAgentState,
             name="reference_agent",
         )
 

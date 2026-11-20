@@ -1,5 +1,6 @@
 """All explicitly installed business writes require native approve/reject interrupts."""
 
+from deepagents.graph import DeepAgentState
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 
@@ -12,6 +13,7 @@ def create_platform_agent(
         model=model,
         tools=[*tools, *business_write_tools],
         middleware=[*middleware, write_approval(business_write_tools)],
+        state_schema=DeepAgentState,
         **kwargs,
     )
 

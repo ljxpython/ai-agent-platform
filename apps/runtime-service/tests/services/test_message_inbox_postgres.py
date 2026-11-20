@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import psycopg
 import pytest
+from deepagents.graph import DeepAgentState
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 
@@ -408,6 +409,7 @@ def test_running_tool_then_root_model_receives_queue(inbox, monkeypatch, authori
             )
             graph = create_agent(
                 model,
+                state_schema=DeepAgentState,
                 tools=[long_task],
                 middleware=[MessageQueueMiddleware()],
                 checkpointer=saver,
@@ -497,6 +499,7 @@ def test_process_crash_resumes_one_human_message(inbox, tmp_path, crash_at):
 import asyncio, os, time
 from pathlib import Path
 import httpx
+from deepagents.graph import DeepAgentState
 from langchain.agents import create_agent
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import HumanMessage
@@ -529,7 +532,7 @@ async def main():
     async with AsyncPostgresSaver.from_conn_string(os.environ["DATABASE_URI"]) as saver:
         await saver.setup()
         cp.get_checkpointer = lambda: saver
-        graph = create_agent(Model(responses=["done"]), middleware=[MessageQueueMiddleware()], checkpointer=saver)
+        graph = create_agent(Model(responses=["done"]), state_schema=DeepAgentState, middleware=[MessageQueueMiddleware()], checkpointer=saver)
         config = {"configurable": {"thread_id": os.environ["PROBE_THREAD"]}, "metadata": {"run_id": os.environ["PROBE_RUN"]}}
         result = await graph.ainvoke(None if os.environ["PROBE_STAGE"] == "resume" else {"messages": [HumanMessage(content="start")]}, config, durability="sync")
         assert sum(m.id == os.environ["PROBE_MESSAGE"] for m in result["messages"]) == 1
@@ -789,7 +792,8 @@ def test_limits_sender_isolation_metrics_and_additive_recovery(inbox):
             )
         c.execute(
             "DROP FUNCTION runtime_usage_assign_slot(), "
-            "runtime_usage_merge_versions(text[], text[]), runtime_usage_mark_dirty() CASCADE"
+            "runtime_usage_merge_versions(text[], text[]), runtime_usage_mark_dirty(), "
+            "runtime_budget_worker_fence() CASCADE"
         )
         c.execute("DROP SEQUENCE runtime_usage_projection_generation")
     inbox.initialize()
@@ -936,6 +940,7 @@ def test_two_child_agents_do_not_claim_root_inbox(inbox, monkeypatch):
 
         child = create_agent(
             ChildModel(responses=[AIMessage(content="child done")]),
+            state_schema=DeepAgentState,
             middleware=[MessageQueueMiddleware()],
         )
 
@@ -985,6 +990,7 @@ def test_two_child_agents_do_not_claim_root_inbox(inbox, monkeypatch):
                     ]
                 ),
                 tools=[delegate],
+                state_schema=DeepAgentState,
                 middleware=[MessageQueueMiddleware()],
                 checkpointer=saver,
             )

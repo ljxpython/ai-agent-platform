@@ -113,7 +113,8 @@ def call(name, args, identifier="t1"):
 
 
 def test_context_wrapper_is_explicit_for_root_and_all_children(monkeypatch, tmp_path):
-    from deepagents.middleware import FilesystemMiddleware
+    from deepagents.middleware import FilesystemMiddleware, subagents
+    from langgraph.channels import DeltaChannel
 
     from runtime_service.middlewares import (
         ConversationOffloadingMiddleware,
@@ -131,14 +132,26 @@ def test_context_wrapper_is_explicit_for_root_and_all_children(monkeypatch, tmp_
     monkeypatch.setattr(agent, "build_model", lambda *args, **kwargs: instance)
     captured = []
     original = agent.create_deep_agent
+    children = []
+    compile_child = subagents.create_agent
+
+    def capture_child(*args, **kwargs):
+        child = compile_child(*args, **kwargs)
+        children.append(child)
+        return child
 
     def capture(**kwargs):
         captured.append(kwargs)
         return original(**kwargs)
 
     monkeypatch.setattr(agent, "create_deep_agent", capture)
+    monkeypatch.setattr(subagents, "create_agent", capture_child)
     cfg = config(context={"offload_conversation": True, "max_tokens": 2048})
     graph = asyncio.run(agent.get_agent(cfg))
+    assert children
+    for compiled in [graph, *children]:
+        assert isinstance(compiled.channels["messages"], DeltaChannel)
+        assert compiled.channels["messages"].snapshot_frequency == 50
     root = captured[0]
     expected_tool_limit = 1653
     root_filesystem = next(

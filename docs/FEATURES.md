@@ -138,6 +138,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 复杂评测内存保护与Trace去重 | 已实现并分阶段验证：旧19 Trace事实保留、评分与新六轮无OOM；日志稳定窗口及复杂页面Final进行中 | [原任务](projects/20261119-universal-agent-eval-authoring-governance/tasks.md) |
 | 流式工具名称兼容修复 | 独立Worktree验证：空名称增量不再覆盖首片工具名，4行修复后关联56项／边界7项通过；真实六轮发生75次工具调用、13次审批恢复并生成四文件，已合main、合并版专项7项通过，未正式发布 | [Task13与证据](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-13修复真实模型工具响应未被运行时执行的问题) |
 | AI网关精确预算记账与逐调用准入 | 后端本地实现：PG/Decimal逐调用账本、回填/重建/未知状态、首次事件及执行域级Worker栅栏；专项34项通过。仅预算Worktree；完整主备/恢复、性能/回退门禁未齐。栅栏粘性生效，回退须保留保护或暂停执行域 | [方案与任务](projects/20261118-gateway-budget-and-governance/plan.md) · [启用/回退](projects/20261118-gateway-budget-and-governance/backend-runbook.md) |
 | 平台多功能助手Agent | 本地技术验收done：单create_agent、按目录读当前指南，原历史/写审批保留；每轮刷新可读资料说明，按Run失败状态和本轮证据回答，不从review/not_configured/空目录猜根因。补强Runtime24项与真实模型四轮通过并已重载本地API/Worker；正式业务写工具为空 | [交付证据](projects/20261116-platform-assistant/verification.md) |
@@ -185,6 +186,7 @@
 | DearFlowAgent：Deep Agents 能力迁移与生产化 | partial：2026-09-28重审确认主Agent/四模式/研究/文件/审批/只读子Agent及19个上游Skill资源已有；4项未迁入；逐Skill页面、部分供应商和生产Final仍未闭环。当前Skills采用单份内容＋执行快照，Dear复用Chat，记忆接续独立专项；核心抽测28 passed/1 skipped；14效果审计另复现7个可靠性缺口，不能认定同名能力效果等价；新增治理实施范围待评审 | [能力与缺口](projects/20260913-dearflow-agent/11-20260928-capability-reassessment.md) · [效果与可靠性](projects/20260913-dearflow-agent/14-effect-parity-and-reliability.md) · [补齐任务](projects/20260913-dearflow-agent/12-completion-plan.md) · [验证基线](projects/20260913-dearflow-agent/13-verification-baseline.md) |
 | 知识库免隧道自治与单向架构治理 | 已完成：彻底拔除 SSH 反向隧道，实装 RAG 本地自治自验机制（`KNOWLEDGE_AUTHORIZE_URL='local'`），远端收敛为纯单向入站服务（仅需 22/8000 端口）；加固大模型空内容防御；Playwright + Chromium 真实端到端自动化测试 100% 绿灯 | [项目记录](projects/20261014-knowledge-zero-tunnel-auth/README.md) · [验证记录](projects/20261014-knowledge-zero-tunnel-auth/verification.md) |
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
+| 长会话Checkpoint存储治理与Delta采用 | 功能验收通过、本地交付收尾：正式post49/head015，Reference/平台助手Delta50，六组维护预算和消息/故障/浏览器/备份恢复通过；原文及idle30天保持，无活跃自动prune；Workflow仍普通聚合 | [详细方案](projects/20261120-checkpoint-storage-governance/plan.md) · [唯一任务](projects/20261120-checkpoint-storage-governance/tasks.md) |
 | Agent 运行生命周期超时治理 | 已完成：正式 post42 接入、12 组 HTTP 及匹配回退通过；前端 T11 超时治理实装（胶囊展示/停止双通道防死锁）与 T12 端到端用户联调验收通过（含排队提交死锁根除与切换自愈）；服务已安全停止 | [项目记录](projects/20261006-agent-run-timeout-governance/README.md) · [前端交接](projects/20261006-agent-run-timeout-governance/frontend-handoff.md) |
 | Agent 回答后推荐问题 one-shot capability | 部分完成：独立 suggestions endpoint、JWT scope 隔离、无工具模型调用、输出清洗和超时/provider 降级已完成；真实模型与三服务 E2E 待验证 | [项目文档](projects/20261005-agent-followup-suggestions/README.md) |
 | MCP 接入 | 已实现：公共loader、受信资源binding与连接scope匹配、只读allowlist、每次执行构图discovery与官方临时session；两主图知识结果在模型/历史前安全投影并适配F04，平台目录同步已有。2026-10-10 用户确认不开发 F15 reset/连接池，评估关闭；部署配置热更新未实现，可选回归未排期 | [Runtime范式](../apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md) · [F15评估](projects/20260913-dearflow-agent/17-mcp-cache-reset-assessment.md) · [前端交接](projects/20260913-dearflow-agent/18-mcp-cache-reset-frontend-handoff.md) |

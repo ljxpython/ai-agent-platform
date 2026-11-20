@@ -74,7 +74,7 @@ test("view and send renew retention; background reads do not", async ({
     const returned = await snapshot();
     expect(returned.last_activity_at > viewed.last_activity_at).toBe(true);
     await draft.fill("不要调用任何工具，只回复四个汉字：验证通过");
-    await page.getByRole("button", { name: "发送", exact: true }).click();
+    await draft.press("Enter");
     await expect
       .poll(async () => (await snapshot()).last_activity_at, { timeout: 30000 })
       .not.toBe(returned.last_activity_at);

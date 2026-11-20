@@ -1,0 +1,136 @@
+{
+  "restart": {
+    "environment": "wt_3b7f1734875d",
+    "versions": {
+      "graphharbor": "0.13.0.post49",
+      "graphharbor-runtime": "0.13.0.post49",
+      "langgraph": "1.2.24",
+      "langgraph-checkpoint": "4.3.2",
+      "langgraph-checkpoint-postgres": "3.2.1",
+      "langgraph-sdk": "0.4.14",
+      "deepagents": "0.7.8"
+    },
+    "head": "015_checkpoint_journal",
+    "before_pids": {
+      "runtime-api": {
+        "launcher": 29412,
+        "applications": [
+          29424
+        ]
+      },
+      "runtime-worker": {
+        "launcher": 29431,
+        "applications": [
+          29439
+        ]
+      }
+    },
+    "after_pids": {
+      "runtime-api": {
+        "launcher": 46796,
+        "applications": [
+          46802
+        ]
+      },
+      "runtime-worker": {
+        "launcher": 47019,
+        "applications": [
+          47027
+        ]
+      }
+    },
+    "runs": [
+      "40c80adb-33ce-4c6d-b9de-dde03802a39f",
+      "ac60ccd2-72ad-49ae-9c1d-0260c0f60e1b"
+    ],
+    "messages": 4,
+    "projection_sha256": "a38a941bf5a75927f15175bf073527bb41cfd72c2347f069e0be65a22618787e",
+    "checks": [
+      "registered-venv-processes",
+      "api-worker-restart",
+      "exact-projection-recovered",
+      "real-model-continued",
+      "unique-message-ids"
+    ]
+  },
+  "backup_restore": {
+    "environment": "wt_3b7f1734875d",
+    "before": "014_thread_retention",
+    "upgrade": "015_checkpoint_journal",
+    "restored": "014_thread_retention",
+    "restore_tool_major": 17,
+    "retained_approval_writes": 1,
+    "nonterminal_runs": 0,
+    "production_touched": false,
+    "initial_restore": "failed on new undo table FK; stopped, removed verified empty new table, restored in one transaction"
+  },
+  "reference_browser": {
+    "threadId": "1048a78a-e7ab-4ac8-8928-7b0559c9182d",
+    "projectId": "20b6aeeb-363e-4946-9631-54abf594e97c",
+    "messageIds": [
+      "625f5c7e-d6bf-4ada-a743-4e3a26f36af9",
+      "lc_run--01a1f9f7-d961-7161-b81a-29071c49d213",
+      "e6bf8cc3-e3f8-471f-b2b0-212a2bcef4f6",
+      "lc_run--01a1f9f8-019a-7261-9af5-1f420e692b4b"
+    ],
+    "historyBefore": 30,
+    "historyAfter": 45,
+    "checks": [
+      "real-model-two-turns",
+      "stable-message-ids",
+      "reload-full-history",
+      "native-edit-fork",
+      "old-checkpoint-retained"
+    ]
+  },
+  "retention_browser": {
+    "project": "c1b57e42-eb90-4035-8d5d-50c937af35cc",
+    "thread": "5be27242-49aa-4a71-bd27-d839db165fb7",
+    "activityReports": 2,
+    "checks": [
+      "view-renews",
+      "background-reads-do-not-renew",
+      "return-renews",
+      "send-renews",
+      "real-model-success"
+    ]
+  },
+  "retention_stack": {
+    "environment": "wt_3b7f1734875d",
+    "checks": [
+      "legacy-registration-preview-is-read-only",
+      "legacy-registration-grants-full-30-days",
+      "registration-preserves-existing-policy-and-activity",
+      "platform-policy-overrides-client",
+      "background-reads-do-not-touch",
+      "explicit-view-touches",
+      "wrong-project-and-unsigned-callback-denied",
+      "manual-delete-workspace-and-platform-acl",
+      "cli-preview-is-read-only",
+      "engine-ttl-deletes-workspace-and-platform-acl",
+      "open-file-blocks-and-retry-resumes",
+      "concurrent-maintainers-complete-one-durable-task",
+      "completed-tombstone-keeps-only-auth-metadata"
+    ],
+    "threads": [
+      "057626ee-2c5e-498c-ad22-4402ed63940a",
+      "b9b045e6-098b-483f-887a-57a7fdf73f23",
+      "0d078ccb-f238-4d9e-b9a2-21fec76a9420",
+      "ebb3c9bb-6fd8-4eb5-9569-7ea34d2f6a83",
+      "56efb7e5-770b-43eb-ab83-e6742207d57a",
+      "eb22afb0-9420-453f-b8df-8108ed46577a"
+    ],
+    "maintenance_seconds": [
+      3.665,
+      3.243,
+      4.818,
+      5.238,
+      12.414,
+      4.639,
+      11.954,
+      5.355,
+      11.542,
+      4.172
+    ]
+  }
+}

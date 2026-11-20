@@ -356,7 +356,9 @@ def test_standard_rejects_planning_and_delegation(build, tool_name, args):
 
 
 def test_primary_and_children_share_pressure_gated_pruning(monkeypatch, tmp_path):
+    from deepagents.middleware import subagents
     from langchain_core.messages import HumanMessage
+    from langgraph.channels import DeltaChannel
 
     from runtime_service.middlewares.conversation_offloading import (
         ConversationOffloadingMiddleware,
@@ -380,13 +382,25 @@ def test_primary_and_children_share_pressure_gated_pruning(monkeypatch, tmp_path
         )
         captured = {}
         original = agent.create_deep_agent
+        children = []
+        compile_child = subagents.create_agent
+
+        def capture_child(*args, **kwargs):
+            child = compile_child(*args, **kwargs)
+            children.append(child)
+            return child
 
         def capture(**kwargs):
             captured.update(kwargs)
             return original(**kwargs)
 
         monkeypatch.setattr(agent, "create_deep_agent", capture)
-        await agent.get_agent(cfg)
+        monkeypatch.setattr(subagents, "create_agent", capture_child)
+        graph = await agent.get_agent(cfg)
+        assert children
+        for compiled in [graph, *children]:
+            assert isinstance(compiled.channels["messages"], DeltaChannel)
+            assert compiled.channels["messages"].snapshot_frequency == 50
         groups = [
             captured["middleware"],
             *(child["middleware"] for child in captured["subagents"]),
