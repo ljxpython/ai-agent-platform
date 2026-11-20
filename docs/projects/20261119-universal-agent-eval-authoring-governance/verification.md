@@ -9,13 +9,13 @@
 
 ## 2026-11-20 合并版浏览器验收（Task14，阶段证据）
 
-两仓产品已正常合main：Agent fd99405b／EvalFlow 8914aeb，尚未push。7d3cb7f、0a5b89b并行修复保留，Agent原AGENTS.md未提交改动保持。合并版后端756 passed／27 warnings，Runtime专项7 passed，前端4套41 passed与类型检查通过；默认build的既有全局lint失败保留。
+两仓产品及阶段文档已正常合main并push：Agent产品fd99405b／文档311af2e、EvalFlow8914aeb。7d3cb7f、0a5b89b并行修复保留，Agent原AGENTS.md未提交改动保持。合并版后端756 passed／27 warnings，Runtime专项7 passed，前端4套41 passed与类型检查通过；默认build的既有全局lint失败保留。
 
-572,218字节、128消息、19 Run的长来源已完整送达；AI候选经前置轮次校验和AI复核修订，独立发布v1。历史评分9b83ecc4因已续跑审批中断误判为error，5项语义评分均pass而整体仍error。8914aeb修复后扩大188项通过，所属5011已重载、新历史任务89f218b5待结果；原error和指标标准不变。
+572,218字节、128消息、19 Run的长来源已完整送达；AI候选经前置轮次校验和AI复核修订，独立发布v1。历史评分9b83ecc4因已续跑审批中断误判为error，5项语义评分均pass而整体仍error。8914aeb修复后扩大188项通过，89f218b5两题执行证据均completed、原终态错误消失；但裁判调用出现APITimeoutError及未知用量，5项指标为error，不能计为通过。恢复所属服务后从相同v1启动47bfe21f，未重跑Agent；最终结果因SSH／转发再次中断待核对。原error和指标标准不变。
 
 客观任务df3e5461的5 Run／5完整Trace、17工具和4受限审批齐全，无裁判／模拟调用；三产物正确、订单表四个排除状态漏填，与独立比较及1/0/1规则结果一致。固定交互9548e720自动澄清及批准计划，3 Run／3 Trace、三规则1.0。页面重评b8a783b8仍1/0/1、8组执行证据相同，来源Run仍原5个。原生文件选择自动化受CDP限制，制作使用粘贴资料，执行六份实际上传回执已核对。
 
-桌面HTML已生成7案例、16段录屏／22现场截图；媒体编码及SHA通过，后台浏览器播放被省电策略暂停，尚未全部核实可播放。19:08宿主机全局OOM导致正式EvalFlow自动重启，非本轮主动发布；SSH及转发曾中断，最终健康与冻结核对尚待完成。本节不是Final通过记录，不能代替原Task8–13独立Final。详见[本轮过程与证据](implementation/09-main-browser-acceptance.md)。
+桌面HTML已生成7案例、18段录屏／23现场截图。编码及SHA通过；后台播放受省电策略暂停后，获用户允许临时置前专用窗口，41/41媒体实际播放／加载通过，窗口已关闭。6段有丢帧，第17段触及时长上限，第18段因session_ended为partial，分段空档与未录到最终结果均披露。实际浏览器检查走回环HTTP，本地file导航未验证。19:08全局OOM导致正式EvalFlow自动重启，19:38另一全局OOM后恢复所属5011；这些不是本轮主动正式发布。SSH及转发再次中断，最终健康与远端冻结核对尚待完成。本节不是Final通过记录，不能代替原Task8–13独立Final。详见[本轮过程与证据](implementation/09-main-browser-acceptance.md)。
 
 ## 1. 范围与通过原则
 
