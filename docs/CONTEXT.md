@@ -21,7 +21,7 @@
 
 独立项目[P01–P07](projects/20261120-checkpoint-storage-governance/tasks.md)负责平台接入与业务决定；GraphHarbor同名项目S01–S07负责通用引擎，已正式发布双包0.13.0.post49。核心未加入平台Agent、模型、工具、Workspace或保留天数；反向JSON Patch与维护预算均由用户批准。
 
-平台所有产品开发与联调在feat/checkpoint-storage-governance、登记wt_3b7f1734875d完成，双库、Redis、Workspace及安装独立。P01–P07done；实现d460137，合入main并行改动的代码提交cff8feb3，合并版33项及浏览器2项通过，迁回本地main后同提交隔离回归14项通过。主工作区旧规划有具名stash备份，AGENTS修改哈希保持；未推远端、执行GraphHarbor Git或切换主工作区/现役安装与服务。
+平台所有产品开发与联调在feat/checkpoint-storage-governance、登记wt_3b7f1734875d完成，双库、Redis、Workspace及安装独立。项目部分完成（partial）：P01–P06已完成，P07的隔离验收和源码交付完成，引擎远端回归待修。实现d460137、合并代码cff8feb3，合并版33项及浏览器2项、迁回main后同提交隔离回归14项通过。2026-11-21用户追加批准的独立目标恢复、正式包来源验真和夹具身份/预算经验已沉淀；平台经验2e06bb4及GraphHarbor正式源码eeb204c均已推送各自origin/main。平台CI44787756204四项通过；引擎CI44787814603五项通过，live-server E2E出现undo外键错误，JavaScript SDK线程更新422，两项待修复复验，不能称全项完成。主工作区旧规划有具名stash备份，AGENTS修改哈希保持；主工作区/现役安装与服务未切换，生产迁移与容量未执行。
 
 | 服务 | 本阶段当前状态 |
 |---|---|
