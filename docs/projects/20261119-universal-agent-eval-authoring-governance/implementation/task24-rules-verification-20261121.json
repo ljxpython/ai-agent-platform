@@ -1,0 +1,236 @@
+{
+  "task": "Task24",
+  "date": "2026-11-21",
+  "scope": "双机开发与运维规则同步；不发布应用，不重启服务，不改变业务源码、数据、配置、依赖或预算",
+  "phase": {
+    "environment": "sshmy1既有EvalFlow独立Worktree",
+    "test_command": ".venv/bin/python -m pytest tests/test_production_tools.py -q --noconftest",
+    "passed": 10,
+    "elapsed_seconds": 2.64,
+    "warnings": [
+      "关闭pytest自动插件加载时，既有timeout配置产生1条Unknown config option警告"
+    ],
+    "checks": [
+      {
+        "command": [
+          ".venv/bin/python",
+          "-m",
+          "pytest",
+          "tests/test_production_tools.py",
+          "-q",
+          "--noconftest"
+        ],
+        "returncode": 0
+      },
+      {
+        "command": [
+          ".venv/bin/python",
+          "-m",
+          "ruff",
+          "check",
+          "tests/test_production_tools.py"
+        ],
+        "returncode": 0
+      },
+      {
+        "command": [
+          "bash",
+          "-n",
+          "scripts/deploy_to_sshmy1.sh"
+        ],
+        "returncode": 0
+      },
+      {
+        "command": [
+          "bash",
+          "-n",
+          "scripts/production_status.sh"
+        ],
+        "returncode": 0
+      },
+      {
+        "command": [
+          "bash",
+          "-n",
+          "scripts/local-stack.sh"
+        ],
+        "returncode": 0
+      },
+      {
+        "command": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "returncode": 0
+      },
+      {
+        "command": [
+          "make",
+          "-n",
+          "deploy-status"
+        ],
+        "returncode": 0
+      }
+    ],
+    "added_relative_links_checked": 12,
+    "failures_retained": [
+      "初版Ruff报告5项新增测试格式问题，修正后通过",
+      "首次探活将匿名401视为失败；明确200/401仅表示可达，补503拒绝回归",
+      "SSH读取标准输入导致后续检查被跳过；添加-n并显式核对三个阶段完整执行"
+    ]
+  },
+  "evalflow_delivery": {
+    "revision": "e33b50155dca0c056dd18bcac7a90650068f8975",
+    "changed_files": [
+      "AGENTS.md",
+      "scripts/deploy_to_sshmy1.sh",
+      "scripts/production_status.sh",
+      "tests/test_production_tools.py",
+      "Makefile",
+      "scripts/local-stack.sh",
+      "docs/DEPLOYMENT.md",
+      "web/README.md",
+      "docs/EVALUATION_GUIDE.md",
+      "docs/CONTEXT.md",
+      ".agents/skills/plan-project/SKILL.md",
+      ".agents/skills/implement-feature/SKILL.md",
+      ".agents/skills/verify-change/SKILL.md",
+      ".agents/skills/remote-sync/SKILL.md",
+      "docs/lessons/sshmy1-deployment.md",
+      "docs/lessons/eval-architecture.md"
+    ],
+    "checkouts": [
+      "origin/main",
+      "origin/fix/evalflow-4gb-20261121",
+      "Mac main",
+      "sshmy1 main",
+      "sshmy1 fix/evalflow-4gb-20261121",
+      "sshmy2 detached HEAD"
+    ],
+    "protected_product_trees": {
+      "eval_platform": "deb23481f166e26b9e4e246bd37632b2a73ab028",
+      "mlflow": "3320cccf71585327d6de05bc0fb840bf8c573696",
+      "deploy": "0a8d77a11da5f49df8f80727665e250b1b978af0",
+      "pyproject.toml": "b4bc74007a61f330329802443aa5306aa7af843b",
+      "uv.lock": "76adec2f09ba540b9ef8d8d0a18e7784ea10966e"
+    },
+    "business_code_changed": false,
+    "service_restarted": false
+  },
+  "final": {
+    "at": "2026-11-21T12:40:20.343078+00:00",
+    "checks": {
+      "make_status_passed": true,
+      "all_three_stages_executed": true,
+      "retired_script_refused": true,
+      "source_and_target_identities_unchanged": true,
+      "source_and_target_configs_unchanged": true,
+      "all_server_checkouts_aligned": true,
+      "origin_main_aligned": true,
+      "mac_main_aligned": true
+    },
+    "status_command": "make deploy-status",
+    "status_returncode": 0,
+    "retired_entry_returncode": 2,
+    "http": {
+      "target_loopback_5000": 401,
+      "source_loopback_5000": 401,
+      "source_loopback_9128": 200,
+      "public_9128": 200
+    },
+    "service_identities": {
+      "source": {
+        "mlflow-eval.service": {
+          "MainPID": "0",
+          "NRestarts": "0",
+          "ActiveState": "inactive",
+          "UnitFileState": "disabled"
+        },
+        "mlflow-eval-forward.socket": {
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        },
+        "agent-platform-api.service": {
+          "MainPID": "531268",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        },
+        "agent-runtime-api.service": {
+          "MainPID": "537330",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        },
+        "agent-runtime-worker.service": {
+          "MainPID": "537331",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        },
+        "redis.service": {
+          "MainPID": "1211",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        }
+      },
+      "target": {
+        "mlflow-eval.service": {
+          "MainPID": "817813",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        },
+        "evalflow-source-tunnel.service": {
+          "MainPID": "793282",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        },
+        "rag-service.service": {
+          "MainPID": "4002833",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        },
+        "rag-webui.service": {
+          "MainPID": "191390",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        },
+        "runtime-sandbox-node.service": {
+          "MainPID": "2316468",
+          "NRestarts": "0",
+          "ActiveState": "active",
+          "UnitFileState": "enabled"
+        }
+      }
+    },
+    "protected_config_hashes_match_prechange": true,
+    "protected_config_files_compared": 6
+  },
+  "agent_main_preservation": {
+    "parent_revision": "8439f4e45486cbb61fa85f2bcb0213ed2311b5dc",
+    "checks": {
+      "apps_tree": true,
+      "scripts_tree": true,
+      "checkpoint_project_tree": true,
+      "user_agents_untouched": true
+    },
+    "protected_trees": {
+      "apps_tree": "5b4f6d104d11dd669fc729e011febae4630fd2e4",
+      "scripts_tree": "61afa56d30302509ad9df75d7323b488f6de8b28",
+      "checkpoint_project_tree": "0fb0d8b7b4f371f6b8c8ecfa8500fe40839233f6"
+    },
+    "delivery_method": "仅转入本次原项目文档补丁并精准更新CONTEXT/FEATURES；不合并含失败资源候选的整分支"
+  },
+  "limits": [
+    "没有执行新的应用发布、重启或模型全链路；本轮复用Task23已有模型与容量结论",
+    "HTTP200/401仅表示可达，不能替代身份业务或公网匿名拒绝验证",
+    "既有HTTP、9128默认身份注入与default回源503边界保持",
+    "短时只读检查不代表长期容量或并行重型负载通过"
+  ]
+}
