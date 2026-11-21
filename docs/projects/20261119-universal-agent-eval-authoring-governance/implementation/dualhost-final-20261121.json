@@ -788,5 +788,12 @@
     "Heavy RAG ingestion and heavy sandbox jobs not run concurrently",
     "Nano Brain remains boot-enabled",
     "Existing 9128 default-identity injection and default upstream 503 retained"
-  ]
+  ],
+  "agent_main_preservation": {
+    "before_main": "f1595193036c57967807b5e83532e0817c8c4dc9",
+    "apps_tree": "5b4f6d104d11dd669fc729e011febae4630fd2e4",
+    "scripts_tree": "61afa56d30302509ad9df75d7323b488f6de8b28",
+    "checkpoint_project_tree": "0fb0d8b7b4f371f6b8c8ecfa8500fe40839233f6",
+    "user_agents_sha256": "e03992e02819e3b4d57b2fb264a81893c9ae5dec63a3212de7eb748710531649"
+  }
 }

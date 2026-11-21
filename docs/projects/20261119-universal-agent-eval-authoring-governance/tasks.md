@@ -259,7 +259,7 @@ Agent继续正常处理多轮材料和审批，观测记录避免在每个中间
 
 用户无法扩容服务器，希望在正式页面点击运行后，由平台自动处理材料、执行Agent并给出可信指标。本项使用现有4GiB Swap和原用例，减少常驻进程及并发，不以普通聊天替代自动评测。
 
-**状态：** 部分完成（partial，正式连续容量与合并后联合读回已通过，最终文档交付收尾中）。
+**状态：** 已完成（done，2026-11-21）。当前批准的双机迁移、正式连续容量、合并后联合读回及两仓文档交付完成；业务低分、历史失败和长期容量边界保持。
 **完成标准：** 正式两轮附件、完整材料客观任务和原六轮固定交互均取得真实终态及完整证据，按原标准给分；页面可启动和查看结果，低内存保护与历史读取保持；无新增非预期OOM，运行结束后Swap及压力不持续增长，配置/源码回退有验证。Agent业务failed不等于平台故障，但执行或裁判error不得冒记为完成。
 
 - [x] 冻结4GB治理方案和验收范围，取得用户实施及最小上游启动缺陷例外批准。
@@ -271,7 +271,7 @@ Agent继续正常处理多轮材料和审批，观测记录避免在每个中间
 - [x] 排空旧任务并最终同步，只切换一套EvalFlow调度器，保持原9128/5000入口，验证不回档业务库的应用回退。
 - [x] 通过正式HTTP与browser-skill完成两轮附件、客观六表和原六轮案例，核对文件、指标、Trace、权限、内存/Swap/PSI和OOM，更新操作文档与原HTML证据。
 - [x] 独立执行合并后联合Final，核对正式版本、结果、历史资产、权限、服务及保留业务。
-- [ ] 将最终任务、README和两仓CONTEXT交付main并核对远端；保留Checkpoint新功能、现场改动和失败证据。
+- [x] 将最终任务、README和两仓CONTEXT交付main并核对远端；保留Checkpoint新功能、现场改动和失败证据。
 
 **当前进度：** 远端独立安装与相关Ruff通过；开关/Swap先2 failed/5 passed、修复后7 passed，任务29 passed，启动脚本macOS/Linux各4 passed。原生扩大回归13项后主动中断，另选真实子进程成功任务及旧开关分支3 passed，不计全套通过。首阶段已排空加载da4f114、单HTTP/执行并发和有限Swap；当时Runtime API身份及post48保持，周期消费者消失。正式两轮99a063c7通过，四规则1.0、1会话/2 Run/2 Trace、原件保持。页面保存发布并启动的六表e7fb1eb9完成，但Agent仅读六表、未生成四产物，artifact_correct=0，整体正常failed，原标准保持。原六轮851e6948及改用轻量请求的4de60390均在执行前被内存保护拒绝，未生成Agent Run。该首阶段运行未满足连续容量要求；后续原六轮结果及追加预算见下文。
 **恢复与补证：** 排空后已实际回退原启动脚本、周期消费者及128MiB服务Swap，再加载候选；两次健康均通过，该次Runtime API仍为PID178973，post48和现场锁文件保持；后续联合预算重启已更换Runtime API进程，不将旧PID作为当前身份。14份旧资产hash不变，新两轮/客观任务的三份Trace共148 Span已完整分页，根/LLM/工具原文均HTTP200。回退复载后的原六轮87af47e6于08:27:48完成，6输入/6输出、10 Run/10 Trace、31次工具执行、4次审批，四规则及原ConversationalGEval均1.0；四文件与六原件通过，10 Trace共365 Span完整。独立按冻结标准逐行比较三个CSV26/3/4行，并复算V3及辅助口径13单/30.77%，通过。
@@ -296,7 +296,7 @@ Agent继续正常处理多轮材料和审批，观测记录避免在每个中间
 
 **合并后联合核对：** EvalFlow813dc61已合main推送；正式目录对齐相同提交，资源/周期启动源码与实测版逐字节一致，目标PID817813、NRestarts0保持。19:08–19:10独立读回五条任务及五个原生Run全部FINISHED，14旧资产hash、两类401、正常题库读取、源原配置及Agent/Redis PID、目标保留业务PID/端口均保持；无活动评测、Run租约或原生jobs，历史16条interrupted保留。相关11项回归及Ruff通过，插件关闭导致的1个timeout配置警告保留。桌面HTML现21案例、43视频、66截图；本轮6视频完整解码，6视频实际播放与15图加载21/21通过，04的partial/session_ended与旧15案例内容保持。此结论只覆盖当前单并发和观察窗口，不外推长期或并行重型RAG。
 
-**下一步：** 完成两仓最终文档与Git远端读回。单机失败配置不作为最终配置交付，Agent旧候选脚本不合main；Checkpoint post50/015新写入及用户AGENTS改动保持。后续若恢复Nano等已停应用或增加并行重任务，应重新核对容量。详见[双机记录](implementation/13-dual-host-evalflow-migration.md)、[联合证据](implementation/dualhost-final-20261121.json)及[单机失败与回退](implementation/12-4gb-formal-capacity.md)。
+**交付与后续边界：** 两仓最终文档随已验证产品交付main，提交后读回远端；Worktree和原失败证据保留。单机失败配置不作为最终配置交付，Agent旧候选脚本不合main；Checkpoint post50/015新写入及用户AGENTS改动保持。后续若恢复Nano等已停应用或增加并行重任务，应重新核对容量。详见[双机记录](implementation/13-dual-host-evalflow-migration.md)、[联合证据](implementation/dualhost-final-20261121.json)及[单机失败与回退](implementation/12-4gb-formal-capacity.md)。
 
 ## 前期实施准备：远端 Worktree 与所属进程管理
 
