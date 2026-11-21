@@ -1,0 +1,334 @@
+{
+  "event": "stop_verification",
+  "scope": "user-authorized four applications only; no disable/remove/migration",
+  "before": {
+    "time_utc": "2026-11-21T09:15:46Z",
+    "units": {
+      "companybrain-nano.service": {
+        "MainPID": "1222366",
+        "NRestarts": "14",
+        "MemoryCurrent": "10248192",
+        "MemorySwapCurrent": "16429056",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "runtime-sandbox-node.service": {
+        "MainPID": "2316468",
+        "NRestarts": "0",
+        "MemoryCurrent": "175845376",
+        "MemorySwapCurrent": "113180672",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "rag-webui.service": {
+        "MainPID": "191390",
+        "NRestarts": "0",
+        "MemoryCurrent": "888160256",
+        "MemorySwapCurrent": "0",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "rag-service.service": {
+        "MainPID": "4002833",
+        "NRestarts": "0",
+        "MemoryCurrent": "76419072",
+        "MemorySwapCurrent": "323465216",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "nginx.service": {
+        "MainPID": "0",
+        "NRestarts": "0",
+        "MemoryCurrent": "42729472",
+        "MemorySwapCurrent": "59191296",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "generated"
+      },
+      "docker.service": {
+        "MainPID": "1465",
+        "NRestarts": "0",
+        "MemoryCurrent": "137351168",
+        "MemorySwapCurrent": "28577792",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      }
+    },
+    "containers": {
+      "astrbot": {
+        "id": "c290a1d44f9af1e5e9fed615afebc06561f1506725f3d6219215623fe0478ddb",
+        "running": true,
+        "pid": 975639,
+        "exit_code": 0,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "napcat": {
+        "id": "8b9d7ea351868caaa1a1fbeaa6cd596754cc4225a2a537da5ef76ea29862792b",
+        "running": true,
+        "pid": 942380,
+        "exit_code": 0,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "mini-hybrid-rag-app": {
+        "id": "ff545d4da3da8da15061ffb365f146a98848416255d8bb132f1f15a7fb23ac4b",
+        "running": true,
+        "pid": 1091698,
+        "exit_code": 0,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      }
+    },
+    "listening_ports": [
+      80,
+      3001,
+      5432,
+      6099,
+      6185,
+      8001,
+      8026,
+      8100,
+      8324,
+      9621,
+      19111
+    ],
+    "memory_KiB": {
+      "MemTotal": 3812564,
+      "MemAvailable": 2009284,
+      "SwapTotal": 2035708,
+      "SwapFree": 808616
+    },
+    "datapulse_original_pid": {
+      "exists": true,
+      "state": "S",
+      "start_ticks": "168051027",
+      "cwd": "/home/ubuntu/datapulse-assistant",
+      "argv": "backend/run.py"
+    }
+  },
+  "actions": [
+    {
+      "target": "astrbot",
+      "action": "docker stop --time 20",
+      "returncode": 0
+    },
+    {
+      "target": "napcat",
+      "action": "docker stop --time 20",
+      "returncode": 0
+    },
+    {
+      "target": "companybrain-nano.service",
+      "action": "systemctl stop",
+      "returncode": 0
+    },
+    {
+      "target": "datapulse",
+      "pid": 972011,
+      "action": "SIGTERM via verified pidfd",
+      "result": "sent"
+    }
+  ],
+  "after": {
+    "time_utc": "2026-11-21T09:16:29Z",
+    "units": {
+      "companybrain-nano.service": {
+        "MainPID": "0",
+        "NRestarts": "14",
+        "MemoryCurrent": "[not set]",
+        "MemorySwapCurrent": "[not set]",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "UnitFileState": "enabled"
+      },
+      "runtime-sandbox-node.service": {
+        "MainPID": "2316468",
+        "NRestarts": "0",
+        "MemoryCurrent": "175902720",
+        "MemorySwapCurrent": "113139712",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "rag-webui.service": {
+        "MainPID": "191390",
+        "NRestarts": "0",
+        "MemoryCurrent": "888160256",
+        "MemorySwapCurrent": "0",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "rag-service.service": {
+        "MainPID": "4002833",
+        "NRestarts": "0",
+        "MemoryCurrent": "76673024",
+        "MemorySwapCurrent": "323452928",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "nginx.service": {
+        "MainPID": "0",
+        "NRestarts": "0",
+        "MemoryCurrent": "42786816",
+        "MemorySwapCurrent": "59191296",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "generated"
+      },
+      "docker.service": {
+        "MainPID": "1465",
+        "NRestarts": "0",
+        "MemoryCurrent": "142159872",
+        "MemorySwapCurrent": "24264704",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      }
+    },
+    "containers": {
+      "astrbot": {
+        "id": "c290a1d44f9af1e5e9fed615afebc06561f1506725f3d6219215623fe0478ddb",
+        "running": false,
+        "pid": 0,
+        "exit_code": 137,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "napcat": {
+        "id": "8b9d7ea351868caaa1a1fbeaa6cd596754cc4225a2a537da5ef76ea29862792b",
+        "running": false,
+        "pid": 0,
+        "exit_code": 137,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "mini-hybrid-rag-app": {
+        "id": "ff545d4da3da8da15061ffb365f146a98848416255d8bb132f1f15a7fb23ac4b",
+        "running": true,
+        "pid": 1091698,
+        "exit_code": 0,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      }
+    },
+    "listening_ports": [
+      80,
+      5432,
+      8001,
+      8324,
+      9621,
+      19111
+    ],
+    "memory_KiB": {
+      "MemTotal": 3812564,
+      "MemAvailable": 2130836,
+      "SwapTotal": 2035708,
+      "SwapFree": 1335464
+    },
+    "datapulse_original_pid": {
+      "exists": false
+    }
+  },
+  "checks": {
+    "selected_containers_stopped": true,
+    "nano_inactive": true,
+    "selected_ports_closed": true,
+    "preserved_units_same_pid_active": true,
+    "mini_hybrid_same_pid": true,
+    "preserved_ports_present": true
+  },
+  "post_samples": {
+    "count": 6,
+    "available_KiB_min": 2117052,
+    "available_KiB_max": 2130836,
+    "swap_free_KiB_first": 1335464,
+    "swap_free_KiB_last": 1335464
+  },
+  "all_checks_passed": true,
+  "followup": {
+    "time_utc": "2026-11-21T09:17:36Z",
+    "containers": {
+      "astrbot": {
+        "id": "c290a1d44f9af1e5e9fed615afebc06561f1506725f3d6219215623fe0478ddb",
+        "running": false,
+        "exit_code": 137,
+        "oom_killed": false,
+        "error": "",
+        "restart_count": 0,
+        "mount_count": 3,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "napcat": {
+        "id": "8b9d7ea351868caaa1a1fbeaa6cd596754cc4225a2a537da5ef76ea29862792b",
+        "running": false,
+        "exit_code": 137,
+        "oom_killed": false,
+        "error": "",
+        "restart_count": 0,
+        "mount_count": 3,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      },
+      "mini-hybrid-rag-app": {
+        "id": "ff545d4da3da8da15061ffb365f146a98848416255d8bb132f1f15a7fb23ac4b",
+        "running": true,
+        "exit_code": 0,
+        "oom_killed": false,
+        "error": "",
+        "restart_count": 0,
+        "mount_count": 0,
+        "restart_policy": {
+          "Name": "unless-stopped",
+          "MaximumRetryCount": 0
+        }
+      }
+    },
+    "nano": {
+      "MainPID": "0",
+      "ActiveState": "inactive",
+      "UnitFileState": "enabled"
+    },
+    "datapulse_old_pid_exists": false,
+    "datapulse_project_preserved": true,
+    "selected_ports_still_closed": true,
+    "preserved_ports_still_present": true,
+    "memory_KiB": {
+      "MemAvailable": 2102948,
+      "SwapTotal": 2035708,
+      "SwapFree": 1339048
+    }
+  },
+  "authorization": "User explicitly approved stopping napcat, astrbot, companybrain-nano.service and DataPulse Assistant backend; migration and disable/remove operations were not performed.",
+  "limitations": [
+    "Docker stop reached the 20-second timeout; both selected containers exited 137 with OOMKilled=false.",
+    "Stopped application restart/data recovery was not tested.",
+    "Nano Brain remains enabled for boot; existing container restart policies were not changed.",
+    "Memory measurements describe the observed short window, not an EvalFlow capacity test.",
+    "Preserved services were checked by PID/state/ports; full business end-to-end tests were not run."
+  ]
+}

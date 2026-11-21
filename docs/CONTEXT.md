@@ -2,7 +2,13 @@
 
 ## 当前进行：4GB主机正式自动评测（2026-11-21）
 
-4GB候选D首轮前三任务正常评分，但第四次暖机在Trace收集前读取本机题库records发生ReadError；保留失败并精确回退。相同预算D2的客观任务正常failed、两轮四规则1.0，第三条六轮因不足896MiB物理余量在执行前被拒绝，第四条未启动。D/D2最低可用RAM分别620.22/692.39MiB、均无新增OOM，但连续容量仍未通过。D2于09:33:55–09:34:15排空回退，三应用健康，Redis仍原PID1211、High恢复infinity，硬上限/Swap/数据/TTL及持久化保持。主动RDB与最后10分钟通过窗口未执行，联合Final尚未具备条件。桌面HTML15案例、37视频/51截图，新增4GB媒体30/30实际播放或加载通过。Agent仍6165026c/post48，未部署并行Checkpoint；候选不合main。唯一进度见[Task23](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-23在4gb主机上完成正式自动评测)。
+4GB候选D首轮前三任务正常评分，但第四次暖机在Trace收集前读取本机题库records发生ReadError；保留失败并精确回退。相同预算D2的客观任务正常failed、两轮四规则1.0，第三条六轮因不足896MiB物理余量在执行前被拒绝，第四条未启动。D/D2最低可用RAM分别620.22/692.39MiB、均无新增OOM，但连续容量仍未通过。D2于09:33:55–09:34:15排空回退，三应用健康，Redis仍原PID1211、High恢复infinity，硬上限/Swap/数据/TTL及持久化保持。主动RDB与最后10分钟通过窗口未执行，联合Final尚未具备条件。桌面HTML15案例、37视频/51截图，新增4GB媒体30/30实际播放或加载通过。该阶段Agent为6165026c/post48；Checkpoint专项随后已独立切到post50/015，候选不合main。唯一进度见[Task23](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-23在4gb主机上完成正式自动评测)。
+
+用户同意记录Checkpoint关联审查：post50减少历史基线复制，消息存储约70%逻辑字节收益不代表Worker或整机内存降幅；Redis及进程内Run事件缓存仍按条数限长，没有对应字节预算。主仓最新记录已完成Checkpoint生产切换，Task23保持partial；后续评测或双机部署按各自授权推进，必要时另评审缓存治理。
+
+2026-11-21用户新增批准停止sshmy2四项应用，17:17:36（Asia/Shanghai）读回NapCat/AstrBot停止、Nano inactive、DataPulse退出，五个对应端口关闭；LightRAG、远程沙箱、Docker/Nginx及Mini Hybrid RAG保持。两容器停止超时后退出137，OOMKilled=false；Nano仍enabled，未验应用重启恢复。短时可用RAM约2.0GiB、已用Swap约0.67GiB；未删除或禁用服务、未执行EvalFlow迁移或容量验收，详情及证据在Task23。
+
+用户随后已批准EvalFlow迁到sshmy2，Agent/Runtime/PG/Redis留sshmy1，保留旧入口和目标原有业务。17:32只读确认目标可用2,109,920KiB（约2.01GiB）；按应用1GiB＋评测512MiB＋系统512MiB开始部署和实测，不要求先扩8GB。此为起步预算，非连续容量结论；源备份、目标独立环境与受限通道已准备；201个依赖版本一致，5项启动/保护测试及预算边界断言通过，两台资源监测已启动；17:59已排空切流，原9128/5000入口保持。漏带源systemd两项内联环境造成POST403，补齐原值并排空重启后18:04来源边界通过。18:11应用约634MiB、目标可用约1.44GiB；启动前2GiB预算含应用。含新增结果的应用回退与再加载已通过，新两轮f8af6b04四规则1.0、2 Run/2 Trace完整，14旧资产保持；五条正式连续任务、615秒稳定窗口及合并后联合读回已通过；EvalFlow813dc61合main推送，最终文档交付中。
 
 ## 当前交付：正式 Agent 已加载采集去重（2026-11-21）
 
@@ -14,7 +20,7 @@
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-21。复杂评测Task1–22批准工程范围及正式Agent采集加载已完成，独立生产读回通过；当前Task23联合资源预算正在逐项验证，容量尚未通过，504边界保留。旧SSH中断为历史事实，不作当前连通性。
+> **最后更新：** 2026-11-21。Task23候选D/D2失败保留；EvalFlow正式双机切换、含新增结果的应用回退与再加载已通过，启动前2GiB预算包含应用，启动后不另要求2GiB。五条连续任务、615秒资源窗口及合并后联合读回通过；附件三次四规则1.0，客观/原六轮缺产物正常failed，无执行/裁判error。两台最低786.14/1276.38MiB，Swap末窗口稳定、OOM新增0；15 Trace/566 Span完整，最终文档Git交付中。Checkpoint生产切换以main专项最新记录为准，504边界保留。旧SSH中断为历史事实，不作当前连通性。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -23,16 +29,11 @@
 
 ## 当前增补：长会话Checkpoint存储治理（2026-11-21）
 
-独立项目[P01–P07](projects/20261120-checkpoint-storage-governance/tasks.md)负责平台接入与业务决定；GraphHarbor同名项目S01–S07负责通用引擎，已正式发布双包0.13.0.post49。核心未加入平台Agent、模型、工具、Workspace或保留天数；反向JSON Patch与维护预算均由用户批准。
+关联项目在main的后续记录已推进至P01–P09，本Worktree内Checkpoint项目文档仍是较早快照，不以其旧post49失败摘要代表当前状态。正式post50已解决undo外键、线程PATCH422及跨topic事件误去重，GraphHarbor源码84e9021远端CI44840687787七项通过；平台5d3e2418已合main推送，正式接入、本地补验及生产副本独立014恢复/015转换完成。
 
-平台所有产品开发与联调在feat/checkpoint-storage-governance、登记wt_3b7f1734875d完成，双库、Redis、Workspace及安装独立。项目部分完成（partial）：P01–P06已完成，P07的隔离验收和源码交付完成，引擎远端回归待修。实现d460137、合并代码cff8feb3，合并版33项及浏览器2项、迁回main后同提交隔离回归14项通过。2026-11-21用户追加批准的独立目标恢复、正式包来源验真和夹具身份/预算经验已沉淀；平台经验2e06bb4及GraphHarbor正式源码eeb204c均已推送各自origin/main。平台CI44787756204四项通过；引擎CI44787814603五项通过，live-server E2E出现undo外键错误，JavaScript SDK线程更新422，两项待修复复验，不能称全项完成。主工作区旧规划有具名stash备份，AGENTS修改哈希保持；主工作区/现役安装与服务未切换，生产迁移与容量未执行。
+main的后续记录已完成post50/015生产切换及服务器最终014回退库验证；本轮未重新SSH核对sshmy1，不把旧post48/014记录当现役。项目仍partial：P08空白Reference首发及P09受保护验收残余未完，长期容量与原安全专项人工最终验收保留。具体源备份、恢复摘要及业务读回以main专项最新记录为准，不将早期副本的40,131行计数冒作最终窗口结果。
 
-| 服务 | 本阶段当前状态 |
-|---|---|
-| runtime-service | 所属环境正式post49/head015；LangGraph1.2.24/checkpoint4.3.2/postgres3.2.1/SDK0.4.14/DeepAgents0.7.8精确锁定。Reference/平台助手Delta50，Dear/Showcase根及子图保持Delta50，教学Workflow仍普通聚合。真实消息/审批恢复、队列21项、HTTP故障、API/Worker换PID后逐项恢复与模型续聊通过 |
-| platform-api / platform-web | 未改产品契约；原文及idle30天保持，无活跃自动prune。所属三服务保留/权限/Workspace回收1项、真实Reference记忆/刷新/fork和Dear续期浏览器2项通过。既有悬浮助手遮挡发送按钮保留，测试使用Enter，不声称按钮点击体验通过 |
-
-引擎六组预算通过：边界最大330B、WAL1144B、建立边界p95 20.214ms、维护RSS99,983,360B、万条prune708.201ms；200轮消息周期50逻辑字节比普通快照少约70%，读p95 108.238ms属状态读取而非建边界预算。固定K永久快照和完整原文仍可增长，不保证全状态有界，也未证明此前现役OOM根因。隔离014→015→备份恢复014→再015已演练；生产恢复应使用独立目标。宽泛旧P6失败、严格官方差异及旧v3未验范围独立保留。
+Reference/平台助手新增采用Delta50，Dear/Showcase原本已使用；200轮约70%逻辑字节收益不外推Worker或整机内存。Run事件回放缓存仍无对应字节预算，不能代替Task23容量验收；具体操作以main中的Checkpoint任务和生产操作单为准，不在本Worktree复制其任务进度或迁移并行代码。
 
 ## 当前增补：复杂评测集一次启动自动执行（2026-11-20）
 

@@ -1,0 +1,792 @@
+{
+  "date": "2026-11-21",
+  "scope": "Approved dual-host EvalFlow single-concurrency production capacity; historical business failures retained",
+  "resource_window": {
+    "source": {
+      "at": "2026-11-21T18:59:54.377901+08:00",
+      "continuous": {
+        "samples": 328,
+        "start": "2026-11-21T10:32:17.377691+00:00",
+        "end": "2026-11-21T10:59:51.102493+00:00",
+        "duration_seconds": 1653.724802,
+        "min_available_mib": 786.14,
+        "latest_available_mib": 951.46,
+        "oom_delta": 0,
+        "swap_start_mib": 391.33,
+        "swap_latest_mib": 437.48,
+        "swap_max_mib": 465.54,
+        "pswpin_delta": 45298,
+        "pswpout_delta": 46719,
+        "pressure_last": "some avg10=0.00 avg60=0.00 avg300=0.00 total=627067575\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=596022873",
+        "pressure_avg10_peak": 1.32,
+        "cgroups": {
+          "agent-platform-api.service": {
+            "memory_peak_mib": 236.37,
+            "sampled_swap_peak_mib": 3.26,
+            "oom_kill_delta": 0
+          },
+          "agent-runtime-api.service": {
+            "memory_peak_mib": 330.27,
+            "sampled_swap_peak_mib": 13.66,
+            "oom_kill_delta": 0
+          },
+          "agent-runtime-worker.service": {
+            "memory_peak_mib": 640.77,
+            "sampled_swap_peak_mib": 83.77,
+            "oom_kill_delta": 0
+          },
+          "redis.service": {
+            "memory_peak_mib": 1360.56,
+            "sampled_swap_peak_mib": 13.52,
+            "oom_kill_delta": 0
+          }
+        },
+        "health_status_counts": {
+          "2142": {
+            "401": 55
+          },
+          "5000": {
+            "200": 55
+          },
+          "8123": {
+            "200": 55
+          },
+          "9128": {
+            "200": 55
+          }
+        }
+      },
+      "post_last_task": {
+        "samples": 123,
+        "start": "2026-11-21T10:49:36.078153+00:00",
+        "end": "2026-11-21T10:59:51.102493+00:00",
+        "duration_seconds": 615.02434,
+        "min_available_mib": 914.01,
+        "latest_available_mib": 951.46,
+        "oom_delta": 0,
+        "swap_start_mib": 442.04,
+        "swap_latest_mib": 437.48,
+        "swap_max_mib": 445.24,
+        "pswpin_delta": 1095,
+        "pswpout_delta": 887,
+        "pressure_last": "some avg10=0.00 avg60=0.00 avg300=0.00 total=627067575\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=596022873",
+        "pressure_avg10_peak": 0,
+        "cgroups": {
+          "agent-platform-api.service": {
+            "memory_peak_mib": 236.37,
+            "sampled_swap_peak_mib": 3.26,
+            "oom_kill_delta": 0
+          },
+          "agent-runtime-api.service": {
+            "memory_peak_mib": 330.27,
+            "sampled_swap_peak_mib": 13.66,
+            "oom_kill_delta": 0
+          },
+          "agent-runtime-worker.service": {
+            "memory_peak_mib": 640.77,
+            "sampled_swap_peak_mib": 61.67,
+            "oom_kill_delta": 0
+          },
+          "redis.service": {
+            "memory_peak_mib": 1360.56,
+            "sampled_swap_peak_mib": 8.62,
+            "oom_kill_delta": 0
+          }
+        },
+        "health_status_counts": {
+          "2142": {
+            "401": 21
+          },
+          "5000": {
+            "200": 21
+          },
+          "8123": {
+            "200": 21
+          },
+          "9128": {
+            "200": 21
+          }
+        },
+        "minute_buckets": [
+          {
+            "minute": 0,
+            "min_available_mib": 927.43,
+            "swap_min_mib": 442.04,
+            "swap_max_mib": 445.24,
+            "swap_last_mib": 445.24
+          },
+          {
+            "minute": 1,
+            "min_available_mib": 929.5,
+            "swap_min_mib": 442.79,
+            "swap_max_mib": 444.99,
+            "swap_last_mib": 442.79
+          },
+          {
+            "minute": 2,
+            "min_available_mib": 935.68,
+            "swap_min_mib": 440.86,
+            "swap_max_mib": 442.79,
+            "swap_last_mib": 440.86
+          },
+          {
+            "minute": 3,
+            "min_available_mib": 958.09,
+            "swap_min_mib": 440.61,
+            "swap_max_mib": 440.86,
+            "swap_last_mib": 440.61
+          },
+          {
+            "minute": 4,
+            "min_available_mib": 947.64,
+            "swap_min_mib": 440.23,
+            "swap_max_mib": 440.61,
+            "swap_last_mib": 440.23
+          },
+          {
+            "minute": 5,
+            "min_available_mib": 948.57,
+            "swap_min_mib": 439.98,
+            "swap_max_mib": 440.23,
+            "swap_last_mib": 439.98
+          },
+          {
+            "minute": 6,
+            "min_available_mib": 941.89,
+            "swap_min_mib": 439.98,
+            "swap_max_mib": 439.98,
+            "swap_last_mib": 439.98
+          },
+          {
+            "minute": 7,
+            "min_available_mib": 925.98,
+            "swap_min_mib": 439.73,
+            "swap_max_mib": 439.98,
+            "swap_last_mib": 439.73
+          },
+          {
+            "minute": 8,
+            "min_available_mib": 914.01,
+            "swap_min_mib": 439.73,
+            "swap_max_mib": 439.73,
+            "swap_last_mib": 439.73
+          },
+          {
+            "minute": 9,
+            "min_available_mib": 935.51,
+            "swap_min_mib": 439.48,
+            "swap_max_mib": 439.73,
+            "swap_last_mib": 439.48
+          },
+          {
+            "minute": 10,
+            "min_available_mib": 946.73,
+            "swap_min_mib": 437.48,
+            "swap_max_mib": 439.48,
+            "swap_last_mib": 437.48
+          }
+        ]
+      }
+    },
+    "target": {
+      "at": "2026-11-21T18:59:55.004747+08:00",
+      "continuous": {
+        "samples": 332,
+        "start": "2026-11-21T10:32:17.218378+00:00",
+        "end": "2026-11-21T10:59:53.719169+00:00",
+        "duration_seconds": 1656.500791,
+        "min_available_mib": 1276.38,
+        "latest_available_mib": 1701.04,
+        "oom_delta": 0,
+        "swap_start_mib": 864.16,
+        "swap_latest_mib": 1006.81,
+        "swap_max_mib": 1006.81,
+        "pswpin_delta": 405,
+        "pswpout_delta": 36799,
+        "pressure_last": "some avg10=0.00 avg60=0.00 avg300=0.00 total=52515720\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=49435068",
+        "pressure_avg10_peak": 0.18,
+        "cgroups": {
+          "evalflow-evaluation-1a6390f6-ab94-48eb-9108-ee599c7620e8.scope": {
+            "memory_peak_mib": 203.17,
+            "sampled_swap_peak_mib": 0,
+            "oom_kill_delta": 0
+          },
+          "evalflow-evaluation-729c5685-9f92-45e6-86af-2a9683d614ad.scope": {
+            "memory_peak_mib": 222.34,
+            "sampled_swap_peak_mib": 0,
+            "oom_kill_delta": 0
+          },
+          "evalflow-evaluation-a3fb874a-a30e-4d53-bc92-914bc7ec318e.scope": {
+            "memory_peak_mib": 233.1,
+            "sampled_swap_peak_mib": 0,
+            "oom_kill_delta": 0
+          },
+          "evalflow-evaluation-ae0ac775-7442-4789-9b48-74f72cea4c9e.scope": {
+            "memory_peak_mib": 209.13,
+            "sampled_swap_peak_mib": 0,
+            "oom_kill_delta": 0
+          },
+          "evalflow-source-tunnel.service": {
+            "memory_peak_mib": 5.27,
+            "sampled_swap_peak_mib": 0,
+            "oom_kill_delta": 0
+          },
+          "mlflow-eval.service": {
+            "memory_peak_mib": 768.93,
+            "sampled_swap_peak_mib": 53.09,
+            "oom_kill_delta": 0
+          },
+          "rag-service.service": {
+            "memory_peak_mib": 372.29,
+            "sampled_swap_peak_mib": 340.13,
+            "oom_kill_delta": 0
+          },
+          "rag-webui.service": {
+            "memory_peak_mib": 1332.89,
+            "sampled_swap_peak_mib": 139.65,
+            "oom_kill_delta": 0
+          },
+          "runtime-sandbox-node.service": {
+            "memory_peak_mib": 391.44,
+            "sampled_swap_peak_mib": 158.61,
+            "oom_kill_delta": 0
+          }
+        },
+        "health_status_counts": {
+          "5000": {
+            "200": 55
+          },
+          "8001": {
+            "404": 55
+          },
+          "8324": {
+            "200": 55
+          },
+          "9621": {
+            "200": 55
+          },
+          "19111": {
+            "RemoteDisconnected": 55
+          }
+        }
+      },
+      "post_last_task": {
+        "samples": 124,
+        "start": "2026-11-21T10:49:38.212631+00:00",
+        "end": "2026-11-21T10:59:53.719169+00:00",
+        "duration_seconds": 615.506538,
+        "min_available_mib": 1602.52,
+        "latest_available_mib": 1701.04,
+        "oom_delta": 0,
+        "swap_start_mib": 1006.81,
+        "swap_latest_mib": 1006.81,
+        "swap_max_mib": 1006.81,
+        "pswpin_delta": 19,
+        "pswpout_delta": 0,
+        "pressure_last": "some avg10=0.00 avg60=0.00 avg300=0.00 total=52515720\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=49435068",
+        "pressure_avg10_peak": 0,
+        "cgroups": {
+          "evalflow-source-tunnel.service": {
+            "memory_peak_mib": 5.27,
+            "sampled_swap_peak_mib": 0,
+            "oom_kill_delta": 0
+          },
+          "mlflow-eval.service": {
+            "memory_peak_mib": 768.93,
+            "sampled_swap_peak_mib": 53.09,
+            "oom_kill_delta": 0
+          },
+          "rag-service.service": {
+            "memory_peak_mib": 372.29,
+            "sampled_swap_peak_mib": 340.13,
+            "oom_kill_delta": 0
+          },
+          "rag-webui.service": {
+            "memory_peak_mib": 1332.89,
+            "sampled_swap_peak_mib": 139.65,
+            "oom_kill_delta": 0
+          },
+          "runtime-sandbox-node.service": {
+            "memory_peak_mib": 391.44,
+            "sampled_swap_peak_mib": 158.15,
+            "oom_kill_delta": 0
+          }
+        },
+        "health_status_counts": {
+          "5000": {
+            "200": 21
+          },
+          "8001": {
+            "404": 21
+          },
+          "8324": {
+            "200": 21
+          },
+          "9621": {
+            "200": 21
+          },
+          "19111": {
+            "RemoteDisconnected": 21
+          }
+        },
+        "minute_buckets": [
+          {
+            "minute": 0,
+            "min_available_mib": 1603.96,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 1,
+            "min_available_mib": 1602.52,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 2,
+            "min_available_mib": 1679.02,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 3,
+            "min_available_mib": 1681.72,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 4,
+            "min_available_mib": 1661.38,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 5,
+            "min_available_mib": 1603.39,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 6,
+            "min_available_mib": 1676.77,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 7,
+            "min_available_mib": 1669.02,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 8,
+            "min_available_mib": 1686.4,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 9,
+            "min_available_mib": 1696.19,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          },
+          {
+            "minute": 10,
+            "min_available_mib": 1690.22,
+            "swap_min_mib": 1006.81,
+            "swap_max_mib": 1006.81,
+            "swap_last_mib": 1006.81
+          }
+        ]
+      }
+    }
+  },
+  "source_final": {
+    "at": "2026-11-21T19:08:44.680866+08:00",
+    "runtime_runs": {
+      "error": 3,
+      "success": 90,
+      "interrupted": 16
+    },
+    "run_leases": 0,
+    "runtime_background_tasks": 0,
+    "native_jobs": {},
+    "units": {
+      "agent-platform-api.service": {
+        "MainPID": "531268",
+        "NRestarts": "0",
+        "MemoryHigh": "419430400",
+        "MemoryMax": "536870912",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "agent-runtime-api.service": {
+        "MainPID": "537330",
+        "NRestarts": "0",
+        "MemoryHigh": "671088640",
+        "MemoryMax": "805306368",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "agent-runtime-worker.service": {
+        "MainPID": "537331",
+        "NRestarts": "0",
+        "MemoryHigh": "671088640",
+        "MemoryMax": "805306368",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "redis.service": {
+        "MainPID": "1211",
+        "NRestarts": "0",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "mlflow-eval.service": {
+        "MainPID": "0",
+        "NRestarts": "0",
+        "MemoryHigh": "1073741824",
+        "MemoryMax": "1207959552",
+        "MemorySwapMax": "536870912",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "UnitFileState": "disabled"
+      },
+      "mlflow-eval-forward.socket": {
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      }
+    },
+    "env_hash": "5c0b1a830667edd0e3b44703ae4a35a94384b403e20b127840160bd723f5dc54",
+    "health": {
+      "5000": 200,
+      "9128": 200,
+      "8123": 401
+    },
+    "historical_interrupted_rows_preserved": 16,
+    "latest_authenticated_runtime_probe": {
+      "status": 200,
+      "ms": 1
+    },
+    "all_checks_passed": true
+  },
+  "target_final": {
+    "at": "2026-11-21T19:09:09.791934+08:00",
+    "tasks": [
+      {
+        "id": "729c5685-9f92-45e6-86af-2a9683d614ad",
+        "status": "failed",
+        "native_run_id": "fb68802beaec4fef8b973ec824b9b5cc",
+        "native_status": "FINISHED",
+        "metrics": {
+          "completion": 1.0,
+          "artifact_correct": 0.0,
+          "protected_unchanged": 1.0
+        },
+        "report_sha256": "f75b9ab616ed771c008b37431c9219211af1816e126601242337bca23b0664dc"
+      },
+      {
+        "id": "ae0ac775-7442-4789-9b48-74f72cea4c9e",
+        "status": "passed",
+        "native_run_id": "037e50b7823249ed8884ca93d8b15b04",
+        "native_status": "FINISHED",
+        "metrics": {
+          "completion": 1.0,
+          "turn_expectations": 1.0,
+          "protected_unchanged": 1.0,
+          "tool_constraints": 1.0
+        },
+        "report_sha256": "f28d1686037477b1367d63ae3668b51f32e2f81870516e1c78868065e1e5da5c"
+      },
+      {
+        "id": "a3fb874a-a30e-4d53-bc92-914bc7ec318e",
+        "status": "failed",
+        "native_run_id": "34e85e3570194e1b99c8f163629f918a",
+        "native_status": "FINISHED",
+        "metrics": {
+          "completion": 1.0,
+          "turn_expectations": 0.0,
+          "artifact_correct": 0.0,
+          "protected_unchanged": 1.0,
+          "ConversationalGEval": 0.3
+        },
+        "report_sha256": "8a89b634a270f6c3388b266724d524f242da602a03f84db80df9e7b7980941c7"
+      },
+      {
+        "id": "1a6390f6-ab94-48eb-9108-ee599c7620e8",
+        "status": "passed",
+        "native_run_id": "008b531d3a884cf8b165735307857e67",
+        "native_status": "FINISHED",
+        "metrics": {
+          "completion": 1.0,
+          "turn_expectations": 1.0,
+          "protected_unchanged": 1.0,
+          "tool_constraints": 1.0
+        },
+        "report_sha256": "eefb7bf0f2892adb0a37f8f71f69928944b49d2de11df38790e00b3fb3c89202"
+      },
+      {
+        "id": "3ce0b4ca-e414-45ae-a083-227a82b87006",
+        "status": "passed",
+        "native_run_id": "fd535684e4b84b3abb99738c840a0ec2",
+        "native_status": "FINISHED",
+        "metrics": {
+          "completion": 1.0,
+          "turn_expectations": 1.0,
+          "protected_unchanged": 1.0,
+          "tool_constraints": 1.0
+        },
+        "report_sha256": "0530fd56eff17e37962c2d6ce7aebf11a8787d2667c5e897c88d08526a345483"
+      }
+    ],
+    "old_assets_unchanged": 14,
+    "permissions": [
+      {
+        "case": "anonymous",
+        "status": 401
+      },
+      {
+        "case": "wrong_identity",
+        "status": 401
+      }
+    ],
+    "authenticated_datasets_read": true,
+    "units": {
+      "mlflow-eval.service": {
+        "MainPID": "817813",
+        "NRestarts": "0",
+        "MemoryHigh": "805306368",
+        "MemoryMax": "1073741824",
+        "MemorySwapMax": "536870912",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "evalflow-source-tunnel.service": {
+        "MainPID": "793282",
+        "NRestarts": "0",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "67108864",
+        "MemorySwapMax": "0",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "rag-webui.service": {
+        "MainPID": "191390",
+        "NRestarts": "0",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "rag-service.service": {
+        "MainPID": "4002833",
+        "NRestarts": "0",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "runtime-sandbox-node.service": {
+        "MainPID": "2316468",
+        "NRestarts": "0",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "active",
+        "SubState": "running",
+        "UnitFileState": "enabled"
+      },
+      "companybrain-nano.service": {
+        "MainPID": "0",
+        "NRestarts": "14",
+        "MemoryHigh": "infinity",
+        "MemoryMax": "infinity",
+        "MemorySwapMax": "infinity",
+        "ActiveState": "inactive",
+        "SubState": "dead",
+        "UnitFileState": "enabled"
+      }
+    },
+    "containers": {
+      "astrbot": {
+        "Running": false,
+        "Pid": 0,
+        "OOMKilled": false,
+        "ExitCode": 137
+      },
+      "napcat": {
+        "Running": false,
+        "Pid": 0,
+        "OOMKilled": false,
+        "ExitCode": 137
+      },
+      "mini-hybrid-rag-app": {
+        "Running": true,
+        "Pid": 1091698,
+        "OOMKilled": false,
+        "ExitCode": 0
+      }
+    },
+    "preserved_listeners": [
+      80,
+      5432,
+      8001,
+      8324,
+      9621,
+      19111
+    ],
+    "stopped_application_ports_closed": true,
+    "head": "813dc615275348e11dd87628e478c2edf642fa32",
+    "hashes": {
+      ".env": "1527491fd8c272102fcd766e48d6894371ea7ec6f6c503976843fd99c3799249",
+      "eval_platform/resources.py": "be41b5bb1a909bf64cec682f913e94a7bed455151eda6f4d21cd5cba5eb6e1ce",
+      "mlflow/server/jobs/_executor_runner.py": "e63bd03756d8afe2b29cc3994641858b682e3636d36e97ee224c239f074373de",
+      "deploy/systemd/mlflow-eval.service": "20cf82068ed4d80865e18d863562575e97b912385c03d4795a0aed277030c6a9"
+    },
+    "active_tasks": [],
+    "all_checks_passed": true
+  },
+  "regression": {
+    "at": "2026-11-21T19:02:10.678012+08:00",
+    "commands": [
+      {
+        "args": [
+          ".venv/bin/python",
+          "-m",
+          "pytest",
+          "tests/test_host_resources.py",
+          "tests/test_server_job_startup.py",
+          "-q"
+        ],
+        "returncode": 0,
+        "output": "\u001b[1m============================= test session starts ==============================\u001b[0m\ncollected 11 items\n\ntests/test_host_resources.py \u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[33m                                    [ 72%]\u001b[0m\ntests/test_server_job_startup.py \u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[32m.\u001b[0m\u001b[33m                                     [100%]\u001b[0m\n\n\u001b[33m=============================== warnings summary ===============================\u001b[0m\n.venv/lib/python3.11/site-packages/_pytest/config/__init__.py:1464\n  /opt/worktrees/evalflow-4gb-20261121/.venv/lib/python3.11/site-packages/_pytest/config/__init__.py:1464: PytestConfigWarning: Unknown config option: timeout\n  \n    self._warn_or_fail_if_strict(f\"Unknown config option: {key}\\n\")\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n============================= slowest 10 durations =============================\n2.46s setup    tests/test_host_resources.py::test_host_slot_is_shared_and_low_memory_is_rejected\n0.43s call     tests/test_server_job_startup.py::test_executor_periodic_switch_preserves_on_demand_jobs[false]\n\n(8 durations < 0.005s hidden.  Use -vv to show these durations.)\n\n========================= per-file durations (sorted) ==========================\n::group::per-file durations (sorted)\n\n| Rank | File                           | Duration | Tests | Min    | Max    | Avg    |\n| ---- | ------------------------------ | -------- | ----- | ------ | ------ | ------ |\n| 1    | `tests/test_host_resources.py` | 2.49s    | 8     | 0.004s | 2.464s | 0.311s |\n\n::endgroup::\n\n\u001b[33m======================== \u001b[32m11 passed\u001b[0m, \u001b[33m\u001b[1m1 warning\u001b[0m\u001b[33m in 3.03s\u001b[0m\u001b[33m =========================\u001b[0m\n"
+      },
+      {
+        "args": [
+          ".venv/bin/python",
+          "-m",
+          "ruff",
+          "check",
+          "eval_platform/resources.py",
+          "tests/test_host_resources.py",
+          "tests/test_server_job_startup.py"
+        ],
+        "returncode": 0,
+        "output": "All checks passed!\n"
+      },
+      {
+        "args": [
+          "git",
+          "diff",
+          "--check"
+        ],
+        "returncode": 0,
+        "output": ""
+      }
+    ]
+  },
+  "browser_after_merge": {
+    "tab_id": 794188638,
+    "page_url": "http://49.233.222.54:9128/#/experiments/17/evaluation-runs/fd535684e4b84b3abb99738c840a0ec2/details",
+    "frame_url": "http://49.233.222.54:9128/#/experiments/17/evaluation-runs/fd535684e4b84b3abb99738c840a0ec2/details",
+    "frame_id": "188FF604F8E3F5E1F7FFF7E6EFB88D87",
+    "title": "评测运行 fd535684e4b84b3abb99738c840a0ec2 - 实验 17 - EvalFlow",
+    "captured_at": "2026-11-21T11:10:44.390Z",
+    "items": [
+      {
+        "ref": "@e27",
+        "values": {
+          "text": "case_idmessagescompletion平均值11protected_unchanged平均值11tool_constraints平均值11turn_expectations平均值11production-dedup-two-turn[\n  \"这是合成数据上线验收。请实际使用 read_file 读取附件 /workspace/uploads/35c681efd10ee47adb4abbcf71f94de7a0ce295caece36c00fcfd730b7877b9f.txt，计算 amount 列合计；不要修改或写入任何文件。最后用两位小数回答：初始合计=<数值>。\",\n  \"现补传另一份调整附件 /workspace/uploads/6109e78448639ce0bd78c0305e41feba73415cee490581d08741495692561ae5.txt。请实际使用 read_file 读取这份新附件，并结合上一轮 ledger.csv 的数据重新核对总额；不要写文件。只在这轮计入调整金额，最后用两位小数回答：调整后合计=<数值>。\"\n]1111"
+        },
+        "redacted": []
+      }
+    ],
+    "truncated": false,
+    "scope": "current_dom"
+  },
+  "historical_case_preservation": {
+    "old_case_count": 15,
+    "canonical_sha256_before": "6f19bbbdf2f9975fce8504fc71613394986f84f2022a8cddb2efe5926035a831",
+    "canonical_sha256_after": "6f19bbbdf2f9975fce8504fc71613394986f84f2022a8cddb2efe5926035a831",
+    "old_html_sections_exactly_preserved": [
+      "C01",
+      "C02",
+      "C03",
+      "C04",
+      "C05",
+      "C06",
+      "C07",
+      "C08",
+      "C09",
+      "C10",
+      "C11",
+      "C12",
+      "C13",
+      "C14",
+      "C15"
+    ]
+  },
+  "media_playback": {
+    "tab_id": 794188631,
+    "page_url": "http://127.0.0.1:65368/index.html#media-check-dualhost",
+    "frame_url": "http://127.0.0.1:65368/index.html#media-check-dualhost",
+    "frame_id": "678EFEFB934D9DF4F11058C47EB6FB51",
+    "title": "EvalFlow · main 合并版验收报告",
+    "captured_at": "2026-11-21T11:03:51.468Z",
+    "items": [
+      {
+        "ref": "@e9",
+        "values": {
+          "text": "媒体检查完成：21/21 通过（视频 6，截图 15）。"
+        },
+        "redacted": []
+      },
+      {
+        "ref": "@e10",
+        "values": {
+          "text": "[\n  {\n    \"file\": \"videos/dualhost-01-entry-before-repair.mp4\",\n    \"ok\": true,\n    \"duration\": 345.650608,\n    \"width\": 1280,\n    \"height\": 812,\n    \"played\": 0.2654\n  },\n  {\n    \"file\": \"videos/dualhost-02-two-round-rollback-reload.mp4\",\n    \"ok\": true,\n    \"duration\": 587.011597,\n    \"width\": 1280,\n    \"height\": 798,\n    \"played\": 0.2587\n  },\n  {\n    \"file\": \"videos/dualhost-03-continuous-objective-two-round.mp4\",\n    \"ok\": true,\n    \"duration\": 437.283906,\n    \"width\": 1280,\n    \"height\": 798,\n    \"played\": 0.2697\n  },\n  {\n    \"file\": \"videos/dualhost-05-six-round-final-and-warm-two.mp4\",\n    \"ok\": true,\n    \"duration\": 434.575799,\n    \"width\": 1280,\n    \"height\": 782,\n    \"played\": 0.2641\n  },\n  {\n    \"file\": \"videos/dualhost-04-six-round-running-partial.mp4\",\n    \"ok\": true,\n    \"duration\": 408.72191,\n    \"width\": 1280,\n    \"height\": 798,\n    \"played\": 0.2608\n  },\n  {\n    \"file\": \"videos/dualhost-06-post-window-next-admission.mp4\",\n    \"ok\": true,\n    \"duration\": 134.376788,\n    \"width\": 1280,\n    \"height\": 782,\n    \"played\": 0.2561\n  },\n  {\n    \"file\": \"screenshots/dualhost-01-migrated-authoring.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-02-git-provenance-error-retained.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-03-two-round-passed-before-rollback.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-04-new-result-survives-rollback.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-05-new-result-survives-reload.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-06-objective-browser-start-dialog.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-07-objective-completed-business-failed.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-08-objective-file-metric-zero.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-09-continuous-two-round-all-rules.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-14-warm-two-all-rules.png\",\n    \"ok\": true,\n    \"width\": 1344,\n    \"height\": 823\n  },\n  {\n    \"file\": \"screenshots/dualhost-10-six-round-running.png\",\n    \"ok\": true,\n    \"width\": 1384,\n    \"height\": 863\n  },\n  {\n    \"file\": \"screenshots/dualhost-11-six-round-original-metrics.png\",\n    \"ok\": true,\n    \"width\": 1344,\n    \"height\": 823\n  },\n  {\n    \"file\": \"screenshots/dualhost-12-six-round-native-trace.png\",\n    \"ok\": true,\n    \"width\": 1344,\n    \"height\": 823\n  },\n  {\n    \"file\": \"screenshots/dualhost-13-six-round-write-file-payload.png\",\n    \"ok\": true,\n    \"width\": 1344,\n    \"height\": 823\n  },\n  {\n    \"file\": \"screenshots/dualhost-15-post-window-next-admission-passed.png\",\n    \"ok\": true,\n    \"width\": 1344,\n    \"height\": 823\n  }\n]"
+        },
+        "redacted": []
+      }
+    ],
+    "truncated": false,
+    "scope": "current_dom"
+  },
+  "main_code_commit": "813dc615275348e11dd87628e478c2edf642fa32",
+  "limits": [
+    "No long-term or multi-concurrency capacity claim",
+    "Heavy RAG ingestion and heavy sandbox jobs not run concurrently",
+    "Nano Brain remains boot-enabled",
+    "Existing 9128 default-identity injection and default upstream 503 retained"
+  ]
+}
