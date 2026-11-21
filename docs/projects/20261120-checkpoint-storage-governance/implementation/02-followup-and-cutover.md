@@ -14,7 +14,7 @@ GraphHarbor 的 baseline 外键、线程 PATCH 422 与跨 topic 事件误去重�
 
 引擎官方固定版本与正式 post50 各完成 42 个 HTTP 场景，跨用户资源保持，状态差异逐项记录；新增 8 Worker 同时运行与维护/外部写/竞争 claim/回滚测试通过，完整变更安全套件 18 项通过。范围和限制留在其原安全专项，不称严格官方等价或无限并发容量通过。
 
-## 现役只读预检
+## 现役只读预检（切换前历史）
 
 通过现有 SSH 运维入口检查，现役源码为 6165026c，GraphHarbor 双包 post48、LangGraph 1.2.11、Schema 014_thread_retention。Runtime API、Worker 和 Platform API 均 active，NRestarts 为 0；Run 为 success 43、error 3、interrupted 1，没有 pending/running。
 
@@ -24,7 +24,7 @@ GraphHarbor 的 baseline 外键、线程 PATCH 422 与跨 topic 事件误去重�
 
 生产仓库存在原有两份私有锁文件改动及未跟踪配置、部署脚本。切换不得使用 reset/clean 覆盖它们；需先留存内容及哈希，再制作最小目标变更。
 
-## 待执行的切换顺序
+## 切换顺序与后续执行
 
 1. 已完成：锁步正式 post50 的本地/远端门禁、四产物哈希与正式冷安装。
 2. 已完成：所属 Worktree 接入正式版本并完成补验；旧 v3 与安全专项在原任务留证。
@@ -32,7 +32,11 @@ GraphHarbor 的 baseline 外键、线程 PATCH 422 与跨 topic 事件误去重�
 4. 受控排空并停写，执行最终备份后转换；API/Worker 只使用与 Schema 匹配的新包。失败时保留失败目标，切回验证过的匹配旧目标；不直接 downgrade，不覆盖恢复到已有新写入的现役库。
 5. 启动后核对真实 PID、导入来源、Schema、旧会话可读/可续聊、权限拒绝及新 Run。记录容量边界，不将短时验证称为长期容量通过。
 
-当前只完成只读预检，没有生产迁移、重启、删除或配置覆盖。
+上述预检后，用户批准独立副本恢复及具体生产窗口；现已完成最终备份、服务端014恢复及现役015切换。固定Runtime源码5d3e2418通过独立post50安装加载，原私有配置/锁/脚本保持；仅用systemd覆盖切换Runtime，现场补消息授权回调。Platform数据库和前端未升级。完整来源、时间与结果见[生产执行证据](production-cutover-post50.json)及[操作单执行结果](../production-cutover.md#本次生产执行结果)。
+
+关键验证1080.765秒，首次暂停新请求260.272秒；旧52个Checkpoint头及pending writes、91组投影/边界头和10,299条undo通过。真实Reference首轮API建立后浏览器续聊/刷新/fork、Dear续期、队列幂等/取消/审批及权限拒绝通过。空白Reference首发仍无请求，不能以续聊替代入口验收。新写入已发生，禁止直接切回014。
+
+生产验收12条删除任务中10条核心数据已清除，3条inbox正文为空；2个空Dear线程与1个远端Workspace仍受保护。缺签名回调阻止after_delete完成，全局补齐又会继续原14条业务删除任务，需先明确范围，不绕过保护。本轮短时资源正常不代替评测Task23或长期容量验收。
 
 ## 合并后的清理清单
 

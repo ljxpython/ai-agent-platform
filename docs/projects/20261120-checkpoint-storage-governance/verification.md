@@ -1,6 +1,6 @@
 # 长会话 Checkpoint 存储治理与 Delta 采用 - 验证计划与记录
 
-项目启动日期：2026-11-20。P01–P07批准的隔离与正式源码交付范围已完成，追加缺陷经post50远端/正式源及平台补验解决；P08生产副本独立恢复和P09资源回收已完成，项目仍partial，剩服务端最终014回退目标及具体授权下的现役切换。原任务为唯一进度，以下历史失败保留。
+项目启动日期：2026-11-20。P01–P07批准的隔离与正式源码交付完成；P08已获授权并完成生产post50/015切换、独立014恢复和关键业务读回。空白Reference首发与P09新增生产验收残余未完成，项目保持partial。原任务为唯一进度，以下历史结果按发生阶段解读。
 
 ## 阶段验证（Phase）：启动规划与机制核查
 
@@ -25,6 +25,14 @@ Reference/平台助手的实际compiled messages为Delta50；Dear/Showcase根和
 引擎六组同机单namespace夹具全部低于用户事先确认的预算。最大边界330B、建立边界p95 20.214ms、WAL1144B、维护RSS99,983,360B，万条历史prune708.201ms；旧版万条16KiB边界真实触发JSONB超256MiB失败。新旧重复次数不同，旧3次、新20次nearest-rank p95，不伪造等样本比较。锁无竞争，维护竞争另有确定性屏障验证。
 
 平台消息200轮800条完整消息逐项相同；普通聚合4,362,489B，Delta周期10/50/200分别1,573,809/1,323,564/1,276,373B。保留周期50，约减少70%，读p95为108.238ms，不能外推普适最优、全部Worker内存或永久历史有界。读状态不是建立Run边界100ms预算。原始数据见[message-capacity.json](implementation/message-capacity.json)。
+
+### 阶段验证（Phase）：与4GB正式评测的容量边界审查
+
+2026-11-21只读核对post50源码及已有记录，用户同意将结论写回。capture_baseline保存Checkpoint头及必要投影，修改前的数据由事务内撤销日志记录，减少全历史基线复制。200轮约70%逻辑字节收益不外推到整机或完整Worker内存；Dear/Showcase原本已使用Delta50。
+
+事件回放是另一条链路：production_worker仍将持久事件payload序列化后交给redis_stream的put/put_batch；Redis保存正文，默认约2000条、滑动TTL3600秒，本地缓存按2000条限长，终态默认延迟120秒释放，均没有对应字节预算。因此本专项通过不表示Run事件缓存已有字节边界，也不表示4GB连续评测已通过。runtime_events本轮仅按既有恢复记录核对行数，不新增内容或长期容量结论。
+
+该次容量审查未重跑测试或操作生产。当时现役切换尚待P08授权与独立014回退验证，后续已获批执行，结果见本文件生产窗口记录。切换后的4GB复测由评测项目Task23按原用例、原指标和原连续序列记录，不纳入本专项已有通过结果。若仍失败，后续缓存治理须保留刷新、重连、慢客户端、审批、取消及历史回放语义，另行评审实施范围。
 
 ### HTTP故障、安全与队列
 
@@ -61,7 +69,7 @@ Reference和Dear保留浏览器合跑2 passed（约2.1分钟）：真实模型�
 | 权限/恢复 | 审批允许/拒绝/撤权、队列、取消、崩溃、跨项目/签名负例及备份恢复 |
 | 原文/期限 | 页面真实多轮与fork，原文及idle30天保持，无自动活跃裁剪 |
 | 容量 | 六组维护预算通过；200轮消息完整且少约70%逻辑字节，读取代价已说明 |
-| 未外推范围 | 严格官方等价、全仓既有失败、生产容量和现役升级未作为通过 |
+| 未外推范围 | 严格官方等价、全仓既有失败与生产容量未作为通过；现役升级结果见下方独立生产记录 |
 
 ## 阶段验证（Phase）：经验沉淀与远端源码交付
 
@@ -130,3 +138,30 @@ API请求回归30 passed/2 subtests，Spike与流夹具5 passed，前端typechec
 全部演练和清理563.419秒，小于30分钟预算。所属PG17退出、62320端口释放；两个恢复库的data目录、双版安装、约束、临时脚本与原始日志已删除。只保留仓库外完整备份、清单与身份记录，归档在清理后再次验哈希。源读回post48/014、零活动Run、三服务active且无pg_dump连接；原业务库未作迁移或删除。
 
 脱敏原始摘要见[production-recovery-post50.json](implementation/production-recovery-post50.json)。本机演练目标不可作为现役回退地址；操作单新增待批准的服务端空014回退库、最终停写备份、空间门槛和具体窗口。此次物理恢复库约0.67GB，不将与源约10GB的布局差异归因于Checkpoint改造。P08的独立演练子项完成，现役上线及长期容量仍未验收。
+
+## 阶段验证（Phase）：获批生产窗口与关键读回
+
+上述独立演练后，用户明确同意按操作单继续。2026-11-21在sshmy1固定Runtime源码5d3e2418，制作独立发布安装；757个Runtime文件清单、服务账号实际导入、GraphHarbor双包post50、LangGraph1.2.24/checkpoint4.3.2/postgres3.2.1通过。服务器沿用TUNA镜像，规范化来源后frozen锁及产物哈希一致，不称现场直接从PyPI下载。原源码、私有环境、两份锁、图配置及部署脚本共9项哈希保持。未发布前端、未迁移Platform数据库，也未启用活跃prune。
+
+10:25:09.727 CST停写，最终PG17完整备份431,082,245字节、31.990秒，两端SHA256均为`bf791611613e4f0025869184947d2023f10817d35e25595babc33716d45abe34`。新建服务端014回退库，单事务恢复95.456秒，45表行数/44表内容摘要和52个post48头通过；事件大表仅核对120,788行。现役015转换3.076秒、验证4.637秒，43张未转换表一致，91组反向JSON Patch/边界头及10,299条undo逐项匹配，新版读取相同52个头和pending writes。
+
+Runtime API/Worker经systemd drop-in绑定新安装，Platform于10:29:30恢复，首次暂停新请求260.272秒。Reference队列首次实际执行暴露`Message authorization callback is not configured`；零活动Run后只在Runtime两项覆盖配置补齐同一受信平台来源的消息授权URL，10:38:37重启Runtime并复验成功。没有改原始私有env，也没有全局启用缺失的生命周期签名回调。
+
+实际业务结果：
+
+- 三条旧线程state/history读回：两条完全相等；一条仅连续并行tool结果顺序交换，按该组tool_call_id排序后相等，逐条消息ID、完整内容、tool_call_id配对及其他状态均保持。没有将其他差异归一化掩盖。
+- Reference真实模型两轮记忆、消息ID唯一、刷新完整历史、原生编辑fork及旧Checkpoint保留通过，最终44.8秒。**首轮经真实API建立，浏览器从第二轮进入；空白Reference首发无请求，未通过。** 延长等待、Enter和键盘激活按钮仍失败，不能仅归因为启动慢或现役Checkpoint升级。
+- Dear浏览器查看/返回/发送续期、后台读取不续期及真实模型success通过。
+- 真实HTTP操作套件38.1秒：等待Run实际running后排队，同key重试同receipt、消费及消息仅一次；跨项目403，取消interrupted；Workflow当前interrupt ID经整数command ID和原生`input.respond`恢复success。
+
+10:43:10.493关键验证完成并关闭窗口，共1080.765秒，在20分钟门槛内。10:44读回三服务active、NRestarts0、PID为Platform531268/Runtime API537330/Worker537331；Runtime`/ok`与Platform`/_system/probes/ready`均200，零活动Run，暂停后新增内核OOM0。库10,226,308,787字节，可用内存1,344,077,824字节、余盘13,140,541,440字节；短时数据不证明4GB连续评测或长期内存稳定。
+
+保留其他失败：错误探针路径401、SSH隧道使用127.0.0.1 Host命中状态vhost而404，改既有localhost vhost后200；pending Run排队409，改为等待running；审批早期错误入口未实际恢复，字符串command ID返回400，改原生入口和整数ID后通过。均为实际诊断/夹具过程，没有据此增加生产兼容逻辑。
+
+生产验收新增12条删除任务。10条的Thread/Run/checkpoints/writes/blobs/events均0；其中3条inbox只保留回执，payload全部为空。2个空Dear线程仍before_delete，各有1条Thread但无Run/Checkpoint/事件/Workspace绑定；保护原因`legacy_workspace_location_unconfirmed`。1个Dear远端Workspace未purged，只读报告为deleting、eligible=false。Runtime终态签名回调及Platform完成校验缺配置，after_delete仍未完成；切换前已有14条任务，当前26条（before_delete8、after_delete18）。不全局启用后顺带删除原业务，不手改任务或伪造绑定。
+
+追加只读节点诊断：sshmy2该Workspace资源0、accepted操作0，证据kind=deleted_thread；实际旧代码不含已删除会话零宽限逻辑，运行进程使用604800秒宽限。eligible=false由旧策略解释，不是已确认的资源泄漏；本次没有升级节点或缩短保护。2个空Dear的未绑定位置与签名回调缺项仍独立存在。
+
+必要证据留存后，7个临时浏览器文件及其目录、83个本机临时文件（7,628,761字节，含原始日志、来源tar及脚本）已删除。所属隧道PID84167按完整命令核对后停止，59180/59181均无监听；其他隧道和EvalFlow临时文件未动。最终完整备份再次验SHA256、0600及父目录0700；本机只留归档、身份与必要清理证据。服务器备份/014回退库/新旧安装保留，生产受保护残余未假报清空。
+
+**本阶段结论：生产post50/015已切换，独立最终014恢复与上述关键读回通过；整个项目保持partial。** 空白Reference入口、受保护生产验收残余仍是P08/P09未完成项；严格官方协议/负责人验收及4GB连续容量继续由原专项维护。最终完整备份、服务端014回退库和新旧安装保留，已有新写入，禁止直接回退覆盖。脱敏证据见[production-cutover-post50.json](implementation/production-cutover-post50.json)，截图见[Reference分支](implementation/production-reference.png)和[Dear续期](implementation/production-retention.png)。

@@ -1,0 +1,517 @@
+{
+  "date": "2026-11-21",
+  "status": "production cutover and critical readback passed; empty-thread UI and lifecycle cleanup remain open",
+  "authorization": "User explicitly agreed to continue the documented production window; no arbitrary business deletion authorized.",
+  "identity": "ckpt-cutover-20261121-auhhp8ur",
+  "source": {
+    "commit": "5d3e241845f08a5d3618687d2c6a4159dda0a426",
+    "runtime_file_count": 757,
+    "packages": {
+      "graphharbor": "0.13.0.post50",
+      "graphharbor-runtime": "0.13.0.post50",
+      "langgraph": "1.2.24",
+      "langgraph-checkpoint": "4.3.2",
+      "langgraph-checkpoint-postgres": "3.2.1"
+    },
+    "installation": "independent release installation; service-account import verified",
+    "transport": "existing TUNA mirror; normalized lock identical including all artifact hashes",
+    "original_lock_sha256": "374ecdefc868283607436de417c82124aea419a42da2cd5c339fb95121dfaaf5",
+    "deployment_lock_sha256": "606f93f6713a648dc9dcd18bd35ccc42071bcc305e231be205833253f64f1745",
+    "existing_source_and_config_preserved": {
+      "uv.lock": true,
+      "apps/runtime-service/.env": true,
+      "apps/platform-api/.env": true,
+      "apps/runtime-service/uv.lock": true,
+      "apps/platform-api/uv.lock": true,
+      "apps/runtime-service/langgraph.json": true,
+      "scripts/run_production_service.sh": true,
+      "scripts/backup_database.sh": true,
+      "apps/platform-web/.env.production": true
+    }
+  },
+  "window": {
+    "paused_at": "2026-11-21T10:25:09.727815+08:00",
+    "platform_active_at": "2026-11-21T10:29:30+08:00",
+    "initial_request_pause_seconds": 260.272,
+    "critical_validation_finished_at": "2026-11-21T10:43:10.493046+08:00",
+    "critical_validation_seconds": 1080.765,
+    "runtime_restart_for_callback_at": "2026-11-21T10:38:37+08:00",
+    "callback": "PLATFORM_RUNTIME_MESSAGE_AUTH_URL derived from the verified same-platform model-config origin; systemd Runtime drop-ins only; original private env unchanged"
+  },
+  "final_backup": {
+    "mode": "backup",
+    "bytes": 431082245,
+    "sha256": "bf791611613e4f0025869184947d2023f10817d35e25595babc33716d45abe34",
+    "schema": "014_thread_retention",
+    "seconds": 31.99
+  },
+  "backup_external_copy": {
+    "bytes": 431082245,
+    "sha256": "bf791611613e4f0025869184947d2023f10817d35e25595babc33716d45abe34",
+    "mode": "0o600",
+    "complete": true,
+    "verified_at": 1795228928.022572
+  },
+  "server_014_restore": {
+    "mode": "restore014",
+    "target": "graphharbor_ckpt014_20261121",
+    "owner": "lijiaxin",
+    "seconds": 95.456,
+    "tables_count_matched": 45,
+    "tables_content_digest_matched": 44,
+    "events_count_only": 120788,
+    "head_count": 52,
+    "packages": {
+      "graphharbor": "0.13.0.post48",
+      "graphharbor-runtime": "0.13.0.post48",
+      "langgraph": "1.2.11"
+    },
+    "verification_seconds": 2.615,
+    "retained_for_recovery": true
+  },
+  "migration": {
+    "mode": "migrate015",
+    "head": "015_checkpoint_journal",
+    "seconds": 3.076
+  },
+  "verify015": {
+    "mode": "verify015",
+    "projection_patches": 91,
+    "boundary_heads": 91,
+    "undo_rows": 10299,
+    "tables_matched": 43,
+    "packages": {
+      "graphharbor": "0.13.0.post50",
+      "graphharbor-runtime": "0.13.0.post50",
+      "langgraph": "1.2.24"
+    },
+    "seconds": 4.637,
+    "head_count": 52,
+    "same_heads_and_writes_as_014": true
+  },
+  "old_api_samples": [
+    {
+      "thread_sha256": "257a09d8410733de5b279397d1de0f350c2949d82414ed75fde1b8ce73ef442c",
+      "exact_equal": true,
+      "parallel_tool_group_only": true,
+      "history_count": 3
+    },
+    {
+      "thread_sha256": "2ea1d90641005281c3e4e23bd218c3d41dbf4b9faf8b79e90d9bc497579a35e4",
+      "exact_equal": false,
+      "parallel_tool_group_only": true,
+      "history_count": 3
+    },
+    {
+      "thread_sha256": "2d63be572548470ad1b3f8db71afdc7b99a830908ae816cfc184c214b8d14abc",
+      "exact_equal": true,
+      "parallel_tool_group_only": true,
+      "history_count": 3
+    }
+  ],
+  "business_verification": {
+    "operations": {
+      "queue": {
+        "receipt": "75263cb2-0f50-4dfa-b61b-093fa9d24c9a",
+        "consumed": true,
+        "exactlyOnce": true
+      },
+      "crossProjectStatus": 403,
+      "cancellation": {
+        "run": "f99c789d-9ddc-461e-877e-bec2023f931e",
+        "status": "interrupted"
+      },
+      "approval": {
+        "original": "fc2746ab-8abe-4d2c-a05e-07d3d489a072",
+        "resumed": "db55cb1c-3d81-43a3-8627-8a6d84483700",
+        "interrupt": "809b03da255abd6febd9f864c14b3058",
+        "status": "success"
+      }
+    },
+    "operations_seconds": 38.1,
+    "reference": {
+      "threadId": "ae4379d6-9906-4418-80fa-c17a2646c3b5",
+      "projectId": "2c19b0fa-9d00-43db-a24e-00c91c67ef55",
+      "messageIds": [
+        "4a9ae325-3607-4df5-905f-0ef71864e499",
+        "lc_run--01a1fbfb-51b1-7a60-92d0-a19382021c19",
+        "70cdd892-4449-4440-8671-f06009ed05f0",
+        "lc_run--01a1fbfb-7abe-7232-8462-40a77ef96a10"
+      ],
+      "historyBefore": 30,
+      "historyAfter": 45,
+      "checks": [
+        "real-model-two-turns",
+        "stable-message-ids",
+        "reload-full-history",
+        "native-edit-fork",
+        "old-checkpoint-retained"
+      ]
+    },
+    "reference_seconds": 44.8,
+    "reference_entry_condition": "First real-model turn created via API; browser continues second turn, reloads and native-edit forks. Empty Reference first-send path did not submit and is not counted as passed.",
+    "dear_retention": {
+      "project": "a58097a4-340f-43f3-9397-2cef95dddccd",
+      "thread": "eada8139-5723-447c-b471-3e71e9451b3b",
+      "activityReports": 2,
+      "checks": [
+        "view-renews",
+        "background-reads-do-not-renew",
+        "return-renews",
+        "send-renews",
+        "real-model-success"
+      ]
+    }
+  },
+  "postflight": {
+    "at": "2026-11-21T10:44:22.106408+08:00",
+    "schema": "015_checkpoint_journal",
+    "active_runs": 0,
+    "database_bytes": 10226308787,
+    "services": {
+      "agent-platform-api": {
+        "MainPID": "531268",
+        "NRestarts": "0",
+        "MemoryCurrent": "243032064",
+        "MemoryPeak": "244183040",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Sat 2026-11-21 10:29:30 CST"
+      },
+      "agent-runtime-api": {
+        "MainPID": "537330",
+        "NRestarts": "0",
+        "MemoryCurrent": "302600192",
+        "MemoryPeak": "303394816",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Sat 2026-11-21 10:38:37 CST"
+      },
+      "agent-runtime-worker": {
+        "MainPID": "537331",
+        "NRestarts": "0",
+        "MemoryCurrent": "410132480",
+        "MemoryPeak": "410456064",
+        "ActiveState": "active",
+        "ActiveEnterTimestamp": "Sat 2026-11-21 10:38:37 CST"
+      }
+    },
+    "health": {
+      "runtime": {
+        "ok": true
+      },
+      "platform": {
+        "status": "ready",
+        "database_ready": true
+      }
+    },
+    "memory": {
+      "MemAvailable": 1344077824,
+      "SwapTotal": 4294963200,
+      "SwapFree": 3566624768
+    },
+    "free_bytes": 13140541440,
+    "kernel_oom_lines_since_pause": 0
+  },
+  "retained_gaps": {
+    "empty_reference_first_send": "No command or run submitted from empty Reference UI in this production frontend. API-seeded conversation passed. No frontend deployment in this change.",
+    "lifecycle": "Precutover database already contained 14 deletion tasks; current runtime callback URL/signing secret and Platform completion verifier are not configured. Own test core data deleted where native lifecycle progressed; protected empty-workspace and after-delete tombstones remain. No callback or data-safety guard bypassed.",
+    "long_term_capacity": "Not measured; fixed-load maintenance budgets and logical message-byte reductions do not prove whole-host or continuous 4GB workload capacity.",
+    "strict_official_equivalence": "Retains original separate project scope and human acceptance."
+  },
+  "observed_failures": [
+    "Wrong /health and /api/_system probe paths returned 401; real /_system/probes/ready returned 200 without another Platform restart.",
+    "127.0.0.1 Host selected nginx status vhost and returned 404; localhost used existing default platform vhost. No nginx change.",
+    "Empty Reference UI did not submit, including after longer startup wait and native keyboard activation; not marked passed.",
+    "First queue submission targeted pending Run and received 409; fixture now waits for actual running.",
+    "Reference queue execution failed until required message authorization callback was configured in Runtime systemd drop-ins.",
+    "Direct approval Run payload did not resume current interrupt; native input.respond with integer command ID and current interrupt ID passed."
+  ],
+  "production_fixture_cleanup": {
+    "precutover_tasks": 14,
+    "own_task_count": 12,
+    "own_tasks": [
+      {
+        "thread_id": "f26f7458-121f-4eb1-add0-2494abd6d6d6",
+        "state": "before_delete",
+        "last_error": "ValueError",
+        "graph_id": "dearflow_agent",
+        "project_id": "fefc252b-3636-4be9-9a2d-3b5c3e17cffe",
+        "title": "保留治理验收",
+        "counts": {
+          "threads": 1,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 0
+        }
+      },
+      {
+        "thread_id": "15429309-718b-42a4-83c6-6443618cf1f4",
+        "state": "before_delete",
+        "last_error": "ValueError",
+        "graph_id": "dearflow_agent",
+        "project_id": "b1f3b42e-48de-4071-86ad-52597e1634e3",
+        "title": "保留治理验收",
+        "counts": {
+          "threads": 1,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 0
+        }
+      },
+      {
+        "thread_id": "a72f746b-809d-4403-b1d8-ed96318d9290",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "reference_agent",
+        "project_id": "d14f5089-dd9a-4856-9f63-02f58fd2491a",
+        "title": "Checkpoint production acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 0
+        }
+      },
+      {
+        "thread_id": "eada8139-5723-447c-b471-3e71e9451b3b",
+        "state": "after_delete",
+        "last_error": "DocumentError",
+        "graph_id": "dearflow_agent",
+        "project_id": "a58097a4-340f-43f3-9397-2cef95dddccd",
+        "title": "保留治理验收",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 1,
+          "runtime_message_inbox": 0
+        }
+      },
+      {
+        "thread_id": "6bb01854-f9a2-4516-b5c7-b7fb4bb90298",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "reference_agent",
+        "project_id": "75602786-66ce-4e03-8218-7f65a03ff8b2",
+        "title": "Checkpoint Reference acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 0
+        }
+      },
+      {
+        "thread_id": "a9c45767-23db-4494-b097-36f4bb256654",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "reference_agent",
+        "project_id": "01ee06c2-addf-4b69-994f-44870d8e6409",
+        "title": "Checkpoint production acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 1
+        }
+      },
+      {
+        "thread_id": "b30e772c-41d7-4420-9596-dcdac7ec0da0",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "reference_agent",
+        "project_id": "0c7dca84-05a4-4162-a292-3d652d803259",
+        "title": "Checkpoint Reference acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 0
+        }
+      },
+      {
+        "thread_id": "699a6949-8c1f-486d-aeda-c08f6c4ab827",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "reference_agent",
+        "project_id": "6f19b193-ff9a-4208-a321-a33715d227c3",
+        "title": "Checkpoint production acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 1
+        }
+      },
+      {
+        "thread_id": "c2fab852-08ff-4ea8-bfd0-3ae1ef8e4170",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "workflow_demo",
+        "project_id": "bcda52d8-8e74-4ff7-8750-3851e9d748f8",
+        "title": "Checkpoint production acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 0
+        }
+      },
+      {
+        "thread_id": "99e8fb19-b340-4f4a-8ef3-f3230028ea11",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "reference_agent",
+        "project_id": "0bfc1eba-1cb8-460a-b713-30b014a1d339",
+        "title": "Checkpoint production acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 1
+        }
+      },
+      {
+        "thread_id": "fcd16c05-272c-4d64-9e58-5f21c2d3f888",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "workflow_demo",
+        "project_id": "8332e697-19ab-41e0-b373-a16a333737bd",
+        "title": "Checkpoint production acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 0
+        }
+      },
+      {
+        "thread_id": "ae4379d6-9906-4418-80fa-c17a2646c3b5",
+        "state": "after_delete",
+        "last_error": "ValueError",
+        "graph_id": "reference_agent",
+        "project_id": "2c19b0fa-9d00-43db-a24e-00c91c67ef55",
+        "title": "Checkpoint Reference acceptance",
+        "counts": {
+          "threads": 0,
+          "runs": 0,
+          "checkpoints": 0,
+          "checkpoint_writes": 0,
+          "checkpoint_blobs": 0,
+          "runtime_events": 0,
+          "runtime_workspace_locations": 0,
+          "runtime_message_inbox": 0
+        }
+      }
+    ],
+    "inbox_readback": [
+      {
+        "thread_id": "699a6949-8c1f-486d-aeda-c08f6c4ab827",
+        "status": "consumed",
+        "payload_cleared": true
+      },
+      {
+        "thread_id": "99e8fb19-b340-4f4a-8ef3-f3230028ea11",
+        "status": "consumed",
+        "payload_cleared": true
+      },
+      {
+        "thread_id": "a9c45767-23db-4494-b097-36f4bb256654",
+        "status": "not_consumed",
+        "payload_cleared": true
+      }
+    ],
+    "all_deletion_tasks": [
+      {
+        "state": "after_delete",
+        "n": 18
+      },
+      {
+        "state": "before_delete",
+        "n": 8
+      }
+    ],
+    "workspace_report": {
+      "status": "deleting",
+      "eligible": false
+    },
+    "guard_bypassed": false,
+    "global_callback_enabled": false,
+    "node_readback": {
+      "workspace_status": "deleting",
+      "age_seconds": 1121.097,
+      "evidence_kind": "deleted_thread",
+      "resources": [],
+      "accepted_operations": 0,
+      "node_supports_deleted_thread_zero_grace": false,
+      "configured_grace_seconds": 604800,
+      "grace_source_lines": [
+        "grace = int(os.environ.get(\"RUNTIME_WORKSPACE_TTL_SECONDS\", \"604800\"))",
+        "if grace < 1:",
+        "and time.time() - row[\"deletion_at\"] >= grace"
+      ]
+    }
+  },
+  "local_temporary_cleanup": {
+    "owned_tunnel_stopped": true,
+    "ports_released": [
+      59180,
+      59181
+    ],
+    "temporary_browser_directory_removed": true,
+    "temporary_browser_file_count": 7,
+    "private_temporary_files_removed": 83,
+    "private_temporary_bytes_removed": 7628761,
+    "local_temp_scripts_removed": true,
+    "final_backup_retained": {
+      "bytes": 431082245,
+      "sha256": "bf791611613e4f0025869184947d2023f10817d35e25595babc33716d45abe34",
+      "mode": "0o600"
+    },
+    "private_identity_and_pending_cleanup_evidence_retained": true,
+    "server_backup_recovery_database_and_installations_removed": false,
+    "production_protected_fixture_cleanup_complete": false
+  }
+}

@@ -10,7 +10,7 @@
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-21。复杂评测Task1–22批准工程范围及正式Agent采集加载已完成，独立生产读回通过；当前新增EvalFlow任务受内存门槛保护，容量与504边界保留。旧SSH中断为历史事实，不作当前连通性。
+> **最后更新：** 2026-11-21。Checkpoint生产已切换post50/015，关键业务读回通过；空白Reference首发和受保护测试残余未完成。其收益不能替代复杂评测Task23的4GB连续容量验收，容量与504边界保留。旧SSH中断为历史事实，不作当前连通性。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -19,20 +19,24 @@
 
 ## 当前增补：长会话Checkpoint存储治理（2026-11-21）
 
-[独立项目P01–P09](projects/20261120-checkpoint-storage-governance/tasks.md)部分完成（partial）：P01–P07隔离/源码交付完成，P08本地补验与获批生产副本独立恢复完成，待服务端最终014回退库及现役具体切换授权；P09原测试栈和新增恢复演练资源均已回收，完整生产备份私有保留。GraphHarbor通用边界、journal-v1与引用安全GC由其S01–S07交付，无平台Agent/模型/工具/Workspace/期限。反向JSON Patch和六组预算均由用户批准。
+[独立项目P01–P09](projects/20261120-checkpoint-storage-governance/tasks.md)部分完成（partial）：P01–P07隔离/源码交付完成，P08获批生产窗口已完成post50/015切换、最终备份和服务端014恢复；空白Reference首发仍未提交请求。P09原隔离栈/独立演练资源清理完成，生产验收残余被生命周期保护。GraphHarbor只交付通用journal-v1边界与引用安全GC，无平台业务。反向JSON Patch和六组预算均由用户批准。
 
-正式post50已发布、四哈希/62源码独立验真、正式安装41项与取消24场景通过，产品源码84e9021远端CI44840687787七项success。原外键/线程PATCH422/跨topic事件误去重已修复；旧两次失败CI保留历史，不再称待修。平台仍只在登记wt_3b7f1734875d的独立Worktree联调，主工作区服务/安装与现役未切换。
+正式post50四哈希/62源码、正式安装41项与取消24场景通过，产品源码84e9021远端CI44840687787七项success。原外键/线程PATCH422/跨topic事件误去重已修复，旧失败保留。平台5d3e2418已合main推送、合并后5项回归和CI44844517275四项通过；原wt_3b7f1734875d双库/角色/四端口/登记已回收，源码Worktree保留。
 
 | 服务 | 本阶段当前状态 |
 |---|---|
-| runtime-service | 本地正式post50/head015验证完成，所属API/Worker已停；生产副本014恢复/015转换通过，现役仍post48/014。Reference/平台助手Delta50，Dear/Showcase根及子图Delta50，教学Workflow保持普通聚合。消息/审批分进程6项、队列23项/1可选跳过通过 |
-| platform-api / platform-web | 产品契约/原文/idle30天保持，无活跃自动prune。真实模型记忆/刷新/fork及续期浏览器2项、八类确定性v3浏览器通过；原悬浮助手遮挡按钮保持，Enter验收不等于点击体验通过 |
+| runtime-service | 生产已加载独立post50安装、LangGraph1.2.24/head015，757文件及镜像规范化锁/产物哈希核对；API537330/Worker537331、NRestarts0。原私有配置/锁/脚本9项保持，仅Runtime drop-in补消息授权回调。Reference/平台助手及Dear/Showcase根子图Delta50，教学Workflow保持普通聚合 |
+| platform-api / platform-web | Platform531268、健康200，未迁Platform DB或发布前端。真实Reference由API建立首轮后浏览器续聊/刷新/fork及Dear续期通过，原文/idle30天保持，无活跃prune；空白Reference首发未提交，悬浮助手遮挡保持。队列幂等/取消/原生审批/跨项目403通过 |
 
 六组最大边界330B/WAL1144B/建立边界p95 20.214ms/维护RSS99,983,360B/万条prune708.201ms；200轮周期50消息逻辑字节少约70%，状态读取p95 108.238ms不属于建边界预算。不承诺永久状态有界，也未证明现役OOM根因。隔离014备份恢复/再015已验，生产恢复须独立目标。
 
+用户同意记录与4GB评测的审查边界：post50减少Checkpoint基线复制，但Redis及进程内Run事件缓存仍保存正文、按条数限长，没有对应字节预算；逻辑字节收益不能外推Worker或整机内存。评测项目Task23的连续容量未通过，现Checkpoint已切换，可在评测项目授权范围按原负载复测，再据结果评审缓存治理；该审查本身没有授权新增缓存治理。
+
 生产副本演练已获用户单独批准并完成：完整备份两端哈希、45表行数/44表内容摘要及43个post48 checkpoint头一致；第二副本015转换核对59组反向投影/边界头、7,814条undo及相同43个post50头。含清理563.419秒；导出连接收尾空闲事务超时导致包装退出1，只有完整恢复/同快照验证通过后接受，见[证据](projects/20261120-checkpoint-storage-governance/implementation/production-recovery-post50.json)。新演练PG/双库/安装/日志已清理，完整归档在仓库外0700目录以0600保留。
 
-现役读回仍post48/014、零活动Run、三服务active；业务库graphharbor_acceptance约10GB且主体runtime_events，绝不能当测试库删除。余盘约18GiB、可用内存不足1GiB，不跑克隆压力。下一步按[操作单](projects/20261120-checkpoint-storage-governance/production-cutover.md)准备服务器可用的最终014回退库并取得具体窗口授权；本机演练目标不能作现役回退地址，尚未停写/迁移/重启/切换。用户AGENTS修改和具名stash受保护；平台5d3e2418已合main推送，合并后5项回归与CI44844517275四项通过；P09独立确认原双库/角色不存在、四端口/登记释放。共享Redis4721保持。
+后续获批生产窗口10:25:09–10:43:10 CST完成，关键验证1080.765秒，首次暂停新请求260.272秒。最终完整备份431,082,245字节两端哈希一致；服务端graphharbor_ckpt014_20261121单事务恢复95.456秒，45表行数/44摘要及52个头通过；015转换3.076秒，91组反向投影/边界头与10,299条undo逐项一致。旧三线程仅一条并行tool顺序变化，内容/ID/配对保持。[生产证据](projects/20261120-checkpoint-storage-governance/implementation/production-cutover-post50.json)保留来源、窗口及失败。
+
+最后生产读回post50/015、零活动Run、三服务active、无新增内核OOM；库约10.23GB、可用内存1.34GB、余盘13.14GB，仅为短时值，不跑压力。现役业务库graphharbor_acceptance、完整备份、服务端014回退库及新旧安装保留；已有新写入，禁止直接回退覆盖。P09新增12个验收删除任务中10个核心数据已删、3条inbox正文均空，2个空Dear线程和1个远端Workspace仍受保护。终态签名/Platform校验配置缺失，全局补齐会继续原14个删除任务，须先确认业务范围；当前26任务为before_delete8/after_delete18。下一步定位空白Reference首发并处理获准的生命周期残余。用户AGENTS、原stash、共享Redis和其他项目资源保持。
 
 ## 当前增补：复杂评测集一次启动自动执行（2026-11-20）
 
