@@ -1,5 +1,9 @@
 # 项目总览：通用 Agent 评测集转化与出题治理
 
+## 2026-11-21 当前进行：4GB主机正式评测
+
+**部分完成（partial）：** 4GB候选D首轮前三任务正常评分，但第四次暖机在Trace收集前读取本机题库records发生ReadError；保留失败并精确回退。相同预算D2的客观任务正常failed、两轮四规则1.0，第三条六轮因不足896MiB物理余量在执行前被拒绝，第四条未启动。D/D2最低可用RAM分别620.22/692.39MiB、均无新增OOM，但连续容量仍未通过。D2于09:33:55–09:34:15排空回退，三应用健康，Redis仍原PID1211、High恢复infinity，硬上限/Swap/数据/TTL及持久化保持。主动RDB与最后10分钟通过窗口未执行，联合Final尚未具备条件。桌面HTML15案例、37视频/51截图，新增4GB媒体30/30实际播放或加载通过。Agent仍6165026c/post48，未部署并行Checkpoint；候选不合main。 当前批准范围与唯一进度见[Task23](tasks.md#task-23在4gb主机上完成正式自动评测)，候选与回退证据见[4GB实测记录](implementation/12-4gb-formal-capacity.md)。
+
 ## 2026-11-21 当前追加：正式 Agent 部署
 
 **已完成（done）：** 正式 Agent 已加载 0a2f93ca 的应用源码，Platform API、Runtime API 和 Runtime Worker 于 00:57:22 重载并健康。真实两轮补传CSV、2次read_file和结果19.75/22.00通过；2份新Trace共73 Span，64个内部CHAIN已使用引用，根及LLM/TOOL原文保留。主机22项/业务16项独立读回通过；配置、锁文件、业务库、前端和正式EvalFlow保持。当前主机余量不足以启动新增评测Worker，EvalFlow任务555ae0cd保护性error保留；普通聊天冒烟不称自动评测通过。唯一进度见 [Task22](tasks.md#task-22正式部署并验证-agent-采集去重)，过程和限制见[正式部署记录](implementation/11-production-agent-dedup-deployment.md)。
@@ -14,7 +18,7 @@
 
 > **项目标识：** `20261119-universal-agent-eval-authoring-governance`
 > **启动时间：** 2026-11-19
-> **当前状态：** 已完成（done，2026-11-21）。Task1–22批准范围完成；正式Agent采集去重已加载并有真实Trace证明。平台验收通过不等于Agent每题通过；旧0.7/0.8及新六轮0.6/0.8失败保留，新增评测启动仍受主机余量限制，长期容量不在原两小时实测结论内。
+> **当前状态：** 部分完成（partial，2026-11-21）。Task1–22批准范围完成；追加Task23的4GB正式连续评测容量、联合Final与交付仍在推进。历史业务低分和资源失败保持，不以单次passed代表容量完成。
 > **代码归属：** 默认在 EvalFlow；Agent 平台两个服务是否修改，以实际接口缺口及获准范围为依据。
 
 ## 2026-11-20 当前增补：一次启动自动执行复杂评测

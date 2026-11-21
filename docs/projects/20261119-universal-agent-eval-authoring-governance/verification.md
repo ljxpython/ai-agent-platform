@@ -1,5 +1,71 @@
 # 验收方案与验证记录：通用 Agent 评测集转化与出题治理
 
+## 2026-11-21 4GB正式自动评测验收（Task23）
+
+用户批准保留4GB物理内存、现有4GiB Swap，减少常驻进程、限制并发并开放有限服务Swap。另明确批准executor周期任务开关的一处最小上游修复；例外不扩大到其他上游功能。原Task22、历史容量拒绝和业务低分按原事实保留。
+
+阶段验证要求：关闭周期任务时不产生周期消费者，开启时沿原路径启动；原生按需任务仍可完成。评测资源scope允许256MiB Swap，物理High384MiB/Max512MiB和系统512MiB余量先保持；EvalFlow服务Swap先调512MiB，原物理上限保持。并发核对实际进程参数：平台HTTP1、Runtime执行1、Runtime API0。无活动Run/后台评测后备份并分项重载，不升级依赖、迁移数据库或部署并行post49。
+
+真实链路要求：新建正式两轮附件任务，核对首轮19.75、补传后22.00、read_file真实执行、四规则及原件保护；完整六表一次输入任务核对四产物及原冻结数值；原六轮按原四规则和会话指标评估，不删指标抬分。三类任务分别保留版本、Session/Run/Trace、结果和失败，不将HTTP成功当业务通过。browser-skill至少从正式页面启动一个新版本并查看结果、附件和Trace，保存录屏及关键截图，更新原桌面HTML和操作手册。
+
+资源与恢复要求：运行期间及结束后采集MemAvailable、Swap、换页、PSI、各服务/scope峰值和OOM事件，维持系统512MiB余量；低内存仍明确拒绝。若实测不满足，调整必须记录具体依据，不把Swap直接等同RAM。原生任务、旧资产hash、认证拒绝和服务健康保持，验证本次配置/源码受控回退及再加载。运行后至少10分钟观察无新增OOM、Swap用量及压力无持续上升；这只证明本轮窗口，不外推长期容量。
+
+### 阶段验证（Phase）：准备
+
+已确认正式两仓基线、现场改动和服务身份，用户已批准方案和最小上游例外。所属远端独立安装成功，mlflow/eval_platform源码均来自本Worktree，未改变生产安装。先补测试复现2 failed/5 passed；修复后开关三分支及主机资源测试共7 passed，任务回归29 passed。启动包装脚本在macOS和Linux各4 passed，验证工作目录、完整参数与未知服务拒绝；Linux有一条未加载timeout插件的配置warning。bash语法及相关Ruff通过。
+
+原生执行器扩大回归完成13项后主动SIGINT，退出码2，保留KeyboardInterrupt日志，不计全套通过。停止前核对pytest PID、创建时间及所属目录，随后确认无遗留测试子进程。另选真实LocalJobExecutor子进程成功任务及旧开关分支，3 passed。测试日志在所属远端`.local-stack/4gb/`内的red.log、green.log、task-regression.log、agent-linux.log、native-executor.log及native-selected.log，重叠范围不相加。生产前快照保存服务身份、资源事件、源码与14份旧资产摘要；私有回退包含凭据，仅保留在受限部署目录，不进入代码或报告。
+
+### 阶段验证（Phase）：正式加载与真实任务
+
+EvalFlow正式主仓正常快进至da4f114，仅MLflow executor启动一处上游文件改变；Agent只加载单HTTP/执行并发包装脚本，生产应用仍6165026c、GraphHarbor post48。排空后真实回退原脚本、周期消费者及服务Swap128MiB，健康通过；再次加载候选后EvalFlow进程从4减为3、周期消费者消失。平台API/Worker/EvalFlow为PID445327/445328/445329、NRestarts0，该阶段Runtime API178973未重启；后续联合预算重启单独记录。回退前后原3 error/46 success/1 interrupted保持，无有效租约、后台或消息队列；不恢复旧中断。私有rollback-reload.json保留读回。
+
+正式两轮附件99a063c7通过，四规则各1.0，1 Session/2 Run/2 Trace，19.75及22.00正确、4次read_file、无写入、原件不变且裁判调用0。页面完整保存、发布并启动的六表任务e7fb1eb9正常failed、error=null：completion及原件保护1.0，四产物未生成、artifact_correct0.0，1 Run/1 Trace/6次read_file。不能把历史客观成功替代本轮失败，也未根据输出末尾猜测截断根因。原六轮851e6948、4de60390因主机余量不足被拒绝，后者使用轻量curl请求仍复现，均无Agent Run。回退复载后87af47e6于北京时间08:20:39至08:27:48完成，四规则及ConversationalGEval均1.0，原0.8门槛保持；6输入/6输出、10 Run/10 Trace、31次工具调用、4次审批且无执行/取证/裁判error。独立按冻结行值比较三CSV26/3/4行和报告版本标识通过，六原件未变，复算V3为16单/5066.50、8/2/4/2、超时871.49/25.00%，辅助13单/30.77%。两次裁判实际输入111,254字节、输出337 Token。原生结果Run为b77261a42ee140efaeeecced3c431a17。
+
+14份旧任务/题库/工作项/报告SHA保持。新两轮及客观三份Trace分别51/51/46 Span，逐页读取及去重数均等于存储声明；各自根/LLM/TOOL原文均HTTP200且包含输入输出。首次探测误传base64 Span ID得到500，改用接口所需hex后成功，该调用错误保留；不把错误编码请求算有效原文读取。匿名及错误凭据均401。browser-skill已读回两轮原生结果四项1.0，客观结果和真实read_file原文可见；新录屏与截图待整体加入原报告复核。
+
+原六轮10份Trace共365 Span，按快照分页后的唯一数与存储声明完全一致；10个根节点原文均HTTP200，输入输出保持，最大约320KB。两轮及六轮浏览器原生结果、补传输入和真实read_file原文已见；录屏分段记录，不冒称完整等待过程均已录下。
+
+首阶段每5秒持续采集资源、每30秒探针，当时scope为High384/Max512/Swap256MiB、入场另留系统512MiB。两轮和客观scope峰值约225.85/257.87MiB、Swap0；六轮scope峰212.70MiB、Swap峰138.30MiB，OOM计数9→9，但主机最低可用399.92MiB，未满足512MiB余量。结束后可用约580MiB，不足以再次入场；先前仅scope收紧为384MiB的候选不足。用户已追加批准常驻服务RAM/有限Swap及scope联合调整，实施结果见下方，不以无OOM替代容量要求。该阶段窗口仅覆盖首配置，后续候选需独立留证。
+
+### 阶段验证（Phase）：联合预算候选加载
+
+首候选B在2026-11-21 08:44（Asia/Shanghai）排空后逐项加载：Runtime API256/384/256MiB、Worker384/512/768MiB启动；EvalFlow软High256MiB导致明显内存回收压力，健康未就绪，自动精确回退后8123/5000均200。该候选失败保留，不以active状态代替可用性；未观察到新增cgroup OOM。
+
+候选C仅把EvalFlow软High提高至384MiB，Max512MiB/Swap768MiB保持。8项资源测试、相关Ruff与差异检查通过；2026-11-21 08:50:15–08:50:47排空加载成功，Runtime API/Worker/EvalFlow的PID分别467275/467347/467351、NRestarts均0，实际三项cgroup限额逐值匹配。8123/5000/9128返回200，2142未认证健康入口保持401。生产两份源码已先与B私有回退备份逐字节确认再恢复并正常快进，没有覆盖其他改动；Agent仍6165026c/post48，不部署并行Checkpoint。本加载阶段仅证明健康及预算匹配；连续任务的容量失败与回退见后续阶段，启动成功不代表容量通过。
+
+候选C连续暖机验证已开始，顺序为六表客观任务、两轮附件、原六轮、再两轮附件，全程不重启。页面实际点击立即开考创建e643cbaa，完成后error=null，completion/protected_unchanged均1.0、artifact_correct0.0，四产物均缺失，6次read_file和原失败保留。紧接的db23680e两轮四规则均1.0、2 Run/2 Trace；原六轮4bc99ed2随后取得正常failed终态，容量失败和回退见下节；不能将入场成功视为最终通过。
+
+桌面报告原4段4GB录屏已完整解码，相关9截图可加载。2026-11-21 08:56借用已批准的临时置前权限，自建报告窗口约6.1秒内完成4视频实际播放及9截图加载，13/13通过后关闭；先前后台省电暂停与不完整检查记录保留。新增候选C页面启动/结果视频为complete/user_stopped、掉帧0，完整解码通过，仍待加入案例并核对实播。私有备份和凭据没有进入报告。
+
+### 阶段验证（Phase）：候选C容量失败与候选D追加加载
+
+候选C的原六轮4bc99ed2正常终态failed，6输入/6输出、10 Run/10 Trace、29工具及4审批，completion/原件保护1.0、逐轮/产物0.0、会话0.4，无执行/裁判error；与阶段A的1.0分开保留。C三任务的13 Trace共505 Span完整分页，根及存在的LLM/TOOL代表原文均200，旧14资产与两类401保持。RAM最低至少到329.50MiB，未满足512MiB余量，第四个暖机任务没有启动。只停止所属序列控制器，未中断Agent；待当前任务正常完成后于09:04:52–09:05:21排空精确回退，8123/5000均200，NRestarts0。C没有完成最终10分钟容量窗口，不能冒称联合通过。
+
+只读核对Redis约1.2GiB、26个带TTL key，较大项为2000条的Runtime Run事件流；Redis maxmemory=0、systemd三项均infinity。RDB落盘时点与低余量接近，未将相关性当作全部因果。用户依据生产治理规则追加批准候选D：仅Redis MemoryHigh512MiB，其他Redis配置不变、不删key、不重启，沿用C应用预算，并验证连续任务及一次原有RDB落盘。
+
+D配置/启动测试macOS和Linux各7 passed，相关Ruff/差异检查通过。首次D预检使用常见Redis配置路径但现场不存在，尚未备份或改变服务；改为INFO server返回的面板管理实际配置文件并核对哈希后继续。09:08:33–09:09:03排空加载成功，应用三项有效预算匹配，Runtime API/Worker/EvalFlow PID480145/480221/480225、NRestarts0；8123/5000/9128均200。Redis原PID1211及重启次数保持，实际High512MiB，MemoryMax/SwapMax均infinity且与原值一致，Redis配置SHA256保持。所属资源监测继续追加原日志并纳入Redis cgroup；首次修改监测脚本的shell引号错误在写入前终止，改用stdin脚本后成功。D加载阶段尚未证明连续容量；随后正式负载失败、未执行RDB与最后通过窗口的事实见后续阶段。
+
+### 阶段验证（Phase）：候选D首轮传输异常与精确回退
+
+D连续完成客观bf6330ef、两轮9846b264与原六轮fd6f129a。六轮6输入/6输出、原指标保持，会话1.0但逐轮/文件0，整体正常failed。第四个暖机0a4d715e执行了两轮，原始evidence为completed且无Agent错误；Trace收集前重新校验题库时，DatasetRegistry.cases经本机5000读取records发生httpx.ReadError，任务error、missing_case保留，不能当评分完成。全局和所属cgroup没有新增OOM，三应用NRestarts0；对应服务日志未发现超时/重启/异常，仍不能声称完整根因已确定。
+
+按失败回退要求，09:25:11–09:25:34排空后精确恢复本轮前文件与限额，8123/5000健康200，Runtime API/Worker/EvalFlow PID491727/491729/491731。Redis原PID1211、NRestarts0保持，High恢复infinity，硬上限、Swap与配置不变，未删key或重启。D前三任务14 Trace/510 Span完整分页和根/代表LLM/工具原文200，旧14资产与匿名/错误身份401保持。RDB及最终10分钟通过窗口未执行。接续D2仅对相同候选作一次完整有界复验，不新增自动重试代码或放宽原校验。
+
+### 阶段验证（Phase）：D2入场拒绝、回退与媒体核对
+
+相同候选D2于09:28:59加载健康，未扩大预算或加产品重试。客观c980600f正常failed（completion/原件1、产物0），两轮eda4b8ff四规则1.0；第三条六轮3eb8c32e因不足896MiB物理余量在启动前被拒绝，无Agent Run和原生Run，第四条未执行。D2的58样本跨度288.297秒，最低可用692.39MiB、整机OOM新增0。已执行两任务3 Trace/118 Span完整分页、根及代表LLM/TOOL原文均200，14旧资产及匿名/错误身份401保持。系统512MiB余量与384MiB评测入场余量为两个条件，不能以没有OOM抵消后者失败。
+
+09:33:55–09:34:15排空精确回退，原文件逐字节核对一致；Runtime API/Worker/EvalFlow PID498036/498038/498040、NRestarts0，8123/5000健康200。Redis原PID1211/NRestarts0、High infinity恢复，硬上限、Swap和配置hash保持。D首轮192样本跨度961.055秒、最低620.22MiB、OOM新增0，但第四条取证ReadError，仍不能计连续通过。两候选均未执行主动BGSAVE和最终10分钟通过窗口。
+
+只读Redis核对记录逻辑用量1,425,267,984字节、历史峰值1,928,599,248字节，当前32 key全是Run事件流；末条data抽样约200–300KB。单key MEMORY USAGE为抽样估计，不能求和当总量。生产post48的redis_stream.py中put/put_batch按2000条限长、本地缓存亦按2000条限长，Redis滑动过期3600秒。没有字节预算是当前代码事实，尚未证明全部历史OOM或D的ReadError因果；未擅自缩短TTL、删key、升级依赖或改变回放协议。
+
+browser-skill新增D失败和D2正式原生结果回看，保留结果刷新前的缓存RUNNING现象，实际reload后终态及指标正确。桌面HTML现15案例、37 MP4/51截图，原9案例规范化内容hash保持；4GB新增11视频均完整解码、掉帧0，实际播放11视频及加载19截图30/30通过，获准窗口置前约7.13秒后关闭。历史26视频/32截图的58/58证据沿用，不冒称本轮重跑。证据按白名单下载，没有将私有回退备份或凭据放入报告。详见[实测记录](implementation/12-4gb-formal-capacity.md)。
+
+### 整体验收（Final）：4GB正式自动评测
+
+尚未执行。D/D2连续序列未通过，必要的主动RDB及最后资源窗口未完成，未达到联合Final前置条件；候选不合main，Task23仍partial。原Task22与Task14/21的Final保持各自历史范围，不能替代本轮。新增缓存协议或依赖改动需另行人工批准。
+
 ## 2026-11-21 正式 Agent 部署验收（Task22）
 
 用户批准正式加载采集去重。部署前核对活动 Run、队列和后台任务，备份原版本、现场改动、配置摘要与服务身份。仅正常快进已经验证的 main，重载 Platform API、Runtime API、Runtime Worker；依赖、数据库结构、前端和正式 EvalFlow 不变。受控回退使用备份源码及原配置，不覆盖现场锁文件或删除业务数据。
