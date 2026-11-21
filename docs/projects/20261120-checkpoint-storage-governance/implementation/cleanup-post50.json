@@ -25,6 +25,29 @@
   "protected_AGENTS_sha256": "e03992e02819e3b4d57b2fb264a81893c9ae5dec63a3212de7eb748710531649",
   "platform_disposal": "registered local-stack stop/destroy after main merge",
   "graphharbor_disposal": "only .local/checkpoint-followup-20261121",
-  "state": "inventoried; not yet destroyed",
-  "retained": "source, project records, sanitized JSON and original user stash"
+  "state": "destroyed and independently verified",
+  "retained": "source, project records, sanitized JSON and original user stash",
+  "database_names_remaining": [],
+  "roles_remaining": [],
+  "ports_released": [
+    25044,
+    23380,
+    27909,
+    24438
+  ],
+  "registry_entry_removed": true,
+  "local_stack_directory_removed": true,
+  "protected_primary_listeners_unchanged": true,
+  "protected_AGENTS_unchanged": true,
+  "graphharbor_temporary_directory_removed": true,
+  "merged_code_commit": "5d3e241845f08a5d3618687d2c6a4159dda0a426",
+  "browser_reports_and_build_artifacts_removed": [
+    "apps/platform-web/test-results",
+    "apps/platform-web/dist"
+  ],
+  "production_services_readonly_after_cleanup": {
+    "platform_api": "active",
+    "runtime_api": "active",
+    "runtime_worker": "active"
+  }
 }

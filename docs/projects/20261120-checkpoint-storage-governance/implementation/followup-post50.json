@@ -94,8 +94,32 @@
       "chunks over 500 kB"
     ]
   },
-  "screenshots_inspected": {
+  "delivery": {
+    "platform_code_commit": "5d3e2418",
+    "platform_main": "fast-forwarded and pushed",
+    "merged_commit_regression": {
+      "passed": 5,
+      "seconds": 8.04
+    },
+    "graphharbor_followup_commit": "0f017d40b8e181bfcb2fd59722837d2ebd4d7bfe",
+    "graphharbor_followup_ci": {
+      "run_id": 44844213427,
+      "conclusion": "success",
+      "jobs": 7
+    },
+    "primary_worktree_untouched": true,
+    "platform_ci": {
+      "run_id": 44844517275,
+      "source_commit": "5d3e241845f08a5d3618687d2c6a4159dda0a426",
+      "conclusion": "success",
+      "jobs": 4
+    }
+  },
+  "screenshot_sha256": {
     "checkpoint-storage-reference.png": "98451a37cfa0206eee672f55c65e0516d0583ce464a8daeb1e4da95c591b13e5",
     "retention-browser.png": "b22ffd24e8856d25a456035b2abad8ad1d9fa68776dcdec2b6eacb1a871f69af"
-  }
+  },
+  "screenshots_visually_reviewed": [
+    "checkpoint-storage-reference.png"
+  ]
 }

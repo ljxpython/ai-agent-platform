@@ -6,7 +6,7 @@
 
 目标为既有 SSH 运维入口 `sshmy1` 上的 `agent-runtime-api.service`、`agent-runtime-worker.service`，以及阻止新请求时短暂停止的 `agent-platform-api.service`。Runtime 现役库 `graphharbor_acceptance` 是业务库，绝不按名称判断为测试资源。预检为 GraphHarbor 双包 post48、LangGraph 1.2.11、Schema 014；执行前重新核对源码、真实进程及实际数据库，任何漂移都先停止并更新操作单。
 
-目标版本为本项目合入 main 的已验提交及 frozen Runtime 锁文件：GraphHarbor 双包 post50、LangGraph 1.2.24、Schema 015。仅切换 Runtime 代码与安装；不执行 Platform API 数据库迁移，不发布前端，不启用活跃会话自动 prune，不删除 runtime_events。GraphHarbor 四产物哈希见关联引擎正式发布证据。
+目标源码固定为已合 main 且四项CI通过的 `5d3e241845f08a5d3618687d2c6a4159dda0a426` 及其 frozen Runtime 锁文件：GraphHarbor 双包 post50、LangGraph 1.2.24、Schema 015。仅切换 Runtime 代码与安装；不执行 Platform API 数据库迁移，不发布前端，不启用活跃会话自动 prune，不删除 runtime_events。GraphHarbor 四产物哈希见关联引擎正式发布证据。
 
 生产仓库原有的两份锁文件改动、私有配置及部署脚本须先备份并记录哈希，禁止 reset/clean 覆盖。保留旧源码、旧独立安装与旧环境配置；恢复时仅改变已批准的目标绑定，不重置用户文件。
 

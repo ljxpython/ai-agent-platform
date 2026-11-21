@@ -36,6 +36,8 @@ GraphHarbor 的 baseline 外键、线程 PATCH 422 与跨 topic 事件误去重�
 
 ## 合并后的清理清单
 
-平台唯一所属环境为 `wt_3b7f1734875d`：runtime/platform 双库及同名角色、Redis、Workspace、PID、日志与私有证据。登记端口为 Web 25044、API 23380、Runtime 27909、Redis 24438。资源仍供补验使用。
+平台唯一所属环境为 `wt_3b7f1734875d`：runtime/platform 双库及同名角色、Redis、Workspace、PID、日志与私有证据。登记端口为 Web 25044、API 23380、Runtime 27909、Redis 24438。必要补验及合并后回归已结束，所属资源现已回收。
 
 必要脱敏结果保存后，通过原生 local-stack 的 stop 和带准确 ID 的 destroy 回收；确认无所属进程、监听、数据库/角色和 registry 登记。永久项目证据、源码、主工作区 AGENTS 修改和其他 Worktree 资源保留。GraphHarbor 本轮一次性 PG/Redis 随 runner 结束回收，最终另查所属私有日志和临时安装目录。
+
+2026-11-21实际执行stop/destroy并独立核对PG目录、四端口、registry与目录不存在。GraphHarbor本项目约266MiB临时安装/产物和平台浏览器报告/dist已删除；现役三服务active，共享Redis与用户AGENTS/stash保持。脱敏结果见[回收证据](cleanup-post50.json)。

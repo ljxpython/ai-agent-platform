@@ -48,7 +48,7 @@ Reference和Dear保留浏览器合跑2 passed（约2.1分钟）：真实模型�
 
 所属三服务保留链1 passed（74.094秒），验证服务端idle30天不能由客户端覆盖、旧策略注册、跨项目及未签名回调拒绝、Workspace/ACL回收、文件占用阻止后重试、并发维护和最小墓碑。原403断言和共享临时项目冲突已修正为真实权限语义和自建独立项目。完整原文保持，不启用活跃自动prune。
 
-操作、失败及命令入口见[接入与恢复实证](implementation/01-platform-adoption-and-recovery.md)；脱敏逐例结果见[test-results.json](implementation/test-results.json)。原始XML、日志和截图保留在所属.local-stack/evidence，套件重叠不加总。
+操作、失败及命令入口见[接入与恢复实证](implementation/01-platform-adoption-and-recovery.md)；脱敏逐例结果见[test-results.json](implementation/test-results.json)。原始XML、日志和截图当时保留在所属.local-stack/evidence；本轮P09已按授权清理，仅永久脱敏结果保留，套件重叠不加总。
 
 ## 验收覆盖
 
@@ -107,3 +107,12 @@ GraphHarbor远端原为post39源码，post49依赖的取消、回执、生命周
 API请求回归30 passed/2 subtests，Spike与流夹具5 passed，前端typecheck和默认生产构建通过，保留Browserslist与大chunk警告；两仓Ruff/格式/锁及平台check_docs通过。
 
 **结论：P07追加缺陷修复与P08本地正式接入通过。** 不将此阶段性结论标成整个项目done：P08的生产副本恢复、现役切换及负责人具体授权独立保留；P09按合并后的实际回收结果补记。脱敏明细见[followup-post50.json](implementation/followup-post50.json)，生产边界见[操作单](production-cutover.md)。
+
+
+## 阶段验证（Phase）：合并后回归与所属资源回收
+
+平台5d3e2418已从所属Worktree快进合main并推送，随后在同提交隔离安装执行Spike/流夹具5 passed（8.04秒）。GraphHarbor补证0f017d4远端CI44844213427七项通过。平台同提交真实远端CI44844517275的platform-api、code-quality、docs、platform-web四项全部success，不以本地结果替代。
+
+保留脱敏证据后，原生local-stack stop退出11个所属管理/应用进程，destroy准确确认wt_3b7f1734875d。独立PG目录查询确认双库与同名角色均不存在，四端口无监听、登记和.local-stack目录已删除。GraphHarbor仅本项目约266MiB临时目录及平台浏览器报告/dist已删除，未清共享缓存与其他Worktree。原始XML、日志、私有截图不再保留；必要验收摘要和来源哈希已在项目JSON中持久化。
+
+主Redis4721、AGENTS哈希和具名stash保持；现役Platform API/Runtime API/Worker只读核对均active，现役业务库未迁移/清理。源码Worktree和可复用的独立依赖保留，服务已停；清单及删除后读回见[回收证据](implementation/cleanup-post50.json)。P09完成，P08生产授权与实际执行仍独立待办。
