@@ -1,12 +1,12 @@
 # 项目当前状态 - AI 上下文
 
-## 当前进行：4GB主机正式自动评测（2026-11-21）
+## 当前交付：EvalFlow双机连续正式评测（2026-11-21）
 
-4GB候选D首轮前三任务正常评分，但第四次暖机在Trace收集前读取本机题库records发生ReadError；保留失败并精确回退。相同预算D2的客观任务正常failed、两轮四规则1.0，第三条六轮因不足896MiB物理余量在执行前被拒绝，第四条未启动。D/D2最低可用RAM分别620.22/692.39MiB、均无新增OOM，但连续容量仍未通过。D2于09:33:55–09:34:15排空回退，三应用健康，Redis仍原PID1211、High恢复infinity，硬上限/Swap/数据/TTL及持久化保持。主动RDB与最后10分钟通过窗口未执行，联合Final尚未具备条件。桌面HTML15案例、37视频/51截图，新增4GB媒体30/30实际播放或加载通过。该阶段Agent为6165026c/post48；Checkpoint专项随后已独立切到post50/015，候选不合main。唯一进度见[Task23](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-23在4gb主机上完成正式自动评测)。
+Task23当前批准的双机迁移、单并发连续容量及合并后联合读回已完成（done）。五条正式任务均完成评分，615秒稳定窗口后下一条仍通过；两台最低可用786.14/1276.38MiB，新增OOM为0。EvalFlow启动前约2GiB预算已包含应用1GiB、评测512MiB和系统512MiB，无需追加内存。此前单机候选D/D2失败及回退记录保留在[唯一Task23](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-23在4gb主机上完成正式自动评测)，不将候选配置合main；现役Checkpoint为post50/015。桌面HTML21案例、43视频/66截图，业务低分和录像缺口如实保留。
 
-用户同意记录Checkpoint关联审查：post50减少历史基线复制，消息存储约70%逻辑字节收益不代表Worker或整机内存降幅；Redis及进程内Run事件缓存仍按条数限长，没有对应字节预算。主仓最新记录已完成Checkpoint生产切换，Task23保持partial；后续评测或双机部署按各自授权推进，必要时另评审缓存治理。
+用户同意记录Checkpoint关联审查：post50减少历史基线复制，消息存储约70%逻辑字节收益不代表Worker或整机内存降幅；Redis及进程内Run事件缓存仍按条数限长，没有对应字节预算。主仓最新记录已完成Checkpoint生产切换；审查时Task23为partial，后续双机单并发容量已独立实测通过，不能从存储收益推导容量。新增缓存治理仍需另行评审。
 
-2026-11-21用户新增批准停止sshmy2四项应用，17:17:36（Asia/Shanghai）读回NapCat/AstrBot停止、Nano inactive、DataPulse退出，五个对应端口关闭；LightRAG、远程沙箱、Docker/Nginx及Mini Hybrid RAG保持。两容器停止超时后退出137，OOMKilled=false；Nano仍enabled，未验应用重启恢复。短时可用RAM约2.0GiB、已用Swap约0.67GiB；未删除或禁用服务、未执行EvalFlow迁移或容量验收，详情及证据在Task23。
+2026-11-21用户新增批准停止sshmy2四项应用，17:17:36（Asia/Shanghai）读回NapCat/AstrBot停止、Nano inactive、DataPulse退出，五个对应端口关闭；LightRAG、远程沙箱、Docker/Nginx及Mini Hybrid RAG保持。两容器停止超时后退出137，OOMKilled=false；Nano仍enabled，未验应用重启恢复。当时短时可用RAM约2.0GiB、已用Swap约0.67GiB，尚未迁移；后续EvalFlow迁移及连续容量验收已通过，详情及证据在Task23。
 
 用户随后已批准EvalFlow迁到sshmy2，Agent/Runtime/PG/Redis留sshmy1，保留旧入口和目标原有业务。17:32只读确认目标可用2,109,920KiB（约2.01GiB）；按应用1GiB＋评测512MiB＋系统512MiB开始部署和实测，不要求先扩8GB。此为起步预算，非连续容量结论；源备份、目标独立环境与受限通道已准备；201个依赖版本一致，5项启动/保护测试及预算边界断言通过，两台资源监测已启动；17:59已排空切流，原9128/5000入口保持。漏带源systemd两项内联环境造成POST403，补齐原值并排空重启后18:04来源边界通过。18:11应用约634MiB、目标可用约1.44GiB；启动前2GiB预算含应用。含新增结果的应用回退与再加载已通过，新两轮f8af6b04四规则1.0、2 Run/2 Trace完整，14旧资产保持；五条正式连续任务、615秒稳定窗口及合并后联合读回已通过；EvalFlow813dc61合main推送，本轮文档同步交付。
 
