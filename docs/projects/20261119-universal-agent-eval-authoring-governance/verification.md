@@ -1,5 +1,25 @@
 # 验收方案与验证记录：通用 Agent 评测集转化与出题治理
 
+## 2026-11-21 双机开发与运维规则验收（Task24）
+
+本轮在sshmy1关联Worktree验证：旧脚本在任何make、rsync、ssh、依赖安装或重启之前拒绝，状态检查只读且任一步失败返回非零；Makefile指向新检查入口。文档应一致区分开发、正式运行、数据库及公网入口，明确sshmy2的sudo和Python3.11、双机禁重度构建、冻结依赖/私有配置/新增结果保护及回退排空要求。只读生产检查必须确认旧服务停用、目标与通道active及PID未变；不执行发布或模型评测。
+
+### 阶段验证（Phase，Task24）
+
+在sshmy1的既有EvalFlow Worktree，执行其.venv/bin/python -m pytest tests/test_production_tools.py -q --noconftest，10 passed、2.64秒。随后Ruff、三份Bash脚本分别执行语法检查、git diff --check及make -n deploy-status均通过；共享文档检查器对本轮改动Markdown校验通过，12条新增相对链接存在，代码围栏完整。关闭自动插件加载导致1条既有timeout配置警告，不作为失败或隐藏。
+
+首次6项功能回归通过但Ruff报告5项新增测试格式问题，已修正；初次只读探测把后端匿名401判为失败，改为200/401仅代表可达，并补503拒绝回归。通过标准输入运行完整脚本时发现SSH会吞掉后续脚本，给两次只读SSH添加-n，最终实测显式核对两台主机与公网三个阶段均执行，不接受提前退出0作为通过。
+
+20:33:33（Asia/Shanghai）完整只读实测通过：目标应用817813、通道793282、NRestarts均0；源旧应用inactive/disabled、转发active，两个后端5000匿名401，源及外网9128为200。首次检查前后正式Agent/Runtime/Redis、目标RAG/沙箱及评测进程身份和受保护配置摘要相同；交付后另做独立读回。日志保留在所属Worktree的.local-stack/task24，脱敏摘要见本任务后续联合证据。
+
+### 整体验收（Final，Task24）
+
+EvalFlow冻结交付e33b501，远端main/开发分支、sshmy1主目录/Worktree、sshmy2正式detached检出及Mac main一致。20:40:20（Asia/Shanghai）在Mac main真实执行make deploy-status，返回0且显式确认目标、源与公网三个阶段完整执行；实际运行退役旧脚本返回2。目标EvalFlow817813、通道793282及两端其余受保护服务PID/NRestarts与修改前一致，6份私有配置/单元/drop-in摘要保持。目标与源5000为匿名401、源/公网9128为200，只证明可达。
+
+EvalFlow的eval_platform、mlflow、deploy、pyproject.toml及uv.lock对象未变。Agent文档采用精确项目补丁加CONTEXT/FEATURES定向更新，不合并包含失败资源候选的整分支；应用、脚本、Checkpoint项目树和用户AGENTS摘要与main交付前一致。Agent文档交付版本以包含本记录的main提交和远端读回为准。
+
+本项批准范围验收通过；[脱敏联合证据](implementation/task24-rules-verification-20261121.json)分别保留阶段回归与本次合并后实际读回。没有重新执行模型、容量窗口、应用发布或回退，不把规则替身测试称作正式发布验收；Task23原模型及容量结论沿用原版本和负载，HTTP、默认身份注入和default回源503边界保持。
+
 ## 2026-11-21 4GB正式自动评测验收（Task23）
 
 用户批准保留4GB物理内存、现有4GiB Swap，减少常驻进程、限制并发并开放有限服务Swap。另明确批准executor周期任务开关的一处最小上游修复；例外不扩大到其他上游功能。原Task22、历史容量拒绝和业务低分按原事实保留。
