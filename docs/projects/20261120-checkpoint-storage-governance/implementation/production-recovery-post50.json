@@ -1,0 +1,411 @@
+{
+  "recorded_at_utc": "2026-11-21T00:48:33.807052+00:00",
+  "scope": "authorized production backup to isolated local PG17; no production stop/migration/restart/cutover",
+  "source": {
+    "alias": "sshmy1",
+    "database_role": "active runtime business database; never test cleanup",
+    "schema": "014_thread_retention",
+    "snapshot_tables": {
+      "alembic_version": {
+        "count": 1,
+        "row_md5": "190d60b42d36b509d701afc7493fb1b1"
+      },
+      "assistant_versions": {
+        "count": 5,
+        "row_md5": "4d63462ec483dcf6e5f3db8afe1227be"
+      },
+      "assistants": {
+        "count": 5,
+        "row_md5": "9fbbcdec26688601143077c9e19a001d"
+      },
+      "checkpoint_blobs": {
+        "count": 814,
+        "row_md5": "c57796f72119faa264776a307aec7970"
+      },
+      "checkpoint_migrations": {
+        "count": 10,
+        "row_md5": "c3deb347465608b6c457f88861544925"
+      },
+      "checkpoint_writes": {
+        "count": 4660,
+        "row_md5": "86268ccf42b56bdcc58c51b93fb724ef"
+      },
+      "checkpoints": {
+        "count": 3271,
+        "row_md5": "2446da7a9b1f3ed68b4b5563efd422cf"
+      },
+      "crons": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "dear_external_tasks": {
+        "count": 4,
+        "row_md5": "ad0b4d4620e30741736e0a0417a9af97"
+      },
+      "dear_memory": {
+        "count": 1,
+        "row_md5": "4a533ccf7921797d00cffcb885d99894"
+      },
+      "dear_skills": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "retry_counters": {
+        "count": 60,
+        "row_md5": "90beebe5a4423f5e1f24d50868edd915"
+      },
+      "run_acceptance_receipts": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "run_callback_deliveries": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "run_cancellations": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "run_checkpoint_baselines": {
+        "count": 59,
+        "row_md5": "5e6bbd5a0aed91db7af6707ab8e09e2b"
+      },
+      "run_leases": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runs": {
+        "count": 60,
+        "row_md5": "9c4cc873834ee85680fd8455d4a054a1"
+      },
+      "runtime_app_alembic_version": {
+        "count": 1,
+        "row_md5": "61bee6696d2f1af8e1e7ed2c5df2e8a8"
+      },
+      "runtime_background_tasks": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_budget_call_leases": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_budget_contributions": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_budget_nonces": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_budget_outbox": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_budget_tenants": {
+        "count": 1,
+        "row_md5": "76dadc3d9ad261efdd504e42e3c5ac1d"
+      },
+      "runtime_budget_windows": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_budget_worker_fence": {
+        "count": 1,
+        "row_md5": "d5735fc3fdbbc6dd4b2d5a7c88cce3d9"
+      },
+      "runtime_evaluation_execution": {
+        "count": 30,
+        "row_md5": "235ebbe0b203458131704943ac55342e"
+      },
+      "runtime_events": {
+        "count": 40131
+      },
+      "runtime_message_inbox": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_run_resources": {
+        "count": 26,
+        "row_md5": "c43385704c7c8046e658972a14887e12"
+      },
+      "runtime_schema": {
+        "count": 1,
+        "row_md5": "e9ac23a79591458acf00c0960cd423c7"
+      },
+      "runtime_stop_requests": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_usage_buckets": {
+        "count": 86,
+        "row_md5": "8015fb1d38ed7b525fdccedc004717f9"
+      },
+      "runtime_usage_calls": {
+        "count": 317,
+        "row_md5": "32f0bb8d81b148bbb032756d58efb21c"
+      },
+      "runtime_usage_projection_dirty": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "runtime_usage_projection_state": {
+        "count": 1,
+        "row_md5": "e3c90e77bb36469132ba5d215649b990"
+      },
+      "runtime_usage_run_slots": {
+        "count": 2,
+        "row_md5": "a2afc251e61e4334e5dce5d8a92d68e1"
+      },
+      "runtime_usage_runs": {
+        "count": 69,
+        "row_md5": "18e96ad7ca7b889ca54cb2a6d877b6e1"
+      },
+      "runtime_workspace_locations": {
+        "count": 47,
+        "row_md5": "546c0741987069c442b4c8844a688935"
+      },
+      "store": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "store_items": {
+        "count": 0,
+        "row_md5": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      "store_migrations": {
+        "count": 4,
+        "row_md5": "e944d189adb6f983399b75f49ebc1a60"
+      },
+      "thread_deletions": {
+        "count": 14,
+        "row_md5": "709483eebdb9f75f7cc8b63f644feb8d"
+      },
+      "threads": {
+        "count": 48,
+        "row_md5": "24ff854cdd252ebf8df6fdbcd624b334"
+      }
+    }
+  },
+  "target": {
+    "identifier": "ckpt-recovery-20261121-75ax_obl",
+    "directory_mode": "0700",
+    "archive_mode": "0600",
+    "postgres_major": 17,
+    "private_unix_socket": true,
+    "tcp_authentication": "reject",
+    "port": 62320,
+    "initial_free_bytes": 74078601216,
+    "required_free_bytes": 42949672960,
+    "single_restore_process": true,
+    "workers_started": false
+  },
+  "backup": {
+    "format": "PG17 custom archive, compress=1, full public/runtime database without table exclusion",
+    "bytes": 150958356,
+    "sha256": "21bc1b8864fc7842eca8708a0cd3b50688757f01c4afeabcade3a6b863734831",
+    "source_and_local_sha256_match": true,
+    "toc_valid": true,
+    "pg_dump_exit": 0,
+    "wrapper_exit": 1,
+    "warning": "exporter connection reported IdleInTransactionSessionTimeout on final context-manager commit after pg_dump success; archive accepted only after hash, full restore and same-snapshot verification",
+    "runtime_events_verification": "row count only; no source content digest for large event table"
+  },
+  "old_restore": {
+    "returncode": 0,
+    "seconds": 50.602
+  },
+  "old_verification": {
+    "mode": "014",
+    "packages": {
+      "graphharbor": "0.13.0.post48",
+      "graphharbor-runtime": "0.13.0.post48",
+      "langgraph": "1.2.11",
+      "langgraph-checkpoint": "4.2.0",
+      "langgraph-checkpoint-postgres": "3.1.2"
+    },
+    "schema": "014_thread_retention",
+    "root_heads": 43,
+    "namespace_heads": 43,
+    "seconds": 1.767,
+    "matched_tables": [
+      "alembic_version",
+      "assistant_versions",
+      "assistants",
+      "checkpoint_blobs",
+      "checkpoint_migrations",
+      "checkpoint_writes",
+      "checkpoints",
+      "crons",
+      "dear_external_tasks",
+      "dear_memory",
+      "dear_skills",
+      "retry_counters",
+      "run_acceptance_receipts",
+      "run_callback_deliveries",
+      "run_cancellations",
+      "run_checkpoint_baselines",
+      "run_leases",
+      "runs",
+      "runtime_app_alembic_version",
+      "runtime_background_tasks",
+      "runtime_budget_call_leases",
+      "runtime_budget_contributions",
+      "runtime_budget_nonces",
+      "runtime_budget_outbox",
+      "runtime_budget_tenants",
+      "runtime_budget_windows",
+      "runtime_budget_worker_fence",
+      "runtime_evaluation_execution",
+      "runtime_events",
+      "runtime_message_inbox",
+      "runtime_run_resources",
+      "runtime_schema",
+      "runtime_stop_requests",
+      "runtime_usage_buckets",
+      "runtime_usage_calls",
+      "runtime_usage_projection_dirty",
+      "runtime_usage_projection_state",
+      "runtime_usage_run_slots",
+      "runtime_usage_runs",
+      "runtime_workspace_locations",
+      "store",
+      "store_items",
+      "store_migrations",
+      "thread_deletions",
+      "threads"
+    ]
+  },
+  "migration": {
+    "success": true,
+    "head": "015_checkpoint_journal",
+    "seconds": 2.215
+  },
+  "new_verification": {
+    "mode": "015",
+    "packages": {
+      "graphharbor": "0.13.0.post50",
+      "graphharbor-runtime": "0.13.0.post50",
+      "langgraph": "1.2.24",
+      "langgraph-checkpoint": "4.3.2",
+      "langgraph-checkpoint-postgres": "3.2.1"
+    },
+    "schema": "015_checkpoint_journal",
+    "root_heads": 43,
+    "namespace_heads": 43,
+    "verified_projection_patches": 59,
+    "verified_undo_rows": 7814,
+    "verified_boundary_heads": 59,
+    "seconds": 3.851,
+    "matched_tables": [
+      "assistant_versions",
+      "assistants",
+      "checkpoint_blobs",
+      "checkpoint_migrations",
+      "checkpoint_writes",
+      "checkpoints",
+      "crons",
+      "dear_external_tasks",
+      "dear_memory",
+      "dear_skills",
+      "retry_counters",
+      "run_acceptance_receipts",
+      "run_callback_deliveries",
+      "run_cancellations",
+      "run_leases",
+      "runs",
+      "runtime_app_alembic_version",
+      "runtime_background_tasks",
+      "runtime_budget_call_leases",
+      "runtime_budget_contributions",
+      "runtime_budget_nonces",
+      "runtime_budget_outbox",
+      "runtime_budget_tenants",
+      "runtime_budget_windows",
+      "runtime_budget_worker_fence",
+      "runtime_evaluation_execution",
+      "runtime_events",
+      "runtime_message_inbox",
+      "runtime_run_resources",
+      "runtime_schema",
+      "runtime_stop_requests",
+      "runtime_usage_buckets",
+      "runtime_usage_calls",
+      "runtime_usage_projection_dirty",
+      "runtime_usage_projection_state",
+      "runtime_usage_run_slots",
+      "runtime_usage_runs",
+      "runtime_workspace_locations",
+      "store",
+      "store_items",
+      "store_migrations",
+      "thread_deletions",
+      "threads"
+    ]
+  },
+  "target_database_bytes": {
+    "recovery_014": 666662579,
+    "recovery_015": 671725235
+  },
+  "source_readback": {
+    "schema": "014_thread_retention",
+    "active_runs": 0,
+    "pg_dump_sessions": 0,
+    "services": {
+      "agent-platform-api.service": {
+        "MainPID": "445327",
+        "NRestarts": "0",
+        "ActiveState": "active"
+      },
+      "agent-runtime-api.service": {
+        "MainPID": "464309",
+        "NRestarts": "0",
+        "ActiveState": "active"
+      },
+      "agent-runtime-worker.service": {
+        "MainPID": "464311",
+        "NRestarts": "0",
+        "ActiveState": "active"
+      }
+    },
+    "packages": {
+      "graphharbor": "0.13.0.post48",
+      "graphharbor-runtime": "0.13.0.post48",
+      "langgraph": "1.2.11"
+    }
+  },
+  "time_budget_seconds": 1800,
+  "elapsed_seconds_before_cleanup": 549.67,
+  "verifier_sha256": "8fc32bc4a96d4cdb642ee7e6d560145530939257b447498c7b48005b7ef86cc9",
+  "limits": [
+    "no model, tool, API/Worker, scheduler, webhook or TTL execution",
+    "source runtime_events content not independently hashed",
+    "physical restore size is not attributed to checkpoint optimization",
+    "production final backup and cutover remain unauthorized"
+  ],
+  "cleanup": {
+    "state": "completed",
+    "owned_postgres_pid": 67350,
+    "owned_process_exited": true,
+    "port_unbound": true,
+    "removed": [
+      "data",
+      "socket",
+      "old",
+      "new",
+      "evidence",
+      "old-constraints.txt",
+      "new-constraints.txt"
+    ],
+    "temporary_runner_files_removed": true,
+    "retained": [
+      "runtime-014.dump",
+      "backup-manifest.json",
+      "identity.json"
+    ],
+    "archive_rehashed_after_cleanup": true,
+    "final_directory_mode": "0700",
+    "final_archive_mode": "0600"
+  },
+  "elapsed_seconds_including_cleanup": 563.419
+}

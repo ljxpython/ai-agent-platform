@@ -19,18 +19,20 @@
 
 ## 当前增补：长会话Checkpoint存储治理（2026-11-21）
 
-[独立项目P01–P09](projects/20261120-checkpoint-storage-governance/tasks.md)部分完成（partial）：P01–P07的隔离/源码交付完成，P08本地补验完成、生产恢复/切换等待具体授权，P09所属双库/角色、Redis/Workspace/日志及临时产物已回收。GraphHarbor通用边界、journal-v1与引用安全GC由其S01–S07交付，无平台Agent/模型/工具/Workspace/期限。反向JSON Patch和六组预算均由用户批准。
+[独立项目P01–P09](projects/20261120-checkpoint-storage-governance/tasks.md)部分完成（partial）：P01–P07隔离/源码交付完成，P08本地补验与获批生产副本独立恢复完成，待服务端最终014回退库及现役具体切换授权；P09原测试栈和新增恢复演练资源均已回收，完整生产备份私有保留。GraphHarbor通用边界、journal-v1与引用安全GC由其S01–S07交付，无平台Agent/模型/工具/Workspace/期限。反向JSON Patch和六组预算均由用户批准。
 
 正式post50已发布、四哈希/62源码独立验真、正式安装41项与取消24场景通过，产品源码84e9021远端CI44840687787七项success。原外键/线程PATCH422/跨topic事件误去重已修复；旧两次失败CI保留历史，不再称待修。平台仍只在登记wt_3b7f1734875d的独立Worktree联调，主工作区服务/安装与现役未切换。
 
 | 服务 | 本阶段当前状态 |
 |---|---|
-| runtime-service | frozen正式post50/head015；原图配置已还原，API/Worker新子进程57256/57810来源核对。Reference/平台助手Delta50，Dear/Showcase根及子图Delta50，教学Workflow保持普通聚合。消息/审批分进程6项、队列23项/1可选跳过通过 |
+| runtime-service | 本地正式post50/head015验证完成，所属API/Worker已停；生产副本014恢复/015转换通过，现役仍post48/014。Reference/平台助手Delta50，Dear/Showcase根及子图Delta50，教学Workflow保持普通聚合。消息/审批分进程6项、队列23项/1可选跳过通过 |
 | platform-api / platform-web | 产品契约/原文/idle30天保持，无活跃自动prune。真实模型记忆/刷新/fork及续期浏览器2项、八类确定性v3浏览器通过；原悬浮助手遮挡按钮保持，Enter验收不等于点击体验通过 |
 
 六组最大边界330B/WAL1144B/建立边界p95 20.214ms/维护RSS99,983,360B/万条prune708.201ms；200轮周期50消息逻辑字节少约70%，状态读取p95 108.238ms不属于建边界预算。不承诺永久状态有界，也未证明现役OOM根因。隔离014备份恢复/再015已验，生产恢复须独立目标。
 
-现役只读预检：post48/014、无pending/running，业务库graphharbor_acceptance约10GB且主体runtime_events，绝不能当测试库删除。余盘约18GiB、可用内存不足1GiB，不在现役机跑克隆压力。具体备份/独立PG17恢复/切换见[操作单](projects/20261120-checkpoint-storage-governance/production-cutover.md)，尚未授权执行。用户AGENTS修改和具名stash受保护；平台5d3e2418已合main推送，合并后5项回归与CI44844517275四项通过；P09独立确认双库/角色不存在、四端口/登记释放。共享Redis4721与用户AGENTS/stash保持；只读核对现役三服务active。
+生产副本演练已获用户单独批准并完成：完整备份两端哈希、45表行数/44表内容摘要及43个post48 checkpoint头一致；第二副本015转换核对59组反向投影/边界头、7,814条undo及相同43个post50头。含清理563.419秒；导出连接收尾空闲事务超时导致包装退出1，只有完整恢复/同快照验证通过后接受，见[证据](projects/20261120-checkpoint-storage-governance/implementation/production-recovery-post50.json)。新演练PG/双库/安装/日志已清理，完整归档在仓库外0700目录以0600保留。
+
+现役读回仍post48/014、零活动Run、三服务active；业务库graphharbor_acceptance约10GB且主体runtime_events，绝不能当测试库删除。余盘约18GiB、可用内存不足1GiB，不跑克隆压力。下一步按[操作单](projects/20261120-checkpoint-storage-governance/production-cutover.md)准备服务器可用的最终014回退库并取得具体窗口授权；本机演练目标不能作现役回退地址，尚未停写/迁移/重启/切换。用户AGENTS修改和具名stash受保护；平台5d3e2418已合main推送，合并后5项回归与CI44844517275四项通过；P09独立确认原双库/角色不存在、四端口/登记释放。共享Redis4721保持。
 
 ## 当前增补：复杂评测集一次启动自动执行（2026-11-20）
 
