@@ -1,5 +1,9 @@
 # 项目当前状态 - AI 上下文
 
+## 当前交付：EvalFlow双机连续正式评测（2026-11-21）
+
+Task23当前批准的双机迁移、单并发连续容量及合并后联合读回已完成（done），两仓文档同步交付。无需追加内存：EvalFlow启动前约2GiB可用预算包含应用、评测和系统余量。五条正式任务均完成评分，Agent业务低分保留，完整结果及边界见[唯一Task23](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-23在4gb主机上完成正式自动评测)。EvalFlow产品813dc61已合main并在正式目录对齐，Agent本次只同步文档，Checkpoint post50/015新写入及用户AGENTS改动保持。
+
 ## 当前交付：正式 Agent 已加载采集去重（2026-11-21）
 
 用户批准的Task22正式部署与独立生产读回已完成。Agent应用基线0a2f93ca，Platform API / Runtime API / Worker于00:57:22重载，PID178977/178973/178975、NRestarts0；EvalFlow PID134216保持。普通聊天两轮补传CSV、两次read_file及19.75/22.00通过；两份Trace共73 Span/778,425字节，64内部CHAIN输入输出引用，根、LLM/TOOL原文和一次上游504事件保持。API与实际Worker包指纹237f40e3一致；独立主机22项/业务16项通过，四份旧资产hash及三条旧任务读取、十份配置/锁文件保持，无新增OOM或活动Run。首轮swap增长，后续60秒稳定，不称长期容量通过。正式EvalFlow新任务555ae0cd因不足1GiB可用内存被保护拒绝，未执行Agent、不放宽门槛。依赖、数据库、前端及并行Checkpoint规划保持。唯一进度见[Task22](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-22正式部署并验证-agent-采集去重)。
@@ -31,6 +35,8 @@
 六组最大边界330B/WAL1144B/建立边界p95 20.214ms/维护RSS99,983,360B/万条prune708.201ms；200轮周期50消息逻辑字节少约70%，状态读取p95 108.238ms不属于建边界预算。不承诺永久状态有界，也未证明现役OOM根因。隔离014备份恢复/再015已验，生产恢复须独立目标。
 
 用户同意记录与4GB评测的审查边界：post50减少Checkpoint基线复制，但Redis及进程内Run事件缓存仍保存正文、按条数限长，没有对应字节预算；逻辑字节收益不能外推Worker或整机内存。评测项目Task23的连续容量未通过，现Checkpoint已切换，可在评测项目授权范围按原负载复测，再据结果评审缓存治理；该审查本身没有授权新增缓存治理。
+
+2026-11-21已按用户批准停止sshmy2四应用并迁入EvalFlow，Agent/Runtime/PG/Redis留sshmy1，原9128/5000入口保持。含新增结果的实际回退、五条正式任务、615秒稳定窗口及合并后联合读回通过。三条附件四规则1.0，客观及原六轮缺产物正常failed，无执行/裁判error；15 Trace/566 Span和真实文件完整。两台采样最低786.14/1276.38MiB，末窗口Swap稳定、PSI avg10为0、OOM新增0，之后第五条继续passed。启动前2GiB已含应用1GiB、scope512MiB和系统512MiB，无需先扩8GB。EvalFlow产品813dc61已合main推送，正式PID817813/NRestarts0保持。Nano仍enabled，未验证多并发、长期或并行重型RAG；原Nginx身份注入与default503保持。唯一Task23当前批准范围已完成，文档同步交付。
 
 生产副本演练已获用户单独批准并完成：完整备份两端哈希、45表行数/44表内容摘要及43个post48 checkpoint头一致；第二副本015转换核对59组反向投影/边界头、7,814条undo及相同43个post50头。含清理563.419秒；导出连接收尾空闲事务超时导致包装退出1，只有完整恢复/同快照验证通过后接受，见[证据](projects/20261120-checkpoint-storage-governance/implementation/production-recovery-post50.json)。新演练PG/双库/安装/日志已清理，完整归档在仓库外0700目录以0600保留。
 
