@@ -19,16 +19,18 @@
 
 ## 当前增补：长会话Checkpoint存储治理（2026-11-21）
 
-独立项目[P01–P07](projects/20261120-checkpoint-storage-governance/tasks.md)负责平台接入与业务决定；GraphHarbor同名项目S01–S07负责通用引擎，已正式发布双包0.13.0.post49。核心未加入平台Agent、模型、工具、Workspace或保留天数；反向JSON Patch与维护预算均由用户批准。
+[独立项目P01–P09](projects/20261120-checkpoint-storage-governance/tasks.md)部分完成（partial）：P01–P07的隔离/源码交付完成，P08本地补验完成、生产恢复/切换等待具体授权，P09待合并后回收。GraphHarbor通用边界、journal-v1与引用安全GC由其S01–S07交付，无平台Agent/模型/工具/Workspace/期限。反向JSON Patch和六组预算均由用户批准。
 
-平台所有产品开发与联调在feat/checkpoint-storage-governance、登记wt_3b7f1734875d完成，双库、Redis、Workspace及安装独立。项目部分完成（partial）：P01–P06已完成，P07的隔离验收和源码交付完成，引擎远端回归待修。实现d460137、合并代码cff8feb3，合并版33项及浏览器2项、迁回main后同提交隔离回归14项通过。2026-11-21用户追加批准的独立目标恢复、正式包来源验真和夹具身份/预算经验已沉淀；平台经验2e06bb4及GraphHarbor正式源码eeb204c均已推送各自origin/main。平台CI44787756204四项通过；引擎CI44787814603五项通过，live-server E2E出现undo外键错误，JavaScript SDK线程更新422，两项待修复复验，不能称全项完成。主工作区旧规划有具名stash备份，AGENTS修改哈希保持；主工作区/现役安装与服务未切换，生产迁移与容量未执行。
+正式post50已发布、四哈希/62源码独立验真、正式安装41项与取消24场景通过，产品源码84e9021远端CI44840687787七项success。原外键/线程PATCH422/跨topic事件误去重已修复；旧两次失败CI保留历史，不再称待修。平台仍只在登记wt_3b7f1734875d的独立Worktree联调，主工作区服务/安装与现役未切换。
 
 | 服务 | 本阶段当前状态 |
 |---|---|
-| runtime-service | 所属环境正式post49/head015；LangGraph1.2.24/checkpoint4.3.2/postgres3.2.1/SDK0.4.14/DeepAgents0.7.8精确锁定。Reference/平台助手Delta50，Dear/Showcase根及子图保持Delta50，教学Workflow仍普通聚合。真实消息/审批恢复、队列21项、HTTP故障、API/Worker换PID后逐项恢复与模型续聊通过 |
-| platform-api / platform-web | 未改产品契约；原文及idle30天保持，无活跃自动prune。所属三服务保留/权限/Workspace回收1项、真实Reference记忆/刷新/fork和Dear续期浏览器2项通过。既有悬浮助手遮挡发送按钮保留，测试使用Enter，不声称按钮点击体验通过 |
+| runtime-service | frozen正式post50/head015；原图配置已还原，API/Worker新子进程57256/57810来源核对。Reference/平台助手Delta50，Dear/Showcase根及子图Delta50，教学Workflow保持普通聚合。消息/审批分进程6项、队列23项/1可选跳过通过 |
+| platform-api / platform-web | 产品契约/原文/idle30天保持，无活跃自动prune。真实模型记忆/刷新/fork及续期浏览器2项、八类确定性v3浏览器通过；原悬浮助手遮挡按钮保持，Enter验收不等于点击体验通过 |
 
-引擎六组预算通过：边界最大330B、WAL1144B、建立边界p95 20.214ms、维护RSS99,983,360B、万条prune708.201ms；200轮消息周期50逻辑字节比普通快照少约70%，读p95 108.238ms属状态读取而非建边界预算。固定K永久快照和完整原文仍可增长，不保证全状态有界，也未证明此前现役OOM根因。隔离014→015→备份恢复014→再015已演练；生产恢复应使用独立目标。宽泛旧P6失败、严格官方差异及旧v3未验范围独立保留。
+六组最大边界330B/WAL1144B/建立边界p95 20.214ms/维护RSS99,983,360B/万条prune708.201ms；200轮周期50消息逻辑字节少约70%，状态读取p95 108.238ms不属于建边界预算。不承诺永久状态有界，也未证明现役OOM根因。隔离014备份恢复/再015已验，生产恢复须独立目标。
+
+现役只读预检：post48/014、无pending/running，业务库graphharbor_acceptance约10GB且主体runtime_events，绝不能当测试库删除。余盘约18GiB、可用内存不足1GiB，不在现役机跑克隆压力。具体备份/独立PG17恢复/切换见[操作单](projects/20261120-checkpoint-storage-governance/production-cutover.md)，尚未授权执行。用户AGENTS修改和具名stash受保护；合并后按P09只回收所属资源。
 
 ## 当前增补：复杂评测集一次启动自动执行（2026-11-20）
 
@@ -228,7 +230,7 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 - [多会话流连接与运行缓存治理](projects/20261005-chat-stream-resource-governance/README.md)：done；多会话与真实撤权浏览器、最终构建验证通过；GraphHarbor post39 双包已发布，本地 Runtime 已升级重启；Redis 从峰值 18.01 GiB 降至约 0.57 GiB。
 - [平台权限状态与刷新治理](projects/20261005-platform-access-refresh-governance/README.md)：本地 done；临时故障保留页面/登录，真实撤权仍生效；单测、故障注入与真实安全链路通过。未生产部署。
 - [Chat 前端对话架构治理与 Clean Architecture 重构](projects/20261004-chat-frontend-clean-architecture-refactor/README.md)：done；对标谷歌范式完成 5 层解耦。剥离模型参数、视口跟随、分支动作与传输自愈；ChatSession 降至 1959 行，useChatSession 压降至 1198 行，消息流水线纯函数化；前端 429 项单测、vue-tsc 0 错误、生产构建全绿。
-- [LangGraph v3 默认消费与 DeltaChannel 评估](projects/20261004-langgraph-v3-delta-evaluation/README.md)：partial；后端默认 v3、前端交接、离线 Spike 和本地 PostgreSQL 体积测量已完成，回滚门禁和前端浏览器验收待执行；节点 timeout/error_handler/RunControl 暂不实施。
+- [LangGraph v3 默认消费与 DeltaChannel 评估](projects/20261004-langgraph-v3-delta-evaluation/README.md)：已完成（done，原评估范围）；八类浏览器、API30项/2subtests、Spike/流夹具5项及前端typecheck/build补齐；原Defer历史与后续Adopt分开，生产未部署；节点 timeout/error_handler/RunControl 暂不实施。
 - [Chat 会话状态机加固与流式体验优化](projects/20261004-chat-session-state-and-stream-hardening/README.md)：done；彻底解决切屏失焦权限刷新误踢、空队列误弹排队 0 黄条、中断等待澄清时底部悬挂正在处理矛盾提示、以及 DeepSeek 思维链首轮流式卡顿假死四大顽疾；前端 22 项单测全绿、静态类型检查与生产打包全绿。
 
 ## 历史飞轮 Worktree 服务状态（344c，已回收，非当前连接）

@@ -1,6 +1,6 @@
 # 长会话 Checkpoint 存储治理与 Delta 采用 - 验证计划与记录
 
-项目启动日期：2026-11-20。功能、正式包、容量、隔离恢复与两仓源码交付已有证据；追加远端补验发现GraphHarbor两项失败，当前为部分完成（partial）。唯一任务进度见[tasks.md](tasks.md)，原项目未完成项不转记为本项目通过。
+项目启动日期：2026-11-20。P01–P07批准的隔离与正式源码交付范围已完成，追加缺陷经post50远端/正式源及平台补验解决；项目当前partial，剩P08生产独立恢复/切换与P09合并后回收。原任务为唯一进度，以下历史失败保留。
 
 ## 阶段验证（Phase）：启动规划与机制核查
 
@@ -71,7 +71,7 @@ GraphHarbor远端原为post39源码，post49依赖的取消、回执、生命周
 
 本轮只新增经验和Git交付记录，没有改已发布产品源码、重复上传包、打tag或切换服务。GraphHarbor的uv lock --check、版本锁步、兼容基线、Ruff检查/90文件格式及mypy46源码通过；mypy仅保留既有未用deepagents配置提示。平台check_docs、经验数量与两仓diff --check通过，既有功能验证按同源码复用，不冒充重跑。
 
-远端实际结果：平台2e06bb4的[CI44787756204](https://github.com/ljxpython/ai-agent-platform/actions/runs/44787756204)四项通过。GraphHarbor eeb204c的[CI44787814603](https://github.com/ljxpython/graphharbor/actions/runs/44787814603)为五项通过、两项失败：Build、Lint及Python3.11/3.12/3.13生产契约通过；live-server E2E为10 failed/3 passed/20 rerun，内部适配入口的checkpoint写入出现run_checkpoint_undo缺失baseline的外键错误；JavaScript SDK契约返回422 Invalid thread metadata update，具体触发原因尚未完全确认。这两项尚未修复，未以可选入口或旧失败为由排除，已写回P07及引擎S07。
+远端实际结果：平台2e06bb4的[CI44787756204](https://github.com/ljxpython/ai-agent-platform/actions/runs/44787756204)四项通过。GraphHarbor eeb204c的[CI44787814603](https://github.com/ljxpython/graphharbor/actions/runs/44787814603)为五项通过、两项失败：Build、Lint及Python3.11/3.12/3.13生产契约通过；live-server E2E为10 failed/3 passed/20 rerun，内部适配入口的checkpoint写入出现run_checkpoint_undo缺失baseline的外键错误；JavaScript SDK契约返回422 Invalid thread metadata update，具体触发原因尚未完全确认。当时两项未修复，未以可选入口或旧失败为由排除；后续修复与post50补验见下文。
 
 本次核查还发现FEATURES的四个旧失效文档链接，已与提交前原文核对，非本轮引入；未扩大修改范围。新文档推送仅更新记录，不代表上述产品失败已消除。
 
@@ -85,4 +85,25 @@ GraphHarbor远端原为post39源码，post49依赖的取消、回执、生命周
 
 源码Ruff/格式、E2E Prettier、锁文件、两仓diff --check通过；本次19份相关Markdown的89个本地链接/锚点通过。脱敏原始结果见implementation，后续收尾仅更新文档与证据。
 
-**当时结论：批准范围的隔离验收与本地合并通过。** 此后经验沉淀、两仓源码推送完成，但追加远端补验发现引擎两项失败，当前项目重新标为部分完成，待修复复验；上述原验证事实保留，不能据此称当前全项完成或生产就绪。没有新增在线兼容分支或业务引擎耦合；现役安装升级/数据库迁移/服务重启未执行。完整官方逐字段等价、旧套件既有失败、悬浮按钮遮挡、任意大状态和生产容量仍保留各自限制；不宣称数据库或全部Worker内存永久有界。
+**当时结论：批准范围的隔离验收与本地合并通过。** 此后经验沉淀、两仓源码推送完成，但追加远端补验发现引擎两项失败，当时项目回到部分完成；后续修复和本轮补验见下文，上述原验证事实保留，不冒充生产验收。没有新增在线兼容分支或业务引擎耦合；现役安装升级/数据库迁移/服务重启未执行。完整官方逐字段等价、旧套件既有失败、悬浮按钮遮挡、任意大状态和生产容量仍保留各自限制；不宣称数据库或全部Worker内存永久有界。
+
+
+## 阶段验证（Phase）：2026-11-21 post50追加补验
+
+正式产品源码84e9021远端七项CI通过；四产物独立哈希/62源码、正式Python3.13冷安装41项及三客户端取消24场景见引擎post50证据。平台frozen锁仅将双包post49升为post50，实际安装site-packages/head015；临时浏览器图已逐字节还原，API/Worker实际子进程57256/57810在安装后重启并核对来源。
+
+消息/助手审批分进程恢复6 passed/141.21秒。队列首轮22 passed/1 skipped/1 failed，测试自建threads缺少产品正常读取的deletion_requested_at列；补齐夹具后23 passed/1 skipped/77.21秒，可选真实模型探针未启用。产品生命周期代码没有放宽。
+
+八类确定性真实浏览器8 passed/50.603秒，另外夹具stream/tool chunks、reasoning、usage与子namespace/审批ID自检1 passed/6.52秒。首轮图配置未被所属管理器采用导致8失败；加图身份断言后5过3失败，原因是有效interrupted历史被测试拒绝及5秒建会话预算不足。修正后三项复验通过，再完整八项通过。410响应仅第一帧受控注入，后续真实重连；离线后hydration且commands只发一次，显式v2由真实Run.kwargs核对。
+
+恢复原图并重启后，真实模型Reference两轮记忆/完整历史/刷新/编辑fork与Dear续期浏览器2 passed/54.5秒，两个opt-in均显式启用，不把先前1项跳过算通过。实际截图已打开核对。原文与idle30天不变，悬浮助手遮挡发送按钮仍保留，测试使用Enter。
+
+原安全专项增补官方/正式post50各42场景及8Worker并发，完整安全18项通过；差异没有转写为严格等价，负责人验收仍由原任务维护。生产库只读预检与恢复操作单已准备，但复制业务备份、独立恢复及停写切换未执行。
+
+## 整体验收（Final）：2026-11-21 post50本地交付补验
+
+本轮依据P07/P08的平台隔离交付范围核对正式产物、实际进程、消息/审批/队列、真实模型记忆/fork/期限以及八类确定性浏览器。上述完整必要链路均有真实执行证据；容量与014恢复复用同存储实现已验数据，未将测试数重复加总。
+
+API请求回归30 passed/2 subtests，Spike与流夹具5 passed，前端typecheck和默认生产构建通过，保留Browserslist与大chunk警告；两仓Ruff/格式/锁及平台check_docs通过。
+
+**结论：P07追加缺陷修复与P08本地正式接入通过。** 不将此阶段性结论标成整个项目done：P08的生产副本恢复、现役切换及负责人具体授权独立保留；P09按合并后的实际回收结果补记。脱敏明细见[followup-post50.json](implementation/followup-post50.json)，生产边界见[操作单](production-cutover.md)。

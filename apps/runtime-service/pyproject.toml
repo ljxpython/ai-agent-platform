@@ -11,7 +11,7 @@ dependencies = [
     "langgraph==1.2.24",
     "langgraph-checkpoint==4.3.2",
     "langgraph-checkpoint-postgres==3.2.1",
-    "graphharbor==0.13.0.post49",
+    "graphharbor==0.13.0.post50",
     "langgraph-sdk==0.4.14",
     "deepagents==0.7.8",
     "langchain-deepseek>=1.0.1",

@@ -851,7 +851,9 @@ def test_deleted_thread_retention_never_purges_live_or_retryable_receipts(inbox)
     with pytest.raises(psycopg.errors.UndefinedTable):
         inbox.prune_deleted_threads()
     with psycopg.connect(inbox.dsn) as c:
-        c.execute("CREATE TABLE threads(thread_id uuid PRIMARY KEY)")
+        c.execute(
+            "CREATE TABLE threads(thread_id uuid PRIMARY KEY, deletion_requested_at timestamptz)"
+        )
         c.execute("CREATE TABLE runs(thread_id uuid, status text)")
         c.execute(
             "CREATE TABLE thread_deletions(thread_id uuid PRIMARY KEY,state text,completed_at timestamptz)"

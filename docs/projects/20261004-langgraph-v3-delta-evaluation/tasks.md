@@ -119,12 +119,12 @@
 ### Task 4.1：全范围验证和结论
 - **改动内容：** 汇总 P0/P1 证据，更新项目状态和风险；不实施节点 timeout/error_handler/RunControl。
 - **验证项：** platform-web 单测/typecheck/build、platform-api 定向测试、runtime-service 定向测试、浏览器 E2E、Delta 测量和回滚门禁。
-- **验证项：** 后端定向测试、Spike、离线测量、前端防洪与回滚门禁已完成；浏览器真实链路验收待人工执行 → ⚠️ 进行中
-- **状态：** `[ ]` 进行中 2026-10-04 → 见 `verification.md`
+- **验证项：** 原Spike/体积/Defer门禁保留历史；2026-11-21正式post50真实三服务确定性浏览器8项通过，API请求30项与2个subtests、Spike/流夹具5项及前端typecheck/生产构建通过。此前同源码四组前端90项复用，不加总重复样本。
+- **状态：** `[x]` 已完成 2026-11-21 → 八类浏览器及当前依赖复验补齐，见 `verification.md`；不是现役生产验收或独立人审。
 
 ## 进度追踪
 
 - [x] Phase 1 基线冻结
 - [x] Phase 2 P0 后端默认 v3 与前端适配
 - [x] Phase 3 P1 DeltaChannel Spike 与回滚门禁（完成，结论 Defer）
-- [ ] Phase 4 Final 验证（等待人工浏览器真实链路验收）
+- [x] Phase 4 Final 验证（2026-11-21补齐八类浏览器及关联回归）

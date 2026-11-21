@@ -40,7 +40,7 @@
 - ✅ 已确认当前消息状态主要使用 `AgentState`/`add_messages`，Delta 不可直接替换，必须先做隔离 Spike。
 - ⚠️ 真实 checkpoint 体积尚未测量；生产 Delta 采用结论待后续验证。
 
-#### 当前结论
+#### 2026-10-04当时结论
 
 后端默认 v3 和前端交接文档已完成；DeltaChannel 隔离 Spike 与离线 200 轮体积测量已完成。离线结果显示 checkpoint 序列化字节从 1,838,196 降至 581,427（31.63%），但运行时间从 1.0885s 增至 1.3738s。当前环境没有 `DATABASE_URI`，真实 PostgreSQL 体积、恢复、worker 重启和 `delta-channel-dump` 回滚门禁未执行，因此生产 DeltaChannel 结论为 **Defer**。
 
@@ -57,4 +57,15 @@
 - ✅ Python compileall：Spike 测试和测量脚本通过。
 - ✅ `git diff --check`：通过。
 - ✅ `delta-channel-dump` 回滚演练与 worker 重启恢复：已通过单测验证无损迁移能力；DeltaChannel 生产结论确定为 **Defer**（不进入生产环境，继续使用稳定可靠的完整快照）。
-- ⏳ platform-web 浏览器验收：待人工按交接清单执行端到端链路验收。
+- 当时platform-web浏览器待验；2026-11-21已按交接八类清单补齐自动化真实浏览器，结果见下文。
+
+
+## 整体验收（Final）：2026-11-21补齐真实浏览器
+
+沿用原任务与八类交接清单。隔离环境wt_3b7f1734875d，正式GraphHarbor post50、LangGraph1.2.24与015；测试图只在平台tests，经过真实Web→Platform API→Runtime/Worker→PG，未进入通用引擎包。8 passed/50.603秒：文本顺序/刷新不重复、reasoning独立块、usage有无、工具分片/失败重试call/result身份、子图局部失败、审批恢复、410/离线恢复且命令只发送一次、显式v2且Run.kwargs保留版本。夹具自检进一步验证真实stream分片、usage、子namespace与interrupt ID映射。
+
+当前API请求回归30 passed/2 subtests（9.04秒）；Delta Spike和流夹具5 passed（5.11秒）；前端独立typecheck和默认生产构建均通过（Vite22.79秒），保留Browserslist数据过期及大chunk警告。此前同源码四组前端90项结果复用，覆盖resume版本、410及消息namespace等，不将它们当作另一轮执行。旧200轮PG/离线测量与dump恢复证据复用，原Defer只属于当时评估；后续普通Agent Adopt由独立存储治理项目审批与验收，不回写成当时已采用。
+
+浏览器初次图配置未生效、审批完成谓词与5秒启动预算失败均有保留，修正fixture后完整八项通过；没有用修改产品协议或放宽权限使测试通过。临时图配置逐字节还原并重启后，正式图真实模型记忆/刷新/fork与会话期限另2项通过。逐组脱敏结果见[正式补验](../20261120-checkpoint-storage-governance/implementation/followup-post50.json)。
+
+**结论：Task4.1与原项目批准的默认v3/前端/Spike评估范围完成。** 未实施本项目排除的节点timeout/error_handler/RunControl；本轮没有新增兼容fallback。历史v2 resume与失败分支沿已有契约单测，不将显式v2浏览器替代所有历史变体。不宣称现役已部署、任意模型块格式均支持或完成独立负责人评审。

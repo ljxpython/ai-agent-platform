@@ -1,0 +1,30 @@
+{
+  "environment_id": "wt_3b7f1734875d",
+  "databases": [
+    "wt_3b7f1734875d_runtime",
+    "wt_3b7f1734875d_platform"
+  ],
+  "roles": [
+    "wt_3b7f1734875d_runtime",
+    "wt_3b7f1734875d_platform"
+  ],
+  "ports": {
+    "PLATFORM_WEB_PORT": 25044,
+    "PLATFORM_API_PORT": 23380,
+    "RUNTIME_PORT": 27909,
+    "LOCAL_STACK_REDIS_PORT": 24438
+  },
+  "protected_primary_listener_pids": {
+    "3000": [],
+    "2142": [],
+    "8123": [],
+    "6379": [
+      4721
+    ]
+  },
+  "protected_AGENTS_sha256": "e03992e02819e3b4d57b2fb264a81893c9ae5dec63a3212de7eb748710531649",
+  "platform_disposal": "registered local-stack stop/destroy after main merge",
+  "graphharbor_disposal": "only .local/checkpoint-followup-20261121",
+  "state": "inventoried; not yet destroyed",
+  "retained": "source, project records, sanitized JSON and original user stash"
+}

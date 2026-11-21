@@ -1,0 +1,101 @@
+{
+  "environment_id": "wt_3b7f1734875d",
+  "versions": {
+    "graphharbor": "0.13.0.post50",
+    "graphharbor-runtime": "0.13.0.post50",
+    "langgraph": "1.2.24",
+    "langgraph-checkpoint": "4.3.2",
+    "langgraph-checkpoint-postgres": "3.2.1",
+    "langgraph-sdk": "0.4.14"
+  },
+  "schema_head": "015_checkpoint_journal",
+  "site_packages": true,
+  "processes": {
+    "runtime-api": {
+      "manager_pid": 57248,
+      "application_pids": [
+        57256
+      ]
+    },
+    "runtime-worker": {
+      "manager_pid": 57802,
+      "application_pids": [
+        57810
+      ]
+    }
+  },
+  "source": "frozen PyPI lock installation in the registered Worktree",
+  "graph_config_sha256": "b5ca71254d37cb9729fa12a860807a2f1b8fdfc7c5389f84f78a784749930837",
+  "original_graph_config_restored": true,
+  "date": "2026-11-21",
+  "message_queue": {
+    "passed": 23,
+    "skipped": 1,
+    "seconds": 77.21,
+    "skipped_reason": "optional real-model probe not enabled"
+  },
+  "delta_and_approval_process_recovery": {
+    "passed": 6,
+    "seconds": 141.21
+  },
+  "v3_browser": {
+    "passed": 8,
+    "skipped": 0,
+    "seconds": 50.603346,
+    "real_gateway_runtime_postgres": true,
+    "deterministic_model": true,
+    "checks": [
+      "text and reload",
+      "reasoning separated",
+      "usage present or omitted",
+      "streamed tool arguments and failed retry identity",
+      "child namespace and scoped failure",
+      "ID-mapped approval resume",
+      "410 and offline hydrate without duplicate command",
+      "explicit v2 with persisted run version"
+    ]
+  },
+  "fixture_unit": {
+    "passed": 1,
+    "seconds": 6.52,
+    "assertions": [
+      "tool chunks",
+      "reasoning block",
+      "usage metadata",
+      "child namespace",
+      "ID-mapped approval"
+    ]
+  },
+  "failures_preserved": [
+    "Initial fixture config override was ignored by the registered stack; all eight failed while invoking the real model. A graph identity precondition now rejects this setup.",
+    "Then five passed, approval completion predicate rejected the valid earlier interrupted run, and two URL checks exceeded 5 seconds. Predicate and startup budget fixed; three-case and complete eight-case reruns passed."
+  ],
+  "package_and_schema_reverified_after_restore": true,
+  "real_model_browser": {
+    "passed": 2,
+    "skipped": 0,
+    "seconds": 54.5,
+    "checks": [
+      "two-turn memory",
+      "reload full history",
+      "native edit fork",
+      "view/return/send renew retention",
+      "background reads do not renew"
+    ]
+  },
+  "regression": {
+    "platform_api_passed": 30,
+    "platform_api_subtests": 2,
+    "runtime_spike_and_stream_fixture_passed": 5,
+    "frontend_typecheck": "passed",
+    "frontend_production_build": "passed",
+    "build_warnings": [
+      "outdated Browserslist database",
+      "chunks over 500 kB"
+    ]
+  },
+  "screenshots_inspected": {
+    "checkpoint-storage-reference.png": "98451a37cfa0206eee672f55c65e0516d0583ce464a8daeb1e4da95c591b13e5",
+    "retention-browser.png": "b22ffd24e8856d25a456035b2abad8ad1d9fa68776dcdec2b6eacb1a871f69af"
+  }
+}
