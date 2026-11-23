@@ -74,6 +74,35 @@ export function formatActionLabel(action?: string | null): string {
   }
 }
 
+/**
+ * 格式化预算金额展示
+ * 去除冗长 12 位小数，常规金额按标准货币优雅保留 2 位小数；对极小微额（< $0.01）按需保留最多 4 位小数
+ */
+export function formatBudgetAmount(amountStr?: string | null): string {
+  if (!amountStr) return "0.00";
+  const num = Number(amountStr);
+  if (!Number.isFinite(num) || num === 0) return "0.00";
+  if (num >= 0.01) {
+    return num.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  if (num >= 0.0001) {
+    return num.toFixed(4);
+  }
+  return "< 0.0001";
+}
+
+/**
+ * 剔除小数末尾冗余的 0（用于输入框回填编辑，例如 200.000000000000 -> 200）
+ */
+export function stripTrailingZeros(val?: string | null): string {
+  if (!val) return "";
+  if (!val.includes(".")) return val;
+  return val.replace(/\.?0+$/, "");
+}
+
 export interface UseGatewayBudgetsOptions {
   projectId?:
     | Ref<string | undefined | null>

@@ -9,6 +9,7 @@ import type {
   BudgetTargetScope,
   BudgetAction,
 } from "../types";
+import { stripTrailingZeros } from "../composables/useGatewayBudgets";
 
 const props = defineProps<{
   show: boolean;
@@ -45,7 +46,7 @@ function resetForm() {
   if (props.editingItem) {
     form.scope = props.editingItem.scope;
     form.project_id = props.editingItem.project_id || "";
-    form.budget_amount = props.editingItem.budget_amount;
+    form.budget_amount = stripTrailingZeros(props.editingItem.budget_amount);
     form.duration_unit = props.editingItem.duration.unit;
     form.action = props.editingItem.action;
   } else {

@@ -9,7 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| AI网关Budgets预算页面与财务熔断治理 | 已完成：用量中心Budgets Tab与双向路由联动、高精度定点计算Composable、三态进度条矩阵、作用域自适应弹窗、聊天模块429/SSE白名单防爆与友好提示；47项单测100%全绿，vue-tsc与生产打包成功 | [前端交接](projects/20261118-gateway-budget-and-governance/frontend-handoff.md) · [任务](projects/20261118-gateway-budget-and-governance/tasks.md) |
+| AI网关Budgets预算页面与财务熔断治理 | 已完成：用量中心Budgets Tab与双向路由联动、高精度定点计算Composable、三态进度条矩阵、作用域自适应弹窗、聊天模块429/SSE白名单防爆与友好提示；金额展示智能收敛（消除冗余12位零，优雅保留2位/极小4位小数并保留悬浮完整精度）；用量单测全绿，vue-tsc与生产打包并发布成功 | [前端交接](projects/20261118-gateway-budget-and-governance/frontend-handoff.md) · [变更记录](../apps/platform-web/docs/changes/20261123-gateway-budget-decimal-formatting.md) |
 | 平台内置助手全局面板与错误现场入口 | 原错误现场/指南/权限交互保留；追加追踪未配置时的持久失败任务、审批摘要与日志来源/关联显示，0条及来源不可用分开。新增证据组件5项与类型通过；原连续浏览器链保持原范围，本轮新增状态未浏览器复验，未生产发布 | [前端交接](projects/20261116-platform-assistant/frontend-handoff.md) · [验证](projects/20261116-platform-assistant/verification.md) |
 | AI协作评测旧流程与Agent入口收敛 | 08部分完成：6项done/1项partial。旧工作台、回答评价和重复助手已清理；main双入口、真实多页/批量、通知/幂等、普通成员交付/管理者授权及题库修订/发布/运行/同证据重评通过，保留共享授权与执行证据。仅V8.7隔离全栈回退与再升级未验，原05历史结论保留 | [08任务与验证](projects/20261113-agent-eval-production-flywheel/08-agent-evaluation-entry-cleanup.md) · [05历史任务](projects/20261113-agent-eval-production-flywheel/05-ai-assisted-evaluation-workflow.md) |
 | Agent与EvalFlow独立部署、题库独立资产 | 09开发与技术验收5项done，原代码已合main并推送、隔离资源回收；本轮main业务主线浏览器补验通过。API快照/绑定运行替代源码/.env/venv依赖；来源到期资产可用、撤权/漂移/审批/停止有隔离实证。远端恢复后旧错误提示已修复，39项回归通过且修复/经验已推送e7ff155；生产HTTPS、容量/独立盲评与08全栈回退未验 | [09任务与验收](projects/20261113-agent-eval-production-flywheel/09-independent-deployment.md) |
@@ -193,6 +193,7 @@
 | 公共图片工具 Middleware、Showcase 图表 MCP 子智能体与平台图片链路 | 部分完成：G0 契约、Runtime 运输层、Platform API 网关与 Platform Web 前端交互及确定性自动化测试全部通过；待配置真实生产环境模型凭据进行线上 Smoke 联调 | [图片与图表能力方案](projects/20260913-showcase-image-chart-capabilities/README.md) |
 | Runtime Service 图片编辑（图生图 `edit_image`）与内容安全审核友好提示 | 已完成：支持基于已有图片执行图像编辑/风格转换，接入 HITL 人工审批，结构化捕获并友好提示 `content_policy_violation` | [图片编辑能力](../apps/runtime-service/docs/changes/20260913-image-editing-capability.md) |
 | 图像识别分析工具（`analyze_image`）支持 DeepSeek 官方识图与安全错误摘要 | 已完成：支持 DeepSeek 官方多模态识图（`deepseek-flash`）与通用 `VISION_*` 配置；provider/HTTP 失败对外使用稳定安全摘要，底层敏感正文不进入公开工具消息 | [变更记录](../apps/runtime-service/docs/changes/20261003-vision-deepseek-support.md) · [容错专项](projects/20261006-agent-tool-error-resilience/README.md) |
+| 异常与取消调用零成本兜底（防止网关财务状态受阻） | 已完成：当模型调用失败或取消且缺失用量（missing）时，费用明确判定为 0.000000000000，原因记为 zero_cost_on_failure，避免坏账进入 ledger 导致 accounting_status 被误锁为 unverifiable；单元测试全部通过 | [变更记录](../apps/runtime-service/docs/changes/20261123-failed-call-zero-cost-fallback.md) |
 | Runtime 鉴权、middleware 层、reference agent | 已完成 | `apps/runtime-service/docs/knowledge/28-runtime-refactor-development-plan.md` |
 | Agent 通用 Plan Mode 工具权限状态机 | 已完成：公共middleware/三个工具、双门禁、四图主子接线及memory写入跳过；末轮82项、DearFlow/Reference真实模型后端链与性能通过，原四档模式和HITL保持；配合前端 Playwright 真实大模型全链路自动化测试验收闭环 | [源码对照](projects/20261008-agent-plan-mode-governance/reference-analysis.md) · [方案与任务](projects/20261008-agent-plan-mode-governance/README.md) |
 | Runtime Service 开发文档体系（资料导航、开发范式、介入与验证） | 已完成：正式指南位于 `docs/standards/`，以 Showcase Demo 和 tests 为可执行范式 | `apps/runtime-service/docs/standards/README.md` |

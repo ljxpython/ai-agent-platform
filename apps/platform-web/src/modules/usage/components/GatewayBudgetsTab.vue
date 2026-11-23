@@ -9,6 +9,7 @@ import {
   useGatewayBudgets,
   calculateBudgetRatio,
   formatDurationLabel,
+  formatBudgetAmount,
 } from "../composables/useGatewayBudgets";
 import type { BudgetItem, CreateBudgetPolicyInput } from "../types";
 
@@ -264,8 +265,11 @@ function formatDate(isoStr?: string | null): string {
               <!-- 限额与动作 -->
               <td class="py-3.5 px-4">
                 <div class="flex flex-col">
-                  <span class="font-semibold text-gray-900 dark:text-dark-100">
-                    ${{ item.budget_amount }}
+                  <span
+                    class="font-semibold text-gray-900 dark:text-dark-100 font-mono"
+                    :title="`完整精度: $${item.budget_amount}`"
+                  >
+                    ${{ formatBudgetAmount(item.budget_amount) }}
                   </span>
                   <div class="flex items-center gap-1.5 mt-0.5">
                     <span
@@ -298,9 +302,12 @@ function formatDate(isoStr?: string | null): string {
                   <template v-if="item.accounting_status === 'complete'">
                     <!-- 状态 1: 完整账务 -->
                     <div class="flex items-center justify-between text-xs">
-                      <span class="font-mono text-gray-700 dark:text-dark-300">
-                        ${{ item.current_spend || "0.00" }} / ${{
-                          item.budget_amount
+                      <span
+                        class="font-mono text-gray-700 dark:text-dark-300"
+                        :title="`完整精度: $${item.current_spend || '0.00'} / $${item.budget_amount}`"
+                      >
+                        ${{ formatBudgetAmount(item.current_spend) }} / ${{
+                          formatBudgetAmount(item.budget_amount)
                         }}
                       </span>
                       <span
@@ -373,7 +380,9 @@ function formatDate(isoStr?: string | null): string {
                     >
                       <span class="flex items-center gap-1.5">
                         <BaseIcon name="refresh" class="w-3 h-3 animate-spin" />
-                        账务校准中 (已知 ${{ item.known_spend || "0.00" }})
+                        账务校准中 (已知 ${{
+                          formatBudgetAmount(item.known_spend)
+                        }})
                       </span>
                       <span>—</span>
                     </div>
@@ -400,8 +409,11 @@ function formatDate(isoStr?: string | null): string {
                             : "账务状态受阻"
                         }}
                       </span>
-                      <span class="font-mono text-gray-500 dark:text-dark-400">
-                        已知 ${{ item.known_spend || "0.00" }}
+                      <span
+                        class="font-mono text-gray-500 dark:text-dark-400"
+                        :title="`完整精度: $${item.known_spend || '0.00'}`"
+                      >
+                        已知 ${{ formatBudgetAmount(item.known_spend) }}
                       </span>
                     </div>
                     <div

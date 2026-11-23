@@ -578,3 +578,59 @@ def test_hidden_vision_uses_own_model_and_unknown_price(monkeypatch, tmp_path):
     )
     assert call["pricing_snapshot"] is None
     assert call["tokens"]["total_tokens"] == 30
+
+
+def test_failed_or_cancelled_call_with_missing_usage_defaults_to_zero_cost():
+    missing_usage = {"tokens": {}, "quality": "missing", "source": "missing"}
+    price_snapshot = {"input": "1.5", "output": "6.0"}
+
+    # 1. 失败且无用量：判定为零成本，避免阻塞总账
+    cost, reason = estimate_usage_cost(missing_usage, price_snapshot, outcome="failed")
+    assert cost == "0.000000000000"
+    assert reason == "zero_cost_on_failure"
+
+    # 2. 取消且无用量：同样判定为零成本
+    cost, reason = estimate_usage_cost(
+        missing_usage, price_snapshot, outcome="cancelled"
+    )
+    assert cost == "0.000000000000"
+    assert reason == "zero_cost_on_failure"
+
+    # 3. 成功却无用量：属于真正的数据缺失异常，仍保持 None
+    cost, reason = estimate_usage_cost(
+        missing_usage, price_snapshot, outcome="completed"
+    )
+    assert cost is None
+    assert reason == "missing_or_invalid_usage"
+
+
+def test_usage_callback_on_llm_error_records_zero_cost_on_missing_response():
+    async def run():
+        handler = RuntimeUsageCallback(
+            {"tenant_id": "tenant", "project_id": "proj", "run_id": str(uuid4())}
+        )
+        saved_calls = []
+
+        async def fake_write(function, *args):
+            if function == "upsert_call":
+                saved_calls.append(args[0])
+            return True
+
+        handler._write = fake_write
+        call_id = uuid4()
+        await handler.on_chat_model_start(
+            {},
+            [[AIMessage(content="test")]],
+            run_id=call_id,
+            invocation_params={"model": "deepseek-v4.1-flash"},
+        )
+        await handler.on_llm_error(RuntimeError("connection refused"), run_id=call_id)
+
+        assert len(saved_calls) == 2  # start and finish
+        finish_call = saved_calls[-1]
+        assert finish_call["outcome"] == "failed"
+        assert finish_call["quality"] == "missing"
+        assert finish_call["estimated_cost_usd"] == "0.000000000000"
+        assert finish_call["cost_reason"] == "zero_cost_on_failure"
+
+    asyncio.run(run())

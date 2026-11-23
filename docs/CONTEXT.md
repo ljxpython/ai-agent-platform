@@ -18,7 +18,7 @@ Task23当前批准的双机迁移、单并发连续容量及合并后联合读�
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-21。EvalFlow双机规则与运维入口Task24已交付；Checkpoint生产已切换post50/015，关键业务读回通过，空白Reference首发和受保护测试残余未完成。其收益不能替代复杂评测Task23的独立容量验收，容量与504边界保留。旧SSH中断为历史事实，不作当前连通性。
+> **最后更新：** 2026-11-23。异常与取消调用零成本兜底已在 runtime-service 实装并完成生产加载（PID2424593/2424594、健康200），网关预算坏账阻断风险已根治；历史 unverifiable 坏账已平账恢复为 complete。EvalFlow双机规则与运维入口Task24已交付；Checkpoint生产已切换post50/015，关键业务读回通过。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -33,7 +33,7 @@ Task23当前批准的双机迁移、单并发连续容量及合并后联合读�
 
 | 服务 | 本阶段当前状态 |
 |---|---|
-| runtime-service | 生产已加载独立post50安装、LangGraph1.2.24/head015，757文件及镜像规范化锁/产物哈希核对；API537330/Worker537331、NRestarts0。原私有配置/锁/脚本9项保持，仅Runtime drop-in补消息授权回调。Reference/平台助手及Dear/Showcase根子图Delta50，教学Workflow保持普通聚合 |
+| runtime-service | 生产已加载post50及2026-11-23失败调用零成本兜底修复；API2424593/Worker2424594、NRestarts0、健康200。网关预算坏账已清平，调用异常不再阻塞预算窗口 |
 | platform-api / platform-web | Platform531268、健康200，未迁Platform DB或发布前端。真实Reference由API建立首轮后浏览器续聊/刷新/fork及Dear续期通过，原文/idle30天保持，无活跃prune；空白Reference首发未提交，悬浮助手遮挡保持。队列幂等/取消/原生审批/跨项目403通过 |
 
 六组最大边界330B/WAL1144B/建立边界p95 20.214ms/维护RSS99,983,360B/万条prune708.201ms；200轮周期50消息逻辑字节少约70%，状态读取p95 108.238ms不属于建边界预算。不承诺永久状态有界，也未证明现役OOM根因。隔离014备份恢复/再015已验，生产恢复须独立目标。
@@ -180,6 +180,7 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 
 ## 活跃项目
 
+- [DearFlow Agent 前缀缓存与动态上下文治理](projects/20261123-dearflow-prompt-cache-governance/README.md)：`待开始（pending）`；对标 `deer-flow` 的工业级最佳实践，彻底重构 `dearflow_agent` 的 Prompt 生成与动态上下文注入机制。落地四大治理：1) `SYSTEM_PROMPT` 100% 绝对静态；2) 记忆首轮冻结快照（Frozen Snapshot Pattern）；3) 独立日期提醒与跨天增量机制；4) 工具列表 Schema 确定性固化。杜绝大模型网关层 Prompt Caching 频繁击穿问题，降低多轮长对话 Token 成本与首字延迟。方案与任务分解已落盘，待评审批准后启动实施。
 - [AI网关预算控制与财务熔断治理](projects/20261118-gateway-budget-and-governance/README.md)：`部分完成（partial）`；Task 1/2/4 完成（done），Task 3 核心链路接线与本地 HTTP/Worker、通知恢复已验，全链路 browser-skill 端到端验收通过；代码已合并进 main 分支，Task 5 待外部供应商配额补齐后完成人工整体验收。
 - [AI 网关使用看板与综合可观测重构](projects/20261117-gateway-observability-usage/README.md)：`已完成（done）`（2026-11-18 全栈实施与验证完成，5 项任务 100% 验收通过）；对标 mlflow-eval-platform 重构网关黄金三要素（吞吐、延迟分布、错误率）、单请求 Token 均值与 Prompt Cache 效能，落地图表到 Logs 毫秒级下钻穿透。
 

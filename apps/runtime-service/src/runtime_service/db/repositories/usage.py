@@ -117,6 +117,7 @@ def _upsert_call(conn, identity, call):
                 "details": call.get("token_details", {}),
             },
             prior["pricing_snapshot"],
+            outcome=call.get("outcome"),
         )
         call = {
             **call,

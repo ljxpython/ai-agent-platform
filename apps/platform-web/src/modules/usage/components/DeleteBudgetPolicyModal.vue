@@ -4,6 +4,7 @@ import type { BudgetItem } from "../types";
 import {
   formatDurationLabel,
   formatActionLabel,
+  formatBudgetAmount,
 } from "../composables/useGatewayBudgets";
 
 defineProps<{
@@ -23,7 +24,7 @@ const emit = defineEmits<{
     title="删除预算策略"
     :message="
       item
-        ? `确认删除限额为 $${item.budget_amount} (${formatDurationLabel(item.duration)}，${formatActionLabel(item.action)}) 的预算策略？删除后系统将不再对此范围执行周期性限额约束。`
+        ? `确认删除限额为 $${formatBudgetAmount(item.budget_amount)} (${formatDurationLabel(item.duration)}，${formatActionLabel(item.action)}) 的预算策略？删除后系统将不再对此范围执行周期性限额约束。`
         : '确认删除该预算策略？'
     "
     confirm-text="确认删除"

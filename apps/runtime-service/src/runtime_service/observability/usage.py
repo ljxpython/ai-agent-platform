@@ -341,7 +341,11 @@ def safe_pricing(value: Any) -> dict | None:
     return result
 
 
-def estimate_usage_cost(usage: dict, pricing: Any) -> tuple[str | None, str | None]:
+def estimate_usage_cost(
+    usage: dict, pricing: Any, outcome: str | None = None
+) -> tuple[str | None, str | None]:
+    if outcome in {"failed", "cancelled"} and usage.get("quality") == "missing":
+        return "0.000000000000", "zero_cost_on_failure"
     price = safe_pricing(pricing)
     if usage["quality"] not in {"reported", "derived_from_reported"}:
         return None, "missing_or_invalid_usage"
@@ -733,7 +737,9 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
                 quality=usage["quality"],
             )
         _metrics["usage_" + usage["quality"]] += 1
-        cost, reason = estimate_usage_cost(usage, call["pricing_snapshot"])
+        cost, reason = estimate_usage_cost(
+            usage, call["pricing_snapshot"], outcome=outcome
+        )
         call.update(
             tokens=usage["tokens"],
             quality=usage["quality"],

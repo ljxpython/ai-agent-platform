@@ -4,6 +4,8 @@ import {
   calculateBudgetRatio,
   formatDurationLabel,
   formatActionLabel,
+  formatBudgetAmount,
+  stripTrailingZeros,
   useGatewayBudgets,
 } from "./useGatewayBudgets";
 import * as usageService from "@/services/usage/usage.service";
@@ -82,6 +84,26 @@ describe("useGatewayBudgets 纯函数与状态逻辑", () => {
       expect(formatActionLabel("ALERT")).toBe("通知后继续");
       expect(formatActionLabel("REJECT")).toBe("阻止后续调用");
       expect(formatActionLabel(null)).toBe("—");
+    });
+
+    it("formatBudgetAmount 格式化金额小数位数", () => {
+      expect(formatBudgetAmount("200.000000000000")).toBe("200.00");
+      expect(formatBudgetAmount("7.734293400000")).toBe("7.73");
+      expect(formatBudgetAmount("1234.567800000000")).toBe("1,234.57");
+      expect(formatBudgetAmount("0.500000000000")).toBe("0.50");
+      expect(formatBudgetAmount("0.003500000000")).toBe("0.0035");
+      expect(formatBudgetAmount("0.000000000000")).toBe("0.00");
+      expect(formatBudgetAmount(null)).toBe("0.00");
+      expect(formatBudgetAmount("")).toBe("0.00");
+    });
+
+    it("stripTrailingZeros 去除回填编辑多余尾部零", () => {
+      expect(stripTrailingZeros("200.000000000000")).toBe("200");
+      expect(stripTrailingZeros("7.734293400000")).toBe("7.7342934");
+      expect(stripTrailingZeros("0.500000000000")).toBe("0.5");
+      expect(stripTrailingZeros("100")).toBe("100");
+      expect(stripTrailingZeros("")).toBe("");
+      expect(stripTrailingZeros(null)).toBe("");
     });
   });
 
