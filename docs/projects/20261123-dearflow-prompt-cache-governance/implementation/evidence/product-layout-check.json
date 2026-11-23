@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "kind": "offline_structure_only",
+  "verified_on": "2026-11-23",
+  "environment_id": "wt_9b100adcf0ef",
+  "official_paid_calls": 0,
+  "supplier_cache_ratio": null,
+  "supplier_cost_change": null,
+  "manifest_sha256": "6bf5100bcd3e3e8bb4ca59e41f625b8be0a6a211544e6860592e833c08988334",
+  "source_sha256": {
+    "apps/runtime-service/scripts/prompt_cache_agent.py": "0a779147a8c8baf6f553ecbfb0b48335b7409ac0dff7c4848780cf56f05aa12e",
+    "apps/runtime-service/scripts/prompt_cache_cases.py": "1562f5b70f440183ee4233ec87aecfa63f2a0d45fe992269a1b6128da8189b04",
+    "apps/runtime-service/scripts/prompt_cache_experiment.py": "15c9bf86b995604b3e1d555a45aeda6c83c40a7c9856cc3efd997692ee33b402",
+    "apps/runtime-service/scripts/prompt_cache_official.py": "eb5d11c0258c35202fad605b216ba26c393ea552dc07788622624d7dda482fcf",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py": "45050ca9b695d201030de6d6c335e919ae39c87037810d356bfda1d3d23a68f4",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/dynamic_context.py": "3b6e17cd8e1de5551920de6f7da908689ead6a7d301961401f26312ba0899678",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py": "4619777d4faae1216dad38abd87a5b8d5fb77b9cd837970c32602ef2d3e59ab4",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py": "5c9443d78d0a2572deec21233dd3bbb197139309171a39c0f67f267740f85b1b"
+  },
+  "pricing_reference": {
+    "url": "https://api-docs.deepseek.com/quick_start/pricing",
+    "verified_on": "2026-11-23",
+    "basis": "fixed peak list-price estimate for both lanes; off-peak is half; actual bill unknown",
+    "peak_utc": "Mon-Fri 01:00-04:00 and 06:00-10:00, except Chinese public holidays",
+    "served_version_at_verification": "DeepSeek-V4.1-Flash-1017"
+  },
+  "configured_peak_price": {
+    "currency": "USD",
+    "basis": "per_million_tokens",
+    "source": "configured_catalog",
+    "version": "ead2c246-d592-4a1f-85c5-f6da2e8ca4ac",
+    "updated_at": "2026-11-23T00:00:00+00:00",
+    "input": "0.3",
+    "output": "1.2",
+    "cache_read": "0.006",
+    "cache_write": "0",
+    "cache_write_5m": "0",
+    "cache_write_1h": "0"
+  },
+  "limits": [
+    "Local canonical JSON byte prefix, not provider tokens or KV hit rate.",
+    "One planned AB block, controlled synthetic identity/memory and context profile; no production ACL evidence.",
+    "A reconstructs legacy placement with current static rules; B is product HTTP capture.",
+    "Provider cache isolation, live quality and actual billing remain unverified."
+  ],
+  "requests": [
+    {
+      "id": "OFFICIAL-combined-A-r0-t0",
+      "group": "A",
+      "turn": 0,
+      "payload_sha256": "3b55148cb551f3c5935668cce6acf96b2a6915960d6a2fb379760fd5a00c00f5",
+      "payload_json_bytes": 50764,
+      "previous_json_lcp_bytes": null,
+      "system_sha256": "2cc431e03a347b5aa1bb5408d6fb5f537317cc9c709948255fb90b4d30e8bf89",
+      "date_in_first_system": true,
+      "temporary_contexts": [],
+      "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9"
+    },
+    {
+      "id": "OFFICIAL-combined-A-r0-t1",
+      "group": "A",
+      "turn": 1,
+      "payload_sha256": "07a5d0c9e1695ece3454544cc1169f4949a84647a8ae2d476eb927ef3636b109",
+      "payload_json_bytes": 50764,
+      "previous_json_lcp_bytes": 29047,
+      "system_sha256": "2cc431e03a347b5aa1bb5408d6fb5f537317cc9c709948255fb90b4d30e8bf89",
+      "date_in_first_system": true,
+      "temporary_contexts": [],
+      "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9"
+    },
+    {
+      "id": "OFFICIAL-combined-A-r0-t2",
+      "group": "A",
+      "turn": 2,
+      "payload_sha256": "939d673d866fec6a27ac57c864a472405fdf7494d5b40f09bb1d53698b38ce48",
+      "payload_json_bytes": 50769,
+      "previous_json_lcp_bytes": 8849,
+      "system_sha256": "27a75543728af4adfe4030ba59ebb9e9f86fa59eceef0ce00232bcabb6efdafd",
+      "date_in_first_system": true,
+      "temporary_contexts": [],
+      "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9"
+    },
+    {
+      "id": "OFFICIAL-combined-A-r0-t3",
+      "group": "A",
+      "turn": 3,
+      "payload_sha256": "3ba10281160623e1826d51742e4d89d8a9034609c0895318b002cf33a4582b50",
+      "payload_json_bytes": 50769,
+      "previous_json_lcp_bytes": 29052,
+      "system_sha256": "27a75543728af4adfe4030ba59ebb9e9f86fa59eceef0ce00232bcabb6efdafd",
+      "date_in_first_system": true,
+      "temporary_contexts": [],
+      "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9"
+    },
+    {
+      "id": "OFFICIAL-combined-B-r0-t0",
+      "group": "B",
+      "turn": 0,
+      "payload_sha256": "c17130cd2966ff090ec26b8f9c19207406a441cb10eb4b89a3b310cefc61428b",
+      "payload_json_bytes": 50861,
+      "previous_json_lcp_bytes": null,
+      "system_sha256": "16c7e154508ee1fffab888060ab07a6663a04785b0099a7c423479c42a78e5fb",
+      "date_in_first_system": false,
+      "temporary_contexts": [
+        {
+          "index": 3,
+          "name": "runtime_date"
+        },
+        {
+          "index": 4,
+          "name": "user_memory"
+        }
+      ],
+      "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9"
+    },
+    {
+      "id": "OFFICIAL-combined-B-r0-t1",
+      "group": "B",
+      "turn": 1,
+      "payload_sha256": "884057fa0b131a747ae883ef916a4ae056da947e6a45f4efce4bd6d2c9ed37c8",
+      "payload_json_bytes": 50861,
+      "previous_json_lcp_bytes": 29144,
+      "system_sha256": "16c7e154508ee1fffab888060ab07a6663a04785b0099a7c423479c42a78e5fb",
+      "date_in_first_system": false,
+      "temporary_contexts": [
+        {
+          "index": 3,
+          "name": "runtime_date"
+        },
+        {
+          "index": 4,
+          "name": "user_memory"
+        }
+      ],
+      "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9"
+    },
+    {
+      "id": "OFFICIAL-combined-B-r0-t2",
+      "group": "B",
+      "turn": 2,
+      "payload_sha256": "c489ed6d1911a5f6470f00850e29876b21e70f0668fee144bfc140a0599b988b",
+      "payload_json_bytes": 50866,
+      "previous_json_lcp_bytes": 28588,
+      "system_sha256": "16c7e154508ee1fffab888060ab07a6663a04785b0099a7c423479c42a78e5fb",
+      "date_in_first_system": false,
+      "temporary_contexts": [
+        {
+          "index": 3,
+          "name": "runtime_date"
+        },
+        {
+          "index": 4,
+          "name": "user_memory"
+        }
+      ],
+      "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9"
+    },
+    {
+      "id": "OFFICIAL-combined-B-r0-t3",
+      "group": "B",
+      "turn": 3,
+      "payload_sha256": "3661bc9f89fc627cdcd7727a0da5dfc08b9e489f9fb6aef17f595dc70d0b30ec",
+      "payload_json_bytes": 50866,
+      "previous_json_lcp_bytes": 29149,
+      "system_sha256": "16c7e154508ee1fffab888060ab07a6663a04785b0099a7c423479c42a78e5fb",
+      "date_in_first_system": false,
+      "temporary_contexts": [
+        {
+          "index": 3,
+          "name": "runtime_date"
+        },
+        {
+          "index": 4,
+          "name": "user_memory"
+        }
+      ],
+      "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9"
+    }
+  ]
+}

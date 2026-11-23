@@ -1,0 +1,1367 @@
+{
+  "date": "2026-11-23",
+  "experiments": [
+    {
+      "capture_boundary": "native HTTP capture in both lanes; A restores old factory date and memory wrapping, B uses product middleware",
+      "manifest_sha256": "0f98403e7757b3bb564c96c5a8c806ee4fa3507d4f434ba2153a637dd4366db5",
+      "planned": [
+        {
+          "case": "OFFICIAL-combined",
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t0",
+          "payload_sha256": "d282379d0293630590ec15c6cff25d6bd5b72ef3dfd8c2fe6c6747c2c0df2ef5",
+          "repeat": 0,
+          "turn": 0
+        },
+        {
+          "case": "OFFICIAL-combined",
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t1",
+          "payload_sha256": "d47321755aca68b23b0141060e3a329859bbaa498e8713e04a5e7b62483fa39c",
+          "repeat": 0,
+          "turn": 1
+        },
+        {
+          "case": "OFFICIAL-combined",
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t2",
+          "payload_sha256": "1911c76682a46a7d8137ce9de586d9027de7739a5e6f769fbad458e45cb4fbf4",
+          "repeat": 0,
+          "turn": 2
+        },
+        {
+          "case": "OFFICIAL-combined",
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t3",
+          "payload_sha256": "b96e817a626431bf4f0682a64360fd1ac8db697304fd128f850c467e558b69c1",
+          "repeat": 0,
+          "turn": 3
+        },
+        {
+          "case": "OFFICIAL-combined",
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t0",
+          "payload_sha256": "1740102b632eb927014fde1e7fd7f76dc96775d588325d4a448ca0cb9fa1190d",
+          "repeat": 0,
+          "turn": 0
+        },
+        {
+          "case": "OFFICIAL-combined",
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t1",
+          "payload_sha256": "36618cb0a59168f3ac36192eb179c9fc21f3a188115983a865d471d9ccbc404c",
+          "repeat": 0,
+          "turn": 1
+        },
+        {
+          "case": "OFFICIAL-combined",
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t2",
+          "payload_sha256": "cc39baef6ddfaa863f60289ae56e2fe3555a68b69f3b14ea2ecfd06767acc00c",
+          "repeat": 0,
+          "turn": 2
+        },
+        {
+          "case": "OFFICIAL-combined",
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t3",
+          "payload_sha256": "4a5c600678e157bbaeb0c26f704a6fa0c494ccc716165a98ced32acd05d2ac4b",
+          "repeat": 0,
+          "turn": 3
+        }
+      ],
+      "registration": {
+        "actual_billed_cost": null,
+        "attempted": 8,
+        "concurrency": 1,
+        "connection_fingerprint": "203f583cd4997f425e1683b69cc29076c962475ab09b2ea3c2a429268f7912cb",
+        "cost_limit_basis": "configured price snapshot; byte-token reservation proxy, supplier bill unknown",
+        "environment_id": "wt_9b100adcf0ef",
+        "estimated_spend_or_reservation_usd": "0.012420144000",
+        "finished_at": "2026-11-23T09:30:16.259598+00:00",
+        "manifest_sha256": "0f98403e7757b3bb564c96c5a8c806ee4fa3507d4f434ba2153a637dd4366db5",
+        "max_estimated_cost_usd": "1",
+        "max_requests": 8,
+        "pricing": {
+          "basis": "per_million_tokens",
+          "cache_read": "0.006",
+          "cache_write": "0",
+          "cache_write_1h": "0",
+          "cache_write_5m": "0",
+          "currency": "USD",
+          "input": "0.3",
+          "output": "1.2",
+          "source": "configured_catalog",
+          "updated_at": "2026-11-23T00:00:00+00:00",
+          "version": "ead2c246-d592-4a1f-85c5-f6da2e8ca4ac"
+        },
+        "pricing_reference": {
+          "basis": "fixed peak list-price estimate for both lanes; off-peak is half; actual bill unknown",
+          "peak_utc": "Mon-Fri 01:00-04:00 and 06:00-10:00, except Chinese public holidays",
+          "served_version_at_verification": "DeepSeek-V4.1-Flash-1017",
+          "url": "https://api-docs.deepseek.com/quick_start/pricing",
+          "verified_on": "2026-11-23"
+        },
+        "retries": 0,
+        "started_at": "2026-11-23T09:30:08.132552+00:00",
+        "stop_reason": null,
+        "timeout_seconds": 120
+      },
+      "requests": [
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 13490,
+              "output_tokens": 9,
+              "reasoning_tokens": null,
+              "total_tokens": 13499
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-combined",
+          "completed_ms": 1331.1525330063887,
+          "content": "pytest\n2026-11-23",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 1151.8120700202417,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t0",
+          "payload_sha256": "d282379d0293630590ec15c6cff25d6bd5b72ef3dfd8c2fe6c6747c2c0df2ef5",
+          "quality_method": "predeclared_number_or_keyword_and_no_tools; not independent human review",
+          "quality_pass": true,
+          "raw_usage": {
+            "completion_tokens": 9,
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 13490,
+            "prompt_tokens": 13490,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 13499
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 13490,
+              "output_tokens": 9,
+              "reasoning_tokens": null,
+              "total_tokens": 13499
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 0
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13312,
+              "input_tokens": 13490,
+              "output_tokens": 9,
+              "reasoning_tokens": null,
+              "total_tokens": 13499
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-combined",
+          "completed_ms": 1112.2324839816429,
+          "content": "pytest\n2026-11-23",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 901.4226059953216,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t1",
+          "payload_sha256": "d47321755aca68b23b0141060e3a329859bbaa498e8713e04a5e7b62483fa39c",
+          "quality_method": "predeclared_number_or_keyword_and_no_tools; not independent human review",
+          "quality_pass": true,
+          "raw_usage": {
+            "completion_tokens": 9,
+            "prompt_cache_hit_tokens": 13312,
+            "prompt_cache_miss_tokens": 178,
+            "prompt_tokens": 13490,
+            "prompt_tokens_details": {
+              "cached_tokens": 13312
+            },
+            "total_tokens": 13499
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13312,
+              "input_tokens": 13490,
+              "output_tokens": 9,
+              "reasoning_tokens": null,
+              "total_tokens": 13499
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 1
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 1792,
+              "input_tokens": 13493,
+              "output_tokens": 11,
+              "reasoning_tokens": null,
+              "total_tokens": 13504
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-combined",
+          "completed_ms": 777.7852759754751,
+          "content": "Vue 3\n\n2026-11-24",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 592.4499249958899,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t2",
+          "payload_sha256": "1911c76682a46a7d8137ce9de586d9027de7739a5e6f769fbad458e45cb4fbf4",
+          "quality_method": "predeclared_number_or_keyword_and_no_tools; not independent human review",
+          "quality_pass": true,
+          "raw_usage": {
+            "completion_tokens": 11,
+            "prompt_cache_hit_tokens": 1792,
+            "prompt_cache_miss_tokens": 11701,
+            "prompt_tokens": 13493,
+            "prompt_tokens_details": {
+              "cached_tokens": 1792
+            },
+            "total_tokens": 13504
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 1792,
+              "input_tokens": 13493,
+              "output_tokens": 11,
+              "reasoning_tokens": null,
+              "total_tokens": 13504
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 2
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13312,
+              "input_tokens": 13493,
+              "output_tokens": 11,
+              "reasoning_tokens": null,
+              "total_tokens": 13504
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-combined",
+          "completed_ms": 1177.4963930074591,
+          "content": "Vue 3\n\n2026-11-24",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 886.9198939937633,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t3",
+          "payload_sha256": "b96e817a626431bf4f0682a64360fd1ac8db697304fd128f850c467e558b69c1",
+          "quality_method": "predeclared_number_or_keyword_and_no_tools; not independent human review",
+          "quality_pass": true,
+          "raw_usage": {
+            "completion_tokens": 11,
+            "prompt_cache_hit_tokens": 13312,
+            "prompt_cache_miss_tokens": 181,
+            "prompt_tokens": 13493,
+            "prompt_tokens_details": {
+              "cached_tokens": 13312
+            },
+            "total_tokens": 13504
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13312,
+              "input_tokens": 13493,
+              "output_tokens": 11,
+              "reasoning_tokens": null,
+              "total_tokens": 13504
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 3
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 13492,
+              "output_tokens": 9,
+              "reasoning_tokens": null,
+              "total_tokens": 13501
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-combined",
+          "completed_ms": 1068.6903850000817,
+          "content": "pytest\n2026-11-23",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 862.8076419990975,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t0",
+          "payload_sha256": "1740102b632eb927014fde1e7fd7f76dc96775d588325d4a448ca0cb9fa1190d",
+          "quality_method": "predeclared_number_or_keyword_and_no_tools; not independent human review",
+          "quality_pass": true,
+          "raw_usage": {
+            "completion_tokens": 9,
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 13492,
+            "prompt_tokens": 13492,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 13501
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 13492,
+              "output_tokens": 9,
+              "reasoning_tokens": null,
+              "total_tokens": 13501
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 0
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13312,
+              "input_tokens": 13492,
+              "output_tokens": 9,
+              "reasoning_tokens": null,
+              "total_tokens": 13501
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-combined",
+          "completed_ms": 723.313472000882,
+          "content": "pytest\n2026-11-23",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 554.0956830081996,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t1",
+          "payload_sha256": "36618cb0a59168f3ac36192eb179c9fc21f3a188115983a865d471d9ccbc404c",
+          "quality_method": "predeclared_number_or_keyword_and_no_tools; not independent human review",
+          "quality_pass": true,
+          "raw_usage": {
+            "completion_tokens": 9,
+            "prompt_cache_hit_tokens": 13312,
+            "prompt_cache_miss_tokens": 180,
+            "prompt_tokens": 13492,
+            "prompt_tokens_details": {
+              "cached_tokens": 13312
+            },
+            "total_tokens": 13501
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13312,
+              "input_tokens": 13492,
+              "output_tokens": 9,
+              "reasoning_tokens": null,
+              "total_tokens": 13501
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 1
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13184,
+              "input_tokens": 13495,
+              "output_tokens": 11,
+              "reasoning_tokens": null,
+              "total_tokens": 13506
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-combined",
+          "completed_ms": 947.2802340169437,
+          "content": "Vue 3\n\n2026-11-24",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 703.7491270166356,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t2",
+          "payload_sha256": "cc39baef6ddfaa863f60289ae56e2fe3555a68b69f3b14ea2ecfd06767acc00c",
+          "quality_method": "predeclared_number_or_keyword_and_no_tools; not independent human review",
+          "quality_pass": true,
+          "raw_usage": {
+            "completion_tokens": 11,
+            "prompt_cache_hit_tokens": 13184,
+            "prompt_cache_miss_tokens": 311,
+            "prompt_tokens": 13495,
+            "prompt_tokens_details": {
+              "cached_tokens": 13184
+            },
+            "total_tokens": 13506
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13184,
+              "input_tokens": 13495,
+              "output_tokens": 11,
+              "reasoning_tokens": null,
+              "total_tokens": 13506
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 2
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13312,
+              "input_tokens": 13495,
+              "output_tokens": 11,
+              "reasoning_tokens": null,
+              "total_tokens": 13506
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-combined",
+          "completed_ms": 899.6280150022358,
+          "content": "Vue 3\n\n2026-11-24",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 724.3422089959495,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t3",
+          "payload_sha256": "4a5c600678e157bbaeb0c26f704a6fa0c494ccc716165a98ced32acd05d2ac4b",
+          "quality_method": "predeclared_number_or_keyword_and_no_tools; not independent human review",
+          "quality_pass": true,
+          "raw_usage": {
+            "completion_tokens": 11,
+            "prompt_cache_hit_tokens": 13312,
+            "prompt_cache_miss_tokens": 183,
+            "prompt_tokens": 13495,
+            "prompt_tokens_details": {
+              "cached_tokens": 13312
+            },
+            "total_tokens": 13506
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 13312,
+              "input_tokens": 13495,
+              "output_tokens": 11,
+              "reasoning_tokens": null,
+              "total_tokens": 13506
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 3
+        }
+      ],
+      "run": "official-replay-v1",
+      "source_sha256": {
+        "apps/runtime-service/scripts/prompt_cache_agent.py": "0a779147a8c8baf6f553ecbfb0b48335b7409ac0dff7c4848780cf56f05aa12e",
+        "apps/runtime-service/scripts/prompt_cache_cases.py": "baad7cfb6b36f52c5573abef0e1765d3ab8398fc06c949405bf7e7a5234ac7f3",
+        "apps/runtime-service/scripts/prompt_cache_experiment.py": "076d4767397c96f3f103cbff5d0d317ae310810c79a6d6ca3bd987f29a4699ea",
+        "apps/runtime-service/scripts/prompt_cache_official.py": "82db855b1ec4d98f8fe91d3d94e1fa57e2cc7b12c5f3206e675727303c3d3f52",
+        "apps/runtime-service/src/runtime_service/runtime/modeling.py": "04f9cfccc48b77c9e46c99603dfeab9cebd24d55ef1d1d60ee163308c75dc2a5",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py": "45050ca9b695d201030de6d6c335e919ae39c87037810d356bfda1d3d23a68f4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/dynamic_context.py": "3b6e17cd8e1de5551920de6f7da908689ead6a7d301961401f26312ba0899678",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py": "4619777d4faae1216dad38abd87a5b8d5fb77b9cd837970c32602ef2d3e59ab4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py": "5c9443d78d0a2572deec21233dd3bbb197139309171a39c0f67f267740f85b1b"
+      }
+    },
+    {
+      "capture_boundary": "live_agent_in_process",
+      "manifest_sha256": "a333303d21f488102bd204fc9d339b344d6a43d7bae8711ee34c403f4779b594",
+      "planned": [
+        {
+          "case": "AGENT-combined",
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t0",
+          "payload_sha256": "2671a1693bfd65df036f9c2fb0df3381caaa1170642e1ad6ee988bf70d8e190d",
+          "repeat": 0,
+          "turn": 0
+        },
+        {
+          "case": "AGENT-combined",
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t1",
+          "payload_sha256": "168db77380c97520430347c4fabcf084605ca62ea8142ac4b9aeb146d3c1e4e8",
+          "repeat": 0,
+          "turn": 1
+        },
+        {
+          "case": "AGENT-combined",
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t2",
+          "payload_sha256": "a5d4d873b8cd648142715affd38d2087aa849ded36814603bfd2a4e7a842be93",
+          "repeat": 0,
+          "turn": 2
+        },
+        {
+          "case": "AGENT-combined",
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t3",
+          "payload_sha256": "d04b1cccb3286f81eb1bcd1f8b51e39e173d06ac03ae029e628c798a943adba7",
+          "repeat": 0,
+          "turn": 3
+        },
+        {
+          "case": "AGENT-combined",
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t0",
+          "payload_sha256": "528710fa9e1c80464a423c1568dc258a2d3c8e93e64363c5852202d0f4f10187",
+          "repeat": 0,
+          "turn": 0
+        },
+        {
+          "case": "AGENT-combined",
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t1",
+          "payload_sha256": "e834218f7aa2bcd06374d6af229425c34b318031f5994e5826e20703d464ee0f",
+          "repeat": 0,
+          "turn": 1
+        },
+        {
+          "case": "AGENT-combined",
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t2",
+          "payload_sha256": "f1af4c479b36184d43d2b7b338b147bc00a2bbe3dc106f316157176d8ca26593",
+          "repeat": 0,
+          "turn": 2
+        },
+        {
+          "case": "AGENT-combined",
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t3",
+          "payload_sha256": "7618ffe89827a6999549a41326f9e645d8e70fd613a82260a441f6e678d3fedf",
+          "repeat": 0,
+          "turn": 3
+        }
+      ],
+      "registration": {
+        "attempted": 8,
+        "connection_fingerprint": "203f583cd4997f425e1683b69cc29076c962475ab09b2ea3c2a429268f7912cb",
+        "environment_id": "wt_9b100adcf0ef",
+        "finished_at": "2026-11-23T09:30:28.680966+00:00",
+        "manifest_sha256": "a333303d21f488102bd204fc9d339b344d6a43d7bae8711ee34c403f4779b594",
+        "max_requests": 16,
+        "pre_registered_task_sha256": "4ec6c373309e065b3eddd2916563557804a446646777fc7fb732d6878541d8e4",
+        "pricing": {
+          "basis": "per_million_tokens",
+          "cache_read": "0.006",
+          "cache_write": "0",
+          "cache_write_1h": "0",
+          "cache_write_5m": "0",
+          "currency": "USD",
+          "input": "0.3",
+          "output": "1.2",
+          "source": "configured_catalog",
+          "updated_at": "2026-11-23T00:00:00+00:00",
+          "version": "ead2c246-d592-4a1f-85c5-f6da2e8ca4ac"
+        },
+        "pricing_reference": {
+          "basis": "fixed peak list-price estimate for both lanes; off-peak is half; actual bill unknown",
+          "peak_utc": "Mon-Fri 01:00-04:00 and 06:00-10:00, except Chinese public holidays",
+          "served_version_at_verification": "DeepSeek-V4.1-Flash-1017",
+          "url": "https://api-docs.deepseek.com/quick_start/pricing",
+          "verified_on": "2026-11-23"
+        },
+        "retries": 0,
+        "started_at": "2026-11-23T09:30:16.301542+00:00",
+        "stop_reason": null
+      },
+      "requests": [
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10113,
+              "output_tokens": 43,
+              "reasoning_tokens": null,
+              "total_tokens": 10156
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "AGENT-combined",
+          "completed_ms": 1067.5072890007868,
+          "content": "",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t0",
+          "payload_sha256": "2671a1693bfd65df036f9c2fb0df3381caaa1170642e1ad6ee988bf70d8e190d",
+          "quality_method": "evaluated per complete Agent turn, not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 43,
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 10113,
+            "prompt_tokens": 10113,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 10156
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10113,
+              "output_tokens": 43,
+              "reasoning_tokens": null,
+              "total_tokens": 10156
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 0
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10191,
+              "output_tokens": 90,
+              "reasoning_tokens": null,
+              "total_tokens": 10281
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "AGENT-combined",
+          "completed_ms": 916.7935019941069,
+          "content": "已读取 `/workspace/work/data.csv`，内容为：\n\n```\nname,units\na,10\nb,20\nc,30\n```\n\n- **units 总和**：10 + 20 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-23**\n- **记忆中的 Python 测试首选**：**pytest**\n\n未写文件，也未调用其他工具。",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 535.1922959962394,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t1",
+          "payload_sha256": "168db77380c97520430347c4fabcf084605ca62ea8142ac4b9aeb146d3c1e4e8",
+          "quality_method": "evaluated per complete Agent turn, not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 90,
+            "prompt_cache_hit_tokens": 9984,
+            "prompt_cache_miss_tokens": 207,
+            "prompt_tokens": 10191,
+            "prompt_tokens_details": {
+              "cached_tokens": 9984
+            },
+            "total_tokens": 10281
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10191,
+              "output_tokens": 90,
+              "reasoning_tokens": null,
+              "total_tokens": 10281
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 1
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 1792,
+              "input_tokens": 10333,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10377
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "AGENT-combined",
+          "completed_ms": 1082.6496810186654,
+          "content": "",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t2",
+          "payload_sha256": "a5d4d873b8cd648142715affd38d2087aa849ded36814603bfd2a4e7a842be93",
+          "quality_method": "evaluated per complete Agent turn, not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 44,
+            "prompt_cache_hit_tokens": 1792,
+            "prompt_cache_miss_tokens": 8541,
+            "prompt_tokens": 10333,
+            "prompt_tokens_details": {
+              "cached_tokens": 1792
+            },
+            "total_tokens": 10377
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 1792,
+              "input_tokens": 10333,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10377
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 2
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10240,
+              "input_tokens": 10412,
+              "output_tokens": 95,
+              "reasoning_tokens": null,
+              "total_tokens": 10507
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "AGENT-combined",
+          "completed_ms": 1409.1450049891137,
+          "content": "已读取 `/workspace/work/data2.csv`，内容为：\n\n```\nname,units\nx,12\ny,18\nz,30\n```\n\n- **units 总和**：12 + 18 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-24**\n- **本轮记忆中的前端首选**：**Vue 3 + TypeScript**\n\n未写文件，也未调用其他工具。",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 786.8757599790115,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t3",
+          "payload_sha256": "d04b1cccb3286f81eb1bcd1f8b51e39e173d06ac03ae029e628c798a943adba7",
+          "quality_method": "evaluated per complete Agent turn, not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 95,
+            "prompt_cache_hit_tokens": 10240,
+            "prompt_cache_miss_tokens": 172,
+            "prompt_tokens": 10412,
+            "prompt_tokens_details": {
+              "cached_tokens": 10240
+            },
+            "total_tokens": 10507
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10240,
+              "input_tokens": 10412,
+              "output_tokens": 95,
+              "reasoning_tokens": null,
+              "total_tokens": 10507
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 3
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10108,
+              "output_tokens": 43,
+              "reasoning_tokens": null,
+              "total_tokens": 10151
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "AGENT-combined",
+          "completed_ms": 787.1512559941038,
+          "content": "",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t0",
+          "payload_sha256": "528710fa9e1c80464a423c1568dc258a2d3c8e93e64363c5852202d0f4f10187",
+          "quality_method": "evaluated per complete Agent turn, not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 43,
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 10108,
+            "prompt_tokens": 10108,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 10151
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10108,
+              "output_tokens": 43,
+              "reasoning_tokens": null,
+              "total_tokens": 10151
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 0
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10186,
+              "output_tokens": 98,
+              "reasoning_tokens": null,
+              "total_tokens": 10284
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "AGENT-combined",
+          "completed_ms": 1241.837152017979,
+          "content": "已读取 `/workspace/work/data.csv`，内容为：\n\n| name | units |\n|---|---|\n| a | 10 |\n| b | 20 |\n| c | 30 |\n\n- **units 总和**：10 + 20 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-23**\n- **本轮记忆中的 Python 测试首选**：**pytest**\n\n未写文件，未调用其他工具。",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 803.674774011597,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t1",
+          "payload_sha256": "e834218f7aa2bcd06374d6af229425c34b318031f5994e5826e20703d464ee0f",
+          "quality_method": "evaluated per complete Agent turn, not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 98,
+            "prompt_cache_hit_tokens": 9984,
+            "prompt_cache_miss_tokens": 202,
+            "prompt_tokens": 10186,
+            "prompt_tokens_details": {
+              "cached_tokens": 9984
+            },
+            "total_tokens": 10284
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10186,
+              "output_tokens": 98,
+              "reasoning_tokens": null,
+              "total_tokens": 10284
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 1
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9728,
+              "input_tokens": 10336,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10380
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "AGENT-combined",
+          "completed_ms": 860.1803169876803,
+          "content": "",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t2",
+          "payload_sha256": "f1af4c479b36184d43d2b7b338b147bc00a2bbe3dc106f316157176d8ca26593",
+          "quality_method": "evaluated per complete Agent turn, not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 44,
+            "prompt_cache_hit_tokens": 9728,
+            "prompt_cache_miss_tokens": 608,
+            "prompt_tokens": 10336,
+            "prompt_tokens_details": {
+              "cached_tokens": 9728
+            },
+            "total_tokens": 10380
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9728,
+              "input_tokens": 10336,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10380
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 2
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10240,
+              "input_tokens": 10415,
+              "output_tokens": 102,
+              "reasoning_tokens": null,
+              "total_tokens": 10517
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "AGENT-combined",
+          "completed_ms": 1421.0630759771448,
+          "content": "已读取 `/workspace/work/data2.csv`，内容为：\n\n| name | units |\n|---|---|\n| x | 12 |\n| y | 18 |\n| z | 30 |\n\n- **units 总和**：12 + 18 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-24**\n- **本轮记忆中的前端首选**：**Vue 3 + TypeScript**\n\n未写文件，未调用其他工具。",
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 928.3357029780746,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t3",
+          "payload_sha256": "7618ffe89827a6999549a41326f9e645d8e70fd613a82260a441f6e678d3fedf",
+          "quality_method": "evaluated per complete Agent turn, not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 102,
+            "prompt_cache_hit_tokens": 10240,
+            "prompt_cache_miss_tokens": 175,
+            "prompt_tokens": 10415,
+            "prompt_tokens_details": {
+              "cached_tokens": 10240
+            },
+            "total_tokens": 10517
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10240,
+              "input_tokens": 10415,
+              "output_tokens": 102,
+              "reasoning_tokens": null,
+              "total_tokens": 10517
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 3
+        }
+      ],
+      "run": "official-agent-v1",
+      "source_sha256": {
+        "apps/runtime-service/scripts/prompt_cache_agent.py": "0a779147a8c8baf6f553ecbfb0b48335b7409ac0dff7c4848780cf56f05aa12e",
+        "apps/runtime-service/scripts/prompt_cache_cases.py": "baad7cfb6b36f52c5573abef0e1765d3ab8398fc06c949405bf7e7a5234ac7f3",
+        "apps/runtime-service/scripts/prompt_cache_experiment.py": "076d4767397c96f3f103cbff5d0d317ae310810c79a6d6ca3bd987f29a4699ea",
+        "apps/runtime-service/scripts/prompt_cache_official.py": "82db855b1ec4d98f8fe91d3d94e1fa57e2cc7b12c5f3206e675727303c3d3f52",
+        "apps/runtime-service/src/runtime_service/runtime/modeling.py": "04f9cfccc48b77c9e46c99603dfeab9cebd24d55ef1d1d60ee163308c75dc2a5",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py": "45050ca9b695d201030de6d6c335e919ae39c87037810d356bfda1d3d23a68f4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/dynamic_context.py": "3b6e17cd8e1de5551920de6f7da908689ead6a7d301961401f26312ba0899678",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py": "4619777d4faae1216dad38abd87a5b8d5fb77b9cd837970c32602ef2d3e59ab4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py": "5c9443d78d0a2572deec21233dd3bbb197139309171a39c0f67f267740f85b1b"
+      },
+      "tasks": [
+        {
+          "answers": [
+            "已读取 `/workspace/work/data.csv`，内容为：\n\n```\nname,units\na,10\nb,20\nc,30\n```\n\n- **units 总和**：10 + 20 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-23**\n- **记忆中的 Python 测试首选**：**pytest**\n\n未写文件，也未调用其他工具。",
+            "已读取 `/workspace/work/data2.csv`，内容为：\n\n```\nname,units\nx,12\ny,18\nz,30\n```\n\n- **units 总和**：12 + 18 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-24**\n- **本轮记忆中的前端首选**：**Vue 3 + TypeScript**\n\n未写文件，也未调用其他工具。"
+          ],
+          "group": "A",
+          "model_calls": 4,
+          "quality_pass": true,
+          "read_paths": [
+            "/workspace/work/data.csv",
+            "/workspace/work/data2.csv"
+          ],
+          "read_results_succeeded": true,
+          "tool_calls": 2
+        },
+        {
+          "answers": [
+            "已读取 `/workspace/work/data.csv`，内容为：\n\n| name | units |\n|---|---|\n| a | 10 |\n| b | 20 |\n| c | 30 |\n\n- **units 总和**：10 + 20 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-23**\n- **本轮记忆中的 Python 测试首选**：**pytest**\n\n未写文件，未调用其他工具。",
+            "已读取 `/workspace/work/data2.csv`，内容为：\n\n| name | units |\n|---|---|\n| x | 12 |\n| y | 18 |\n| z | 30 |\n\n- **units 总和**：12 + 18 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-24**\n- **本轮记忆中的前端首选**：**Vue 3 + TypeScript**\n\n未写文件，未调用其他工具。"
+          ],
+          "group": "B",
+          "model_calls": 4,
+          "quality_pass": true,
+          "read_paths": [
+            "/workspace/work/data.csv",
+            "/workspace/work/data2.csv"
+          ],
+          "read_results_succeeded": true,
+          "tool_calls": 2
+        }
+      ]
+    }
+  ],
+  "material": "synthetic",
+  "model": "deepseek-flash",
+  "publication": "Whitelisted usage, timings, synthetic answers, registrations and hashes. Credentials, headers, account credit/quota, full payloads and raw events omitted; private Worktree retains the originals.",
+  "route": "deepseek_official",
+  "version": 1
+}

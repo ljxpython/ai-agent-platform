@@ -538,8 +538,8 @@ def test_sharing_during_memory_model_call_rejects_result(monkeypatch):
         messages = []
         system_message = None
 
-        def override(self, *, system_message):
-            self.system_message = system_message
+        def override(self, *, messages):
+            self.messages = messages
             return self
 
     async def handler(request):

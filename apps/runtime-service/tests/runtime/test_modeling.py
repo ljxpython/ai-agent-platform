@@ -96,6 +96,45 @@ def _resolved(model_id: str):
     )
 
 
+def test_deepseek_serializes_system_text_blocks_without_mutating_messages():
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    model = modeling.ChatDeepSeek(model="deepseek-flash", api_key="synthetic-key")
+    system = SystemMessage(
+        content=[{"type": "text", "text": "rules"}, {"type": "text", "text": "skills"}]
+    )
+    user = HumanMessage(content=[{"type": "text", "text": "question"}])
+    payload = model._get_request_payload([system, user])
+    assert payload["messages"][0]["content"] == "rules\n\nskills"
+    assert payload["messages"][1]["content"] == user.content
+    assert isinstance(system.content, list)
+    assert (
+        model._get_request_payload([SystemMessage(content="plain")])["messages"][0][
+            "content"
+        ]
+        == "plain"
+    )
+
+
+def test_deepseek_rejects_non_text_system_blocks():
+    from langchain_core.messages import SystemMessage
+
+    model = modeling.ChatDeepSeek(model="deepseek-flash", api_key="synthetic-key")
+    with pytest.raises(ValueError, match="text-only"):
+        model._get_request_payload(
+            [
+                SystemMessage(
+                    content=[
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": "https://example.invalid/image.png"},
+                        }
+                    ]
+                )
+            ]
+        )
+
+
 def test_build_deepseek_uses_proxy_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 

@@ -8,7 +8,6 @@ import json
 import os
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, replace
-from datetime import UTC, datetime
 from functools import partial
 
 from deepagents import create_deep_agent
@@ -91,6 +90,9 @@ from runtime_service.services.dearflow_agent.middleware.clarification import (
 )
 from runtime_service.services.dearflow_agent.middleware.delegation import (
     DelegationConcurrencyMiddleware,
+)
+from runtime_service.services.dearflow_agent.middleware.dynamic_context import (
+    CurrentDateMiddleware,
 )
 from runtime_service.services.dearflow_agent.middleware.memory import (
     MemoryContextMiddleware,
@@ -597,10 +599,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     with startup.phase("factory.agent_compile"):
         agent = create_deep_agent(
             model=model,
-            system_prompt=SYSTEM_PROMPT
-            + "\n<current_date>"
-            + datetime.now(UTC).date().isoformat()
-            + " UTC</current_date>",
+            system_prompt=SYSTEM_PROMPT,
             tools=[
                 request_information,
                 artifact_tool,
@@ -680,6 +679,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                         MessageQueueMiddleware(),
                         ClarificationBatchGuard(),
                         document_middleware,
+                        CurrentDateMiddleware(),
                         *(
                             [
                                 MemoryContextMiddleware(

@@ -1,0 +1,327 @@
+{
+  "dependencies": {
+    "deepagents": "0.7.8",
+    "httpx": "0.28.1",
+    "langchain": "1.3.17",
+    "langchain-core": "1.6.0",
+    "langchain-deepseek": "1.1.0",
+    "langchain-openai": "1.6.0",
+    "openai": "2.46.0"
+  },
+  "environment_id": "wt_9b100adcf0ef",
+  "experiments": [
+    {
+      "manifest_sha256": "0f98403e7757b3bb564c96c5a8c806ee4fa3507d4f434ba2153a637dd4366db5",
+      "requests": [
+        {
+          "date_in_first_system": true,
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t0",
+          "payload_json_bytes": 50713,
+          "payload_sha256": "d282379d0293630590ec15c6cff25d6bd5b72ef3dfd8c2fe6c6747c2c0df2ef5",
+          "previous_json_lcp_bytes": null,
+          "system_content_type": "string",
+          "system_sha256": "a6cc5b82c6d78d15aa480d07fb26c8c41eec9e1bce0d5f7f716a74cf7fb6702d",
+          "temporary_contexts": [],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 0
+        },
+        {
+          "date_in_first_system": true,
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t1",
+          "payload_json_bytes": 50713,
+          "payload_sha256": "d47321755aca68b23b0141060e3a329859bbaa498e8713e04a5e7b62483fa39c",
+          "previous_json_lcp_bytes": 28996,
+          "system_content_type": "string",
+          "system_sha256": "a6cc5b82c6d78d15aa480d07fb26c8c41eec9e1bce0d5f7f716a74cf7fb6702d",
+          "temporary_contexts": [],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 1
+        },
+        {
+          "date_in_first_system": true,
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t2",
+          "payload_json_bytes": 50718,
+          "payload_sha256": "1911c76682a46a7d8137ce9de586d9027de7739a5e6f769fbad458e45cb4fbf4",
+          "previous_json_lcp_bytes": 8840,
+          "system_content_type": "string",
+          "system_sha256": "1b98a21198dea21e45af9d251bc45b4dfb77fd75535b125b16b05d3e4491ff25",
+          "temporary_contexts": [],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 2
+        },
+        {
+          "date_in_first_system": true,
+          "group": "A",
+          "id": "OFFICIAL-combined-A-r0-t3",
+          "payload_json_bytes": 50718,
+          "payload_sha256": "b96e817a626431bf4f0682a64360fd1ac8db697304fd128f850c467e558b69c1",
+          "previous_json_lcp_bytes": 29001,
+          "system_content_type": "string",
+          "system_sha256": "1b98a21198dea21e45af9d251bc45b4dfb77fd75535b125b16b05d3e4491ff25",
+          "temporary_contexts": [],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 3
+        },
+        {
+          "date_in_first_system": false,
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t0",
+          "payload_json_bytes": 50814,
+          "payload_sha256": "1740102b632eb927014fde1e7fd7f76dc96775d588325d4a448ca0cb9fa1190d",
+          "previous_json_lcp_bytes": null,
+          "system_content_type": "string",
+          "system_sha256": "7c861ab968eacc0d2f7be67769abf8085a23a050c5bf308cfaee250ef09699b4",
+          "temporary_contexts": [
+            {
+              "index": 3,
+              "name": "runtime_date"
+            },
+            {
+              "index": 4,
+              "name": "user_memory"
+            }
+          ],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 0
+        },
+        {
+          "date_in_first_system": false,
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t1",
+          "payload_json_bytes": 50814,
+          "payload_sha256": "36618cb0a59168f3ac36192eb179c9fc21f3a188115983a865d471d9ccbc404c",
+          "previous_json_lcp_bytes": 29097,
+          "system_content_type": "string",
+          "system_sha256": "7c861ab968eacc0d2f7be67769abf8085a23a050c5bf308cfaee250ef09699b4",
+          "temporary_contexts": [
+            {
+              "index": 3,
+              "name": "runtime_date"
+            },
+            {
+              "index": 4,
+              "name": "user_memory"
+            }
+          ],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 1
+        },
+        {
+          "date_in_first_system": false,
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t2",
+          "payload_json_bytes": 50819,
+          "payload_sha256": "cc39baef6ddfaa863f60289ae56e2fe3555a68b69f3b14ea2ecfd06767acc00c",
+          "previous_json_lcp_bytes": 28541,
+          "system_content_type": "string",
+          "system_sha256": "7c861ab968eacc0d2f7be67769abf8085a23a050c5bf308cfaee250ef09699b4",
+          "temporary_contexts": [
+            {
+              "index": 3,
+              "name": "runtime_date"
+            },
+            {
+              "index": 4,
+              "name": "user_memory"
+            }
+          ],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 2
+        },
+        {
+          "date_in_first_system": false,
+          "group": "B",
+          "id": "OFFICIAL-combined-B-r0-t3",
+          "payload_json_bytes": 50819,
+          "payload_sha256": "4a5c600678e157bbaeb0c26f704a6fa0c494ccc716165a98ced32acd05d2ac4b",
+          "previous_json_lcp_bytes": 29102,
+          "system_content_type": "string",
+          "system_sha256": "7c861ab968eacc0d2f7be67769abf8085a23a050c5bf308cfaee250ef09699b4",
+          "temporary_contexts": [
+            {
+              "index": 3,
+              "name": "runtime_date"
+            },
+            {
+              "index": 4,
+              "name": "user_memory"
+            }
+          ],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 3
+        }
+      ],
+      "run": "official-replay-v1"
+    },
+    {
+      "manifest_sha256": "a333303d21f488102bd204fc9d339b344d6a43d7bae8711ee34c403f4779b594",
+      "requests": [
+        {
+          "date_in_first_system": true,
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t0",
+          "payload_json_bytes": 42106,
+          "payload_sha256": "2671a1693bfd65df036f9c2fb0df3381caaa1170642e1ad6ee988bf70d8e190d",
+          "previous_json_lcp_bytes": null,
+          "system_content_type": "string",
+          "system_sha256": "ccb4ac73dbfa22743ddccb5fca0f59142376dd3629ce4109afef8d2be2e00649",
+          "temporary_contexts": [],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 0
+        },
+        {
+          "date_in_first_system": true,
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t1",
+          "payload_json_bytes": 42452,
+          "payload_sha256": "168db77380c97520430347c4fabcf084605ca62ea8142ac4b9aeb146d3c1e4e8",
+          "previous_json_lcp_bytes": 20459,
+          "system_content_type": "string",
+          "system_sha256": "ccb4ac73dbfa22743ddccb5fca0f59142376dd3629ce4109afef8d2be2e00649",
+          "temporary_contexts": [],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 1
+        },
+        {
+          "date_in_first_system": true,
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t2",
+          "payload_json_bytes": 43035,
+          "payload_sha256": "a5d4d873b8cd648142715affd38d2087aa849ded36814603bfd2a4e7a842be93",
+          "previous_json_lcp_bytes": 8840,
+          "system_content_type": "string",
+          "system_sha256": "7db42c1845de2342b48a377cb221a7fb166f1e32b6015c9f4ccc147ebbf57d8b",
+          "temporary_contexts": [],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 2
+        },
+        {
+          "date_in_first_system": true,
+          "group": "A",
+          "id": "AGENT-combined-A-r0-t3",
+          "payload_json_bytes": 43382,
+          "payload_sha256": "d04b1cccb3286f81eb1bcd1f8b51e39e173d06ac03ae029e628c798a943adba7",
+          "previous_json_lcp_bytes": 21388,
+          "system_content_type": "string",
+          "system_sha256": "7db42c1845de2342b48a377cb221a7fb166f1e32b6015c9f4ccc147ebbf57d8b",
+          "temporary_contexts": [],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 3
+        },
+        {
+          "date_in_first_system": false,
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t0",
+          "payload_json_bytes": 42207,
+          "payload_sha256": "528710fa9e1c80464a423c1568dc258a2d3c8e93e64363c5852202d0f4f10187",
+          "previous_json_lcp_bytes": null,
+          "system_content_type": "string",
+          "system_sha256": "c3ea265e89a73154af1c9a1270eca4d19aa3e874945a58b199b7615a248db47a",
+          "temporary_contexts": [
+            {
+              "index": 1,
+              "name": "runtime_date"
+            },
+            {
+              "index": 2,
+              "name": "user_memory"
+            }
+          ],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 0
+        },
+        {
+          "date_in_first_system": false,
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t1",
+          "payload_json_bytes": 42553,
+          "payload_sha256": "e834218f7aa2bcd06374d6af229425c34b318031f5994e5826e20703d464ee0f",
+          "previous_json_lcp_bytes": 20560,
+          "system_content_type": "string",
+          "system_sha256": "c3ea265e89a73154af1c9a1270eca4d19aa3e874945a58b199b7615a248db47a",
+          "temporary_contexts": [
+            {
+              "index": 1,
+              "name": "runtime_date"
+            },
+            {
+              "index": 2,
+              "name": "user_memory"
+            }
+          ],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 1
+        },
+        {
+          "date_in_first_system": false,
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t2",
+          "payload_json_bytes": 43164,
+          "payload_sha256": "f1af4c479b36184d43d2b7b338b147bc00a2bbe3dc106f316157176d8ca26593",
+          "previous_json_lcp_bytes": 19867,
+          "system_content_type": "string",
+          "system_sha256": "c3ea265e89a73154af1c9a1270eca4d19aa3e874945a58b199b7615a248db47a",
+          "temporary_contexts": [
+            {
+              "index": 5,
+              "name": "runtime_date"
+            },
+            {
+              "index": 6,
+              "name": "user_memory"
+            }
+          ],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 2
+        },
+        {
+          "date_in_first_system": false,
+          "group": "B",
+          "id": "AGENT-combined-B-r0-t3",
+          "payload_json_bytes": 43511,
+          "payload_sha256": "7618ffe89827a6999549a41326f9e645d8e70fd613a82260a441f6e678d3fedf",
+          "previous_json_lcp_bytes": 21517,
+          "system_content_type": "string",
+          "system_sha256": "c3ea265e89a73154af1c9a1270eca4d19aa3e874945a58b199b7615a248db47a",
+          "temporary_contexts": [
+            {
+              "index": 5,
+              "name": "runtime_date"
+            },
+            {
+              "index": 6,
+              "name": "user_memory"
+            }
+          ],
+          "tool_schema_sha256": "a456c14496cde6ee217c0f1630b173cf015f03dbd48e0c845c04fc6c87f7d6b9",
+          "turn": 3
+        }
+      ],
+      "run": "official-agent-v1"
+    }
+  ],
+  "kind": "executed_official_payload_structure",
+  "limits": [
+    "Canonical JSON prefix bytes are local diagnostics, not provider tokens.",
+    "A restores legacy factory date and memory wrapping with current static rules; B captures product middleware.",
+    "Static rule text matches after whitespace normalization; exact byte equivalence is not claimed.",
+    "One AB block per scenario with synthetic identity/memory; no production ACL or strict cold-cache guarantee."
+  ],
+  "official_paid_calls": 16,
+  "source_sha256": {
+    "apps/runtime-service/scripts/prompt_cache_agent.py": "0a779147a8c8baf6f553ecbfb0b48335b7409ac0dff7c4848780cf56f05aa12e",
+    "apps/runtime-service/scripts/prompt_cache_cases.py": "baad7cfb6b36f52c5573abef0e1765d3ab8398fc06c949405bf7e7a5234ac7f3",
+    "apps/runtime-service/scripts/prompt_cache_experiment.py": "076d4767397c96f3f103cbff5d0d317ae310810c79a6d6ca3bd987f29a4699ea",
+    "apps/runtime-service/scripts/prompt_cache_official.py": "82db855b1ec4d98f8fe91d3d94e1fa57e2cc7b12c5f3206e675727303c3d3f52",
+    "apps/runtime-service/src/runtime_service/runtime/modeling.py": "04f9cfccc48b77c9e46c99603dfeab9cebd24d55ef1d1d60ee163308c75dc2a5",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py": "45050ca9b695d201030de6d6c335e919ae39c87037810d356bfda1d3d23a68f4",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/dynamic_context.py": "3b6e17cd8e1de5551920de6f7da908689ead6a7d301961401f26312ba0899678",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py": "4619777d4faae1216dad38abd87a5b8d5fb77b9cd837970c32602ef2d3e59ab4",
+    "apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py": "5c9443d78d0a2572deec21233dd3bbb197139309171a39c0f67f267740f85b1b"
+  },
+  "verified_on": "2026-11-23",
+  "version": 1
+}

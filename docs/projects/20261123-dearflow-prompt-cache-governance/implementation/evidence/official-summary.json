@@ -1,0 +1,207 @@
+[
+  {
+    "attempted": 8,
+    "groups": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 4,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-combined",
+        "complete_cache_ratio": 0.5265537560686359,
+        "completed": 4,
+        "completed_ms": {
+          "max": 1331.1525330063887,
+          "median": 1144.864438494551,
+          "min": 777.7852759754751,
+          "n": 4
+        },
+        "estimated_cost_usd": "0.007883496000",
+        "first_content_ms": {
+          "max": 1151.8120700202417,
+          "median": 894.1712499945424,
+          "min": 592.4499249958899,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "A",
+        "input_tokens": 53966,
+        "known_cache_read_tokens": 28416,
+        "known_cache_requests": 4,
+        "known_input_tokens": 53966,
+        "known_sample_cache_ratio": 0.5265537560686359,
+        "output_tokens": 40,
+        "planned": 4,
+        "quality_evaluated_requests": 4,
+        "quality_pass_count": 4,
+        "uncached_input_tokens": 25550
+      },
+      {
+        "actual_billed_cost": null,
+        "attempted": 4,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-combined",
+        "complete_cache_ratio": 0.7375402971801238,
+        "completed": 4,
+        "completed_ms": {
+          "max": 1068.6903850000817,
+          "median": 923.4541245095897,
+          "min": 723.313472000882,
+          "n": 4
+        },
+        "estimated_cost_usd": "0.004536648000",
+        "first_content_ms": {
+          "max": 862.8076419990975,
+          "median": 714.0456680062925,
+          "min": 554.0956830081996,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "B",
+        "input_tokens": 53974,
+        "known_cache_read_tokens": 39808,
+        "known_cache_requests": 4,
+        "known_input_tokens": 53974,
+        "known_sample_cache_ratio": 0.7375402971801238,
+        "output_tokens": 40,
+        "planned": 4,
+        "quality_evaluated_requests": 4,
+        "quality_pass_count": 4,
+        "uncached_input_tokens": 14166
+      }
+    ],
+    "recorded": 8,
+    "run": "official-replay-v1",
+    "stop_reason": null,
+    "tasks": null
+  },
+  {
+    "attempted": 8,
+    "groups": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 4,
+        "cache_input_coverage": 1.0,
+        "case": "AGENT-combined",
+        "complete_cache_ratio": 0.5363346244731906,
+        "completed": 4,
+        "completed_ms": {
+          "max": 1409.1450049891137,
+          "median": 1075.0784850097261,
+          "min": 916.7935019941069,
+          "n": 4
+        },
+        "estimated_cost_usd": "0.006168396000",
+        "first_content_ms": {
+          "max": 786.8757599790115,
+          "median": 661.0340279876254,
+          "min": 535.1922959962394,
+          "n": 2
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "A",
+        "input_tokens": 41049,
+        "known_cache_read_tokens": 22016,
+        "known_cache_requests": 4,
+        "known_input_tokens": 41049,
+        "known_sample_cache_ratio": 0.5363346244731906,
+        "output_tokens": 272,
+        "planned": 4,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 19033
+      },
+      {
+        "actual_billed_cost": null,
+        "attempted": 4,
+        "cache_input_coverage": 1.0,
+        "case": "AGENT-combined",
+        "complete_cache_ratio": 0.729735655987331,
+        "completed": 4,
+        "completed_ms": {
+          "max": 1421.0630759771448,
+          "median": 1051.0087345028296,
+          "min": 787.1512559941038,
+          "n": 4
+        },
+        "estimated_cost_usd": "0.003852012000",
+        "first_content_ms": {
+          "max": 928.3357029780746,
+          "median": 866.0052384948358,
+          "min": 803.674774011597,
+          "n": 2
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "B",
+        "input_tokens": 41045,
+        "known_cache_read_tokens": 29952,
+        "known_cache_requests": 4,
+        "known_input_tokens": 41045,
+        "known_sample_cache_ratio": 0.729735655987331,
+        "output_tokens": 287,
+        "planned": 4,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 11093
+      }
+    ],
+    "recorded": 8,
+    "run": "official-agent-v1",
+    "stop_reason": null,
+    "tasks": [
+      {
+        "answers": [
+          "已读取 `/workspace/work/data.csv`，内容为：\n\n```\nname,units\na,10\nb,20\nc,30\n```\n\n- **units 总和**：10 + 20 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-23**\n- **记忆中的 Python 测试首选**：**pytest**\n\n未写文件，也未调用其他工具。",
+          "已读取 `/workspace/work/data2.csv`，内容为：\n\n```\nname,units\nx,12\ny,18\nz,30\n```\n\n- **units 总和**：12 + 18 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-24**\n- **本轮记忆中的前端首选**：**Vue 3 + TypeScript**\n\n未写文件，也未调用其他工具。"
+        ],
+        "group": "A",
+        "model_calls": 4,
+        "quality_pass": true,
+        "read_paths": [
+          "/workspace/work/data.csv",
+          "/workspace/work/data2.csv"
+        ],
+        "read_results_succeeded": true,
+        "tool_calls": 2
+      },
+      {
+        "answers": [
+          "已读取 `/workspace/work/data.csv`，内容为：\n\n| name | units |\n|---|---|\n| a | 10 |\n| b | 20 |\n| c | 30 |\n\n- **units 总和**：10 + 20 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-23**\n- **本轮记忆中的 Python 测试首选**：**pytest**\n\n未写文件，未调用其他工具。",
+          "已读取 `/workspace/work/data2.csv`，内容为：\n\n| name | units |\n|---|---|\n| x | 12 |\n| y | 18 |\n| z | 30 |\n\n- **units 总和**：12 + 18 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-24**\n- **本轮记忆中的前端首选**：**Vue 3 + TypeScript**\n\n未写文件，未调用其他工具。"
+        ],
+        "group": "B",
+        "model_calls": 4,
+        "quality_pass": true,
+        "read_paths": [
+          "/workspace/work/data.csv",
+          "/workspace/work/data2.csv"
+        ],
+        "read_results_succeeded": true,
+        "tool_calls": 2
+      }
+    ]
+  }
+]

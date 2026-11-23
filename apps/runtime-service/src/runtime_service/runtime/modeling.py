@@ -15,7 +15,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel, LanguageModelInput
 from langchain_core.messages import AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
-from langchain_deepseek import ChatDeepSeek
+from langchain_deepseek import ChatDeepSeek as _ChatDeepSeek
 from langchain_openai import ChatOpenAI
 
 try:
@@ -46,6 +46,33 @@ def _reasoning_text(message: Mapping[str, object]) -> str:
             if isinstance(item, dict) and isinstance(item.get("text"), str)
         )
     return ""
+
+
+class ChatDeepSeek(_ChatDeepSeek):
+    """Serialize framework system text blocks to DeepSeek's string-only wire format."""
+
+    def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        for message in payload.get("messages", []):
+            content = message.get("content")
+            if message.get("role") == "system" and isinstance(content, list):
+                if not all(
+                    isinstance(block, str)
+                    or (
+                        isinstance(block, dict)
+                        and block.get("type") == "text"
+                        and isinstance(block.get("text"), str)
+                    )
+                    for block in content
+                ):
+                    raise ValueError(
+                        "DeepSeek system messages require text-only content"
+                    )
+                message["content"] = "\n\n".join(
+                    block if isinstance(block, str) else block["text"]
+                    for block in content
+                )
+        return payload
 
 
 class ChatOpenAIWithReasoning(ChatOpenAI):

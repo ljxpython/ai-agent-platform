@@ -1,0 +1,346 @@
+[
+  {
+    "after_first": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 5,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.8573670411268253,
+        "completed": 5,
+        "completed_ms": {
+          "max": 1215.5203669972252,
+          "median": 1059.256385982735,
+          "min": 745.9600209840573,
+          "n": 5
+        },
+        "estimated_cost_usd": "0.002715900000",
+        "first_content_ms": {
+          "max": 890.5202809837647,
+          "median": 635.189492997597,
+          "min": 474.9432109820191,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": null,
+        "group": "A",
+        "input_tokens": 52253,
+        "known_cache_read_tokens": 44800,
+        "known_cache_requests": 5,
+        "known_input_tokens": 52253,
+        "known_sample_cache_ratio": 0.8573670411268253,
+        "output_tokens": 176,
+        "planned": 5,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 7453
+      }
+    ],
+    "attempted": 6,
+    "comparison_complete": false,
+    "excluded_request_ids": {
+      "A": "OFFICIAL-eight-turn-A-r0-t0"
+    },
+    "groups": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 6,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.7180177581177677,
+        "completed": 6,
+        "completed_ms": {
+          "max": 1215.5203669972252,
+          "median": 1033.6085089948028,
+          "min": 745.9600209840573,
+          "n": 6
+        },
+        "estimated_cost_usd": "0.005811000000",
+        "first_content_ms": {
+          "max": 890.5202809837647,
+          "median": 635.189492997597,
+          "min": 474.9432109820191,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "A",
+        "input_tokens": 62394,
+        "known_cache_read_tokens": 44800,
+        "known_cache_requests": 6,
+        "known_input_tokens": 62394,
+        "known_sample_cache_ratio": 0.7180177581177677,
+        "output_tokens": 220,
+        "planned": 6,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 17594
+      }
+    ],
+    "recorded": 6,
+    "run": "official-multiturn-v2",
+    "stop_reason": "diagnostic_common_first_four_only",
+    "task_complete": false,
+    "tasks": [
+      {
+        "group": "A",
+        "quality_pass": false,
+        "turns": [
+          {
+            "content": "{\"units_total\": 60, \"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 0,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t0",
+              "OFFICIAL-eight-turn-A-r0-t1"
+            ],
+            "quality": {
+              "answer": {
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 60,
+                "units_total": 60
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 1,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t2"
+            ],
+            "quality": {
+              "answer": {
+                "b_units": 20,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "subtotal": 30
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 2,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t3",
+              "OFFICIAL-eight-turn-A-r0-t4"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 75
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 3,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t5"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "growth_pct": 25.0,
+                "preference": "pytest"
+              },
+              "errors": [
+                "preference"
+              ],
+              "pass": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "after_first": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 5,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.9606187659142688,
+        "completed": 5,
+        "completed_ms": {
+          "max": 1040.2749950008001,
+          "median": 795.1477949973196,
+          "min": 652.7998789970297,
+          "n": 5
+        },
+        "estimated_cost_usd": "0.001131756000",
+        "first_content_ms": {
+          "max": 652.6855129923206,
+          "median": 559.5472020067973,
+          "min": 426.3943690166343,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": null,
+        "group": "B",
+        "input_tokens": 52233,
+        "known_cache_read_tokens": 50176,
+        "known_cache_requests": 5,
+        "known_input_tokens": 52233,
+        "known_sample_cache_ratio": 0.9606187659142688,
+        "output_tokens": 178,
+        "planned": 5,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 2057
+      }
+    ],
+    "attempted": 6,
+    "comparison_complete": false,
+    "excluded_request_ids": {
+      "B": "OFFICIAL-eight-turn-B-r0-t0"
+    },
+    "groups": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 6,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.8044893378226712,
+        "completed": 6,
+        "completed_ms": {
+          "max": 1655.127600999549,
+          "median": 813.9356460014824,
+          "min": 652.7998789970297,
+          "n": 6
+        },
+        "estimated_cost_usd": "0.004225656000",
+        "first_content_ms": {
+          "max": 652.6855129923206,
+          "median": 559.5472020067973,
+          "min": 426.3943690166343,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "B",
+        "input_tokens": 62370,
+        "known_cache_read_tokens": 50176,
+        "known_cache_requests": 6,
+        "known_input_tokens": 62370,
+        "known_sample_cache_ratio": 0.8044893378226712,
+        "output_tokens": 222,
+        "planned": 6,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 12194
+      }
+    ],
+    "recorded": 6,
+    "run": "official-multiturn-v3-diagnostic-b",
+    "stop_reason": "diagnostic_common_first_four_only",
+    "task_complete": true,
+    "tasks": [
+      {
+        "group": "B",
+        "quality_pass": true,
+        "turns": [
+          {
+            "content": "{\"units_total\": 60, \"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 0,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t0",
+              "OFFICIAL-eight-turn-B-r0-t1"
+            ],
+            "quality": {
+              "answer": {
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 60,
+                "units_total": 60
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 1,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t2"
+            ],
+            "quality": {
+              "answer": {
+                "b_units": 20,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "subtotal": 30
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 2,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t3",
+              "OFFICIAL-eight-turn-B-r0-t4"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 75
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"Vue 3\"}",
+            "conversation_turn": 3,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t5"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "growth_pct": 25.0,
+                "preference": "Vue 3"
+              },
+              "errors": [],
+              "pass": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

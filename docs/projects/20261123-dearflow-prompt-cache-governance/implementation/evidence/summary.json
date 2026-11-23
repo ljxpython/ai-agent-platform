@@ -1,0 +1,774 @@
+[
+  {
+    "run": "c01-v1",
+    "attempted": 3,
+    "recorded": 3,
+    "stop_reason": "usage_unavailable_or_invalid",
+    "groups": [
+      {
+        "case": "C01",
+        "group": "A",
+        "planned": 4,
+        "attempted": 3,
+        "completed": 3,
+        "known_cache_requests": 3,
+        "input_tokens": 40086,
+        "output_tokens": 56,
+        "known_cache_read_tokens": 13184,
+        "known_input_tokens": 40086,
+        "known_sample_cache_ratio": 0.3288928803073392,
+        "complete_cache_ratio": null,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 26902,
+        "estimated_cost_usd": "0.042666600000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 3,
+        "quality_evaluated_requests": 3,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 2,
+          "median": 2331.788964991574,
+          "min": 1650.8289639896248,
+          "max": 3012.7489659935236
+        },
+        "first_content_ms": {
+          "n": 3,
+          "median": 2375.406177015975,
+          "min": 1865.628414991079,
+          "max": 3340.5997950176243
+        },
+        "completed_ms": {
+          "n": 3,
+          "median": 2391.019449016312,
+          "min": 1885.7025709876325,
+          "max": 3382.430983008817
+        }
+      }
+    ],
+    "tasks": null
+  },
+  {
+    "run": "all-v2",
+    "attempted": 32,
+    "recorded": 32,
+    "stop_reason": null,
+    "groups": [
+      {
+        "case": "C01",
+        "group": "A",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 53456,
+        "output_tokens": 259,
+        "known_cache_read_tokens": 26368,
+        "known_input_tokens": 53456,
+        "known_sample_cache_ratio": 0.4932654893744388,
+        "complete_cache_ratio": 0.4932654893744388,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 27088,
+        "estimated_cost_usd": "0.046141200000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 4,
+        "quality_evaluated_requests": 4,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 4,
+          "median": 2043.9230665069772,
+          "min": 1884.6923480159603,
+          "max": 2371.9593179994263
+        },
+        "first_content_ms": {
+          "n": 4,
+          "median": 2178.4362740145298,
+          "min": 2127.667378023034,
+          "max": 3508.0648660077713
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2189.452603503014,
+          "min": 2146.7657379980665,
+          "max": 3522.214021999389
+        }
+      },
+      {
+        "case": "C02",
+        "group": "A",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 53722,
+        "output_tokens": 112,
+        "known_cache_read_tokens": 30464,
+        "known_input_tokens": 53722,
+        "known_sample_cache_ratio": 0.5670674956256282,
+        "complete_cache_ratio": 0.5670674956256282,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 23258,
+        "estimated_cost_usd": "0.040128600000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 4,
+        "quality_evaluated_requests": 4,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 4,
+          "median": 1961.04740750161,
+          "min": 1527.824877994135,
+          "max": 2611.2019850115757
+        },
+        "first_content_ms": {
+          "n": 4,
+          "median": 2114.456216993858,
+          "min": 1672.7247859816998,
+          "max": 2722.1918440191075
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2244.9877864855807,
+          "min": 1822.0300810062326,
+          "max": 2722.90891801822
+        }
+      },
+      {
+        "case": "C02",
+        "group": "B",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 53714,
+        "output_tokens": 229,
+        "known_cache_read_tokens": 26368,
+        "known_input_tokens": 53714,
+        "known_sample_cache_ratio": 0.4908962281714264,
+        "complete_cache_ratio": 0.4908962281714264,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 27346,
+        "estimated_cost_usd": "0.046348200000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 4,
+        "quality_evaluated_requests": 4,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 4,
+          "median": 1898.2484524894971,
+          "min": 1481.0942100011744,
+          "max": 2798.908661992755
+        },
+        "first_content_ms": {
+          "n": 4,
+          "median": 2288.83525999845,
+          "min": 1741.807434009388,
+          "max": 2973.0514279799536
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2444.347316006315,
+          "min": 1756.872581987409,
+          "max": 2975.2679789962713
+        }
+      },
+      {
+        "case": "C03",
+        "group": "A",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 53428,
+        "output_tokens": 202,
+        "known_cache_read_tokens": 14976,
+        "known_input_tokens": 53428,
+        "known_sample_cache_ratio": 0.2803024631279479,
+        "complete_cache_ratio": 0.2803024631279479,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 38452,
+        "estimated_cost_usd": "0.061136400000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 4,
+        "quality_evaluated_requests": 4,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 3,
+          "median": 2496.993561013369,
+          "min": 1825.230112997815,
+          "max": 2635.632949997671
+        },
+        "first_content_ms": {
+          "n": 4,
+          "median": 2408.679921005387,
+          "min": 1825.9390100138262,
+          "max": 2968.726442020852
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2570.301585990819,
+          "min": 2032.1357880020514,
+          "max": 3121.861389023252
+        }
+      },
+      {
+        "case": "C03",
+        "group": "B",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 53436,
+        "output_tokens": 140,
+        "known_cache_read_tokens": 26368,
+        "known_input_tokens": 53436,
+        "known_sample_cache_ratio": 0.4934501085410585,
+        "complete_cache_ratio": 0.4934501085410585,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 27068,
+        "estimated_cost_usd": "0.045397200000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 4,
+        "quality_evaluated_requests": 4,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 3,
+          "median": 2225.500133994501,
+          "min": 1854.663984006038,
+          "max": 2392.819245986175
+        },
+        "first_content_ms": {
+          "n": 4,
+          "median": 2440.119989987579,
+          "min": 1994.0073800098617,
+          "max": 2875.443882017862
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2590.504448991851,
+          "min": 2135.9977920074016,
+          "max": 2896.642055013217
+        }
+      },
+      {
+        "case": "C04",
+        "group": "A",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 56781,
+        "output_tokens": 263,
+        "known_cache_read_tokens": 22528,
+        "known_input_tokens": 56781,
+        "known_sample_cache_ratio": 0.3967524347933288,
+        "complete_cache_ratio": 0.3967524347933288,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 34253,
+        "estimated_cost_usd": "0.056336700000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 4,
+        "quality_evaluated_requests": 4,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 4,
+          "median": 1849.680391009315,
+          "min": 1762.9716729861684,
+          "max": 2201.4826629892923
+        },
+        "first_content_ms": {
+          "n": 4,
+          "median": 2073.840264492901,
+          "min": 2018.5450320132077,
+          "max": 2519.877552986145
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2404.349125994486,
+          "min": 2111.4349809940904,
+          "max": 2573.1810069992207
+        }
+      },
+      {
+        "case": "C04",
+        "group": "B",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 57420,
+        "output_tokens": 212,
+        "known_cache_read_tokens": 28416,
+        "known_input_tokens": 57420,
+        "known_sample_cache_ratio": 0.4948798328108673,
+        "complete_cache_ratio": 0.4948798328108673,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 29004,
+        "estimated_cost_usd": "0.049040400000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 4,
+        "quality_evaluated_requests": 4,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 4,
+          "median": 2293.255185504677,
+          "min": 1576.501219009515,
+          "max": 3268.746966001345
+        },
+        "first_content_ms": {
+          "n": 4,
+          "median": 2538.599832492764,
+          "min": 1685.2143429860007,
+          "max": 3340.4907819931395
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2745.4430680081714,
+          "min": 1712.7124719845597,
+          "max": 3526.0210830019787
+        }
+      },
+      {
+        "case": "C05",
+        "group": "A",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 535754,
+        "output_tokens": 250,
+        "known_cache_read_tokens": 147584,
+        "known_input_tokens": 535754,
+        "known_sample_cache_ratio": 0.27546971184536184,
+        "complete_cache_ratio": 0.27546971184536184,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 388170,
+        "estimated_cost_usd": "0.605892600000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 4,
+        "quality_evaluated_requests": 4,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 4,
+          "median": 3031.7790644912748,
+          "min": 2659.8993559891824,
+          "max": 3369.46362699382
+        },
+        "first_content_ms": {
+          "n": 4,
+          "median": 3510.888940989389,
+          "min": 3408.0929119954817,
+          "max": 3699.285576993134
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 3511.9810409960337,
+          "min": 3409.323553991271,
+          "max": 3700.0883200089447
+        }
+      }
+    ],
+    "tasks": null
+  },
+  {
+    "run": "repeated-v3",
+    "attempted": 48,
+    "recorded": 48,
+    "stop_reason": null,
+    "groups": [
+      {
+        "case": "C02",
+        "group": "A",
+        "planned": 12,
+        "attempted": 12,
+        "completed": 12,
+        "known_cache_requests": 12,
+        "input_tokens": 161158,
+        "output_tokens": 455,
+        "known_cache_read_tokens": 65024,
+        "known_input_tokens": 161158,
+        "known_sample_cache_ratio": 0.4034798148400948,
+        "complete_cache_ratio": 0.4034798148400948,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 96134,
+        "estimated_cost_usd": "0.156684600000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 12,
+        "quality_evaluated_requests": 12,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 12,
+          "median": 2046.760996003286,
+          "min": 1426.9996899820399,
+          "max": 2947.6738370140083
+        },
+        "first_content_ms": {
+          "n": 12,
+          "median": 2190.5226625094656,
+          "min": 1548.7099799793214,
+          "max": 3006.4062390010804
+        },
+        "completed_ms": {
+          "n": 12,
+          "median": 2245.3878310043365,
+          "min": 1660.8489209902473,
+          "max": 3213.395909027895
+        }
+      },
+      {
+        "case": "C02",
+        "group": "B",
+        "planned": 12,
+        "attempted": 12,
+        "completed": 12,
+        "known_cache_requests": 12,
+        "input_tokens": 161154,
+        "output_tokens": 347,
+        "known_cache_read_tokens": 79104,
+        "known_input_tokens": 161154,
+        "known_sample_cache_ratio": 0.49085967459696933,
+        "complete_cache_ratio": 0.49085967459696933,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 82050,
+        "estimated_cost_usd": "0.137022600000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 12,
+        "quality_evaluated_requests": 12,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 11,
+          "median": 1831.4060860138852,
+          "min": 1393.234242015751,
+          "max": 2554.1426340059843
+        },
+        "first_content_ms": {
+          "n": 12,
+          "median": 2061.042086002999,
+          "min": 1733.6413410084788,
+          "max": 2968.5878019954544
+        },
+        "completed_ms": {
+          "n": 12,
+          "median": 2065.3756279934896,
+          "min": 1755.766713002231,
+          "max": 3148.0956749874167
+        }
+      },
+      {
+        "case": "C03",
+        "group": "A",
+        "planned": 12,
+        "attempted": 12,
+        "completed": 12,
+        "known_cache_requests": 12,
+        "input_tokens": 160288,
+        "output_tokens": 562,
+        "known_cache_read_tokens": 33280,
+        "known_input_tokens": 160288,
+        "known_sample_cache_ratio": 0.20762627270912357,
+        "complete_cache_ratio": 0.20762627270912357,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 127008,
+        "estimated_cost_usd": "0.198876000000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 12,
+        "quality_evaluated_requests": 12,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 12,
+          "median": 2057.7417019958375,
+          "min": 1592.5219260097947,
+          "max": 2714.094135997584
+        },
+        "first_content_ms": {
+          "n": 12,
+          "median": 2162.417692990857,
+          "min": 1703.3297620073427,
+          "max": 2808.1645499914885
+        },
+        "completed_ms": {
+          "n": 12,
+          "median": 2386.6284454998095,
+          "min": 2062.461914989399,
+          "max": 2950.0323070096783
+        }
+      },
+      {
+        "case": "C03",
+        "group": "B",
+        "planned": 12,
+        "attempted": 12,
+        "completed": 12,
+        "known_cache_requests": 12,
+        "input_tokens": 160300,
+        "output_tokens": 274,
+        "known_cache_read_tokens": 79104,
+        "known_input_tokens": 160300,
+        "known_sample_cache_ratio": 0.4934747348721148,
+        "complete_cache_ratio": 0.4934747348721148,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 81196,
+        "estimated_cost_usd": "0.135303600000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 12,
+        "quality_evaluated_requests": 12,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 5,
+          "median": 1924.5054320199415,
+          "min": 1632.936661975691,
+          "max": 2970.204430981539
+        },
+        "first_content_ms": {
+          "n": 12,
+          "median": 2341.3823260052595,
+          "min": 1473.5610960051417,
+          "max": 3075.8078820072114
+        },
+        "completed_ms": {
+          "n": 12,
+          "median": 2540.623549983138,
+          "min": 1568.2878640072886,
+          "max": 3217.7849669824354
+        }
+      }
+    ],
+    "tasks": null
+  },
+  {
+    "run": "agent-date-v4",
+    "attempted": 4,
+    "recorded": 4,
+    "stop_reason": "agent_quality_failed",
+    "groups": [
+      {
+        "case": "AGENT-C03",
+        "group": "A",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 40953,
+        "output_tokens": 343,
+        "known_cache_read_tokens": 3328,
+        "known_input_tokens": 40953,
+        "known_sample_cache_ratio": 0.08126388787146241,
+        "complete_cache_ratio": 0.08126388787146241,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 37625,
+        "estimated_cost_usd": "0.058994700000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 0,
+        "quality_evaluated_requests": 0,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 3,
+          "median": 1749.8347419896163,
+          "min": 1643.7098039896227,
+          "max": 2343.027102004271
+        },
+        "first_content_ms": {
+          "n": 2,
+          "median": 1959.849683495122,
+          "min": 1869.2482159822248,
+          "max": 2050.451151008019
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2293.477291997988,
+          "min": 1687.0546779828146,
+          "max": 2829.331701010233
+        }
+      }
+    ],
+    "tasks": [
+      {
+        "answers": [
+          "读取结果（/workspace/work/data.csv）：\n\n```\nname,units\na,10\nb,20\nc,30\n```\n\n- units 总和：**60**（10 + 20 + 30，共 3 条数据）\n- 本轮 current_date 的 UTC 日期：**2026-11-23**\n\n未写入任何文件，也未调用 read_file 之外的工具。",
+          "读取结果（/workspace/work/data2.csv）：\n\n```\nname,units\nx,12\ny,18\nz,30\n```\n\n- units 总和：**60**（12 + 18 + 30，共 3 条数据）\n- 本轮 current_date 的 UTC 日期：**2026-11-23**\n\n未写文件，也未调用 read_file 之外的其他工具。"
+        ],
+        "group": "A",
+        "model_calls": 4,
+        "quality_pass": false,
+        "read_paths": [
+          "/workspace/work/data.csv",
+          "/workspace/work/data2.csv"
+        ],
+        "tool_calls": 2
+      }
+    ]
+  },
+  {
+    "run": "summary-v4",
+    "attempted": 2,
+    "recorded": 2,
+    "stop_reason": null,
+    "groups": [
+      {
+        "case": "C05-summary",
+        "group": "A",
+        "planned": 2,
+        "attempted": 2,
+        "completed": 2,
+        "known_cache_requests": 2,
+        "input_tokens": 79687,
+        "output_tokens": 560,
+        "known_cache_read_tokens": 0,
+        "known_input_tokens": 79687,
+        "known_sample_cache_ratio": 0.0,
+        "complete_cache_ratio": 0.0,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 79687,
+        "estimated_cost_usd": "0.122890500000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 0,
+        "quality_evaluated_requests": 0,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 2,
+          "median": 2372.3740084969904,
+          "min": 1750.3723459958564,
+          "max": 2994.3756709981244
+        },
+        "first_content_ms": {
+          "n": 2,
+          "median": 3881.443031001254,
+          "min": 3484.0426229930017,
+          "max": 4278.843439009506
+        },
+        "completed_ms": {
+          "n": 2,
+          "median": 3916.015303489985,
+          "min": 3525.805382989347,
+          "max": 4306.225223990623
+        }
+      }
+    ],
+    "tasks": [
+      {
+        "answers": [
+          "10"
+        ],
+        "group": "A",
+        "model_calls": 2,
+        "quality_pass": true,
+        "read_paths": [],
+        "tool_calls": 0
+      }
+    ]
+  },
+  {
+    "run": "agent-combined-v4",
+    "attempted": 8,
+    "recorded": 8,
+    "stop_reason": null,
+    "groups": [
+      {
+        "case": "AGENT-combined",
+        "group": "A",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 40935,
+        "output_tokens": 280,
+        "known_cache_read_tokens": 12032,
+        "known_input_tokens": 40935,
+        "known_sample_cache_ratio": 0.2939294002687187,
+        "complete_cache_ratio": 0.2939294002687187,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 28903,
+        "estimated_cost_usd": "0.046839300000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 0,
+        "quality_evaluated_requests": 0,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 2,
+          "median": 2159.1837934975047,
+          "min": 1943.6071499949321,
+          "max": 2374.760437000077
+        },
+        "first_content_ms": {
+          "n": 2,
+          "median": 2155.5697360017803,
+          "min": 2110.7095849874895,
+          "max": 2200.429887016071
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2636.4488004910527,
+          "min": 2023.5169169900473,
+          "max": 3042.1098100196104
+        }
+      },
+      {
+        "case": "AGENT-combined",
+        "group": "B",
+        "planned": 4,
+        "attempted": 4,
+        "completed": 4,
+        "known_cache_requests": 4,
+        "input_tokens": 40920,
+        "output_tokens": 367,
+        "known_cache_read_tokens": 20224,
+        "known_input_tokens": 40920,
+        "known_sample_cache_ratio": 0.4942326490713588,
+        "complete_cache_ratio": 0.4942326490713588,
+        "cache_input_coverage": 1.0,
+        "uncached_input_tokens": 20696,
+        "estimated_cost_usd": "0.036279600000",
+        "actual_billed_cost": null,
+        "quality_pass_count": 0,
+        "quality_evaluated_requests": 0,
+        "first_request_cache_ratio": 0.0,
+        "first_reasoning_ms": {
+          "n": 2,
+          "median": 1809.8078354960307,
+          "min": 1715.6139969883952,
+          "max": 1904.0016740036663
+        },
+        "first_content_ms": {
+          "n": 3,
+          "median": 1970.6227660062723,
+          "min": 1780.5886570131406,
+          "max": 2089.150977000827
+        },
+        "completed_ms": {
+          "n": 4,
+          "median": 2199.68008401338,
+          "min": 1826.5846580034122,
+          "max": 2456.3695520046167
+        }
+      }
+    ],
+    "tasks": [
+      {
+        "answers": [
+          "已完成读取与计算（未写文件、未调用其他工具）：\n\n- **units 总和**：10 + 20 + 30 = **60**\n- **本轮 current_date（UTC 日期）**：**2026-11-23**\n- **记忆中的 Python 测试首选**：**pytest**",
+          "已完成读取与计算（未写文件、未调用其他工具）：\n\n- **units 总和**：12 + 18 + 30 = **60**\n- **本轮 current_date（UTC 日期）**：**2026-11-24**\n- **记忆中的前端首选**：**Vue 3 + TypeScript**"
+        ],
+        "group": "A",
+        "model_calls": 4,
+        "quality_pass": true,
+        "read_paths": [
+          "/workspace/work/data.csv",
+          "/workspace/work/data2.csv"
+        ],
+        "tool_calls": 2
+      },
+      {
+        "answers": [
+          "**data.csv 内容**\n\n| name | units |\n|---|---|\n| a | 10 |\n| b | 20 |\n| c | 30 |\n\n- **units 总和**：10 + 20 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-23**\n- **记忆中的 Python 测试首选**：**pytest**\n\n未写入任何文件，也未调用其他工具。",
+          "**data2.csv 内容**\n\n| name | units |\n|---|---|\n| x | 12 |\n| y | 18 |\n| z | 30 |\n\n- **units 总和**：12 + 18 + 30 = **60**\n- **本轮 current_date（UTC）**：**2026-11-24**\n- **本轮记忆中的前端首选**：**Vue 3 + TypeScript**\n\n未写入任何文件，也未调用其他工具。\n\n注：上一轮我回复的日期“2026-11-23”是按当时的 current_date 给出的；本轮系统给出的 current_date 为 2026-11-24，两者相差一天，以本轮为准。"
+        ],
+        "group": "B",
+        "model_calls": 4,
+        "quality_pass": true,
+        "read_paths": [
+          "/workspace/work/data.csv",
+          "/workspace/work/data2.csv"
+        ],
+        "tool_calls": 2
+      }
+    ]
+  }
+]

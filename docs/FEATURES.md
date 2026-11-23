@@ -138,6 +138,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| DearFlow 前缀缓存实验与动态上下文评估 | 部分完成（用户已确认，合并与测试环境清理进行中）：独立 Worktree 已交付临时日期/记忆及 system 序列化，180 项既有回归、16 次官方小批证据保持；新增 23 次官方多轮调用、八项测试通过，A 第 4 轮旧偏好失败停止，B 后置诊断八轮通过，全量/排除首次读取 87.93%/96.24%，完整八轮同质量 A/B 收益未知。全部谷时标价估算 0.008490588 USD、实扣未知，旧 97 次 Xiaok、16 次官方与负结果保留；未部署 | [方案与唯一进度](projects/20261123-dearflow-prompt-cache-governance/README.md) · [文章](projects/20261123-dearflow-prompt-cache-governance/article.md) |
 | 复杂评测内存保护与Trace去重 | 已完成并正式加载：旧Trace事实、内部引用及根/LLM/TOOL原文保持。双机连续五任务、615秒资源窗口及合并后读回通过，无新增OOM，末窗口Swap稳定；低内存保护继续生效，单机候选失败和Agent业务低分保留，未验证长期及多并发容量 | [原任务](projects/20261119-universal-agent-eval-authoring-governance/tasks.md) |
 | 流式工具名称兼容修复 | 已合main并随Task22正式加载：空名称增量不再覆盖首片工具名，关联56项／边界7项及独立六轮75次工具/13次审批通过；正式两轮实际执行2次read_file | [Task13与证据](projects/20261119-universal-agent-eval-authoring-governance/tasks.md#task-13修复真实模型工具响应未被运行时执行的问题) |
 | AI网关精确预算记账与逐调用准入 | 后端本地实现：PG/Decimal逐调用账本、回填/重建/未知状态、首次事件及执行域级Worker栅栏；专项34项通过。仅预算Worktree；完整主备/恢复、性能/回退门禁未齐。栅栏粘性生效，回退须保留保护或暂停执行域 | [方案与任务](projects/20261118-gateway-budget-and-governance/plan.md) · [启用/回退](projects/20261118-gateway-budget-and-governance/backend-runbook.md) |

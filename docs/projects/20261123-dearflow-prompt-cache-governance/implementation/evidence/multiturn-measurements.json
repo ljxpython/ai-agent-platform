@@ -1,0 +1,2639 @@
+{
+  "date": "2026-11-23",
+  "experiments": [
+    {
+      "conversation_specification": {
+        "criteria": "Eight JSON answers per group; exact numeric/date facts and fresh preference; three actual CSV reads; no write, other tool or persisted temporary context. One AB block, zero retries, fail and stop, no replacement samples.",
+        "files": {
+          "dec-corrected.csv": "item,units\nA,15\nB,21\nC,35\n",
+          "dec.csv": "item,units\nA,15\nB,25\nC,35\n",
+          "nov.csv": "item,units\nA,10\nB,20\nC,30\n"
+        },
+        "group_order": [
+          "A",
+          "B"
+        ],
+        "max_requests_per_group": 20,
+        "turns": [
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "total": 60
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第1轮：读取 /workspace/work/nov.csv，计算 units 总和，total 为总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/nov.csv"
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "b_units": 20,
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "subtotal": 30
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第2轮：不要调用工具。根据上一轮读到的十一月数据，b_units 为 B 的数量，subtotal 为 A 与 B 的数量之和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "change": 15,
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "total": 75
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第3轮：读取 /workspace/work/dec.csv，total 为十二月总和，change 为它减去十一月总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/dec.csv"
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "change": 15,
+              "date": "2026-11-23",
+              "growth_pct": 25,
+              "preference": "Vue 3 + TypeScript"
+            },
+            "memory": "前端首选 Vue 3，使用 TypeScript。",
+            "question": "实验第4轮：话题切换到前端。不要调用工具。根据前面两份原始数据，change 为十二月总和减十一月总和，growth_pct 为增长百分数的数值。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "date": "2026-11-23",
+              "dec_b": 25,
+              "nov_b": 20,
+              "preference": "React + TypeScript"
+            },
+            "memory": "前端首选已更正为 React，使用 TypeScript；此前 Vue 偏好已失效。",
+            "question": "实验第5轮：本轮前端偏好已更正，以当前有效记忆为准。不要调用工具。nov_b 与 dec_b 分别为前面十一月和十二月原始文件 B 的数量。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "correction": -4,
+              "date": "2026-11-24",
+              "preference": "React + TypeScript",
+              "total": 71
+            },
+            "memory": "前端首选已更正为 React，使用 TypeScript；此前 Vue 偏好已失效。",
+            "question": "实验第6轮：进入本轮运行日期。读取 /workspace/work/dec-corrected.csv，total 为修订后总和，correction 为修订后减去十二月原始总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/dec-corrected.csv"
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "date": "2026-11-24",
+              "delta": 11,
+              "new_total": 71,
+              "old_total": 60,
+              "preference": null
+            },
+            "memory": "",
+            "question": "实验第7轮：不要调用工具。old_total 为十一月总和，new_total 为十二月修订总和，delta 为两者之差。偏好只看本轮 user_memory；本轮没有记忆块就写 null，不能从历史回答恢复已移除偏好。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "date": "2026-11-24",
+              "december_corrected": 71,
+              "december_original": 75,
+              "delta": 11,
+              "november_total": 60,
+              "preference": null
+            },
+            "memory": "",
+            "question": "实验第8轮：不要调用工具。汇总 november_total、december_original、december_corrected 和 delta（修订十二月减十一月）。偏好只看本轮 user_memory，没有则 null，历史偏好不能代替当前记忆。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          }
+        ]
+      },
+      "manifest_sha256": "89fdd764ed73fa3e6b9ef2750bc6d0ad95081c8823c19a18ffa66e3a4f1b9753",
+      "planned": [
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 0,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t0",
+          "payload_sha256": "a60eff921f66fa77f7192f2af06a5a224313c2be6907bf56108d7f507a864ae2",
+          "repeat": 0,
+          "turn": 0
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 0,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t1",
+          "payload_sha256": "943b45df05a8613f381a9a7b1c0de1fe79966b00efeda9b8c2c82538bb0d1734",
+          "repeat": 0,
+          "turn": 1
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 1,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t2",
+          "payload_sha256": "28612de73394ad1f6b5036a089821518c3439e999d1a9a7e6926257cadb92173",
+          "repeat": 0,
+          "turn": 2
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 2,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t3",
+          "payload_sha256": "3cf878db486b628c734bf95e7524bf76b697e68debec9fc007b87b97dbae88bb",
+          "repeat": 0,
+          "turn": 3
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 2,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t4",
+          "payload_sha256": "2c9c214b0949d7f168b1e008268f0ec0bdab7fb1e1ce3136d09c210fb4c7b1c2",
+          "repeat": 0,
+          "turn": 4
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 3,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t5",
+          "payload_sha256": "681124bc05c598d7f668a84aae0b39405f421b2499834ba86219a17025af6e39",
+          "repeat": 0,
+          "turn": 5
+        }
+      ],
+      "pre_registered_plan_sha256": "d42977dea4298992a52f00b10bdb200a052adac1df6af4f86df3845263797486",
+      "registration": {
+        "attempted": 6,
+        "concurrency": 1,
+        "connection_fingerprint": "203f583cd4997f425e1683b69cc29076c962475ab09b2ea3c2a429268f7912cb",
+        "environment_id": "wt_9b100adcf0ef",
+        "finished_at": "2026-11-23T10:37:07.965074+00:00",
+        "manifest_sha256": "89fdd764ed73fa3e6b9ef2750bc6d0ad95081c8823c19a18ffa66e3a4f1b9753",
+        "max_requests": 40,
+        "pre_registered_plan_sha256": "d42977dea4298992a52f00b10bdb200a052adac1df6af4f86df3845263797486",
+        "pre_registered_task_sha256": "4ef003b1ca0d96aca3b6dcb1a8ad02fedfe7d9af882891375380767b06c970ae",
+        "pricing": {
+          "basis": "per_million_tokens",
+          "cache_read": "0.006",
+          "cache_write": "0",
+          "cache_write_1h": "0",
+          "cache_write_5m": "0",
+          "currency": "USD",
+          "input": "0.3",
+          "output": "1.2",
+          "source": "configured_catalog",
+          "updated_at": "2026-11-23T00:00:00+00:00",
+          "version": "ead2c246-d592-4a1f-85c5-f6da2e8ca4ac"
+        },
+        "pricing_reference": {
+          "basis": "fixed peak list-price estimate for both lanes; off-peak is half; actual bill unknown",
+          "peak_utc": "Mon-Fri 01:00-04:00 and 06:00-10:00, except Chinese public holidays",
+          "served_version_at_verification": "DeepSeek-V4.1-Flash-1017",
+          "url": "https://api-docs.deepseek.com/quick_start/pricing",
+          "verified_on": "2026-11-23"
+        },
+        "retries": 0,
+        "started_at": "2026-11-23T10:36:56.760610+00:00",
+        "stop_reason": "answer_quality_failed"
+      },
+      "requests": [
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10140,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10184
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1308.5622349753976,
+          "content": "",
+          "conversation_turn": 0,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t0",
+          "payload_sha256": "a60eff921f66fa77f7192f2af06a5a224313c2be6907bf56108d7f507a864ae2",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 44,
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 10140,
+            "prompt_tokens": 10140,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 10184
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10140,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10184
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 0
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10219,
+              "output_tokens": 25,
+              "reasoning_tokens": null,
+              "total_tokens": 10244
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1565.8739999926183,
+          "content": "{\"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 0,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 1491.4510489907116,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t1",
+          "payload_sha256": "943b45df05a8613f381a9a7b1c0de1fe79966b00efeda9b8c2c82538bb0d1734",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 25,
+            "prompt_cache_hit_tokens": 9984,
+            "prompt_cache_miss_tokens": 235,
+            "prompt_tokens": 10219,
+            "prompt_tokens_details": {
+              "cached_tokens": 9984
+            },
+            "total_tokens": 10244
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10219,
+              "output_tokens": 25,
+              "reasoning_tokens": null,
+              "total_tokens": 10244
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 1
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10112,
+              "input_tokens": 10339,
+              "output_tokens": 34,
+              "reasoning_tokens": null,
+              "total_tokens": 10373
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1102.6672260195483,
+          "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 1,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 900.6537350069266,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t2",
+          "payload_sha256": "28612de73394ad1f6b5036a089821518c3439e999d1a9a7e6926257cadb92173",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 34,
+            "prompt_cache_hit_tokens": 10112,
+            "prompt_cache_miss_tokens": 227,
+            "prompt_tokens": 10339,
+            "prompt_tokens_details": {
+              "cached_tokens": 10112
+            },
+            "total_tokens": 10373
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10112,
+              "input_tokens": 10339,
+              "output_tokens": 34,
+              "reasoning_tokens": null,
+              "total_tokens": 10373
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 2
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10240,
+              "input_tokens": 10458,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10502
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 995.7034789840691,
+          "content": "",
+          "conversation_turn": 2,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t3",
+          "payload_sha256": "3cf878db486b628c734bf95e7524bf76b697e68debec9fc007b87b97dbae88bb",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 44,
+            "prompt_cache_hit_tokens": 10240,
+            "prompt_cache_miss_tokens": 218,
+            "prompt_tokens": 10458,
+            "prompt_tokens_details": {
+              "cached_tokens": 10240
+            },
+            "total_tokens": 10502
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10240,
+              "input_tokens": 10458,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10502
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 3
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10368,
+              "input_tokens": 10537,
+              "output_tokens": 31,
+              "reasoning_tokens": null,
+              "total_tokens": 10568
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1658.7988169922028,
+          "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 2,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 1392.6798339816742,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t4",
+          "payload_sha256": "2c9c214b0949d7f168b1e008268f0ec0bdab7fb1e1ce3136d09c210fb4c7b1c2",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 31,
+            "prompt_cache_hit_tokens": 10368,
+            "prompt_cache_miss_tokens": 169,
+            "prompt_tokens": 10537,
+            "prompt_tokens_details": {
+              "cached_tokens": 10368
+            },
+            "total_tokens": 10568
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10368,
+              "input_tokens": 10537,
+              "output_tokens": 31,
+              "reasoning_tokens": null,
+              "total_tokens": 10568
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 4
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 4096,
+              "input_tokens": 10667,
+              "output_tokens": 37,
+              "reasoning_tokens": null,
+              "total_tokens": 10704
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1128.0341329984367,
+          "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"Vue 3\"}",
+          "conversation_turn": 3,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 910.3561619995162,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t5",
+          "payload_sha256": "681124bc05c598d7f668a84aae0b39405f421b2499834ba86219a17025af6e39",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 37,
+            "prompt_cache_hit_tokens": 4096,
+            "prompt_cache_miss_tokens": 6571,
+            "prompt_tokens": 10667,
+            "prompt_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "total_tokens": 10704
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 4096,
+              "input_tokens": 10667,
+              "output_tokens": 37,
+              "reasoning_tokens": null,
+              "total_tokens": 10704
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 5
+        }
+      ],
+      "run": "official-multiturn-v1",
+      "source_sha256": {
+        "apps/runtime-service/scripts/prompt_cache_agent.py": "0a779147a8c8baf6f553ecbfb0b48335b7409ac0dff7c4848780cf56f05aa12e",
+        "apps/runtime-service/scripts/prompt_cache_cases.py": "baad7cfb6b36f52c5573abef0e1765d3ab8398fc06c949405bf7e7a5234ac7f3",
+        "apps/runtime-service/scripts/prompt_cache_experiment.py": "076d4767397c96f3f103cbff5d0d317ae310810c79a6d6ca3bd987f29a4699ea",
+        "apps/runtime-service/scripts/prompt_cache_multiturn.py": "46ffbd065758eaac654e50d0a68d2b5de3d77be16ac5767cfa4d9c5795a6f14a",
+        "apps/runtime-service/scripts/prompt_cache_official.py": "82db855b1ec4d98f8fe91d3d94e1fa57e2cc7b12c5f3206e675727303c3d3f52",
+        "apps/runtime-service/src/runtime_service/runtime/modeling.py": "04f9cfccc48b77c9e46c99603dfeab9cebd24d55ef1d1d60ee163308c75dc2a5",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py": "45050ca9b695d201030de6d6c335e919ae39c87037810d356bfda1d3d23a68f4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/dynamic_context.py": "3b6e17cd8e1de5551920de6f7da908689ead6a7d301961401f26312ba0899678",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py": "4619777d4faae1216dad38abd87a5b8d5fb77b9cd837970c32602ef2d3e59ab4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py": "5c9443d78d0a2572deec21233dd3bbb197139309171a39c0f67f267740f85b1b"
+      },
+      "tasks": [
+        {
+          "agent_execution_ms": 11147.575922019314,
+          "group": "A",
+          "model_calls": 6,
+          "quality_pass": false,
+          "turns": [
+            {
+              "content": "{\"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 0,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-A-r0-t0",
+                "OFFICIAL-eight-turn-A-r0-t1"
+              ],
+              "quality": {
+                "answer": {
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "total": 60
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 1,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-A-r0-t2"
+              ],
+              "quality": {
+                "answer": {
+                  "b_units": 20,
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "subtotal": 30
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 2,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-A-r0-t3",
+                "OFFICIAL-eight-turn-A-r0-t4"
+              ],
+              "quality": {
+                "answer": {
+                  "change": 15,
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "total": 75
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"Vue 3\"}",
+              "conversation_turn": 3,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-A-r0-t5"
+              ],
+              "quality": {
+                "answer": {
+                  "change": 15,
+                  "date": "2026-11-23",
+                  "growth_pct": 25.0,
+                  "preference": "Vue 3"
+                },
+                "errors": [
+                  "preference"
+                ],
+                "pass": false
+              }
+            }
+          ]
+        }
+      ],
+      "validation_note": "Original pre-registered validator required TypeScript although question asked framework name. Vue 3 was a reasonable answer. Original failure and cost preserved, not counted as a genuine stale-memory failure."
+    },
+    {
+      "conversation_specification": {
+        "criteria": "Eight JSON answers per group; exact numeric/date facts and fresh preference; three actual CSV reads; no write, other tool or persisted temporary context. One AB block, zero retries, fail and stop, no replacement samples.",
+        "files": {
+          "dec-corrected.csv": "item,units\nA,15\nB,21\nC,35\n",
+          "dec.csv": "item,units\nA,15\nB,25\nC,35\n",
+          "nov.csv": "item,units\nA,10\nB,20\nC,30\n"
+        },
+        "group_order": [
+          "A",
+          "B"
+        ],
+        "max_requests_per_group": 20,
+        "turns": [
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "total": 60
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第1轮：读取 /workspace/work/nov.csv，计算 units 总和，total 为总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/nov.csv"
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "b_units": 20,
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "subtotal": 30
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第2轮：不要调用工具。根据上一轮读到的十一月数据，b_units 为 B 的数量，subtotal 为 A 与 B 的数量之和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "change": 15,
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "total": 75
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第3轮：读取 /workspace/work/dec.csv，total 为十二月总和，change 为它减去十一月总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/dec.csv"
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "change": 15,
+              "date": "2026-11-23",
+              "growth_pct": 25,
+              "preference": "Vue 3"
+            },
+            "memory": "前端首选 Vue 3，使用 TypeScript。",
+            "question": "实验第4轮：话题切换到前端。不要调用工具。根据前面两份原始数据，change 为十二月总和减十一月总和，growth_pct 为增长百分数的数值。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "date": "2026-11-23",
+              "dec_b": 25,
+              "nov_b": 20,
+              "preference": "React"
+            },
+            "memory": "前端首选已更正为 React，使用 TypeScript；此前 Vue 偏好已失效。",
+            "question": "实验第5轮：本轮前端偏好已更正，以当前有效记忆为准。不要调用工具。nov_b 与 dec_b 分别为前面十一月和十二月原始文件 B 的数量。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "correction": -4,
+              "date": "2026-11-24",
+              "preference": "React",
+              "total": 71
+            },
+            "memory": "前端首选已更正为 React，使用 TypeScript；此前 Vue 偏好已失效。",
+            "question": "实验第6轮：进入本轮运行日期。读取 /workspace/work/dec-corrected.csv，total 为修订后总和，correction 为修订后减去十二月原始总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/dec-corrected.csv"
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "date": "2026-11-24",
+              "delta": 11,
+              "new_total": 71,
+              "old_total": 60,
+              "preference": null
+            },
+            "memory": "",
+            "question": "实验第7轮：不要调用工具。old_total 为十一月总和，new_total 为十二月修订总和，delta 为两者之差。偏好只看本轮 user_memory；本轮没有记忆块就写 null，不能从历史回答恢复已移除偏好。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "date": "2026-11-24",
+              "december_corrected": 71,
+              "december_original": 75,
+              "delta": 11,
+              "november_total": 60,
+              "preference": null
+            },
+            "memory": "",
+            "question": "实验第8轮：不要调用工具。汇总 november_total、december_original、december_corrected 和 delta（修订十二月减十一月）。偏好只看本轮 user_memory，没有则 null，历史偏好不能代替当前记忆。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          }
+        ]
+      },
+      "manifest_sha256": "45bf34062d2048329436c47e1996499d4cc5fbce826d07d7e282d8883c07506f",
+      "planned": [
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 0,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t0",
+          "payload_sha256": "05ee141e40d59885e1c50c1ef2e3087028402f756c9883c9360a7317149e5892",
+          "repeat": 0,
+          "turn": 0
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 0,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t1",
+          "payload_sha256": "74500afa6fae7c79e03de8e14afc9fdb4613e72a1a149af5d6e3079bf35933fa",
+          "repeat": 0,
+          "turn": 1
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 1,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t2",
+          "payload_sha256": "2d3c4ace3a7111fbc58a8938c388e770ad78459f64ccc887debf433c4e9a2571",
+          "repeat": 0,
+          "turn": 2
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 2,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t3",
+          "payload_sha256": "f14c0a169097670497c3ea116d57b9bcfa0f3eb7710e5c3f7e8d1f7842f4896c",
+          "repeat": 0,
+          "turn": 3
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 2,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t4",
+          "payload_sha256": "095e6336d0366078d401d17927f08a1cd675fc80207977b60ae1e568cfc660be",
+          "repeat": 0,
+          "turn": 4
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 3,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t5",
+          "payload_sha256": "ccf24530fb37b68b06af17f8f012218ea8fbeddf2b8be39826ffe198a30eac9c",
+          "repeat": 0,
+          "turn": 5
+        }
+      ],
+      "pre_registered_plan_sha256": "0b2b38d876a9fd910afdd59e11720395fac8e0438fcd93497f1a093ac6721898",
+      "registration": {
+        "attempted": 6,
+        "concurrency": 1,
+        "connection_fingerprint": "203f583cd4997f425e1683b69cc29076c962475ab09b2ea3c2a429268f7912cb",
+        "environment_id": "wt_9b100adcf0ef",
+        "finished_at": "2026-11-23T10:40:24.252297+00:00",
+        "manifest_sha256": "45bf34062d2048329436c47e1996499d4cc5fbce826d07d7e282d8883c07506f",
+        "max_requests": 40,
+        "pre_registered_plan_sha256": "0b2b38d876a9fd910afdd59e11720395fac8e0438fcd93497f1a093ac6721898",
+        "pre_registered_task_sha256": "37bc188c49c00f6c5a2b4b608ecd06776d0a5a64f7d368c9acff980d458fec3d",
+        "pricing": {
+          "basis": "per_million_tokens",
+          "cache_read": "0.006",
+          "cache_write": "0",
+          "cache_write_1h": "0",
+          "cache_write_5m": "0",
+          "currency": "USD",
+          "input": "0.3",
+          "output": "1.2",
+          "source": "configured_catalog",
+          "updated_at": "2026-11-23T00:00:00+00:00",
+          "version": "ead2c246-d592-4a1f-85c5-f6da2e8ca4ac"
+        },
+        "pricing_reference": {
+          "basis": "fixed peak list-price estimate for both lanes; off-peak is half; actual bill unknown",
+          "peak_utc": "Mon-Fri 01:00-04:00 and 06:00-10:00, except Chinese public holidays",
+          "served_version_at_verification": "DeepSeek-V4.1-Flash-1017",
+          "url": "https://api-docs.deepseek.com/quick_start/pricing",
+          "verified_on": "2026-11-23"
+        },
+        "retries": 0,
+        "started_at": "2026-11-23T10:40:14.706208+00:00",
+        "stop_reason": "answer_quality_failed"
+      },
+      "requests": [
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10141,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10185
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 924.7878860041965,
+          "content": "",
+          "conversation_turn": 0,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t0",
+          "payload_sha256": "05ee141e40d59885e1c50c1ef2e3087028402f756c9883c9360a7317149e5892",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 44,
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 10141,
+            "prompt_tokens": 10141,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 10185
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10141,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10185
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 0
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10220,
+              "output_tokens": 32,
+              "reasoning_tokens": null,
+              "total_tokens": 10252
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 745.9600209840573,
+          "content": "{\"units_total\": 60, \"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 0,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 474.9432109820191,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t1",
+          "payload_sha256": "74500afa6fae7c79e03de8e14afc9fdb4613e72a1a149af5d6e3079bf35933fa",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 32,
+            "prompt_cache_hit_tokens": 9984,
+            "prompt_cache_miss_tokens": 236,
+            "prompt_tokens": 10220,
+            "prompt_tokens_details": {
+              "cached_tokens": 9984
+            },
+            "total_tokens": 10252
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10220,
+              "output_tokens": 32,
+              "reasoning_tokens": null,
+              "total_tokens": 10252
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 1
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10112,
+              "input_tokens": 10347,
+              "output_tokens": 34,
+              "reasoning_tokens": null,
+              "total_tokens": 10381
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1125.4442700010259,
+          "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 1,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 890.5202809837647,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t2",
+          "payload_sha256": "2d3c4ace3a7111fbc58a8938c388e770ad78459f64ccc887debf433c4e9a2571",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 34,
+            "prompt_cache_hit_tokens": 10112,
+            "prompt_cache_miss_tokens": 235,
+            "prompt_tokens": 10347,
+            "prompt_tokens_details": {
+              "cached_tokens": 10112
+            },
+            "total_tokens": 10381
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10112,
+              "input_tokens": 10347,
+              "output_tokens": 34,
+              "reasoning_tokens": null,
+              "total_tokens": 10381
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 2
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10240,
+              "input_tokens": 10466,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10510
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1215.5203669972252,
+          "content": "",
+          "conversation_turn": 2,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t3",
+          "payload_sha256": "f14c0a169097670497c3ea116d57b9bcfa0f3eb7710e5c3f7e8d1f7842f4896c",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 44,
+            "prompt_cache_hit_tokens": 10240,
+            "prompt_cache_miss_tokens": 226,
+            "prompt_tokens": 10466,
+            "prompt_tokens_details": {
+              "cached_tokens": 10240
+            },
+            "total_tokens": 10510
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10240,
+              "input_tokens": 10466,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10510
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 3
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10368,
+              "input_tokens": 10545,
+              "output_tokens": 31,
+              "reasoning_tokens": null,
+              "total_tokens": 10576
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1007.9606320068706,
+          "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 2,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 650.7532210089266,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t4",
+          "payload_sha256": "095e6336d0366078d401d17927f08a1cd675fc80207977b60ae1e568cfc660be",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 31,
+            "prompt_cache_hit_tokens": 10368,
+            "prompt_cache_miss_tokens": 177,
+            "prompt_tokens": 10545,
+            "prompt_tokens_details": {
+              "cached_tokens": 10368
+            },
+            "total_tokens": 10576
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10368,
+              "input_tokens": 10545,
+              "output_tokens": 31,
+              "reasoning_tokens": null,
+              "total_tokens": 10576
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 4
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 4096,
+              "input_tokens": 10675,
+              "output_tokens": 35,
+              "reasoning_tokens": null,
+              "total_tokens": 10710
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1059.256385982735,
+          "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 3,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 619.6257649862673,
+          "first_reasoning_ms": null,
+          "group": "A",
+          "id": "OFFICIAL-eight-turn-A-r0-t5",
+          "payload_sha256": "ccf24530fb37b68b06af17f8f012218ea8fbeddf2b8be39826ffe198a30eac9c",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 35,
+            "prompt_cache_hit_tokens": 4096,
+            "prompt_cache_miss_tokens": 6579,
+            "prompt_tokens": 10675,
+            "prompt_tokens_details": {
+              "cached_tokens": 4096
+            },
+            "total_tokens": 10710
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 4096,
+              "input_tokens": 10675,
+              "output_tokens": 35,
+              "reasoning_tokens": null,
+              "total_tokens": 10710
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 5
+        }
+      ],
+      "run": "official-multiturn-v2",
+      "source_sha256": {
+        "apps/runtime-service/scripts/prompt_cache_agent.py": "0a779147a8c8baf6f553ecbfb0b48335b7409ac0dff7c4848780cf56f05aa12e",
+        "apps/runtime-service/scripts/prompt_cache_cases.py": "baad7cfb6b36f52c5573abef0e1765d3ab8398fc06c949405bf7e7a5234ac7f3",
+        "apps/runtime-service/scripts/prompt_cache_experiment.py": "076d4767397c96f3f103cbff5d0d317ae310810c79a6d6ca3bd987f29a4699ea",
+        "apps/runtime-service/scripts/prompt_cache_multiturn.py": "9773296f6d78855286a2288c4e93f7a39ea43881f598030be910badf1b43d1ee",
+        "apps/runtime-service/scripts/prompt_cache_official.py": "82db855b1ec4d98f8fe91d3d94e1fa57e2cc7b12c5f3206e675727303c3d3f52",
+        "apps/runtime-service/src/runtime_service/runtime/modeling.py": "04f9cfccc48b77c9e46c99603dfeab9cebd24d55ef1d1d60ee163308c75dc2a5",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py": "45050ca9b695d201030de6d6c335e919ae39c87037810d356bfda1d3d23a68f4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/dynamic_context.py": "3b6e17cd8e1de5551920de6f7da908689ead6a7d301961401f26312ba0899678",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py": "4619777d4faae1216dad38abd87a5b8d5fb77b9cd837970c32602ef2d3e59ab4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py": "5c9443d78d0a2572deec21233dd3bbb197139309171a39c0f67f267740f85b1b"
+      },
+      "tasks": [
+        {
+          "agent_execution_ms": 9490.011259011226,
+          "group": "A",
+          "model_calls": 6,
+          "quality_pass": false,
+          "turns": [
+            {
+              "content": "{\"units_total\": 60, \"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 0,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-A-r0-t0",
+                "OFFICIAL-eight-turn-A-r0-t1"
+              ],
+              "quality": {
+                "answer": {
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "total": 60,
+                  "units_total": 60
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 1,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-A-r0-t2"
+              ],
+              "quality": {
+                "answer": {
+                  "b_units": 20,
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "subtotal": 30
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 2,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-A-r0-t3",
+                "OFFICIAL-eight-turn-A-r0-t4"
+              ],
+              "quality": {
+                "answer": {
+                  "change": 15,
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "total": 75
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 3,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-A-r0-t5"
+              ],
+              "quality": {
+                "answer": {
+                  "change": 15,
+                  "date": "2026-11-23",
+                  "growth_pct": 25.0,
+                  "preference": "pytest"
+                },
+                "errors": [
+                  "preference"
+                ],
+                "pass": false
+              }
+            }
+          ]
+        }
+      ],
+      "validation_note": "Corrected validator, fresh registered comparison: A round 4 answered pytest while current outgoing memory specified Vue 3. A stopped; its later rounds and planned B were not executed."
+    },
+    {
+      "conversation_specification": {
+        "criteria": "Eight JSON answers per group; exact numeric/date facts and fresh preference; three actual CSV reads; no write, other tool or persisted temporary context. One AB block, zero retries, fail and stop, no replacement samples.",
+        "files": {
+          "dec-corrected.csv": "item,units\nA,15\nB,21\nC,35\n",
+          "dec.csv": "item,units\nA,15\nB,25\nC,35\n",
+          "nov.csv": "item,units\nA,10\nB,20\nC,30\n"
+        },
+        "group_order": [
+          "B"
+        ],
+        "max_requests_per_group": 20,
+        "turns": [
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "total": 60
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第1轮：读取 /workspace/work/nov.csv，计算 units 总和，total 为总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/nov.csv"
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "b_units": 20,
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "subtotal": 30
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第2轮：不要调用工具。根据上一轮读到的十一月数据，b_units 为 B 的数量，subtotal 为 A 与 B 的数量之和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "change": 15,
+              "date": "2026-11-23",
+              "preference": "pytest",
+              "total": 75
+            },
+            "memory": "Python 测试首选 pytest。",
+            "question": "实验第3轮：读取 /workspace/work/dec.csv，total 为十二月总和，change 为它减去十一月总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/dec.csv"
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "change": 15,
+              "date": "2026-11-23",
+              "growth_pct": 25,
+              "preference": "Vue 3"
+            },
+            "memory": "前端首选 Vue 3，使用 TypeScript。",
+            "question": "实验第4轮：话题切换到前端。不要调用工具。根据前面两份原始数据，change 为十二月总和减十一月总和，growth_pct 为增长百分数的数值。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-23",
+            "expected": {
+              "date": "2026-11-23",
+              "dec_b": 25,
+              "nov_b": 20,
+              "preference": "React"
+            },
+            "memory": "前端首选已更正为 React，使用 TypeScript；此前 Vue 偏好已失效。",
+            "question": "实验第5轮：本轮前端偏好已更正，以当前有效记忆为准。不要调用工具。nov_b 与 dec_b 分别为前面十一月和十二月原始文件 B 的数量。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "correction": -4,
+              "date": "2026-11-24",
+              "preference": "React",
+              "total": 71
+            },
+            "memory": "前端首选已更正为 React，使用 TypeScript；此前 Vue 偏好已失效。",
+            "question": "实验第6轮：进入本轮运行日期。读取 /workspace/work/dec-corrected.csv，total 为修订后总和，correction 为修订后减去十二月原始总和。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": "/workspace/work/dec-corrected.csv"
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "date": "2026-11-24",
+              "delta": 11,
+              "new_total": 71,
+              "old_total": 60,
+              "preference": null
+            },
+            "memory": "",
+            "question": "实验第7轮：不要调用工具。old_total 为十一月总和，new_total 为十二月修订总和，delta 为两者之差。偏好只看本轮 user_memory；本轮没有记忆块就写 null，不能从历史回答恢复已移除偏好。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          },
+          {
+            "date": "2026-11-24",
+            "expected": {
+              "date": "2026-11-24",
+              "december_corrected": 71,
+              "december_original": 75,
+              "delta": 11,
+              "november_total": 60,
+              "preference": null
+            },
+            "memory": "",
+            "question": "实验第8轮：不要调用工具。汇总 november_total、december_original、december_corrected 和 delta（修订十二月减十一月）。偏好只看本轮 user_memory，没有则 null，历史偏好不能代替当前记忆。 仅输出一个 JSON 对象，包含要求的数值字段，另加 date（本轮 current_date 的 UTC 日期）和 preference（本轮有效记忆中的首选名称，无记忆则 null）。不写文件，不调用 read_file 之外工具。",
+            "read_path": null
+          }
+        ]
+      },
+      "manifest_sha256": "00cf7fb4b74d4c93d15d4114efe9697899db44fe13d943abddc3e303cd25ded8",
+      "planned": [
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 0,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t0",
+          "payload_sha256": "20fba8aee2d37444f26eb2abe24f6846c95c4e96d03df77dbece2413e050ee67",
+          "repeat": 0,
+          "turn": 0
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 0,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t1",
+          "payload_sha256": "39d4337caed2968d96caf3fb7f8fe2e401de5c7a3c63f413b277052d95798048",
+          "repeat": 0,
+          "turn": 1
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 1,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t2",
+          "payload_sha256": "0590564132f1ae905579071098674f8d69dd33885ca86e8b229c6704fa8b40f9",
+          "repeat": 0,
+          "turn": 2
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 2,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t3",
+          "payload_sha256": "cc2fe15b0e8a434e146c1daab24e86f01d077a63b1f95962855d169c05ab8b5d",
+          "repeat": 0,
+          "turn": 3
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 2,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t4",
+          "payload_sha256": "57f2f1da9833fb756ce67c338244af97e5540dc4356fe0b1ffa8641c2c5b5f37",
+          "repeat": 0,
+          "turn": 4
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 3,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t5",
+          "payload_sha256": "24241ecef6ed5415de8b8ca92f8a8ee1dee12b4842118a1756ea94abd0770885",
+          "repeat": 0,
+          "turn": 5
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 4,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t6",
+          "payload_sha256": "e8ef2ccca7e80ac23fb30c353ff85399d412693f25327f9b45de59da88c0a755",
+          "repeat": 0,
+          "turn": 6
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 5,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t7",
+          "payload_sha256": "c33096972270ce19c631774964ba6e338a78459a630522aa4e2921e098592d3c",
+          "repeat": 0,
+          "turn": 7
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 5,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t8",
+          "payload_sha256": "05fc28862bca48dff6ede263029500550ecd4073724b46f5e74b96b298168ab4",
+          "repeat": 0,
+          "turn": 8
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 6,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t9",
+          "payload_sha256": "2b618cdc60f74f5d1c399e33f3a7c85eae6080c5d9a45c7327ccedda19ed90f0",
+          "repeat": 0,
+          "turn": 9
+        },
+        {
+          "case": "OFFICIAL-eight-turn",
+          "conversation_turn": 7,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t10",
+          "payload_sha256": "f3b1494d5ef1ca074d130e8f02ffbc411f3eeaf96654bae9fd5663023e7c1017",
+          "repeat": 0,
+          "turn": 10
+        }
+      ],
+      "pre_registered_plan_sha256": "986bc3d4d4668296924f9c421b46a2616a7e1697958a2b5f68d272f535bd9991",
+      "registration": {
+        "attempted": 11,
+        "concurrency": 1,
+        "connection_fingerprint": "203f583cd4997f425e1683b69cc29076c962475ab09b2ea3c2a429268f7912cb",
+        "diagnostic_of": {
+          "observed_failure": "A round 4 returned pytest although current outbound memory was Vue 3",
+          "plan_sha256": "0b2b38d876a9fd910afdd59e11720395fac8e0438fcd93497f1a093ac6721898",
+          "run": "official-multiturn-v2",
+          "scope": "Post-failure diagnostic B only; A is not rerun; no full eight-turn A/B cost saving claim."
+        },
+        "environment_id": "wt_9b100adcf0ef",
+        "finished_at": "2026-11-23T10:44:04.454371+00:00",
+        "manifest_sha256": "00cf7fb4b74d4c93d15d4114efe9697899db44fe13d943abddc3e303cd25ded8",
+        "max_requests": 40,
+        "pre_registered_plan_sha256": "986bc3d4d4668296924f9c421b46a2616a7e1697958a2b5f68d272f535bd9991",
+        "pre_registered_task_sha256": "8ca073328158a273cfc6b01071e45a9f7a7acf9b9c9eff1869f80bfbf2fa969c",
+        "pricing": {
+          "basis": "per_million_tokens",
+          "cache_read": "0.006",
+          "cache_write": "0",
+          "cache_write_1h": "0",
+          "cache_write_5m": "0",
+          "currency": "USD",
+          "input": "0.3",
+          "output": "1.2",
+          "source": "configured_catalog",
+          "updated_at": "2026-11-23T00:00:00+00:00",
+          "version": "ead2c246-d592-4a1f-85c5-f6da2e8ca4ac"
+        },
+        "pricing_reference": {
+          "basis": "fixed peak list-price estimate for both lanes; off-peak is half; actual bill unknown",
+          "peak_utc": "Mon-Fri 01:00-04:00 and 06:00-10:00, except Chinese public holidays",
+          "served_version_at_verification": "DeepSeek-V4.1-Flash-1017",
+          "url": "https://api-docs.deepseek.com/quick_start/pricing",
+          "verified_on": "2026-11-23"
+        },
+        "retries": 0,
+        "started_at": "2026-11-23T10:43:48.420079+00:00",
+        "stop_reason": null
+      },
+      "requests": [
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10137,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10181
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1655.127600999549,
+          "content": "",
+          "conversation_turn": 0,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t0",
+          "payload_sha256": "20fba8aee2d37444f26eb2abe24f6846c95c4e96d03df77dbece2413e050ee67",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 44,
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 10137,
+            "prompt_tokens": 10137,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "total_tokens": 10181
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 0,
+              "input_tokens": 10137,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10181
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 0
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10216,
+              "output_tokens": 32,
+              "reasoning_tokens": null,
+              "total_tokens": 10248
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 652.7998789970297,
+          "content": "{\"units_total\": 60, \"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 0,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 426.3943690166343,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t1",
+          "payload_sha256": "39d4337caed2968d96caf3fb7f8fe2e401de5c7a3c63f413b277052d95798048",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 32,
+            "prompt_cache_hit_tokens": 9984,
+            "prompt_cache_miss_tokens": 232,
+            "prompt_tokens": 10216,
+            "prompt_tokens_details": {
+              "cached_tokens": 9984
+            },
+            "total_tokens": 10248
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10216,
+              "output_tokens": 32,
+              "reasoning_tokens": null,
+              "total_tokens": 10248
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 1
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9728,
+              "input_tokens": 10343,
+              "output_tokens": 34,
+              "reasoning_tokens": null,
+              "total_tokens": 10377
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 832.7234970056452,
+          "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 1,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 591.6567190142814,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t2",
+          "payload_sha256": "0590564132f1ae905579071098674f8d69dd33885ca86e8b229c6704fa8b40f9",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 34,
+            "prompt_cache_hit_tokens": 9728,
+            "prompt_cache_miss_tokens": 615,
+            "prompt_tokens": 10343,
+            "prompt_tokens_details": {
+              "cached_tokens": 9728
+            },
+            "total_tokens": 10377
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9728,
+              "input_tokens": 10343,
+              "output_tokens": 34,
+              "reasoning_tokens": null,
+              "total_tokens": 10377
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 2
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10462,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10506
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 795.1477949973196,
+          "content": "",
+          "conversation_turn": 2,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t3",
+          "payload_sha256": "cc2fe15b0e8a434e146c1daab24e86f01d077a63b1f95962855d169c05ab8b5d",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 44,
+            "prompt_cache_hit_tokens": 9984,
+            "prompt_cache_miss_tokens": 478,
+            "prompt_tokens": 10462,
+            "prompt_tokens_details": {
+              "cached_tokens": 9984
+            },
+            "total_tokens": 10506
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 9984,
+              "input_tokens": 10462,
+              "output_tokens": 44,
+              "reasoning_tokens": null,
+              "total_tokens": 10506
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 3
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10368,
+              "input_tokens": 10541,
+              "output_tokens": 31,
+              "reasoning_tokens": null,
+              "total_tokens": 10572
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 666.3764920085669,
+          "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+          "conversation_turn": 2,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 527.4376849993132,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t4",
+          "payload_sha256": "57f2f1da9833fb756ce67c338244af97e5540dc4356fe0b1ffa8641c2c5b5f37",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 31,
+            "prompt_cache_hit_tokens": 10368,
+            "prompt_cache_miss_tokens": 173,
+            "prompt_tokens": 10541,
+            "prompt_tokens_details": {
+              "cached_tokens": 10368
+            },
+            "total_tokens": 10572
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10368,
+              "input_tokens": 10541,
+              "output_tokens": 31,
+              "reasoning_tokens": null,
+              "total_tokens": 10572
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 4
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10112,
+              "input_tokens": 10671,
+              "output_tokens": 37,
+              "reasoning_tokens": null,
+              "total_tokens": 10708
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1040.2749950008001,
+          "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"Vue 3\"}",
+          "conversation_turn": 3,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 652.6855129923206,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t5",
+          "payload_sha256": "24241ecef6ed5415de8b8ca92f8a8ee1dee12b4842118a1756ea94abd0770885",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 37,
+            "prompt_cache_hit_tokens": 10112,
+            "prompt_cache_miss_tokens": 559,
+            "prompt_tokens": 10671,
+            "prompt_tokens_details": {
+              "cached_tokens": 10112
+            },
+            "total_tokens": 10708
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10112,
+              "input_tokens": 10671,
+              "output_tokens": 37,
+              "reasoning_tokens": null,
+              "total_tokens": 10708
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 5
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10368,
+              "input_tokens": 10812,
+              "output_tokens": 32,
+              "reasoning_tokens": null,
+              "total_tokens": 10844
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1131.3973859942053,
+          "content": "{\"nov_b\": 20, \"dec_b\": 25, \"date\": \"2026-11-23\", \"preference\": \"React\"}",
+          "conversation_turn": 4,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 652.2967299970333,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t6",
+          "payload_sha256": "e8ef2ccca7e80ac23fb30c353ff85399d412693f25327f9b45de59da88c0a755",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 32,
+            "prompt_cache_hit_tokens": 10368,
+            "prompt_cache_miss_tokens": 444,
+            "prompt_tokens": 10812,
+            "prompt_tokens_details": {
+              "cached_tokens": 10368
+            },
+            "total_tokens": 10844
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10368,
+              "input_tokens": 10812,
+              "output_tokens": 32,
+              "reasoning_tokens": null,
+              "total_tokens": 10844
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 6
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10496,
+              "input_tokens": 10941,
+              "output_tokens": 47,
+              "reasoning_tokens": null,
+              "total_tokens": 10988
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 964.0136109956075,
+          "content": "",
+          "conversation_turn": 5,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "tool_calls",
+          "first_content_ms": null,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t7",
+          "payload_sha256": "c33096972270ce19c631774964ba6e338a78459a630522aa4e2921e098592d3c",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 47,
+            "prompt_cache_hit_tokens": 10496,
+            "prompt_cache_miss_tokens": 445,
+            "prompt_tokens": 10941,
+            "prompt_tokens_details": {
+              "cached_tokens": 10496
+            },
+            "total_tokens": 10988
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10496,
+              "input_tokens": 10941,
+              "output_tokens": 47,
+              "reasoning_tokens": null,
+              "total_tokens": 10988
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 7
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10880,
+              "input_tokens": 11023,
+              "output_tokens": 31,
+              "reasoning_tokens": null,
+              "total_tokens": 11054
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 929.3878960015718,
+          "content": "{\"total\": 71, \"correction\": -4, \"date\": \"2026-11-24\", \"preference\": \"React\"}",
+          "conversation_turn": 5,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 651.7125950194895,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t8",
+          "payload_sha256": "05fc28862bca48dff6ede263029500550ecd4073724b46f5e74b96b298168ab4",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 31,
+            "prompt_cache_hit_tokens": 10880,
+            "prompt_cache_miss_tokens": 143,
+            "prompt_tokens": 11023,
+            "prompt_tokens_details": {
+              "cached_tokens": 10880
+            },
+            "total_tokens": 11054
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10880,
+              "input_tokens": 11023,
+              "output_tokens": 31,
+              "reasoning_tokens": null,
+              "total_tokens": 11054
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 8
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10624,
+              "input_tokens": 11091,
+              "output_tokens": 37,
+              "reasoning_tokens": null,
+              "total_tokens": 11128
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 1070.3089669987094,
+          "content": "{\"old_total\": 60, \"new_total\": 71, \"delta\": 11, \"date\": \"2026-11-24\", \"preference\": null}",
+          "conversation_turn": 6,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 721.7494049982633,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t9",
+          "payload_sha256": "2b618cdc60f74f5d1c399e33f3a7c85eae6080c5d9a45c7327ccedda19ed90f0",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 37,
+            "prompt_cache_hit_tokens": 10624,
+            "prompt_cache_miss_tokens": 467,
+            "prompt_tokens": 11091,
+            "prompt_tokens_details": {
+              "cached_tokens": 10624
+            },
+            "total_tokens": 11128
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10624,
+              "input_tokens": 11091,
+              "output_tokens": 37,
+              "reasoning_tokens": null,
+              "total_tokens": 11128
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 9
+        },
+        {
+          "adapter_cache_comparison": "matches",
+          "adapter_usage": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "usage_metadata",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10752,
+              "input_tokens": 11235,
+              "output_tokens": 50,
+              "reasoning_tokens": null,
+              "total_tokens": 11285
+            }
+          },
+          "cache_normalization_matches": true,
+          "case": "OFFICIAL-eight-turn",
+          "completed_ms": 2185.4430910025258,
+          "content": "{\"november_total\": 60, \"december_original\": 75, \"december_corrected\": 71, \"delta\": 11, \"date\": \"2026-11-24\", \"preference\": null}",
+          "conversation_turn": 7,
+          "error": null,
+          "execution_eligible": true,
+          "finish_reason": "stop",
+          "first_content_ms": 1715.3960540017579,
+          "first_reasoning_ms": null,
+          "group": "B",
+          "id": "OFFICIAL-eight-turn-B-r0-t10",
+          "payload_sha256": "f3b1494d5ef1ca074d130e8f02ffbc411f3eeaf96654bae9fd5663023e7c1017",
+          "quality_method": "per user turn with required real tool results; not per tool-call response",
+          "quality_pass": null,
+          "raw_usage": {
+            "completion_tokens": 50,
+            "prompt_cache_hit_tokens": 10752,
+            "prompt_cache_miss_tokens": 483,
+            "prompt_tokens": 11235,
+            "prompt_tokens_details": {
+              "cached_tokens": 10752
+            },
+            "total_tokens": 11285
+          },
+          "raw_usage_normalization": {
+            "details": {
+              "input": {},
+              "output": {}
+            },
+            "quality": "reported",
+            "source": "provider_usage",
+            "tokens": {
+              "cache_creation_1h_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_tokens": 0,
+              "cache_read_tokens": 10752,
+              "input_tokens": 11235,
+              "output_tokens": 50,
+              "reasoning_tokens": null,
+              "total_tokens": 11285
+            }
+          },
+          "repeat": 0,
+          "response_model": "deepseek-flash",
+          "status": "completed",
+          "system_fingerprint": "bc19ba97cbe016479903222bb1578db6",
+          "turn": 10
+        }
+      ],
+      "run": "official-multiturn-v3-diagnostic-b",
+      "source_sha256": {
+        "apps/runtime-service/scripts/prompt_cache_agent.py": "0a779147a8c8baf6f553ecbfb0b48335b7409ac0dff7c4848780cf56f05aa12e",
+        "apps/runtime-service/scripts/prompt_cache_cases.py": "baad7cfb6b36f52c5573abef0e1765d3ab8398fc06c949405bf7e7a5234ac7f3",
+        "apps/runtime-service/scripts/prompt_cache_experiment.py": "076d4767397c96f3f103cbff5d0d317ae310810c79a6d6ca3bd987f29a4699ea",
+        "apps/runtime-service/scripts/prompt_cache_multiturn.py": "cbe5fd50003dd7a178cc6dbd9e2db508a94fafcc3457e37017a8c6aa8faa84cd",
+        "apps/runtime-service/scripts/prompt_cache_official.py": "82db855b1ec4d98f8fe91d3d94e1fa57e2cc7b12c5f3206e675727303c3d3f52",
+        "apps/runtime-service/src/runtime_service/runtime/modeling.py": "04f9cfccc48b77c9e46c99603dfeab9cebd24d55ef1d1d60ee163308c75dc2a5",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py": "45050ca9b695d201030de6d6c335e919ae39c87037810d356bfda1d3d23a68f4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/dynamic_context.py": "3b6e17cd8e1de5551920de6f7da908689ead6a7d301961401f26312ba0899678",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py": "4619777d4faae1216dad38abd87a5b8d5fb77b9cd837970c32602ef2d3e59ab4",
+        "apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py": "5c9443d78d0a2572deec21233dd3bbb197139309171a39c0f67f267740f85b1b"
+      },
+      "tasks": [
+        {
+          "agent_execution_ms": 15951.68107599602,
+          "group": "B",
+          "model_calls": 11,
+          "quality_pass": true,
+          "read_paths": [
+            "/workspace/work/dec-corrected.csv",
+            "/workspace/work/dec.csv",
+            "/workspace/work/nov.csv"
+          ],
+          "read_results_succeeded": true,
+          "temporary_context_persisted": false,
+          "tool_calls": 3,
+          "turns": [
+            {
+              "content": "{\"units_total\": 60, \"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 0,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-B-r0-t0",
+                "OFFICIAL-eight-turn-B-r0-t1"
+              ],
+              "quality": {
+                "answer": {
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "total": 60,
+                  "units_total": 60
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 1,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-B-r0-t2"
+              ],
+              "quality": {
+                "answer": {
+                  "b_units": 20,
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "subtotal": 30
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+              "conversation_turn": 2,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-B-r0-t3",
+                "OFFICIAL-eight-turn-B-r0-t4"
+              ],
+              "quality": {
+                "answer": {
+                  "change": 15,
+                  "date": "2026-11-23",
+                  "preference": "pytest",
+                  "total": 75
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"Vue 3\"}",
+              "conversation_turn": 3,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-B-r0-t5"
+              ],
+              "quality": {
+                "answer": {
+                  "change": 15,
+                  "date": "2026-11-23",
+                  "growth_pct": 25.0,
+                  "preference": "Vue 3"
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"nov_b\": 20, \"dec_b\": 25, \"date\": \"2026-11-23\", \"preference\": \"React\"}",
+              "conversation_turn": 4,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-B-r0-t6"
+              ],
+              "quality": {
+                "answer": {
+                  "date": "2026-11-23",
+                  "dec_b": 25,
+                  "nov_b": 20,
+                  "preference": "React"
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"total\": 71, \"correction\": -4, \"date\": \"2026-11-24\", \"preference\": \"React\"}",
+              "conversation_turn": 5,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-B-r0-t7",
+                "OFFICIAL-eight-turn-B-r0-t8"
+              ],
+              "quality": {
+                "answer": {
+                  "correction": -4,
+                  "date": "2026-11-24",
+                  "preference": "React",
+                  "total": 71
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"old_total\": 60, \"new_total\": 71, \"delta\": 11, \"date\": \"2026-11-24\", \"preference\": null}",
+              "conversation_turn": 6,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-B-r0-t9"
+              ],
+              "quality": {
+                "answer": {
+                  "date": "2026-11-24",
+                  "delta": 11,
+                  "new_total": 71,
+                  "old_total": 60,
+                  "preference": null
+                },
+                "errors": [],
+                "pass": true
+              }
+            },
+            {
+              "content": "{\"november_total\": 60, \"december_original\": 75, \"december_corrected\": 71, \"delta\": 11, \"date\": \"2026-11-24\", \"preference\": null}",
+              "conversation_turn": 7,
+              "model_call_ids": [
+                "OFFICIAL-eight-turn-B-r0-t10"
+              ],
+              "quality": {
+                "answer": {
+                  "date": "2026-11-24",
+                  "december_corrected": 71,
+                  "december_original": 75,
+                  "delta": 11,
+                  "november_total": 60,
+                  "preference": null
+                },
+                "errors": [],
+                "pass": true
+              }
+            }
+          ]
+        }
+      ],
+      "validation_note": "B was separately registered after observing A failure. It completed eight turns; this is an adaptive diagnostic, not a completed pre-registered eight-turn A/B."
+    }
+  ],
+  "material": "synthetic",
+  "model": "deepseek-flash",
+  "publication": "Whitelisted usage, timings, synthetic tasks/answers and hashes; no credentials, headers, account data, full system payloads or raw events. Includes an over-strict validator stop, a genuine legacy memory failure, and post-failure diagnostic B.",
+  "route": "deepseek_official",
+  "version": 1
+}

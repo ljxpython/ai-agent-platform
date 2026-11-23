@@ -1,0 +1,604 @@
+[
+  {
+    "after_first": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 5,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.8579088471849866,
+        "completed": 5,
+        "completed_ms": {
+          "max": 1658.7988169922028,
+          "median": 1128.0341329984367,
+          "min": 995.7034789840691,
+          "n": 5
+        },
+        "estimated_cost_usd": "0.002700000000",
+        "first_content_ms": {
+          "max": 1491.4510489907116,
+          "median": 1151.5179979905952,
+          "min": 900.6537350069266,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": null,
+        "group": "A",
+        "input_tokens": 52220,
+        "known_cache_read_tokens": 44800,
+        "known_cache_requests": 5,
+        "known_input_tokens": 52220,
+        "known_sample_cache_ratio": 0.8579088471849866,
+        "output_tokens": 171,
+        "planned": 5,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 7420
+      }
+    ],
+    "attempted": 6,
+    "comparison_complete": false,
+    "excluded_request_ids": {
+      "A": "OFFICIAL-eight-turn-A-r0-t0"
+    },
+    "groups": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 6,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.718409236690186,
+        "completed": 6,
+        "completed_ms": {
+          "max": 1658.7988169922028,
+          "median": 1218.2981839869171,
+          "min": 995.7034789840691,
+          "n": 6
+        },
+        "estimated_cost_usd": "0.005794800000",
+        "first_content_ms": {
+          "max": 1491.4510489907116,
+          "median": 1151.5179979905952,
+          "min": 900.6537350069266,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "A",
+        "input_tokens": 62360,
+        "known_cache_read_tokens": 44800,
+        "known_cache_requests": 6,
+        "known_input_tokens": 62360,
+        "known_sample_cache_ratio": 0.718409236690186,
+        "output_tokens": 215,
+        "planned": 6,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 17560
+      }
+    ],
+    "recorded": 6,
+    "run": "official-multiturn-v1",
+    "stop_reason": "answer_quality_failed",
+    "task_complete": false,
+    "tasks": [
+      {
+        "agent_execution_ms": 11147.575922019314,
+        "group": "A",
+        "model_calls": 6,
+        "quality_pass": false,
+        "turns": [
+          {
+            "content": "{\"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 0,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t0",
+              "OFFICIAL-eight-turn-A-r0-t1"
+            ],
+            "quality": {
+              "answer": {
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 60
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 1,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t2"
+            ],
+            "quality": {
+              "answer": {
+                "b_units": 20,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "subtotal": 30
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 2,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t3",
+              "OFFICIAL-eight-turn-A-r0-t4"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 75
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"Vue 3\"}",
+            "conversation_turn": 3,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t5"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "growth_pct": 25.0,
+                "preference": "Vue 3"
+              },
+              "errors": [
+                "preference"
+              ],
+              "pass": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "after_first": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 5,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.8573670411268253,
+        "completed": 5,
+        "completed_ms": {
+          "max": 1215.5203669972252,
+          "median": 1059.256385982735,
+          "min": 745.9600209840573,
+          "n": 5
+        },
+        "estimated_cost_usd": "0.002715900000",
+        "first_content_ms": {
+          "max": 890.5202809837647,
+          "median": 635.189492997597,
+          "min": 474.9432109820191,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": null,
+        "group": "A",
+        "input_tokens": 52253,
+        "known_cache_read_tokens": 44800,
+        "known_cache_requests": 5,
+        "known_input_tokens": 52253,
+        "known_sample_cache_ratio": 0.8573670411268253,
+        "output_tokens": 176,
+        "planned": 5,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 7453
+      }
+    ],
+    "attempted": 6,
+    "comparison_complete": false,
+    "excluded_request_ids": {
+      "A": "OFFICIAL-eight-turn-A-r0-t0"
+    },
+    "groups": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 6,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.7180177581177677,
+        "completed": 6,
+        "completed_ms": {
+          "max": 1215.5203669972252,
+          "median": 1033.6085089948028,
+          "min": 745.9600209840573,
+          "n": 6
+        },
+        "estimated_cost_usd": "0.005811000000",
+        "first_content_ms": {
+          "max": 890.5202809837647,
+          "median": 635.189492997597,
+          "min": 474.9432109820191,
+          "n": 4
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "A",
+        "input_tokens": 62394,
+        "known_cache_read_tokens": 44800,
+        "known_cache_requests": 6,
+        "known_input_tokens": 62394,
+        "known_sample_cache_ratio": 0.7180177581177677,
+        "output_tokens": 220,
+        "planned": 6,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 17594
+      }
+    ],
+    "recorded": 6,
+    "run": "official-multiturn-v2",
+    "stop_reason": "answer_quality_failed",
+    "task_complete": false,
+    "tasks": [
+      {
+        "agent_execution_ms": 9490.011259011226,
+        "group": "A",
+        "model_calls": 6,
+        "quality_pass": false,
+        "turns": [
+          {
+            "content": "{\"units_total\": 60, \"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 0,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t0",
+              "OFFICIAL-eight-turn-A-r0-t1"
+            ],
+            "quality": {
+              "answer": {
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 60,
+                "units_total": 60
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 1,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t2"
+            ],
+            "quality": {
+              "answer": {
+                "b_units": 20,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "subtotal": 30
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 2,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t3",
+              "OFFICIAL-eight-turn-A-r0-t4"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 75
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 3,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-A-r0-t5"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "growth_pct": 25.0,
+                "preference": "pytest"
+              },
+              "errors": [
+                "preference"
+              ],
+              "pass": false
+            }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "after_first": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 10,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.9623701495318395,
+        "completed": 10,
+        "completed_ms": {
+          "max": 2185.4430910025258,
+          "median": 946.7007534985896,
+          "min": 652.7998789970297,
+          "n": 10
+        },
+        "estimated_cost_usd": "0.002281476000",
+        "first_content_ms": {
+          "max": 1715.3960540017579,
+          "median": 652.0046625082614,
+          "min": 426.3943690166343,
+          "n": 8
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": null,
+        "group": "B",
+        "input_tokens": 107335,
+        "known_cache_read_tokens": 103296,
+        "known_cache_requests": 10,
+        "known_input_tokens": 107335,
+        "known_sample_cache_ratio": 0.9623701495318395,
+        "output_tokens": 375,
+        "planned": 10,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 4039
+      }
+    ],
+    "attempted": 11,
+    "comparison_complete": false,
+    "excluded_request_ids": {
+      "B": "OFFICIAL-eight-turn-B-r0-t0"
+    },
+    "groups": [
+      {
+        "actual_billed_cost": null,
+        "attempted": 11,
+        "cache_input_coverage": 1.0,
+        "case": "OFFICIAL-eight-turn",
+        "complete_cache_ratio": 0.8793244347589213,
+        "completed": 11,
+        "completed_ms": {
+          "max": 2185.4430910025258,
+          "median": 964.0136109956075,
+          "min": 652.7998789970297,
+          "n": 11
+        },
+        "estimated_cost_usd": "0.005375376000",
+        "first_content_ms": {
+          "max": 1715.3960540017579,
+          "median": 652.0046625082614,
+          "min": 426.3943690166343,
+          "n": 8
+        },
+        "first_reasoning_ms": {
+          "max": null,
+          "median": null,
+          "min": null,
+          "n": 0
+        },
+        "first_request_cache_ratio": 0.0,
+        "group": "B",
+        "input_tokens": 117472,
+        "known_cache_read_tokens": 103296,
+        "known_cache_requests": 11,
+        "known_input_tokens": 117472,
+        "known_sample_cache_ratio": 0.8793244347589213,
+        "output_tokens": 419,
+        "planned": 11,
+        "quality_evaluated_requests": 0,
+        "quality_pass_count": 0,
+        "uncached_input_tokens": 14176
+      }
+    ],
+    "recorded": 11,
+    "run": "official-multiturn-v3-diagnostic-b",
+    "stop_reason": null,
+    "task_complete": true,
+    "tasks": [
+      {
+        "agent_execution_ms": 15951.68107599602,
+        "group": "B",
+        "model_calls": 11,
+        "quality_pass": true,
+        "read_paths": [
+          "/workspace/work/dec-corrected.csv",
+          "/workspace/work/dec.csv",
+          "/workspace/work/nov.csv"
+        ],
+        "read_results_succeeded": true,
+        "temporary_context_persisted": false,
+        "tool_calls": 3,
+        "turns": [
+          {
+            "content": "{\"units_total\": 60, \"total\": 60, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 0,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t0",
+              "OFFICIAL-eight-turn-B-r0-t1"
+            ],
+            "quality": {
+              "answer": {
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 60,
+                "units_total": 60
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"b_units\": 20, \"subtotal\": 30, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 1,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t2"
+            ],
+            "quality": {
+              "answer": {
+                "b_units": 20,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "subtotal": 30
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"total\": 75, \"change\": 15, \"date\": \"2026-11-23\", \"preference\": \"pytest\"}",
+            "conversation_turn": 2,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t3",
+              "OFFICIAL-eight-turn-B-r0-t4"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "preference": "pytest",
+                "total": 75
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"change\": 15, \"growth_pct\": 25.0, \"date\": \"2026-11-23\", \"preference\": \"Vue 3\"}",
+            "conversation_turn": 3,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t5"
+            ],
+            "quality": {
+              "answer": {
+                "change": 15,
+                "date": "2026-11-23",
+                "growth_pct": 25.0,
+                "preference": "Vue 3"
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"nov_b\": 20, \"dec_b\": 25, \"date\": \"2026-11-23\", \"preference\": \"React\"}",
+            "conversation_turn": 4,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t6"
+            ],
+            "quality": {
+              "answer": {
+                "date": "2026-11-23",
+                "dec_b": 25,
+                "nov_b": 20,
+                "preference": "React"
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"total\": 71, \"correction\": -4, \"date\": \"2026-11-24\", \"preference\": \"React\"}",
+            "conversation_turn": 5,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t7",
+              "OFFICIAL-eight-turn-B-r0-t8"
+            ],
+            "quality": {
+              "answer": {
+                "correction": -4,
+                "date": "2026-11-24",
+                "preference": "React",
+                "total": 71
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"old_total\": 60, \"new_total\": 71, \"delta\": 11, \"date\": \"2026-11-24\", \"preference\": null}",
+            "conversation_turn": 6,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t9"
+            ],
+            "quality": {
+              "answer": {
+                "date": "2026-11-24",
+                "delta": 11,
+                "new_total": 71,
+                "old_total": 60,
+                "preference": null
+              },
+              "errors": [],
+              "pass": true
+            }
+          },
+          {
+            "content": "{\"november_total\": 60, \"december_original\": 75, \"december_corrected\": 71, \"delta\": 11, \"date\": \"2026-11-24\", \"preference\": null}",
+            "conversation_turn": 7,
+            "model_call_ids": [
+              "OFFICIAL-eight-turn-B-r0-t10"
+            ],
+            "quality": {
+              "answer": {
+                "date": "2026-11-24",
+                "december_corrected": 71,
+                "december_original": 75,
+                "delta": 11,
+                "november_total": 60,
+                "preference": null
+              },
+              "errors": [],
+              "pass": true
+            }
+          }
+        ]
+      }
+    ]
+  }
+]
