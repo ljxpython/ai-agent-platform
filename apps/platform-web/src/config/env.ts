@@ -69,6 +69,60 @@ export function resolveBrowserApiBaseUrl(
   }
 }
 
+type ResolveBrowserMlflowBaseUrlOptions = {
+  locationOrigin?: string;
+};
+
+export function resolveBrowserMlflowBaseUrl(
+  value: string | undefined,
+  options: ResolveBrowserMlflowBaseUrlOptions = {},
+): string {
+  const normalized = (value || "").trim();
+
+  // 1. 允许在浏览器运行时通过 window.__MLFLOW_BASE_URL__ 或 sessionStorage 动态覆盖排障
+  let target = normalized;
+  if (typeof window !== "undefined") {
+    const override =
+      (window as any).__MLFLOW_BASE_URL__ ||
+      window.sessionStorage?.getItem("VITE_MLFLOW_BASE_URL");
+    if (override !== null && override !== undefined && override !== "") {
+      target = String(override).trim();
+    }
+  }
+
+  if (!target) {
+    target = "http://127.0.0.1:9128";
+  }
+
+  const origin =
+    options.locationOrigin ||
+    (typeof window !== "undefined" ? window.location.origin : undefined);
+
+  if (!origin) {
+    return stripTrailingSlash(target);
+  }
+
+  try {
+    const configuredUrl = new URL(target, origin);
+    const browserHostname = new URL(origin).hostname;
+
+    // 当配置的目标是本地 loopback (localhost/127.0.0.1/[::1])，
+    // 但是客户端浏览器访问的页面实际位于非 loopback 宿主（如云服务器 IP 49.233.222.54 或域名）时，
+    // 智能将 loopback hostname 替换为当前浏览器访问的实际宿主，端口（如 9128）和协议保持不变。
+    if (
+      isLoopbackHostname(configuredUrl.hostname) &&
+      browserHostname &&
+      !isLoopbackHostname(browserHostname)
+    ) {
+      configuredUrl.hostname = browserHostname;
+    }
+
+    return stripTrailingSlash(configuredUrl.toString());
+  } catch {
+    return stripTrailingSlash(target);
+  }
+}
+
 const envSchema = z.object({
   VITE_APP_NAME: z.string().min(1).default("Agent Platform"),
   VITE_PLATFORM_API_URL: z.string().min(1).default("/"),
@@ -115,7 +169,9 @@ export const env = {
     }
     return (parsed.VITE_TRACING_PROVIDER || "mlflow").trim().toLowerCase();
   },
-  mlflowBaseUrl: stripTrailingSlash(parsed.VITE_MLFLOW_BASE_URL),
+  get mlflowBaseUrl(): string {
+    return resolveBrowserMlflowBaseUrl(parsed.VITE_MLFLOW_BASE_URL);
+  },
   mlflowExperimentId: (parsed.VITE_MLFLOW_EXPERIMENT_ID || "6").trim(),
   mlflowTraceUrlTemplate: (parsed.VITE_MLFLOW_TRACE_URL_TEMPLATE || "").trim(),
 };

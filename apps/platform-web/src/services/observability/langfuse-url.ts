@@ -65,11 +65,7 @@ export async function fetchSessionTraces(
   if (!expId || !sId) return [];
 
   const cacheKey = `${expId}:${sId}`;
-  const base = (
-    baseUrl ||
-    env.mlflowBaseUrl ||
-    "http://127.0.0.1:9128"
-  ).replace(/\/+$/, "");
+  const base = (baseUrl || env.mlflowBaseUrl).replace(/\/+$/, "");
 
   try {
     const res = await fetch(
@@ -137,11 +133,7 @@ export async function fetchProjectExperimentId(
   const cached = projectExperimentCache.get(pId);
   if (cached) return cached;
 
-  const base = (
-    baseUrl ||
-    env.mlflowBaseUrl ||
-    "http://127.0.0.1:9128"
-  ).replace(/\/+$/, "");
+  const base = (baseUrl || env.mlflowBaseUrl).replace(/\/+$/, "");
   try {
     const res = await fetch(
       `${base}/api/2.0/mlflow/experiments/get-by-name?experiment_name=${encodeURIComponent(`project-${pId}`)}`,
@@ -245,11 +237,7 @@ export function buildMlflowTraceUrl(
       .join(encodeURIComponent(threadId));
   }
 
-  const base = (
-    options.baseUrl ||
-    env.mlflowBaseUrl ||
-    "http://127.0.0.1:9128"
-  ).replace(/\/+$/, "");
+  const base = (options.baseUrl || env.mlflowBaseUrl).replace(/\/+$/, "");
   const experimentId = (
     options.experimentId ||
     (options.projectId
@@ -290,11 +278,7 @@ export function buildMlflowTraceUrl(
  */
 export function buildEvalFlowDashboardUrl(baseUrl?: string): string {
   if (!isTracingEnabled()) return "";
-  const base = (
-    baseUrl ||
-    env.mlflowBaseUrl ||
-    "http://127.0.0.1:9128"
-  ).replace(/\/+$/, "");
+  const base = (baseUrl || env.mlflowBaseUrl).replace(/\/+$/, "");
   return base;
 }
 

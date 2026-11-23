@@ -4,6 +4,7 @@ coverage
 .vite
 .DS_Store
 .env
+.env.production
 .env.local
 .env.*.local
 .login-response.json
