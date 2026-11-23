@@ -2,6 +2,8 @@
 
 2026-11-23 已按用户批准完成 16 次官方请求，零重试、无失败；本轮不再调用模型。固定材料和完整任务均观察到缓存读取增加、标价估算下降，完整任务首正文中位时间反而增加。唯一任务进度见 [Task 8](../tasks.md#task-8官方直连小批对照与文章补充)，本文保存复核细节。
 
+**当前收尾：** 用户已确认实验边界并批准合并与清理，代码已合入本地 main。下文私有清单及摘要核对是清理前取得的历史证据；完整私有请求/SSE、登记配置及测试库已按用户要求删除，公开 16 条用量、摘要和图表哈希保持，仍支持数值复算，见[清理核查](evidence/cleanup-verification.json)。未执行生产部署。
+
 ## 执行身份与材料
 
 - 地址：`https://api.deepseek.com/chat/completions`，未经过 Xiaok；不使用 Anthropic 协议。
@@ -83,6 +85,6 @@ A 不是直接把 B 的 HTTP 字符串挪回去，而是在工厂和记忆包装
 apps/runtime-service/.venv/bin/python apps/runtime-service/scripts/prompt_cache_experiment.py recompute docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/official-measurements.json
 ```
 
-最终相关测试 **180 passed，5 项既有 SWIG 弃用警告，62.55 秒**。范围为建模序列化、官方实验与原回放、动态上下文、记忆契约/权限/相关性、Agent 装配、工具裁剪、摘要和 PII；它们与上述 16 次真实调用是两类独立证据。未执行生产发布、真实 ACL 联调或人工最终审阅。
+本阶段最终相关测试 **180 passed，5 项既有 SWIG 弃用警告，62.55 秒**。范围为建模序列化、官方实验与原回放、动态上下文、记忆契约/权限/相关性、Agent 装配、工具裁剪、摘要和 PII；它们与上述 16 次真实调用是两类独立证据。当时未执行生产发布、真实 ACL 联调或人工最终审阅；后续用户确认及合并清理见原 Task 10，不能据此补成生产验收。
 
 最终静态核查使用缓存中的 Ruff 0.17.6：规则检查通过，14 份 Python 文件格式通过，未更改依赖。`python3 scripts/check_docs.py` 和 `git diff --check` 通过。项目八份 Markdown 的 97 处相对文件链接及锚点可达，无本地绝对路径和行尾空白。公开内容白名单检查通过，项目 Markdown/JSON 及私有实验 JSON/入口脚本中凭据格式匹配为 0；不会输出匹配原文。两份公开数据均实际运行离线 CLI，输出与随附摘要完全一致。主工作区仍只有原先的项目文档改动，本轮业务代码和证据均在开发 Worktree。

@@ -1,0 +1,95 @@
+{
+  "verified_at_utc": "2026-11-23T11:56:42.227098+00:00",
+  "environment_id": "wt_9b100adcf0ef",
+  "source_commit": "41c8d500990ddca08ea2d7071693adc455855fe4",
+  "local_merge": {
+    "main_matches_source_commit": true,
+    "planning_docs_safety_stash": "5df95c787d19000f2f4f12fd9f85485aa6561948"
+  },
+  "cleanup": {
+    "command": "bash \"scripts/local-stack.sh\" destroy --confirm \"wt_9b100adcf0ef\"",
+    "databases_removed": [
+      "wt_9b100adcf0ef_platform",
+      "wt_9b100adcf0ef_runtime"
+    ],
+    "roles_removed": [
+      "wt_9b100adcf0ef_platform",
+      "wt_9b100adcf0ef_runtime"
+    ],
+    "active_connections_before": 0,
+    "local_state_directory_removed": true,
+    "environment_registry_removed": true,
+    "all_four_ports_released": true,
+    "private_artifacts_before": {
+      "files": 5175,
+      "bytes": 55091172
+    },
+    "test_cache_directories_removed": [
+      "apps/runtime-service/.pytest_cache",
+      "apps/runtime-service/.ruff_cache"
+    ]
+  },
+  "protected": {
+    "other_databases_unchanged": 63,
+    "other_roles_unchanged": 20,
+    "other_registered_environments_unchanged": 4,
+    "other_registry_metadata_unchanged": true,
+    "original_public_evidence_files_unchanged": 17,
+    "original_public_evidence_sha256": {
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/summary.json": "456cc132a60fd3117939aa945a5f45056bb3eb3a94851a7f51406f9fd77b130d",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/latency.png": "5c7e1b4c282a33221dfdc2d5cdad7160a89188c871717d7c9d3f128329128e7a",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/official-cache-ratio.png": "051cfbac366ad5b58863fa0427acaf3f7760fe1b90882b74e602a777afcbd81a",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/product-layout-check.json": "ef6e0a9c7869a3e827d56c2760e3caf49c1f9d1c5248ccfc680c07de9eb77700",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/cache-ratio.png": "f52891d83b1a469f576b6c5f6f368002b021b18a1009269295151e7db79303ad",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/official-product-layout-check.json": "acdc7577a7a6e68438a77e01231a9973b02407f255d0ef1e96003d7cfa1e4909",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/measurements.json": "02eaa968d1b8a8b2db55ba1b638b10c28218bfa63085e7639ac8f36b0c5e5f14",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/official-summary.json": "7f3d190dc2d3a8bffd24dddd1c3fe8262f61fd635544bc65852393af8ef8f189",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/multiturn-layout-review.json": "2bb72c16dda07864e960f4d31c4df1281868aa9456e0c4614998ecaaf287f2f6",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/official-latency.png": "a1dbfa08a361dbecc3c8ecee70de49585732979bcd7a40358b33d852fc54ed20",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/multiturn-common-first-four-summary.json": "64cc3555c70f7c9efa2b7bfda65307ce5286045dda4d1b4556e425160e7a1dac",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/multiturn-cache.png": "3181f11ea36b7ef5bf0406390ec143b2ac904dacbb39d5fd1f45d717f3c2306c",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/multiturn-summary.json": "f91211aa2841bc267e11604ff85c3fc3b5ab8a55e16ac305c4a1dfbef1d794a5",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/official-measurements.json": "9bd1444602d753143817b340d5307c191fc327ca9e2271d6af326ac3208b6132",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/multiturn-measurements.json": "de4613d666298565a88093d07769bda57463a862b65a45483cb27d8a90631237",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/official-configured-cost.png": "992a528a1602b8fedf6ee4b01377a1a144fb8ed8c072f4b994576032ed09349c",
+      "docs/projects/20261123-dearflow-prompt-cache-governance/implementation/evidence/configured-cost.png": "4deb091cfb59bd7fb80aea703694cebf3c8627d05bf2aa1f57ede8af980695f1"
+    }
+  },
+  "boundaries": {
+    "new_model_calls": 0,
+    "remote_push": false,
+    "production_deployment": false,
+    "code_worktree_removed": false,
+    "development_branch_removed": false,
+    "private_full_requests_and_sse_retained": false,
+    "public_measurement_recomputation_retained": true
+  },
+  "post_cleanup_recomputation": {
+    "execution_workspace": "main",
+    "three_cli_summaries": [
+      {
+        "measurement": "measurements.json",
+        "cli_summary_matches": true
+      },
+      {
+        "measurement": "official-measurements.json",
+        "cli_summary_matches": true
+      },
+      {
+        "measurement": "multiturn-measurements.json",
+        "cli_summary_matches": true
+      }
+    ],
+    "common_first_four_summary_matches": true,
+    "frozen_current_10_sources_match": true,
+    "network_calls": 0
+  },
+  "final_document_checks": {
+    "project_and_lessons_markdown_files": 11,
+    "relative_links_and_anchors": 156,
+    "local_absolute_paths": 0,
+    "trailing_whitespace": 0,
+    "credential_pattern_matches": 0,
+    "task_and_summary_readback_consistent": true
+  }
+}

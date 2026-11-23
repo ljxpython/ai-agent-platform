@@ -2,6 +2,8 @@
 
 本记录服务于[原任务](../tasks.md)，不另维护任务进度，仅保存首轮 Xiaok 实验事实。2026-11-23 在用户要求的独立 Worktree 开发实验工具、完成 97 次 Xiaok 真实调用并撰写文章；首轮当时没有修改 `src/runtime_service/` 生产源码。后续获准的[产品接线](02-product-context-and-official-test.md)和[官方 16 次结果](03-official-results.md)另行记录，不用本篇历史阶段说明代表当前源码。
 
+**当前保留范围：** 用户已确认结果并批准合并和清理；代码已合入本地 main，本环境数据库和 `.local-stack/` 私有材料已销毁。下文私有批次路径与 `report` 命令为历史运行说明，不再指向仍存在的原批次；现有脱敏公开数据仍支持 `recompute` 离线复算，清理核查见[所属环境记录](evidence/cleanup-verification.json)。
+
 ## 环境和接线
 
 - Git 基线 `6884f10e`，分支 `feat/prompt-cache-experiments-20261123`，环境 `wt_9b100adcf0ef`。独立依赖、双库迁移、种子导入和 doctor 已执行；没有启动全栈应用服务。
@@ -56,7 +58,7 @@ apps/runtime-service/.venv/bin/python apps/runtime-service/scripts/prompt_cache_
 | agent-combined-v4 | 8 | 0.0831189 | A/B 各两轮、各两次实际文件读取，有限断言通过 |
 | 合计 | 97 | 1.8859788 | 实扣未知，无自动重试 |
 
-私有目录为仓库根下 `.local-stack/cache-experiment/`。完整批次保存 manifest、registration、逐请求原始 SSE/用量/计时、请求哈希和结果；Agent 批次另有 tasks。不要将整个目录直接发布。
+实验期间私有目录为仓库根下 `.local-stack/cache-experiment/`，曾保存 manifest、registration、逐请求原始 SSE/用量/计时、请求哈希和结果，Agent 批次另有 tasks。它们在公开允许字段逐条核对后，已按用户清理要求删除，不再保留完整私有请求；公开脱敏数据与复算摘要没有改写。
 
 配置价来自目录版本 `4963f058-50b2-4676-8596-a194ea91b877`，更新时间 `2026-11-07T16:10:49.648383+00:00`；输入 1.5、输出 6、缓存读取 0.15 USD/百万 Token。仅按本次观察到的用量估算，credit/quota 单位未核实。不能声称实际节省了相同金额。
 

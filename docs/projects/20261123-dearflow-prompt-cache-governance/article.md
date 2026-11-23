@@ -10,7 +10,7 @@
 
 再追加八轮连续对话，问题变得更具体：旧装配在第 4 轮仍回答历史偏好，按规则停止；观察失败后另行登记的优化组诊断通过八轮，包含首次的读取比例为 87.93%，排除第一次模型调用后为 96.24%。这批共 23 次调用，包含六次检查器误判记录；没有取得完整八轮同质量 A/B 的费用降幅。
 
-因此，这篇文章展示的是一次可复核的实验，不是“生产费用已下降三成”的上线报告。正式服务尚未加载改动，实际扣费未知；Xiaok 的底层路由也仍未知。前半部分保留 97 次首轮实验及失败，后半部分依次说明产品实现、16 次官方小批对照和新增 23 次多轮实验。
+因此，这篇文章展示的是一次可复核的实验，不是“生产费用已下降三成”的上线报告。代码已按用户确认合并到本地 main，尚未执行生产部署，实际扣费未知；Xiaok 的底层路由也仍未知。前半部分保留 97 次首轮实验及失败，后半部分依次说明产品实现、16 次官方小批对照和新增 23 次多轮实验。
 
 ## 先分清：我们在测什么
 
@@ -315,11 +315,13 @@ B 完整八轮首正文中位数约 652 毫秒（8 条），调用完成中位�
 | agent-combined-v4 | 8 | 0.0831189 | 两组有限断言通过 |
 | 合计 | **97** | **1.8859788** | **实际扣费未知** |
 
-公开的[逐请求数据](implementation/evidence/measurements.json)只含用量字段、时间、合成答案、布局摘要、登记及哈希，已去除账号 credit/quota、凭据、头和完整事件。[复算摘要](implementation/evidence/summary.json)可直接核对表格。完整最终请求和 SSE 保留在实验 Worktree 的私有目录，公开数据可复算数值，不等于公开了全部请求证据。
+公开的[逐请求数据](implementation/evidence/measurements.json)只含用量字段、时间、合成答案、布局摘要、登记及哈希，已去除账号 credit/quota、凭据、头和完整事件。[复算摘要](implementation/evidence/summary.json)可直接核对表格。完整最终请求和 SSE 在实验期间曾保留于私有目录，逐条核对后已于 2026-11-23 按用户明确要求随所属测试环境清理；现保留脱敏用量、摘要、图表及源码哈希，支持数值复算，无法据此完整重建全部历史请求。
 
 官方小批对照单独提供 [16 条公开用量](implementation/evidence/official-measurements.json)、[官方复算摘要](implementation/evidence/official-summary.json)和[执行细节](implementation/03-official-results.md)。源码和请求哈希见[当前结构证据](implementation/evidence/official-product-layout-check.json)。
 
 多轮追加提供 [23 条公开用量](implementation/evidence/multiturn-measurements.json)、[首次/后续摘要](implementation/evidence/multiturn-summary.json)、[共同前四轮摘要](implementation/evidence/multiturn-common-first-four-summary.json)、[结构证据](implementation/evidence/multiturn-layout-review.json)和[详细结果](implementation/04-multiturn-results.md)。旧 97 条及 16 条均未重写；首批检查器误判、第二批真实旧记忆失败和第三批 B 后置诊断各自保留。
+
+本地实现已获用户确认并合并，所属测试数据库、角色、Workspace、Redis 数据和私有实验材料已删除，原公开证据哈希保持；[清理核查记录](implementation/evidence/cleanup-verification.json)单独保存删除范围和其他环境保护结果。清理测试环境不等于生产发布，也没有补齐完整八轮同质量 A/B 的缺失结果。
 
 在已安装本项目独立依赖的 Worktree，从仓库根目录运行以下命令，完全离线，不加载连接或调用模型：
 
