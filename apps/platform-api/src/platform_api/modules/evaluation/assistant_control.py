@@ -168,7 +168,7 @@ def sweep(factory, settings, project_id):
         invalid = [row for row in rows if closed(row, session)]
         for row in invalid:
             if row.status in {"ready", "sent"}:
-                row.status = "revoked"
+                row.status = "expired"
         targets = {
             thread
             for row in invalid
