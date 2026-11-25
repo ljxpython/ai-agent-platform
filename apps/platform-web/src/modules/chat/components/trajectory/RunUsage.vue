@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, toRef } from "vue";
+import { computed, ref, toRef } from "vue";
 import { useRunUsage } from "../../composables/useRunUsage";
+import { copyText } from "@/utils/clipboard";
 import {
   formatTokenCount,
   formatTokenCompact,
@@ -162,6 +163,18 @@ const stopCodeBadge = computed(() => {
   return null;
 });
 
+const copiedRunId = ref(false);
+let copyRunIdTimer: ReturnType<typeof setTimeout> | null = null;
+async function handleCopyRunId() {
+  if (!props.runId) return;
+  if (!(await copyText(props.runId))) return;
+  copiedRunId.value = true;
+  if (copyRunIdTimer) clearTimeout(copyRunIdTimer);
+  copyRunIdTimer = setTimeout(() => {
+    copiedRunId.value = false;
+  }, 1500);
+}
+
 function handleRunChange(e: Event) {
   const target = e.target as HTMLSelectElement;
   if (target?.value) {
@@ -232,22 +245,50 @@ function handleRunChange(e: Event) {
 
     <!-- 主体可滚动区 -->
     <div class="flex-1 overflow-y-auto p-4 space-y-4">
-      <!-- 1. Run 切换选择器 -->
-      <div v-if="runs && runs.length > 1" class="flex items-center gap-2">
+      <!-- 1. Run 切换选择器 / 当前 Run ID -->
+      <div
+        v-if="runId || (runs && runs.length > 1)"
+        class="flex items-center gap-2"
+      >
         <label
           class="text-[11px] font-medium text-gray-500 dark:text-dark-400 shrink-0"
         >
           目标 Run:
         </label>
         <select
+          v-if="runs && runs.length > 1"
           :value="runId"
-          class="h-7 w-full rounded border border-gray-200 bg-gray-50 px-2 text-xs text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-200"
+          class="h-7 flex-1 min-w-0 rounded border border-gray-200 bg-gray-50 px-2 text-xs text-gray-800 dark:border-dark-700 dark:bg-dark-950 dark:text-gray-200"
           @change="handleRunChange"
         >
           <option v-for="r in runs" :key="r.run_id" :value="r.run_id">
             {{ r.run_id.slice(0, 8) }} ({{ r.status }})
           </option>
         </select>
+        <span
+          v-else-if="runId"
+          class="text-xs font-mono text-gray-700 dark:text-gray-200 truncate"
+        >
+          {{ runId.slice(0, 8) }}
+          <span v-if="currentRun?.status" class="text-gray-400">
+            ({{ currentRun.status }})
+          </span>
+        </span>
+        <button
+          v-if="runId"
+          type="button"
+          data-testid="copy-run-id-btn"
+          class="inline-flex h-7 shrink-0 items-center gap-1 rounded border border-gray-200 bg-white px-2 text-[11px] text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white transition-colors"
+          :title="`复制完整 Run ID: ${runId}`"
+          @click="handleCopyRunId"
+        >
+          <BaseIcon
+            :name="copiedRunId ? 'check' : 'copy'"
+            size="xs"
+            :class="copiedRunId ? 'text-emerald-500' : ''"
+          />
+          <span>{{ copiedRunId ? "已复制" : "复制 ID" }}</span>
+        </button>
       </div>
 
       <!-- 2. 加载骨架屏 -->

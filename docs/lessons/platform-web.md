@@ -22,3 +22,9 @@
 - **错误：** 在回调参数中直接进行数组解构 `([newA, newB], [oldA, oldB])`。首次执行时 Vue 传入的 `oldValue` 为 `undefined`，解构引发 `TypeError: undefined is not iterable`，导致 watcher runner 静默报废且后续依赖变化不再响应。
 - **正确：** 回调参数保持 `([newA, newB], oldValues)`，在函数体内通过安全可选链读取 `const oldA = oldValues?.[0]; const oldB = oldValues?.[1];`。
 - **日期：** 2026-10-10（用户批准）；非 Docker 后台任务兼容 A/B 前端增量项目。
+
+## [坑] 非 HTTPS 下裸调 navigator.clipboard.writeText 会静默失效
+- **场景：** 页面部署在公网 HTTP IP（非 HTTPS / 非 localhost），组件实现复制 Thread ID、Trace ID、Run ID 或日志操作。
+- **错误：** 直接调用 `navigator.clipboard.writeText(...)` 并在 `catch` 中静默忽略或提前将 `copied` 置为 `true`。非 Secure Context 下浏览器不暴露 `navigator.clipboard`，点击毫无反应或误报“已复制”。
+- **正确：** 统一复用带 `document.execCommand('copy')` 降级路径的 `copyText`（`@/utils/clipboard`），并仅在返回 `true` 时更新复制成功状态提示。
+- **日期：** 2026-11-25；用户批准记录，见 `apps/platform-web/src/utils/clipboard.ts`。

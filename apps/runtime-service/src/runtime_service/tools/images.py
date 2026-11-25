@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import logging
 import os
 from typing import Any
 from urllib.parse import urlsplit
@@ -28,11 +29,13 @@ from runtime_service.workspace.image_io import (
     ImageWorkspaceError as ImageWorkspaceError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 async def download_image(url: str, *, allowed_hosts: set[str]) -> bytes:
     """Only accept operator-approved asset hosts; no redirects or ambient credentials."""
+    parsed = urlsplit(url)
     try:
-        parsed = urlsplit(url)
         if (
             parsed.scheme != "https"
             or parsed.hostname not in allowed_hosts
@@ -40,6 +43,13 @@ async def download_image(url: str, *, allowed_hosts: set[str]) -> bytes:
             or parsed.username
             or parsed.password
         ):
+            logger.warning(
+                "Image download rejected unapproved asset URL: scheme=%s host=%s port=%s has_credentials=%s",
+                parsed.scheme,
+                parsed.hostname,
+                parsed.port,
+                bool(parsed.username or parsed.password),
+            )
             raise ValueError("Unapproved asset URL")
         async with (
             httpx.AsyncClient(timeout=45, trust_env=False) as client,
@@ -53,7 +63,19 @@ async def download_image(url: str, *, allowed_hosts: set[str]) -> bytes:
                     raise ValueError("Oversized image")
         image_type(bytes(data))
         return bytes(data)
-    except (httpx.HTTPError, ValueError, ToolException):
+    except (httpx.HTTPError, ValueError, ToolException) as exc:
+        if not (isinstance(exc, ValueError) and str(exc) == "Unapproved asset URL"):
+            status_code = (
+                exc.response.status_code
+                if isinstance(exc, httpx.HTTPStatusError)
+                else None
+            )
+            logger.warning(
+                "Image download failed: host=%s error_type=%s status_code=%s",
+                parsed.hostname,
+                type(exc).__name__,
+                status_code,
+            )
         raise ToolException(
             "Image download failed; check the configured asset host and image size."
         ) from None
@@ -141,10 +163,16 @@ def build_image_tools(
         result: Any, operation: str
     ) -> tuple[str, dict[str, Any]]:
         if not getattr(result, "data", None):
+            logger.warning("Image %s returned empty data", operation)
             raise ToolException("image_submission_unknown")
         item = result.data[0]
         if getattr(item, "b64_json", None):
             if len(item.b64_json) > MAX_BYTES * 4 // 3 + 4:
+                logger.warning(
+                    "Image %s returned oversized base64 payload: len=%s",
+                    operation,
+                    len(item.b64_json),
+                )
                 raise ToolException("image_submission_unknown")
             data = base64.b64decode(item.b64_json, validate=True)
         elif getattr(item, "url", None):
@@ -158,10 +186,16 @@ def build_image_tools(
                 # The provider already accepted the purchase; never imply a safe retry.
                 raise ToolException("image_submission_unknown") from None
         else:
+            logger.warning("Image %s item missing url and b64_json", operation)
             raise ToolException("image_submission_unknown")
         try:
             ref = await asyncio.to_thread(workspace.save_asset, data, "generated")
         except ToolException as exc:
+            logger.warning(
+                "Image %s failed to save asset: error_type=%s",
+                operation,
+                type(exc).__name__,
+            )
             raise ToolException("image_submission_unknown") from exc
         return ref["path"], {"runtime_images": [ref]}
 
@@ -171,7 +205,16 @@ def build_image_tools(
         if not isinstance(exc, OpenAIError):
             raise exc
         body = getattr(exc, "body", None)
-        if isinstance(body, dict) and body.get("code") == "content_policy_violation":
+        error_code = body.get("code") if isinstance(body, dict) else None
+        body_type = body.get("type") if isinstance(body, dict) else None
+        logger.warning(
+            "Image provider request failed: error_type=%s status_code=%s error_code=%s body_type=%s",
+            type(exc).__name__,
+            getattr(exc, "status_code", None),
+            error_code,
+            body_type,
+        )
+        if error_code == "content_policy_violation":
             return ToolException("image_content_policy_violation")
         return ToolException("image_submission_unknown")
 

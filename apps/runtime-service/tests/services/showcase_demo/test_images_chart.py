@@ -95,6 +95,62 @@ def test_provider_asset_download_failure_is_unknown_without_retry(
     assert "CANARY" not in str(error.value) and len(calls) == 1
 
 
+def test_image_failure_logs_redacted_diagnostics(monkeypatch, tmp_path, caplog):
+    fake_image_client(monkeypatch)
+    monkeypatch.setenv("RUNTIME_IMAGE_ASSET_HOSTS", "approved.invalid")
+
+    async def returned_url(self, **kwargs):
+        return SimpleNamespace(
+            data=[
+                SimpleNamespace(
+                    b64_json=None, url="https://unapproved.invalid/private?token=CANARY"
+                )
+            ]
+        )
+
+    monkeypatch.setattr(images.AsyncOpenAI, "generate", returned_url)
+    tools = {
+        item.name: item
+        for item in images.build_image_tools(images.ImageWorkspace(tmp_path))
+    }
+
+    with caplog.at_level("WARNING", logger="runtime_service.tools.images"):
+        with pytest.raises(ToolException, match="^image_submission_unknown$"):
+            asyncio.run(tools["generate_image"].coroutine(prompt="redacted log check"))
+
+    assert "unapproved.invalid" in caplog.text
+    assert "CANARY" not in caplog.text
+    assert "/private" not in caplog.text
+
+    caplog.clear()
+
+    async def provider_error(self, **kwargs):
+        request = httpx.Request(
+            "POST", "https://provider.invalid/v1/images/generations"
+        )
+        response = httpx.Response(403, request=request)
+        raise BadRequestError(
+            "sensitive sk-PROVIDER_SECRET",
+            response=response,
+            body={
+                "code": "insufficient_quota",
+                "type": "upstream_error",
+                "message": "leak sk-PROVIDER_SECRET",
+            },
+        )
+
+    monkeypatch.setattr(images.AsyncOpenAI, "generate", provider_error)
+    with caplog.at_level("WARNING", logger="runtime_service.tools.images"):
+        with pytest.raises(ToolException, match="^image_submission_unknown$"):
+            asyncio.run(
+                tools["generate_image"].coroutine(prompt="provider error log check")
+            )
+
+    assert "status_code=403" in caplog.text
+    assert "error_code=insufficient_quota" in caplog.text
+    assert "PROVIDER_SECRET" not in caplog.text
+
+
 @pytest.mark.parametrize("decision", ["approve", "reject"])
 def test_generate_requires_approval_without_platform_permission(
     build, monkeypatch, decision

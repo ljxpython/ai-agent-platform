@@ -13,6 +13,7 @@ import {
   truncateIdentifier,
 } from "../../diagnostics/view-model";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import { copyText as copyToClipboard } from "@/utils/clipboard";
 import RunPreparationsSection from "./RunPreparationsSection.vue";
 import RunRetriesSection from "./RunRetriesSection.vue";
 import RunLoopDetectionsSection from "./RunLoopDetectionsSection.vue";
@@ -65,15 +66,11 @@ const copiedKey = ref<string | null>(null);
 
 async function copyText(key: string, text: string | null | undefined) {
   if (!text) return;
-  try {
-    await navigator.clipboard.writeText(text);
-    copiedKey.value = key;
-    setTimeout(() => {
-      if (copiedKey.value === key) copiedKey.value = null;
-    }, 1500);
-  } catch {
-    // 静默降级
-  }
+  if (!(await copyToClipboard(text))) return;
+  copiedKey.value = key;
+  setTimeout(() => {
+    if (copiedKey.value === key) copiedKey.value = null;
+  }, 1500);
 }
 
 const statusBadge = computed(() => getRunStatusBadge(currentRunStatus.value));

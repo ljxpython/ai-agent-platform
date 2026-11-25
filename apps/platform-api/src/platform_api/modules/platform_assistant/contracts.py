@@ -17,6 +17,8 @@ class ReadRequest(BaseModel):
         "logs",
         "documents",
         "source",
+        "thread_runs",
+        "thread_activity",
     ]
     evidence_ids: list[UUID] = Field(default_factory=list, max_length=50)
     database_id: str = Field(default="", max_length=100)

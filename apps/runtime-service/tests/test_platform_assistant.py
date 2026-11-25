@@ -234,3 +234,149 @@ def test_document_and_run_log_tools_forward_selected_ids_and_window(monkeypatch)
         end="2026-01-01T01:00:00Z",
     )
     assert calls[-1][1]["log_start"] == "2026-01-01T00:00:00Z"
+
+
+@pytest.mark.parametrize("tool_name", ["read_run_diagnostics", "read_run_logs"])
+def test_run_tools_reject_invalid_uuid_with_tool_exception_and_no_crash(
+    monkeypatch, tool_name
+):
+    from types import SimpleNamespace
+
+    from runtime_service.services.platform_assistant import tools as module
+
+    monkeypatch.setattr(module, "platform_read", lambda *a, **k: {"data": {}})
+    tools = {t.name: t for t in module.make_tools(None)}
+    runtime = SimpleNamespace(tool_call_id="test-invalid-uuid")
+    with pytest.raises(ToolException, match="assistant_invalid_"):
+        tools[tool_name].func("70f0ab34", str(uuid4()), runtime)
+    with pytest.raises(ToolException, match="assistant_invalid_run_id"):
+        tools[tool_name].func(str(uuid4()), "bad-run-id", runtime)
+
+
+def test_agent_graph_handles_invalid_uuid_tool_call_without_crashing():
+    model = BindableFakeMessagesChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "read_run_diagnostics",
+                        "args": {"thread_id": "70f0ab34", "run_id": "70f0ab34"},
+                        "id": "diag-invalid-1",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(content="需要完整的 36 位 UUID。"),
+        ]
+    )
+    agent = create_platform_agent(
+        model,
+        tools=make_tools(None),
+        checkpointer=InMemorySaver(),
+    )
+    result = agent.invoke(
+        {"messages": [HumanMessage(content="帮我查下 70f0ab34")]},
+        {"configurable": {"thread_id": str(uuid4())}},
+    )
+    tool_msgs = [m for m in result["messages"] if m.type == "tool"]
+    assert len(tool_msgs) == 1
+    assert "assistant_invalid_thread_id" in tool_msgs[0].content
+    assert result["messages"][-1].content == "需要完整的 36 位 UUID。"
+
+
+def test_thread_lookup_tools_accept_uuid_and_prefix_and_reject_invalid(monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    from runtime_service.services.platform_assistant import tools as module
+
+    calls = []
+
+    def read(facts, operation, **kwargs):
+        calls.append((operation, kwargs))
+        return {"data": {"match_status": "matched", "runs": []}}
+
+    monkeypatch.setattr(module, "platform_read", read)
+    tools = {t.name: t for t in module.make_tools(None)}
+    runtime = SimpleNamespace(tool_call_id="test-lookup")
+
+    full_tid = str(uuid4())
+    for tool_name, expected_op in (
+        ("list_thread_runs", "thread_runs"),
+        ("read_thread_activity", "thread_activity"),
+    ):
+        res_full = json.loads(tools[tool_name].func(full_tid, runtime))
+        assert res_full["data"]["match_status"] == "matched"
+        assert calls[-1] == (
+            expected_op,
+            {"tool_call_id": "test-lookup", "target_thread_id": full_tid},
+        )
+
+        tools[tool_name].func(" 70F0AB34 ", runtime)
+        assert calls[-1] == (
+            expected_op,
+            {"tool_call_id": "test-lookup", "query": "70f0ab34"},
+        )
+
+        for bad in ("abc", "70f0ab34;drop", ""):
+            with pytest.raises(ToolException, match="assistant_invalid_thread_id"):
+                tools[tool_name].func(bad, runtime)
+
+
+def test_agent_graph_handles_thread_lookup_tool_calls(monkeypatch):
+    from runtime_service.services.platform_assistant import tools as module
+
+    monkeypatch.setattr(
+        module,
+        "platform_read",
+        lambda *a, **k: {
+            "evidence_id": str(uuid4()),
+            "data": {
+                "match_status": "matched",
+                "thread_id": "70f0ab34-bd4e-439b-b8ce-20a3957557f9",
+                "runs": [],
+            },
+        },
+    )
+    model = BindableFakeMessagesChatModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "list_thread_runs",
+                        "args": {"thread_id": "70f0ab34"},
+                        "id": "lookup-1",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "read_thread_activity",
+                        "args": {"thread_id": "bad"},
+                        "id": "lookup-2",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(content="已完成查询。"),
+        ]
+    )
+    agent = create_platform_agent(
+        model,
+        tools=make_tools(None),
+        checkpointer=InMemorySaver(),
+    )
+    result = agent.invoke(
+        {"messages": [HumanMessage(content="帮我查下 70f0ab34")]},
+        {"configurable": {"thread_id": str(uuid4())}},
+    )
+    tool_msgs = [m for m in result["messages"] if m.type == "tool"]
+    assert len(tool_msgs) == 2
+    assert "70f0ab34-bd4e-439b-b8ce-20a3957557f9" in tool_msgs[0].content
+    assert "assistant_invalid_thread_id" in tool_msgs[1].content
+    assert result["messages"][-1].content == "已完成查询。"

@@ -125,6 +125,31 @@ class PlatformSQLDatabase(SQLDatabase):
         )
 
 
+_THREAD_PREFIX_RE = re.compile(r"^[0-9a-f-]{8,35}$")
+
+
+def _require_uuid(value: str, field_name: str) -> str:
+    try:
+        return str(UUID(value))
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise ToolException(
+            f"assistant_invalid_{field_name}: {field_name} 必须是完整的36位UUID，不能只传短前缀或空值。"
+        ) from exc
+
+
+def _thread_locator(value: str) -> dict[str, str]:
+    cleaned = value.strip() if isinstance(value, str) else ""
+    try:
+        return {"target_thread_id": str(UUID(cleaned))}
+    except (ValueError, TypeError, AttributeError):
+        normalized = cleaned.lower()
+        if _THREAD_PREFIX_RE.fullmatch(normalized):
+            return {"query": normalized}
+        raise ToolException(
+            "assistant_invalid_thread_id: 请提供完整的 36 位 Thread UUID 或至少 8 位十六进制前缀。"
+        ) from None
+
+
 def make_tools(facts):
     def reader(runtime):
         def read(operation, **payload):
@@ -162,13 +187,29 @@ def make_tools(facts):
         ).invoke({"query": query})
 
     @tool
+    def list_thread_runs(thread_id: str, runtime: ToolRuntime) -> str:
+        """按完整36位thread_id或至少8位十六进制前缀查询当前用户有权读取的会话及最近Run列表（run_id、状态、时间与配置）。用户只提供thread_id或前8位时优先调用本工具获取run_id；前缀命中多条时返回候选列表请用户确认。"""
+        return json.dumps(
+            reader(runtime)("thread_runs", **_thread_locator(thread_id)),
+            ensure_ascii=False,
+        )
+
+    @tool
+    def read_thread_activity(thread_id: str, runtime: ToolRuntime) -> str:
+        """按完整36位thread_id或至少8位十六进制前缀读取获准会话的脱敏活动摘要（各Run状态、按轮次统计调用过的工具名、成功/失败结果与审批中断布尔状态）；不返回原始聊天正文、工具入参或返回内容。"""
+        return json.dumps(
+            reader(runtime)("thread_activity", **_thread_locator(thread_id)),
+            ensure_ascii=False,
+        )
+
+    @tool
     def read_run_diagnostics(thread_id: str, run_id: str, runtime: ToolRuntime) -> str:
         """读取获准Run最终状态、时间、追踪诊断及该Run绑定的持久checkpoint摘要（失败任务、错误码、实际中断和消息类型计数）。追踪未配置时仍查持久状态；review只是策略，不能证明发生审批；不返回消息正文/审批参数/堆栈。"""
         return json.dumps(
             reader(runtime)(
                 "diagnostics",
-                target_thread_id=str(UUID(thread_id)),
-                target_run_id=str(UUID(run_id)),
+                target_thread_id=_require_uuid(thread_id, "thread_id"),
+                target_run_id=_require_uuid(run_id, "run_id"),
             ),
             ensure_ascii=False,
         )
@@ -185,8 +226,8 @@ def make_tools(facts):
         return json.dumps(
             reader(runtime)(
                 "logs",
-                target_thread_id=str(UUID(thread_id)),
-                target_run_id=str(UUID(run_id)),
+                target_thread_id=_require_uuid(thread_id, "thread_id"),
+                target_run_id=_require_uuid(run_id, "run_id"),
                 log_start=start,
                 log_end=end,
             ),
@@ -273,6 +314,8 @@ def make_tools(facts):
         list_databases,
         sql_db_schema,
         sql_db_query,
+        list_thread_runs,
+        read_thread_activity,
         read_run_diagnostics,
         read_run_logs,
         search_project_logs,

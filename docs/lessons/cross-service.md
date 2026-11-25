@@ -36,3 +36,12 @@
 - **错误：** 用手填文本上限拒绝服务端完整snapshot，或裁剪来源后误称完整；把每条Run都success作为会话完成标准，未考虑正常审批interrupted历史和倒序返回。
 - **正确：** 分别约束手填、来源、签名接收及模型可见预算，保留原文hash及不完整标记。历史终态同时核对可信时间和全部状态，未决、error/cancelled或时间不明保持失败；完整来源不等于文件初态可恢复。 终态修复生效与裁判请求成功分别验证；超时／未知用量不能当低分或通过。发生OOM或隧道失联时重新核对实际内存、服务身份及健康，不以ping或旧PID替代当前状态。
 - **日期：** 2026-11-20。证据见通用出题治理项目Task14；用户已批准知识沉淀。
+
+---
+
+## [坑] 历史接口忽略筛选参数与租户别名差异需分页复核并对齐
+
+- **场景：** `platform-api` 平台助手读取目标 Run 的持久化 checkpoint 状态及 Runtime 诊断追踪数据。
+- **错误：** 假定上游 `POST /threads/{thread_id}/history` 的 `metadata={"run_id": ...}` 过滤生效而只取 `limit=1`，一旦有后续 Run 写入即误判 `run_mismatch`；且默认租户在鉴权域传 `TenantRecord.id`（UUID）而运行时实际以 `tenant_id="__default"` 落库，导致运行诊断全部查不到。
+- **正确：** 读取 checkpoint 采取先探最新 1 条、未命中再带 `before` 游标向后有界分页匹配目标 `run_id`（附游标去重防死循环）；默认租户（`slug == "__default"`）向 Runtime 统一传递 `tenant_id="__default"` 保持跨服务契约一致。
+- **日期：** 2026-11-25；用户批准沉淀，证据见[平台助手接入 MLflow 追踪诊断专项](../projects/20261125-platform-assistant-mlflow-diagnostics/verification.md)。

@@ -6,6 +6,7 @@ import type {
   TrajectoryTurnGroup,
 } from "../../trajectory/types";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import { copyText } from "@/utils/clipboard";
 import {
   buildTraceUrl,
   isTracingEnabled,
@@ -63,19 +64,13 @@ const copiedTraceId = ref<string | null>(null);
 
 async function copyTurnTraceId(tid?: string) {
   if (!tid) return;
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(tid);
+  if (!(await copyText(tid))) return;
+  copiedTraceId.value = tid;
+  setTimeout(() => {
+    if (copiedTraceId.value === tid) {
+      copiedTraceId.value = null;
     }
-    copiedTraceId.value = tid;
-    setTimeout(() => {
-      if (copiedTraceId.value === tid) {
-        copiedTraceId.value = null;
-      }
-    }, 2000);
-  } catch {
-    // 降级
-  }
+  }, 2000);
 }
 
 function formatTraceId(id?: string): string {

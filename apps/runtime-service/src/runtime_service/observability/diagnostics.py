@@ -15,6 +15,20 @@ from runtime_service.errors import WORKSPACE_ERROR_CODES
 from runtime_service.runtime.auth import VerifiedDelegation
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+
+def _ensure_diagnostic_handler() -> None:
+    """Attach a StreamHandler only when no root INFO handler is configured (e.g. structlog worker)."""
+    root_handlers = logging.getLogger().handlers
+    if any(handler.level <= logging.INFO for handler in root_handlers):
+        return
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.INFO)
+        logger.addHandler(handler)
+
+
 _FIELDS = frozenset(
     {
         "graph_id",
@@ -182,6 +196,7 @@ def workspace_execution_fields(fields: Mapping[str, Any]) -> dict[str, Any] | No
 
 def log_diagnostic(event: str, fields: Mapping[str, Any]) -> None:
     try:
+        _ensure_diagnostic_handler()
         payload = {"schema_version": 1, "event": event, **safe_fields(fields)}
         logger.info(
             json.dumps(

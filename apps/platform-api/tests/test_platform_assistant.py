@@ -1117,3 +1117,336 @@ def test_internal_hmac_replay_window_and_live_actor(setup, monkeypatch):
             ).status_code
             == 403
         )
+
+
+def test_thread_runs_and_activity_resolve_prefix_redact_and_enforce_acl(setup):
+    from unittest.mock import AsyncMock
+
+    from platform_api.modules.platform_assistant.evidence import require_history_access
+    from platform_api.modules.runtime_gateway.application import thread_access
+
+    factory, actor, scope = setup
+    prefix = "70f0ab34"
+    owned_tid = f"{prefix}-bd4e-439b-b8ce-20a3957557f9"
+    private_same_prefix_tid = f"{prefix}-1111-439b-b8ce-20a3957557f9"
+    pending_same_prefix_tid = f"{prefix}-2222-439b-b8ce-20a3957557f9"
+    second_owned_tid = f"{prefix}-3333-439b-b8ce-20a3957557f9"
+
+    other_actor = ActorContext(user_id=str(uuid4()), project_roles=actor.project_roles)
+    target_project = str(uuid4())
+    with factory.begin() as session:
+        tenant_id = session.get(ProjectRecord, UUID(scope[0])).tenant_id
+        session.add(
+            ProjectRecord(
+                id=UUID(target_project),
+                tenant_id=tenant_id,
+                name="Target",
+                status="active",
+            )
+        )
+        session.add(
+            ProjectMemberRecord(
+                project_id=UUID(target_project),
+                user_id=UUID(actor.user_id),
+                role="project_executor",
+            )
+        )
+    thread_access.register(
+        factory, thread_id=owned_tid, project_id=target_project, actor=actor
+    )
+    thread_access.mark_provisioned(factory, owned_tid)
+    thread_access.register(
+        factory,
+        thread_id=private_same_prefix_tid,
+        project_id=target_project,
+        actor=other_actor,
+    )
+    thread_access.mark_provisioned(factory, private_same_prefix_tid)
+    thread_access.register(
+        factory,
+        thread_id=pending_same_prefix_tid,
+        project_id=target_project,
+        actor=actor,
+    )
+
+    run_1 = str(uuid4())
+    run_2 = str(uuid4())
+    gateway = NS(
+        list_thread_runs=AsyncMock(
+            return_value=[
+                {
+                    "run_id": run_1,
+                    "status": "success",
+                    "created_at": "2026-11-25T09:01:00+08:00",
+                    "updated_at": "2026-11-25T09:01:20+08:00",
+                    "kwargs": {"context": {"model_id": "deepseek", "secret": "x"}},
+                },
+                {
+                    "run_id": run_2,
+                    "status": "error",
+                    "created_at": "2026-11-25T09:03:00+08:00",
+                    "updated_at": "2026-11-25T09:03:20+08:00",
+                    "error": "sensitive traceback secret=123",
+                },
+            ]
+        ),
+        get_thread_state=AsyncMock(
+            return_value={
+                "values": {
+                    "messages": [
+                        {"type": "human", "content": "SECRET_USER_PROMPT"},
+                        {
+                            "type": "ai",
+                            "content": "SECRET_AI_TEXT",
+                            "tool_calls": [
+                                {
+                                    "id": "call-1",
+                                    "name": "list_skills",
+                                    "args": {"token": "SECRET_TOOL_ARG"},
+                                }
+                            ],
+                        },
+                        {
+                            "type": "tool",
+                            "tool_call_id": "call-1",
+                            "content": "SECRET_TOOL_OUTPUT",
+                            "status": "success",
+                        },
+                        {"type": "human", "content": "SECOND_PROMPT"},
+                        {
+                            "type": "ai",
+                            "content": "",
+                            "tool_calls": [
+                                {
+                                    "id": "call-2",
+                                    "name": "generate_image",
+                                    "args": {"prompt": "SECRET_PROMPT_2"},
+                                }
+                            ],
+                        },
+                        {
+                            "type": "tool",
+                            "tool_call_id": "call-2",
+                            "content": "ERR_DETAIL",
+                            "status": "error",
+                        },
+                    ]
+                },
+                "tasks": [],
+                "interrupts": [],
+            }
+        ),
+    )
+    request = NS(
+        app=NS(
+            state=NS(
+                settings=Settings(platform_assistant_enabled=True),
+                db_session_factory=factory,
+            )
+        )
+    )
+
+    runs_res = asyncio.run(
+        read(
+            request,
+            actor,
+            scope[0],
+            ReadRequest(operation="thread_runs", query=prefix.upper()),
+            gateway,
+            correlation={
+                "assistant_thread_id": scope[1],
+                "assistant_run_id": str(uuid4()),
+                "tool_call_id": "tc-runs",
+            },
+        )
+    )
+    assert runs_res["data"]["match_status"] == "matched"
+    assert runs_res["data"]["thread_id"] == owned_tid
+    assert [r["run_id"] for r in runs_res["data"]["runs"]] == [run_2, run_1]
+    assert runs_res["data"]["runs"][0]["error_code"] == "unclassified_error"
+    assert "SECRET" not in json.dumps(runs_res)
+    assert "sensitive traceback" not in json.dumps(runs_res)
+
+    act_res = asyncio.run(
+        read(
+            request,
+            actor,
+            scope[0],
+            ReadRequest(operation="thread_activity", query=prefix),
+            gateway,
+            correlation={
+                "assistant_thread_id": scope[1],
+                "assistant_run_id": str(uuid4()),
+                "tool_call_id": "tc-act",
+            },
+        )
+    )
+    serialized = json.dumps(act_res, ensure_ascii=False)
+    for secret_str in (
+        "SECRET_USER_PROMPT",
+        "SECRET_AI_TEXT",
+        "SECRET_TOOL_ARG",
+        "SECRET_TOOL_OUTPUT",
+        "SECOND_PROMPT",
+        "SECRET_PROMPT_2",
+        "ERR_DETAIL",
+    ):
+        assert secret_str not in serialized
+    turns = act_res["data"]["activity"]["turns"]
+    assert len(turns) == 2
+    assert turns[0]["tool_calls"] == [{"tool_name": "list_skills", "status": "success"}]
+    assert turns[1]["tool_calls"] == [
+        {"tool_name": "generate_image", "status": "error"}
+    ]
+
+    # Ambiguous prefix when two owned ready threads share the prefix.
+    thread_access.register(
+        factory, thread_id=second_owned_tid, project_id=target_project, actor=actor
+    )
+    thread_access.mark_provisioned(factory, second_owned_tid)
+    amb_res = asyncio.run(
+        read(
+            request,
+            actor,
+            scope[0],
+            ReadRequest(operation="thread_runs", query=prefix),
+            gateway,
+        )
+    )
+    assert amb_res["data"]["match_status"] == "ambiguous"
+    assert set(amb_res["data"]["candidates"]) == {owned_tid, second_owned_tid}
+
+    # Unowned / missing prefix returns not_found.
+    missing_res = asyncio.run(
+        read(
+            request,
+            actor,
+            scope[0],
+            ReadRequest(operation="thread_runs", query="deadbeef"),
+            gateway,
+        )
+    )
+    assert missing_res["data"]["match_status"] == "not_found"
+
+    # Revoking target project membership blocks reopening assistant history.
+    access = thread_access.get(factory, scope[1])
+    require_history_access(
+        factory, request.app.state.settings, actor, scope[0], scope[1], access
+    )
+    with factory.begin() as session:
+        member = session.scalar(
+            select(ProjectMemberRecord).where(
+                ProjectMemberRecord.project_id == UUID(target_project)
+            )
+        )
+        session.delete(member)
+    with pytest.raises(ForbiddenError):
+        require_history_access(
+            factory, request.app.state.settings, actor, scope[0], scope[1], access
+        )
+
+
+def test_internal_hmac_callback_supports_thread_runs_and_activity(setup, monkeypatch):
+    import hashlib
+    import hmac
+    import time
+    from unittest.mock import AsyncMock
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from platform_api.core.context.models import (
+        PlatformRequestContext,
+        ProjectContext,
+        RequestContext,
+        TenantContext,
+    )
+    from platform_api.core.errors import register_exception_handlers
+    from platform_api.modules.platform_assistant import router as module
+    from platform_api.modules.platform_assistant.contracts import InternalReadRequest
+    from platform_api.modules.runtime_gateway.application import thread_access
+
+    factory, actor, scope = setup
+    target_tid = "abcdef12-bd4e-439b-b8ce-20a3957557f9"
+    thread_access.mark_provisioned(factory, scope[1])
+    thread_access.register(
+        factory, thread_id=target_tid, project_id=scope[0], actor=actor
+    )
+    thread_access.mark_provisioned(factory, target_tid)
+
+    secret = "test-secret-" * 4
+    app = FastAPI()
+    app.state.db_session_factory = factory
+    app.state.settings = Settings(
+        platform_assistant_enabled=True, runtime_delegation_secret=secret
+    )
+
+    @app.middleware("http")
+    async def context(request, call_next):
+        request.state.platform_context = PlatformRequestContext(
+            RequestContext("r", "t", "POST", "/", 0),
+            TenantContext(),
+            ProjectContext(),
+            ActorContext(),
+        )
+        return await call_next(request)
+
+    register_exception_handlers(app)
+    app.include_router(module.router)
+    assistant_run = str(uuid4())
+    gateway = NS(
+        _assert_runtime_target_allowed=lambda **kwargs: None,
+        get_thread=AsyncMock(
+            return_value={"metadata": {"graph_id": "platform_assistant"}}
+        ),
+        get_thread_run=AsyncMock(
+            return_value={
+                "thread_id": scope[1],
+                "run_id": assistant_run,
+                "status": "running",
+            }
+        ),
+        list_thread_runs=AsyncMock(
+            return_value=[{"run_id": str(uuid4()), "status": "success"}]
+        ),
+        get_thread_state=AsyncMock(return_value={"values": {"messages": []}}),
+    )
+    monkeypatch.setattr(module, "get_runtime_gateway_service", lambda *a: gateway)
+
+    def post_signed(client, **extra):
+        payload = InternalReadRequest(
+            project_id=scope[0],
+            actor_id=actor.user_id,
+            thread_id=scope[1],
+            run_id=assistant_run,
+            tool_call_id="call-lookup",
+            **extra,
+        ).model_dump(mode="json")
+        encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+        stamp = str(int(time.time()))
+        sig = hmac.new(
+            secret.encode(),
+            ("platform-assistant\n" + stamp + "\n" + encoded).encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        return client.post(
+            "/api/platform-assistant/internal/read",
+            content=encoded,
+            headers={
+                "content-type": "application/json",
+                "x-assistant-time": stamp,
+                "x-assistant-signature": sig,
+            },
+        )
+
+    with TestClient(app) as client:
+        r1 = post_signed(client, operation="thread_runs", query="abcdef12")
+        assert r1.status_code == 200
+        assert r1.json()["data"]["thread_id"] == target_tid
+        assert len(r1.json()["data"]["runs"]) == 1
+
+        r2 = post_signed(
+            client, operation="thread_activity", target_thread_id=target_tid
+        )
+        assert r2.status_code == 200
+        assert r2.json()["data"]["activity"]["availability"] == "available"

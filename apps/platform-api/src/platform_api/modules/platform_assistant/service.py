@@ -1,11 +1,14 @@
 """All assistant reads recheck current identity; evidence IDs refer to audit events."""
 
+import asyncio
 import hashlib
 import logging
+import re
 import time
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+from sqlalchemy import select
 from starlette.concurrency import run_in_threadpool
 
 from platform_api.core.errors import (
@@ -21,9 +24,13 @@ from platform_api.modules.platform_assistant.contracts import AssistantDatabase
 from platform_api.modules.platform_assistant.diagnostics import (
     identifier,
     read_checkpoint,
+    read_thread_activity_state,
+    summarize_runs,
 )
 from platform_api.modules.platform_assistant.materials import read_material
-from platform_api.modules.projects.models import ProjectRecord
+from platform_api.modules.projects.models import ProjectRecord, TenantRecord
+
+_THREAD_PREFIX_RE = re.compile(r"^[0-9a-f-]{8,35}$")
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +59,9 @@ def require_scope(factory, actor, project_id):
             raise ForbiddenError(
                 code="assistant_project_denied", message="项目不可用。"
             )
+        tenant = session.get(TenantRecord, project.tenant_id)
+        if tenant is not None and tenant.slug == "__default":
+            return "__default"
         return str(project.tenant_id)
 
 
@@ -125,6 +135,63 @@ def require_target_project(factory, actor, thread_id):
         raise ForbiddenError(code="thread_action_denied", message="无权读取目标会话。")
     require_scope(factory, target_actor, target_project)
     return target_project, target_actor
+
+
+def resolve_thread_target(factory, actor, *, target_thread_id=None, prefix=""):
+    if target_thread_id is not None:
+        tid = str(target_thread_id)
+        target_project, target_actor = require_target_project(factory, actor, tid)
+        return "matched", tid, target_project, target_actor, []
+
+    normalized = (prefix or "").strip().lower()
+    if not _THREAD_PREFIX_RE.fullmatch(normalized):
+        raise BadRequestError(
+            code="assistant_thread_required",
+            message="请提供完整的 36 位 Thread UUID 或至少 8 位十六进制前缀。",
+        )
+
+    from platform_api.modules.identity.actors import load_user_actor
+    from platform_api.modules.runtime_gateway.application import thread_access
+    from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
+        ThreadAccessRecord,
+    )
+
+    with factory() as session:
+        rows = session.scalars(
+            select(ThreadAccessRecord)
+            .where(
+                ThreadAccessRecord.thread_id.startswith(normalized),
+                ThreadAccessRecord.provisioning_status != "pending",
+            )
+            .order_by(ThreadAccessRecord.thread_id)
+            .limit(25)
+        ).all()
+
+    actors_by_project = {}
+    matches = []
+    for row in rows:
+        pid = row.project_id
+        if pid not in actors_by_project:
+            try:
+                t_actor = load_user_actor(
+                    session_factory=factory, user_id=actor.user_id, project_id=pid
+                )
+                require_scope(factory, t_actor, pid)
+                actors_by_project[pid] = t_actor
+            except ForbiddenError:
+                actors_by_project[pid] = None
+        t_actor = actors_by_project[pid]
+        if t_actor and thread_access.allowed(
+            t_actor, pid, thread_access.record_metadata(row), "read"
+        ):
+            matches.append((row.thread_id, pid, t_actor))
+
+    if not matches:
+        return "not_found", None, None, None, []
+    if len(matches) > 1:
+        return "ambiguous", None, None, None, [item[0] for item in matches[:10]]
+    tid, pid, t_actor = matches[0]
+    return "matched", tid, pid, t_actor, []
 
 
 def write_audit(
@@ -213,6 +280,8 @@ async def read(
             "source": "search_source",
             "diagnostics": "read_run_diagnostics",
             "logs": "read_run_logs" if body.target_run_id else "search_project_logs",
+            "thread_runs": "list_thread_runs",
+            "thread_activity": "read_thread_activity",
             "authorize_search": "search_public_web",
         }.get(body.operation)
         if tool_name or body.operation == "authorize":
@@ -450,6 +519,81 @@ async def read(
                         service=body.log_service,
                     )
                 ).model_dump(mode="json")
+        elif body.operation in {"thread_runs", "thread_activity"}:
+            (
+                match_status,
+                resolved_tid,
+                target_project_id,
+                target_actor,
+                candidates,
+            ) = await run_in_threadpool(
+                resolve_thread_target,
+                factory,
+                actor,
+                target_thread_id=body.target_thread_id,
+                prefix=body.query,
+            )
+            if match_status != "matched":
+                data = {
+                    "match_status": match_status,
+                    "thread_id": None,
+                    "candidates": candidates,
+                    "runs": [],
+                    **(
+                        {"activity": None}
+                        if body.operation == "thread_activity"
+                        else {}
+                    ),
+                }
+            else:
+                scope["target_project_id"] = target_project_id
+                if target_gateway_factory is not None:
+                    gateway = await run_in_threadpool(
+                        target_gateway_factory, target_actor, target_project_id
+                    )
+                runs_availability = "available"
+                raw_runs = []
+                try:
+                    async with asyncio.timeout(8):
+                        raw_runs = await gateway.list_thread_runs(
+                            actor=target_actor,
+                            project_id=target_project_id,
+                            thread_id=resolved_tid,
+                            params={"limit": 50, "offset": 0},
+                        )
+                except PlatformApiError as exc:
+                    if exc.status_code < 500:
+                        raise
+                    runs_availability = "unavailable"
+                except TimeoutError:
+                    runs_availability = "unavailable"
+                runs, runs_truncated = summarize_runs(raw_runs, limit=20)
+                if body.operation == "thread_runs":
+                    data = {
+                        "match_status": "matched",
+                        "thread_id": resolved_tid,
+                        "candidates": [],
+                        "runs_availability": runs_availability,
+                        "runs": runs,
+                        "total_returned": len(runs),
+                        "truncated": runs_truncated,
+                    }
+                else:
+                    activity = await read_thread_activity_state(
+                        gateway,
+                        actor=target_actor,
+                        project_id=target_project_id,
+                        thread_id=resolved_tid,
+                    )
+                    data = {
+                        "match_status": "matched",
+                        "thread_id": resolved_tid,
+                        "candidates": [],
+                        "runs_availability": runs_availability,
+                        "runs": runs,
+                        "runs_truncated": runs_truncated,
+                        "activity": activity,
+                    }
         else:
             raise BadRequestError(
                 code="assistant_operation_denied", message="不支持此操作。"

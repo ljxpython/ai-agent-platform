@@ -227,4 +227,31 @@ describe("RunDiagnostics.vue", () => {
     expect(wrapper.text()).toContain("调用尝试与重试");
     expect(wrapper.text()).toContain("重试 1 次");
   });
+
+  it("在非 HTTPS 下点击顶栏 Run ID 可降级复制完整 Run ID", async () => {
+    vi.stubGlobal("navigator", {});
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, "execCommand", {
+      value: execCommand,
+      configurable: true,
+    });
+    mockData.value = { ...baseDiagnostic };
+
+    const wrapper = mount(RunDiagnostics, {
+      props: {
+        threadId: "thread-123",
+        runId: "70f0ab34-bd4e-439b-b8ce-20a3957557f9",
+      },
+    });
+
+    const headerRunId = wrapper.find('[title*="点击复制完整 Run ID"]');
+    expect(headerRunId.exists()).toBe(true);
+    await headerRunId.trigger("click");
+
+    expect(execCommand).toHaveBeenCalledWith("copy");
+    await vi.waitFor(() => {
+      expect(headerRunId.text()).toContain("已复制");
+    });
+    vi.unstubAllGlobals();
+  });
 });

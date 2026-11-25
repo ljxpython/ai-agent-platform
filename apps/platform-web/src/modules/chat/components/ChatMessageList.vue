@@ -4,6 +4,7 @@ import type { BaseMessage } from "@langchain/core/messages";
 import type { AnyStream, AssembledToolCall } from "@langchain/vue";
 import type { ChatMessageMetadata } from "../branching";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import { copyText } from "@/utils/clipboard";
 import MessageContent from "./MessageContent.vue";
 import ToolResult from "./ToolResult.vue";
 import FollowUpSuggestions from "./FollowUpSuggestions.vue";
@@ -301,8 +302,7 @@ function toggleWork(entryId: string) {
 }
 let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 async function copy(value: string, id?: string) {
-  try {
-    await navigator.clipboard.writeText(value);
+  if (await copyText(value)) {
     copyError.value = "";
     if (id) {
       copiedId.value = id;
@@ -311,7 +311,7 @@ async function copy(value: string, id?: string) {
         copiedId.value = "";
       }, 2000);
     }
-  } catch {
+  } else {
     copyError.value = "复制失败，请手动选择文本复制";
   }
 }

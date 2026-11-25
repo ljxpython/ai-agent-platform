@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any
 
 from langgraph.config import get_config
@@ -14,6 +15,16 @@ _context_metrics.propagate = False
 if not _context_metrics.handlers:
     _context_metrics.addHandler(logging.StreamHandler())
 
+_CORRELATION_KEYS = ("project_id", "thread_id", "platform_trace_id", "request_id")
+
+
+def _safe_scalar_id(value: Any) -> str | None:
+    return (
+        value
+        if isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", value)
+        else None
+    )
+
 
 def log_context_metric(fields: dict[str, Any]) -> None:
     """Private counters must be visible even when the host configures only structlog."""
@@ -23,10 +34,14 @@ def log_context_metric(fields: dict[str, Any]) -> None:
         except RuntimeError:
             config = {}
         metadata = config.get("metadata") or {}
-        identity = {
+        identity: dict[str, Any] = {
             "run_id": metadata.get("run_id"),
             "checkpoint_ns": str(metadata.get("langgraph_checkpoint_ns", ""))[:1024],
         }
+        for key in _CORRELATION_KEYS:
+            value = _safe_scalar_id(metadata.get(key))
+            if value:
+                identity[key] = value
         _context_metrics.info(
             json.dumps({**identity, **fields}, ensure_ascii=True, separators=(",", ":"))
         )

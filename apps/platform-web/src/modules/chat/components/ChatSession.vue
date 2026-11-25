@@ -36,6 +36,7 @@ import { useAuthStore } from "@/stores/auth";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseDialog from "@/components/base/BaseDialog.vue";
+import { copyText } from "@/utils/clipboard";
 import type { AgentContext } from "@/services/agents/types";
 import {
   isChatAttachmentBlock,
@@ -1027,16 +1028,12 @@ const copiedThread = ref(false);
 let threadCopyTimeout: ReturnType<typeof setTimeout> | null = null;
 async function copyThreadId() {
   if (!session.threadId.value) return;
-  try {
-    await navigator.clipboard.writeText(session.threadId.value);
-    copiedThread.value = true;
-    if (threadCopyTimeout) clearTimeout(threadCopyTimeout);
-    threadCopyTimeout = setTimeout(() => {
-      copiedThread.value = false;
-    }, 2000);
-  } catch {
-    /* ignore */
-  }
+  if (!(await copyText(session.threadId.value))) return;
+  copiedThread.value = true;
+  if (threadCopyTimeout) clearTimeout(threadCopyTimeout);
+  threadCopyTimeout = setTimeout(() => {
+    copiedThread.value = false;
+  }, 2000);
 }
 
 const headerTooltip = ref<{

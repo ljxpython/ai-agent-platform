@@ -6,6 +6,7 @@ import type {
 } from "../../trajectory/types";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import MarkdownContent from "@/components/platform/MarkdownContent.vue";
+import { copyText } from "@/utils/clipboard";
 import { copyDiagnosticPacket } from "@/services/observability/diagnostic-packet";
 import {
   buildTraceUrl,
@@ -29,17 +30,11 @@ const copiedTrace = ref(false);
 async function handleCopyTraceId() {
   const tid = props.record?.traceId;
   if (!tid) return;
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(tid);
-    }
-    copiedTrace.value = true;
-    setTimeout(() => {
-      copiedTrace.value = false;
-    }, 2000);
-  } catch {
-    // 降级
-  }
+  if (!(await copyText(tid))) return;
+  copiedTrace.value = true;
+  setTimeout(() => {
+    copiedTrace.value = false;
+  }, 2000);
 }
 
 const recordTraceUrl = computed(() => {
@@ -135,15 +130,11 @@ const previewText = computed<string>(() => {
 });
 
 async function handleCopy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    copied.value = true;
-    setTimeout(() => {
-      copied.value = false;
-    }, 1600);
-  } catch {
-    // 静默降级
-  }
+  if (!(await copyText(text))) return;
+  copied.value = true;
+  setTimeout(() => {
+    copied.value = false;
+  }, 1600);
 }
 </script>
 

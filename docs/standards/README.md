@@ -50,3 +50,5 @@
 2026-11-17助手补充目标项目授权统一、scope两类项目、读取时间与Run时间区分，以及按Run时间查询日志的窗口要求。分层及用户批准的当前栈跨项目取证/历史续聊/撤权链已验，证据见[实施记录](../projects/20261116-platform-assistant/implementation/03-guide-and-diagnostics-optimization.md)；没有新增JWT operation或SSE类型，原两份草案不毕业。当前追踪未配置，真实Loki与生产采集未验。
 
 2026-11-17真实排障补强已完成本地技术验收：缺Trace按后端核实的执行请求或Run选择日志候选，逐条项目/Thread/Run/时间及当前ACL不放宽，明确本次诊断请求与平台执行请求的区别。当前查询端未配置不推断历史采集，保留期未知不推断过期；证据见[补强记录](../projects/20261116-platform-assistant/implementation/04-real-diagnostics-followup.md)。没有新增JWT operation或SSE类型，原草案保持原状态，未验证生产Loki。
+
+2026-11-25平台助手补充按完整`thread_id`或8–35位前缀列出Run（`thread_runs`）及结构化脱敏活动摘要（`thread_activity`），沿用既有HMAC内部回调、目标Thread ACL与历史撤权保护，不返回聊天正文或工具参数/输出；未新增Delegation JWT operation或SSE类型，原两份草案状态保持。验证证据见[检索与摘要验证](../projects/20261125-platform-assistant-thread-lookup/verification.md)。

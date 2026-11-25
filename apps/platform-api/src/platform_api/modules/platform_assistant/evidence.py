@@ -27,7 +27,12 @@ def save_evidence(factory, actor, project_id, evidence_id, body, correlation, da
                     "revision": data.get("revision"),
                     "target_thread_id": str(body.target_thread_id)
                     if body.target_thread_id
-                    else None,
+                    else (
+                        data.get("thread_id")
+                        if body.operation in {"thread_runs", "thread_activity"}
+                        and isinstance(data.get("thread_id"), str)
+                        else None
+                    ),
                     "document_id": body.document_id,
                 },
             )
@@ -84,14 +89,26 @@ def require_history_access(factory, settings, actor, project_id, thread_id, acce
                 allowed = allowed and revision == source["revision"]
             except (OSError, ValueError, KeyError, TypeError):
                 allowed = False
-        elif record.operation in {"diagnostics", "logs"}:
+        elif record.operation in {
+            "diagnostics",
+            "logs",
+            "thread_runs",
+            "thread_activity",
+        }:
             if source["target_thread_id"]:
                 try:
                     require_target_project(factory, actor, source["target_thread_id"])
                 except ForbiddenError:
                     allowed = False
             else:
-                allowed = actor.user_id in settings.assistant_log_users
+                allowed = (
+                    actor.user_id in settings.assistant_log_users
+                    or record.operation
+                    in {
+                        "thread_runs",
+                        "thread_activity",
+                    }
+                )
         tool = {
             "sql_schema": "sql_db_schema",
             "sql_query": "sql_db_query",
@@ -101,6 +118,8 @@ def require_history_access(factory, settings, actor, project_id, thread_id, acce
             "logs": "read_run_logs"
             if source.get("target_thread_id")
             else "search_project_logs",
+            "thread_runs": "list_thread_runs",
+            "thread_activity": "read_thread_activity",
             "authorize_search": "search_public_web",
         }.get(record.operation)
         allowed = allowed and policy.get(tool) is not False

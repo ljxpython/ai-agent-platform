@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import math
 import os
 import re
@@ -41,6 +42,14 @@ _EVENTS = {
 @asynccontextmanager
 async def diagnostics_client_lifespan() -> AsyncIterator[None]:
     global _client
+    from runtime_service.observability.mlflow_tracer import (
+        initialize_mlflow,
+        is_mlflow_enabled,
+    )
+
+    if is_mlflow_enabled() and os.getenv("MLFLOW_TRACKING_URI", "").strip():
+        initialize_mlflow()
+
     configured = os.getenv("LANGFUSE_ENABLED", "").lower() == "true" and all(
         os.getenv(key)
         for key in ("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_BASE_URL")
@@ -178,7 +187,13 @@ def _reliability(metadata: dict, common: dict) -> tuple[str, dict] | None:
 
 
 # Keep event schemas together so scope and response limits agree.
-def _project(observations: list[dict], expected: dict, *, truncated: bool) -> dict:
+def _project(
+    observations: list[dict],
+    expected: dict,
+    *,
+    truncated: bool,
+    provider_override: str | None = None,
+) -> dict:
     result = empty_diagnostics("not_recorded")
     records = [
         item for item in observations if _matches(_dict(item.get("metadata")), expected)
@@ -192,10 +207,13 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
         accepted = list(dict.fromkeys(item.get("trace_id") for item in records))[:50]
         records = [item for item in records if item.get("trace_id") in accepted]
     if len(traces) == 1:
-        from runtime_service.observability.mlflow_tracer import get_tracing_provider
+        if provider_override is not None:
+            chosen_provider = provider_override
+        else:
+            from runtime_service.observability.mlflow_tracer import get_tracing_provider
 
-        active_provider = get_tracing_provider()
-        chosen_provider = "mlflow" if active_provider == "mlflow" else "langfuse"
+            active_provider = get_tracing_provider()
+            chosen_provider = "mlflow" if active_provider == "mlflow" else "langfuse"
         result["trace"] = {
             "provider": chosen_provider,
             "trace_id": next(iter(traces)),
@@ -339,18 +357,260 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
     return result
 
 
-async def query_run_diagnostics(
-    *, tenant_id: str, project_id: str, graph_id: str, thread_id: str, run_id: str
-) -> dict:
+def _mlflow_configured() -> bool:
+    from runtime_service.observability.mlflow_tracer import is_mlflow_enabled
+
+    return is_mlflow_enabled() and bool(os.getenv("MLFLOW_TRACKING_URI", "").strip())
+
+
+def _mlflow_trace_meta(trace_info: Any) -> dict[str, Any]:
+    tags = dict(getattr(trace_info, "tags", None) or {})
+    meta = dict(getattr(trace_info, "trace_metadata", None) or {})
+    merged = {**tags, **meta}
+    if "thread_id" not in merged:
+        session = meta.get("mlflow.trace.session") or tags.get("mlflow.session_id")
+        if session:
+            merged["thread_id"] = session
+    return merged
+
+
+def _mlflow_trace_matches(trace_info: Any, expected: dict) -> bool:
+    merged = _mlflow_trace_meta(trace_info)
+    return _matches(merged, expected)
+
+
+def _mlflow_trace_outcome(trace_info: Any) -> str | None:
+    raw = getattr(trace_info, "state", None)
+    text = str(getattr(raw, "value", raw) or "").strip().upper()
+    if text in {"OK", "TRACESTATE.OK"}:
+        return "success"
+    if text in {"ERROR", "TRACESTATE.ERROR"}:
+        return "failed"
+    return None
+
+
+def _mlflow_root_duration_ms(trace_info: Any, spans: list[Any]) -> float | None:
+    dur = _duration(getattr(trace_info, "execution_duration", None))
+    if dur is not None:
+        return float(dur)
+    if spans:
+        root = spans[0]
+        start_ns = getattr(root, "start_time_ns", None)
+        end_ns = getattr(root, "end_time_ns", None)
+        if isinstance(start_ns, int) and isinstance(end_ns, int) and end_ns >= start_ns:
+            return round((end_ns - start_ns) / 1_000_000, 2)
+    return None
+
+
+def _mlflow_tag_observations(
+    trace_info: Any, trace_id: str, trace_meta: dict[str, Any]
+) -> tuple[list[dict], bool]:
+    tags = dict(getattr(trace_info, "tags", None) or {})
+    raw = tags.get("runtime.diag.events")
+    if not isinstance(raw, str) or not raw:
+        return [], False
+    try:
+        items = json.loads(raw)
+    except (ValueError, TypeError):
+        return [], False
+    if not isinstance(items, list):
+        return [], False
+    observations: list[dict] = []
+    for idx, item in enumerate(items):
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        meta = item.get("metadata")
+        if name not in _EVENTS or not isinstance(meta, dict):
+            continue
+        if meta.get("schema_version") != 1:
+            continue
+        obs_id = (
+            _identifier(meta.get("observation_id"))
+            or _identifier(meta.get("event_id"))
+            or _identifier(f"{trace_id}.tag.{idx}")
+        )
+        if not obs_id:
+            continue
+        observations.append(
+            {
+                "id": obs_id,
+                "trace_id": trace_id,
+                "name": name,
+                "metadata": {
+                    "tenant_id": trace_meta.get("tenant_id"),
+                    "project_id": trace_meta.get("project_id"),
+                    "graph_id": trace_meta.get("graph_id"),
+                    "thread_id": trace_meta.get("thread_id"),
+                    "run_id": trace_meta.get("run_id"),
+                    "request_id": trace_meta.get("request_id"),
+                    "platform_trace_id": trace_meta.get("platform_trace_id"),
+                    **meta,
+                    "event": name,
+                },
+            }
+        )
+    truncated = tags.get("runtime.diag.events_truncated") == "1"
+    return observations, truncated
+
+
+def _query_mlflow_sync(expected: dict) -> dict:
+    import mlflow
+
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "").strip()
+    client = mlflow.tracking.MlflowClient(tracking_uri=tracking_uri)
+
+    exp_names = [f"project-{expected['project_id']}"]
+    default_exp = os.getenv(
+        "MLFLOW_EXPERIMENT_NAME", "ai-agent-platform-traces"
+    ).strip()
+    if default_exp and default_exp not in exp_names:
+        exp_names.append(default_exp)
+
+    exp_ids: list[str] = []
+    for name in exp_names:
+        exp = client.get_experiment_by_name(name)
+        if exp is not None and exp.experiment_id not in exp_ids:
+            exp_ids.append(exp.experiment_id)
+    if not exp_ids:
+        return empty_diagnostics("not_recorded")
+
+    thread_id = expected["thread_id"]
+    filter_string = (
+        f"metadata.`mlflow.trace.session` = '{thread_id}'"
+        if _identifier(thread_id) and "'" not in thread_id
+        else None
+    )
+    # Keep metadata search lightweight (include_spans=False) to avoid downloading huge span trees across sibling runs.
+    try:
+        page = client.search_traces(
+            locations=exp_ids,
+            filter_string=filter_string,
+            order_by=["timestamp DESC"],
+            max_results=50,
+            include_spans=False,
+        )
+    except Exception:
+        page = client.search_traces(
+            locations=exp_ids,
+            max_results=50,
+            include_spans=False,
+        )
+
+    matched = [trace for trace in page if _mlflow_trace_matches(trace.info, expected)]
+    if not matched:
+        result = empty_diagnostics("not_recorded")
+        result["truncated"] = bool(getattr(page, "token", None))
+        return result
+
+    observations: list[dict] = []
+    loaded_traces: list[tuple[Any, list[Any], dict[str, Any]]] = []
+    tag_truncated = False
+    for trace in matched[:50]:
+        trace_id = getattr(trace.info, "trace_id", None)
+        trace_meta = _mlflow_trace_meta(trace.info)
+        tag_obs, is_tag_trunc = (
+            _mlflow_tag_observations(trace.info, trace_id, trace_meta)
+            if trace_id
+            else ([], False)
+        )
+        if tag_obs:
+            tag_truncated |= is_tag_trunc
+            observations.extend(tag_obs)
+            loaded_traces.append((trace, [], trace_meta))
+            continue
+
+        spans = list(getattr(getattr(trace, "data", None), "spans", None) or [])
+        if not spans and trace_id:
+            try:
+                full = client.get_trace(trace_id)
+                trace = full
+                spans = list(getattr(getattr(full, "data", None), "spans", None) or [])
+            except Exception:
+                # Fall back to TraceInfo-level projection when full span fetch times out or fails.
+                spans = []
+        loaded_traces.append((trace, spans, trace_meta))
+        for span in spans:
+            span_id = getattr(span, "span_id", None) or "sp"
+            for idx, event in enumerate(getattr(span, "events", None) or ()):
+                name = getattr(event, "name", None)
+                if name not in _EVENTS:
+                    continue
+                attrs = dict(getattr(event, "attributes", None) or {})
+                if attrs.get("schema_version") != 1:
+                    continue
+                obs_id = (
+                    _identifier(attrs.get("observation_id"))
+                    or _identifier(attrs.get("event_id"))
+                    or _identifier(f"{span_id}.{idx}")
+                )
+                if not obs_id or not trace_id:
+                    continue
+                observations.append(
+                    {
+                        "id": obs_id,
+                        "trace_id": trace_id,
+                        "name": name,
+                        "metadata": {
+                            "tenant_id": trace_meta.get("tenant_id"),
+                            "project_id": trace_meta.get("project_id"),
+                            "graph_id": trace_meta.get("graph_id"),
+                            "thread_id": trace_meta.get("thread_id"),
+                            "run_id": trace_meta.get("run_id"),
+                            "request_id": trace_meta.get("request_id"),
+                            "platform_trace_id": trace_meta.get("platform_trace_id"),
+                            **attrs,
+                            "event": name,
+                        },
+                    }
+                )
+
+    truncated = (len(matched) > 50) or tag_truncated
+    result = (
+        _project(
+            observations,
+            expected,
+            truncated=truncated,
+            provider_override="mlflow",
+        )
+        if observations
+        else {**empty_diagnostics("not_recorded"), "truncated": truncated}
+    )
+
+    if len(loaded_traces) == 1:
+        trace, spans, trace_meta = loaded_traces[0]
+        trace_id = _identifier(getattr(trace.info, "trace_id", None))
+        if result["trace"] is None and trace_id:
+            result["trace"] = {"provider": "mlflow", "trace_id": trace_id, "url": None}
+        if result["correlation"]["execution_request_id"] is None:
+            result["correlation"]["execution_request_id"] = _identifier(
+                trace_meta.get("request_id")
+            )
+        if result["correlation"]["platform_trace_id"] is None:
+            result["correlation"]["platform_trace_id"] = _identifier(
+                trace_meta.get("platform_trace_id")
+            )
+        if not result["graph_executions"]:
+            outcome = _mlflow_trace_outcome(trace.info)
+            if outcome and trace_id:
+                result["graph_executions"].append(
+                    {
+                        "observation_id": trace_id,
+                        "duration_ms": _mlflow_root_duration_ms(trace.info, spans),
+                        "outcome": outcome,
+                        "error_code": None,
+                    }
+                )
+        if not observations:
+            result["availability"] = "partial"
+            result["unavailable_reason"] = None
+
+    return result
+
+
+async def _query_langfuse_run_diagnostics(expected: dict) -> dict:
     if _client is None:
         return empty_diagnostics("not_configured")
-    expected = {
-        "tenant_id": tenant_id,
-        "project_id": project_id,
-        "graph_id": graph_id,
-        "thread_id": thread_id,
-        "run_id": run_id,
-    }
     deadline = time.monotonic() + 2
     try:
         async with asyncio.timeout(2):
@@ -369,7 +629,7 @@ async def query_run_diagnostics(
             if not observations:
                 # Legacy traces have random IDs; keep this fallback bounded and metadata-only.
                 page = await _client.observations.get_many(
-                    session_id=thread_id,
+                    session_id=expected["thread_id"],
                     fields=_FIELDS,
                     limit=100,
                     expand_metadata="namespace",
@@ -389,9 +649,57 @@ async def query_run_diagnostics(
                 )
                 or len(rows.get("data", [])) > 100
             )
-            return _project(observations, expected, truncated=truncated)
+            return _project(
+                observations,
+                expected,
+                truncated=truncated,
+                provider_override="langfuse",
+            )
     except Exception:
         return empty_diagnostics("backend_unavailable")
+
+
+async def _query_mlflow_run_diagnostics(expected: dict) -> dict:
+    if not _mlflow_configured():
+        return empty_diagnostics("not_configured")
+    try:
+        async with asyncio.timeout(8):
+            return await asyncio.to_thread(_query_mlflow_sync, expected)
+    except Exception:
+        return empty_diagnostics("backend_unavailable")
+
+
+async def query_run_diagnostics(
+    *, tenant_id: str, project_id: str, graph_id: str, thread_id: str, run_id: str
+) -> dict:
+    expected = {
+        "tenant_id": tenant_id,
+        "project_id": project_id,
+        "graph_id": graph_id,
+        "thread_id": thread_id,
+        "run_id": run_id,
+    }
+    from runtime_service.observability.mlflow_tracer import get_tracing_provider
+
+    provider = get_tracing_provider()
+    if provider == "mlflow":
+        return await _query_mlflow_run_diagnostics(expected)
+    if provider == "none":
+        return empty_diagnostics("not_configured")
+    if provider == "both":
+        langfuse_result = (
+            await _query_langfuse_run_diagnostics(expected)
+            if _client is not None
+            else empty_diagnostics("not_configured")
+        )
+        if langfuse_result["availability"] in {"available", "partial"}:
+            return langfuse_result
+        if _mlflow_configured():
+            mlflow_result = await _query_mlflow_run_diagnostics(expected)
+            if mlflow_result["availability"] != "not_configured":
+                return mlflow_result
+        return langfuse_result
+    return await _query_langfuse_run_diagnostics(expected)
 
 
 __all__ = ["diagnostics_client_lifespan", "query_run_diagnostics"]

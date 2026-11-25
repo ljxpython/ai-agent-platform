@@ -332,3 +332,98 @@ def test_capabilities_are_current_scoped_and_do_not_expose_paths(
     )
     assert denied["databases"]["availability"] == "denied"
     assert denied["run_diagnostics"] == "denied"
+
+
+def test_read_checkpoint_paginates_backward_to_find_earlier_run(setup, tmp_path):
+    env = environment(setup, tmp_path)
+    _, _, _, target_run_id, gateway, _ = env
+    newer_run_1 = str(uuid4())
+    newer_run_2 = str(uuid4())
+
+    target_state = failed_state(target_run_id)
+    target_state["checkpoint"] = {
+        "thread_id": env[2][1],
+        "checkpoint_ns": "",
+        "checkpoint_id": "cp-target",
+    }
+
+    page0 = [
+        {
+            **failed_state(newer_run_2),
+            "checkpoint": {"checkpoint_ns": "", "checkpoint_id": "cp-latest"},
+        }
+    ]
+    # Fill 25 items on page 1 so pagination advances to page 2 before hitting target_run_id.
+    page1 = [
+        {
+            **failed_state(newer_run_1 if i > 0 else newer_run_2),
+            "checkpoint": {"checkpoint_ns": "", "checkpoint_id": f"cp-mid-{i}"},
+        }
+        for i in range(25)
+    ]
+    page2 = [target_state]
+
+    calls = []
+
+    async def fake_history(*, actor, project_id, thread_id, payload):
+        calls.append(payload)
+        before = payload.get("before")
+        if before is None:
+            return page0
+        if before == {"checkpoint_ns": "", "checkpoint_id": "cp-latest"}:
+            return page1
+        if before == {"checkpoint_ns": "", "checkpoint_id": "cp-mid-24"}:
+            return page2
+        return []
+
+    gateway.get_thread_history.side_effect = fake_history
+    result = invoke(env)
+    state = result["persistent_state"]
+    assert state["availability"] == "available"
+    assert state["run_id"] == target_run_id
+    assert state["checkpoint_id"] == "cp-target"
+    assert len(calls) == 3
+    assert calls[0]["limit"] == 1
+    assert calls[1]["limit"] == 25 and calls[1]["before"] == {
+        "checkpoint_ns": "",
+        "checkpoint_id": "cp-latest",
+    }
+    assert calls[2]["limit"] == 25 and calls[2]["before"] == {
+        "checkpoint_ns": "",
+        "checkpoint_id": "cp-mid-24",
+    }
+
+
+def test_read_checkpoint_stops_on_repeating_cursor_and_reports_mismatch(
+    setup, tmp_path
+):
+    env = environment(setup, tmp_path)
+    _, _, _, _, gateway, _ = env
+    other_run = str(uuid4())
+
+    stuck_page = [
+        {
+            **failed_state(other_run),
+            "checkpoint": {"checkpoint_ns": "", "checkpoint_id": f"cp-stuck-{i}"},
+        }
+        for i in range(25)
+    ]
+    gateway.get_thread_history.side_effect = [
+        [stuck_page[0]],
+        stuck_page,
+        stuck_page,
+    ]
+    result = invoke(env)
+    assert result["persistent_state"] == {
+        "availability": "unavailable",
+        "reason": "run_mismatch",
+    }
+    # Stops right after detecting repeated cursor `cp-stuck-24` on second full page.
+    assert gateway.get_thread_history.call_count == 3
+
+
+def test_require_scope_maps_default_tenant_slug_to_runtime_default(setup):
+    from platform_api.modules.platform_assistant.service import require_scope
+
+    factory, actor, scope = setup
+    assert require_scope(factory, actor, scope[0]) == "__default"

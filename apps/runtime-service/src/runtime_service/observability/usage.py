@@ -697,16 +697,21 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             profile = _request_profile(
                 messages, params.get("tools"), params.get("response_format")
             )
-            log_context_metric(
-                {
-                    "event": "runtime.model_request.profile",
-                    "run_id": self.identity.get("run_id"),
-                    "model_call_id": str(run_id),
-                    "scope": call["scope"],
-                    "namespace": namespace,
-                    **profile,
-                }
-            )
+            profile_payload = {
+                "event": "runtime.model_request.profile",
+                "run_id": self.identity.get("run_id"),
+                "project_id": self.identity.get("project_id"),
+                "thread_id": self.identity.get("thread_id"),
+                "model_call_id": str(run_id),
+                "scope": call["scope"],
+                "namespace": namespace,
+                **profile,
+            }
+            for corr_key in ("platform_trace_id", "request_id"):
+                corr_val = _identifier(metadata.get(corr_key))
+                if corr_val:
+                    profile_payload[corr_key] = corr_val
+            log_context_metric(profile_payload)
         except Exception:
             logger.debug("Model request profile unavailable")
         if self.token_budget:

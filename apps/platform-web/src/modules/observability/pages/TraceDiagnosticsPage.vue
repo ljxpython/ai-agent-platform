@@ -14,6 +14,7 @@ import {
 import { env } from "@/config/env";
 import { useThemeStore } from "@/stores/theme";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { copyText } from "@/utils/clipboard";
 
 interface TraceLogEntry {
   timestamp: string;
@@ -292,29 +293,21 @@ function toggleAllLogs() {
 
 async function copyTraceId() {
   if (!activeTraceId.value) return;
-  try {
-    await navigator.clipboard.writeText(activeTraceId.value);
-    copiedTrace.value = true;
-    setTimeout(() => {
-      copiedTrace.value = false;
-    }, 2000);
-  } catch {
-    // 忽略
-  }
+  if (!(await copyText(activeTraceId.value))) return;
+  copiedTrace.value = true;
+  setTimeout(() => {
+    copiedTrace.value = false;
+  }, 2000);
 }
 
 async function copyAllLogs() {
   if (!traceData.value?.logs) return;
-  try {
-    const text = JSON.stringify(traceData.value, null, 2);
-    await navigator.clipboard.writeText(text);
-    copiedAll.value = true;
-    setTimeout(() => {
-      copiedAll.value = false;
-    }, 2000);
-  } catch {
-    // 忽略
-  }
+  const text = JSON.stringify(traceData.value, null, 2);
+  if (!(await copyText(text))) return;
+  copiedAll.value = true;
+  setTimeout(() => {
+    copiedAll.value = false;
+  }, 2000);
 }
 
 function openGrafanaExplore() {

@@ -219,9 +219,27 @@
 
 ---
 
+## [坑] ToolNode 默认不捕获原生 ValueError，工具参数校验必须转 ToolException
+
+- **场景：** 使用 LangGraph `create_agent` / `ToolNode` 注册工具并开启 `handle_tool_error=True`，工具内直接调用 `UUID(...)` 等标准库解析模型传入的字符串。
+- **错误：** 当模型传入短前缀（如 8 位 ID）或非法字符串时，抛出原生 `ValueError`；`ToolNode` 默认只捕获 `ToolException`，原生 `ValueError` 直接击穿节点导致整轮 Run 崩溃（`run execution failed`）。
+- **正确：** 在工具层统一封装校验函数（如 `_require_uuid` / `_thread_locator`），捕获 `ValueError`/`TypeError` 并显式抛出 `ToolException`，让错误安全回传为 `ToolMessage` 供模型自我纠偏。
+- **日期：** 2026-11-25；用户批准记录，见[平台助手按 Thread 检索专项](../projects/20261125-platform-assistant-thread-lookup/README.md)。
+
+---
+
 ## [坑] 多轮实体提取空回复需做底层防御
 
 - **场景：** 使用图谱 RAG（如 LightRAG）对文档进行多轮迭代实体提取（Glean 阶段），后续轮次文档已无新实体可提取。
 - **错误：** 依赖第三方大模型 API 返回符合约定的空 JSON 或特定标记，当部分大模型返回完全空字符串或空格时，底层的 OpenAI/LightRAG 驱动会直接抛出 `InvalidResponseError`，导致整个知识库切片任务彻底中断并标记失败。
 - **正确：** 在 LLM 适配封装层对大模型响应进行前置清洗与异常兜底，精确捕获空文本异常并安全降级为空字符串或空结构体，保证迭代提取能优雅提前收敛终止，绝不打崩异步流水线。
 - **日期：** 2026-10-14；证据见[知识库零隧道自治架构验证](../projects/20261014-knowledge-zero-tunnel-auth/verification.md)。
+
+---
+
+## [坑] OTel 活跃 Span 判活不可只检对象非空，异步 Callback 须保序
+
+- **场景：** 使用 OpenTelemetry / MLflow Tracing 的 `Span.add_event` 在 LangGraph `ainvoke` 生命周期内回挂启动诊断和图完成事件，并将诊断摘要同步写入 Trace Tag。
+- **错误：** 在异步执行下 `CallbackHandler` 默认走线程执行器，`root_span` 注册/销毁与事件回挂竞态；已结束子 Span 上调用 `add_event` 会静默丢弃事件；Trace Tag 未剥离公共 UUID 字段导致超出后端 4096 字节上限被截断，且缺少结束短时刷盘与空 `TraceData(spans=[])` 回退分支导致实时读取不到。
+- **正确：** 追踪与诊断 callback 启用 `run_inline = True`，注入前检查 `_span.is_recording()` 并用有界缓冲兜底；Tag 序列化剥离已存放在 trace 上的公共字段并将体积控制在 3800 字节内，Root Chain 结束时短时 join `flush_trace_async_logging`；读取侧对 `not spans` 回退单条 `get_trace`。
+- **日期：** 2026-11-25；用户批准沉淀，证据见[平台助手接入 MLflow 追踪诊断专项](../projects/20261125-platform-assistant-mlflow-diagnostics/verification.md)。

@@ -246,5 +246,31 @@ describe("RunUsage.vue", () => {
         expect(wrapper.text()).toContain("运行水位 (Usage Meter)");
       });
     });
+
+    it("在非 HTTPS 下点击复制按钮可降级复制完整 Run ID", async () => {
+      vi.stubGlobal("navigator", {});
+      const execCommand = vi.fn().mockReturnValue(true);
+      Object.defineProperty(document, "execCommand", {
+        value: execCommand,
+        configurable: true,
+      });
+
+      const wrapper = mount(RunUsage, {
+        props: {
+          threadId: runSample.thread_id,
+          runId: runSample.run_id,
+        },
+      });
+
+      const btn = wrapper.find('[data-testid="copy-run-id-btn"]');
+      expect(btn.exists()).toBe(true);
+      await btn.trigger("click");
+
+      expect(execCommand).toHaveBeenCalledWith("copy");
+      await vi.waitFor(() => {
+        expect(btn.text()).toContain("已复制");
+      });
+      vi.unstubAllGlobals();
+    });
   });
 });

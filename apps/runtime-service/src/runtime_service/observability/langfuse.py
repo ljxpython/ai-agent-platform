@@ -243,28 +243,36 @@ def _record_metrics_event(event: str, fields: Mapping[str, Any]) -> None:
         pass
 
 
-def record_diagnostic_event(event: str, fields: Mapping[str, Any]) -> None:
-    _record_metrics_event(event, fields)
-    if event in {
+_MLFLOW_DIAGNOSTIC_EVENTS = frozenset(
+    {
         "runtime.loop.observation",
         "runtime.loop.observation.started",
         "runtime.loop.observation.completed",
-    }:
+        "runtime.model_call.failed",
+        "runtime.graph.completed",
+        "runtime.startup.completed",
+        "runtime.startup.phase_completed",
+        "runtime.prepare.completed",
+        "runtime.retry.completed",
+        "runtime.workspace.execution_completed",
+        "runtime.loop.transition",
+        "runtime.tool.failed",
+        "runtime.plan.transition_prepared",
+        "runtime.node.phase_completed",
+    }
+)
+
+
+def record_diagnostic_event(event: str, fields: Mapping[str, Any]) -> None:
+    _record_metrics_event(event, fields)
+    metadata = safe_fields(fields)
+    if event in _MLFLOW_DIAGNOSTIC_EVENTS:
         try:
-            from runtime_service.observability.mlflow_tracer import is_mlflow_enabled
+            from runtime_service.observability.mlflow_tracer import (
+                record_mlflow_diagnostic_event,
+            )
 
-            if is_mlflow_enabled():
-                import mlflow
-                from mlflow.entities import SpanEvent
-
-                span = mlflow.get_current_active_span()
-                if span is not None:
-                    span.add_event(
-                        SpanEvent(
-                            name=event,
-                            attributes={"schema_version": 1, **safe_fields(fields)},
-                        )
-                    )
+            record_mlflow_diagnostic_event(event, metadata)
         except Exception as error:
             _record_export_error(error)
     trace_id = trace_id_for(fields)
@@ -273,7 +281,6 @@ def record_diagnostic_event(event: str, fields: Mapping[str, Any]) -> None:
     try:
         from langfuse import propagate_attributes
 
-        metadata = safe_fields(fields)
         with propagate_attributes(session_id=metadata.get("thread_id")):
             _client.create_event(
                 name=event,
@@ -287,6 +294,8 @@ def record_diagnostic_event(event: str, fields: Mapping[str, Any]) -> None:
 
 class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     """Bounded Run/Tool diagnostics independent of Langfuse export."""
+
+    run_inline = True
 
     def __init__(self, graph_id: str, metadata: Mapping[str, Any]) -> None:
         self._graph_id = graph_id
@@ -611,6 +620,8 @@ def with_langfuse_tracing(
         except Exception as error:
             _record_export_error(error)
 
+    # Register diagnostics callback before MLflow so runtime.graph.completed attaches before root span closes.
+    callbacks.append(_RuntimeDiagnosticsCallback(graph_id, bound_metadata))
     if is_mlflow_enabled():
         mlflow_cb = create_mlflow_callback(
             graph_id=graph_id,
@@ -628,7 +639,6 @@ def with_langfuse_tracing(
             )
     except Exception as error:
         _record_export_error(error)
-    callbacks.append(_RuntimeDiagnosticsCallback(graph_id, bound_metadata))
     bound["callbacks"] = callbacks
     bound_metadata["langfuse_trace_name"] = graph_id
     if isinstance(bound_metadata.get("thread_id"), (str, int)):
