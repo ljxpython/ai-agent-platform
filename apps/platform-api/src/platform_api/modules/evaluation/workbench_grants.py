@@ -18,7 +18,7 @@ class GrantBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     grant_id: UUID
     purpose: Literal["evaluation_assistance", "regression"]
-    expires_in_hours: int = Field(default=24, ge=1, le=24)
+    expires_in_hours: int | None = Field(default=24, ge=0)
     synthetic_attestation: bool = False
     material_consent: bool = False
 
@@ -63,9 +63,8 @@ def create_grant(factory, actor, project_id, item, body, model_route):
             else {}
         ),
     }
-    binding = digest(
-        {**payload, "hours": body.expires_in_hours, "actor": actor.user_id}
-    )
+    hours = body.expires_in_hours if body.expires_in_hours is not None else 24
+    binding = digest({**payload, "hours": hours, "actor": actor.user_id})
     with session_scope(factory) as session:
         agent = session.get(AgentRecord, UUID(item["agent_id"]))
         if (
@@ -88,7 +87,11 @@ def create_grant(factory, actor, project_id, item, body, model_route):
                 "status": prior.status,
                 "expires_at": prior.expires_at.isoformat(),
             }
-        expiry = datetime.now(UTC) + timedelta(hours=body.expires_in_hours)
+        expiry = (
+            datetime.now(UTC) + timedelta(days=36500)
+            if hours <= 0
+            else datetime.now(UTC) + timedelta(hours=hours)
+        )
         session.add(
             EvaluationExport(
                 export_id=str(body.grant_id),

@@ -152,14 +152,18 @@ def _authorized_package(session, project_id, export_id):
         raise NotFoundError(
             code="evaluation_export_missing", message="导出记录不存在。"
         )
+    if export.status == "revoked":
+        raise ForbiddenError(
+            code="evaluation_export_revoked", message="导出授权已撤销。"
+        )
     expiry = (
         export.expires_at.replace(tzinfo=UTC)
         if export.expires_at.tzinfo is None
         else export.expires_at
     )
-    if expiry <= datetime.now(UTC) or export.status in {"revoked", "expired"}:
+    if expiry <= datetime.now(UTC) or export.status in {"expired"}:
         raise ForbiddenError(
-            code="evaluation_export_expired", message="导出授权已撤销或过期。"
+            code="evaluation_export_expired", message="导出授权已过期。"
         )
     user = session.get(UserRecord, UUID(export.actor_id))
     project = session.get(ProjectRecord, UUID(project_id))

@@ -289,8 +289,9 @@ def test_assistance_independent_scope_revocation_and_expiry(setup, data_class):
     assert package["data_class"] == data_class
     assert "feedback" not in package and "thread_id" not in package
     revoke_grant(factory, actor, scope[0], body.grant_id)
-    with pytest.raises(ForbiddenError):
+    with pytest.raises(ForbiddenError) as revoked_exc:
         authorized_package(factory, scope[0], body.grant_id)
+    assert revoked_exc.value.code == "evaluation_export_revoked"
     other = body.model_copy(update={"grant_id": uuid4(), "purpose": "regression"})
     create_grant(factory, actor, scope[0], item, other, "managed-deepseek")
     assert (
@@ -300,8 +301,21 @@ def test_assistance_independent_scope_revocation_and_expiry(setup, data_class):
         session.get(EvaluationExport, str(other.grant_id)).expires_at = datetime.now(
             UTC
         ) - timedelta(seconds=1)
-    with pytest.raises(ForbiddenError):
+    with pytest.raises(ForbiddenError) as expired_exc:
         authorized_package(factory, scope[0], other.grant_id)
+    assert expired_exc.value.code == "evaluation_export_expired"
+
+    # 验证永久长效授权 (expires_in_hours=0)
+    permanent_body = body.model_copy(
+        update={"grant_id": uuid4(), "expires_in_hours": 0}
+    )
+    perm_res = create_grant(
+        factory, actor, scope[0], item, permanent_body, "managed-deepseek"
+    )
+    perm_expiry = datetime.fromisoformat(perm_res["expires_at"])
+    assert perm_expiry > datetime.now(UTC) + timedelta(days=365 * 10)
+    perm_pkg = authorized_package(factory, scope[0], permanent_body.grant_id)
+    assert perm_pkg["export_id"] == str(permanent_body.grant_id)
 
 
 def test_batch_authorization_locks_sources_before_all_grants(setup):
