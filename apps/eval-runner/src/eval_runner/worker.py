@@ -537,6 +537,101 @@ def poll_and_execute_once(
         if isinstance(ver_row["frozen_cases_json"], str)
         else ver_row["frozen_cases_json"]
     )
+    max_logs_per_run = 2000
+    db_lock = threading.Lock()
+    has_log_table = inspect(engine).has_table("eval_run_logs")
+    seq_state = {"seq": 0, "truncated": False}
+    recent_logs: list[str] = []
+    if has_log_table:
+        with engine.begin() as conn:
+            max_seq = conn.execute(
+                text("SELECT COALESCE(MAX(seq), 0) FROM eval_run_logs WHERE run_id = :rid"),
+                {"rid": run_id},
+            ).scalar_one()
+            seq_state["seq"] = int(max_seq or 0)
+            if seq_state["seq"] >= max_logs_per_run:
+                seq_state["truncated"] = True
+
+    def _sync_run_progress_locked(conn) -> dict[str, Any]:
+        all_rows = conn.execute(
+            text("SELECT status FROM eval_run_cases WHERE run_id = :rid"),
+            {"rid": run_id},
+        ).mappings().all()
+        progress = compute_progress_summary([dict(r) for r in all_rows])
+        cur_raw = conn.execute(
+            text("SELECT summary_metrics_json FROM eval_runs WHERE id = :id"),
+            {"id": run_id},
+        ).scalar_one_or_none()
+        if isinstance(cur_raw, str):
+            try:
+                cur_summary = json.loads(cur_raw)
+            except ValueError:
+                cur_summary = {}
+        elif isinstance(cur_raw, dict):
+            cur_summary = dict(cur_raw)
+        else:
+            cur_summary = {}
+        cur_summary["progress"] = progress
+        if recent_logs:
+            cur_summary["recent_logs"] = list(recent_logs)
+        conn.execute(
+            text("UPDATE eval_runs SET summary_metrics_json = :summary WHERE id = :id"),
+            {
+                "id": run_id,
+                "summary": json.dumps(cur_summary, ensure_ascii=False),
+            },
+        )
+        return progress
+
+    def _emit_log(level: str, case_key: str | None, message: str) -> None:
+        clean_msg = (message or "").strip()[:1000]
+        if not clean_msg:
+            return
+        ts_str = datetime.now(UTC).strftime("%H:%M:%S")
+        formatted = f"[{ts_str}] [{level}] {clean_msg}"
+        with db_lock:
+            recent_logs.append(formatted)
+            if len(recent_logs) > 15:
+                del recent_logs[:-15]
+            if has_log_table and not seq_state["truncated"]:
+                if seq_state["seq"] >= max_logs_per_run:
+                    seq_state["truncated"] = True
+                    seq_state["seq"] += 1
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text(
+                                "INSERT INTO eval_run_logs (id, run_id, seq, level, case_key, message, created_at) "
+                                "VALUES (:id, :run_id, :seq, :level, :case_key, :message, :created_at)"
+                            ),
+                            {
+                                "id": str(uuid4()),
+                                "run_id": run_id,
+                                "seq": seq_state["seq"],
+                                "level": "WARN",
+                                "case_key": None,
+                                "message": "[系统] 当前批次日志已达到单场上限 (2000 条)，后续日志已截断保护。",
+                                "created_at": datetime.now(UTC),
+                            },
+                        )
+                else:
+                    seq_state["seq"] += 1
+                    with engine.begin() as conn:
+                        conn.execute(
+                            text(
+                                "INSERT INTO eval_run_logs (id, run_id, seq, level, case_key, message, created_at) "
+                                "VALUES (:id, :run_id, :seq, :level, :case_key, :message, :created_at)"
+                            ),
+                            {
+                                "id": str(uuid4()),
+                                "run_id": run_id,
+                                "seq": seq_state["seq"],
+                                "level": level,
+                                "case_key": case_key,
+                                "message": clean_msg,
+                                "created_at": datetime.now(UTC),
+                            },
+                        )
+
     try:
         case_map = {
             c["case_key"]: Case.model_validate(
@@ -566,101 +661,6 @@ def poll_and_execute_once(
             for r in pending_rows
             if r["case_key"] in case_map
         ]
-
-        max_logs_per_run = 2000
-        db_lock = threading.Lock()
-        has_log_table = inspect(engine).has_table("eval_run_logs")
-        seq_state = {"seq": 0, "truncated": False}
-        recent_logs: list[str] = []
-        if has_log_table:
-            with engine.begin() as conn:
-                max_seq = conn.execute(
-                    text("SELECT COALESCE(MAX(seq), 0) FROM eval_run_logs WHERE run_id = :rid"),
-                    {"rid": run_id},
-                ).scalar_one()
-                seq_state["seq"] = int(max_seq or 0)
-                if seq_state["seq"] >= max_logs_per_run:
-                    seq_state["truncated"] = True
-
-        def _sync_run_progress_locked(conn) -> dict[str, Any]:
-            all_rows = conn.execute(
-                text("SELECT status FROM eval_run_cases WHERE run_id = :rid"),
-                {"rid": run_id},
-            ).mappings().all()
-            progress = compute_progress_summary([dict(r) for r in all_rows])
-            cur_raw = conn.execute(
-                text("SELECT summary_metrics_json FROM eval_runs WHERE id = :id"),
-                {"id": run_id},
-            ).scalar_one_or_none()
-            if isinstance(cur_raw, str):
-                try:
-                    cur_summary = json.loads(cur_raw)
-                except ValueError:
-                    cur_summary = {}
-            elif isinstance(cur_raw, dict):
-                cur_summary = dict(cur_raw)
-            else:
-                cur_summary = {}
-            cur_summary["progress"] = progress
-            if recent_logs:
-                cur_summary["recent_logs"] = list(recent_logs)
-            conn.execute(
-                text("UPDATE eval_runs SET summary_metrics_json = :summary WHERE id = :id"),
-                {
-                    "id": run_id,
-                    "summary": json.dumps(cur_summary, ensure_ascii=False),
-                },
-            )
-            return progress
-
-        def _emit_log(level: str, case_key: str | None, message: str) -> None:
-            clean_msg = (message or "").strip()[:1000]
-            if not clean_msg:
-                return
-            ts_str = datetime.now(UTC).strftime("%H:%M:%S")
-            formatted = f"[{ts_str}] [{level}] {clean_msg}"
-            with db_lock:
-                recent_logs.append(formatted)
-                if len(recent_logs) > 15:
-                    del recent_logs[:-15]
-                if has_log_table and not seq_state["truncated"]:
-                    if seq_state["seq"] >= max_logs_per_run:
-                        seq_state["truncated"] = True
-                        seq_state["seq"] += 1
-                        with engine.begin() as conn:
-                            conn.execute(
-                                text(
-                                    "INSERT INTO eval_run_logs (id, run_id, seq, level, case_key, message, created_at) "
-                                    "VALUES (:id, :run_id, :seq, :level, :case_key, :message, :created_at)"
-                                ),
-                                {
-                                    "id": str(uuid4()),
-                                    "run_id": run_id,
-                                    "seq": seq_state["seq"],
-                                    "level": "WARN",
-                                    "case_key": None,
-                                    "message": "[系统] 当前批次日志已达到单场上限 (2000 条)，后续日志已截断保护。",
-                                    "created_at": datetime.now(UTC),
-                                },
-                            )
-                    else:
-                        seq_state["seq"] += 1
-                        with engine.begin() as conn:
-                            conn.execute(
-                                text(
-                                    "INSERT INTO eval_run_logs (id, run_id, seq, level, case_key, message, created_at) "
-                                    "VALUES (:id, :run_id, :seq, :level, :case_key, :message, :created_at)"
-                                ),
-                                {
-                                    "id": str(uuid4()),
-                                    "run_id": run_id,
-                                    "seq": seq_state["seq"],
-                                    "level": level,
-                                    "case_key": case_key,
-                                    "message": clean_msg,
-                                    "created_at": datetime.now(UTC),
-                                },
-                            )
 
         def _on_case_start(case_key: str, attempt_idx: int) -> None:
             rc_id = row_id_by_key.get((case_key, attempt_idx))
@@ -763,7 +763,7 @@ def poll_and_execute_once(
     except Exception as exc:
         logger.exception("eval run %s aborted with unexpected error", run_id)
         try:
-            _emit_log("ERROR", None, f"[批次] 执行异常中断: {str(exc)[:300]}")
+            _emit_log("ERROR", None, f"[批次] 执行异常中断: {str(exc)[:600]}")
         except Exception:  # noqa: BLE001
             pass
         with engine.begin() as conn:
@@ -774,7 +774,10 @@ def poll_and_execute_once(
                 ),
                 {
                     "id": run_id,
-                    "summary": json.dumps({"error": str(exc)}, ensure_ascii=False),
+                    "summary": json.dumps(
+                        {"error": str(exc), "recent_logs": list(recent_logs)},
+                        ensure_ascii=False,
+                    ),
                     "finished_at": datetime.now(UTC),
                 },
             )

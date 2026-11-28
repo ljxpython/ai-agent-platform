@@ -379,4 +379,51 @@ describe("Task Hall Optimization Components", () => {
       historyRun2.id,
     ]);
   });
+
+  it("displays summary_metrics.error banner in RunEvidenceDetail and RunLogTerminalDialog", async () => {
+    const errRun: EvalRunItem = {
+      ...runningRun,
+      id: "run-err-9999",
+      status: "error",
+      summary_metrics: {
+        error: "1 validation error for Case: turns.1.role",
+      },
+    };
+    const detailWrapper = mount(RunEvidenceDetail, {
+      props: { activeRun: errRun, runCases: [] },
+      global: { stubs: commonStubs },
+    });
+    expect(detailWrapper.text()).toContain("批次执行异常原因");
+    expect(detailWrapper.text()).toContain("turns.1.role");
+
+    const logWrapper = mount(RunLogTerminalDialog, {
+      props: {
+        show: true,
+        run: errRun,
+        fetchLogs: vi.fn().mockResolvedValue({
+          run_id: errRun.id,
+          status: "error",
+          progress: {
+            total: 1,
+            done: 0,
+            completed: 0,
+            failed: 0,
+            error: 0,
+            running: 0,
+            pending: 1,
+            paused: 0,
+            cancelled: 0,
+            skipped_incompatible: 0,
+            percent: 0,
+          },
+          logs: [],
+          last_seq: 0,
+        }),
+      },
+      global: { stubs: commonStubs },
+    });
+    await flushPromises();
+    expect(logWrapper.text()).toContain("批次级错误摘要");
+    expect(logWrapper.text()).toContain("turns.1.role");
+  });
 });

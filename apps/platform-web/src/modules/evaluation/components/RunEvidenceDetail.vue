@@ -230,6 +230,16 @@ function barPct(count: number) {
       </div>
     </div>
 
+    <div
+      v-if="summary.error"
+      class="p-3 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 text-xs space-y-1"
+    >
+      <div class="font-semibold">批次执行异常原因</div>
+      <pre class="whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{{
+        String(summary.error)
+      }}</pre>
+    </div>
+
     <section class="grid gap-3 md:grid-cols-4">
       <MetricCard
         label="TSR / Pass@1"

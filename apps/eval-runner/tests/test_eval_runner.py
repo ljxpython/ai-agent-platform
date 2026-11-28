@@ -534,3 +534,69 @@ def test_worker_progress_metrics_breakdown_and_run_logs(tmp_path):
         assert [r["seq"] for r in logs] == list(range(1, len(logs) + 1))
         assert any("[批次] 开始执行评测" in r["message"] for r in logs)
         assert any("[批次] 执行收口" in r["message"] for r in logs)
+
+
+def test_worker_logs_pre_batch_validation_error(tmp_path):
+    import pytest
+    from sqlalchemy import create_engine, text
+    from eval_runner.worker import poll_and_execute_once
+
+    db_url = f"sqlite:///{tmp_path / 'eval_worker_err.db'}"
+    engine = create_engine(db_url)
+    with engine.begin() as conn:
+        conn.execute(
+            text("CREATE TABLE eval_suite_versions (id TEXT PRIMARY KEY, frozen_cases_json TEXT)")
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_runs (id TEXT PRIMARY KEY, version_id TEXT, target_project_id TEXT, "
+                "judge_model_id TEXT, concurrency INT, repeat_k INT, status TEXT, gate_exit_code INT, "
+                "summary_metrics_json TEXT, created_at TEXT, finished_at TEXT)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_run_cases (id TEXT PRIMARY KEY, run_id TEXT, case_key TEXT, "
+                "attempt_idx INT, status TEXT, thread_id TEXT, trace_ids_json TEXT, rule_passed BOOLEAN, "
+                "overall_score FLOAT, duration_ms INT, ttft_ms INT, token_usage_json TEXT, cost_usd FLOAT, "
+                "error_category TEXT, results_json TEXT, updated_at TEXT)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_run_logs (id TEXT PRIMARY KEY, run_id TEXT, seq INT, "
+                "level TEXT, case_key TEXT, message TEXT, created_at TEXT)"
+            )
+        )
+        conn.execute(
+            text("INSERT INTO eval_suite_versions VALUES (:id, :cases)"),
+            {
+                "id": "v1",
+                "cases": json.dumps(
+                    [{"case_key": "bad", "turns": [{"role": "assistant", "content": "hi"}], "metrics": ["completion"]}]
+                ),
+            },
+        )
+        conn.execute(
+            text(
+                "INSERT INTO eval_runs (id, version_id, target_project_id, judge_model_id, concurrency, repeat_k, status, created_at) "
+                "VALUES ('r-err', 'v1', 'proj-1', NULL, 1, 1, 'queued', '2026-11-28T00:00:00Z')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO eval_run_cases (id, run_id, case_key, attempt_idx, status) "
+                "VALUES ('rc-err', 'r-err', 'bad', 1, 'pending')"
+            )
+        )
+
+    with pytest.raises(Exception):
+        poll_and_execute_once(db_url)
+
+    with engine.begin() as conn:
+        logs = conn.execute(
+            text("SELECT level, message FROM eval_run_logs WHERE run_id = 'r-err' ORDER BY seq ASC")
+        ).mappings().all()
+        assert len(logs) == 1
+        assert logs[0]["level"] == "ERROR"
+        assert "[批次] 执行异常中断" in logs[0]["message"]

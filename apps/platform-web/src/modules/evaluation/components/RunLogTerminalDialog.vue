@@ -310,6 +310,16 @@ async function copyAllLogs() {
         {{ loadError }}
       </div>
 
+      <div
+        v-if="(run?.summary_metrics as any)?.error"
+        class="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 space-y-1"
+      >
+        <div class="font-semibold">批次级错误摘要</div>
+        <pre class="whitespace-pre-wrap font-mono text-[11px]">{{
+          String((run?.summary_metrics as any).error)
+        }}</pre>
+      </div>
+
       <!-- 深色终端日志窗口 -->
       <div
         ref="logContainerEl"
