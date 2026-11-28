@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import json
 import time
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Request
@@ -776,6 +776,55 @@ async def internal_diagnosis_evidence(request: Request) -> dict[str, Any]:
     )
 
 
+@router.get("/studio/experts/threads")
+async def list_expert_threads(
+    request: Request,
+    graph_id: Literal["eval_copilot", "eval_diagnosis"] = "eval_copilot",
+    ref_id: str | None = None,
+    limit: int = 20,
+    actor: ActorContext = Depends(get_actor_context),
+    gateway: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> dict[str, Any]:
+    perm = (
+        PermissionCode.PROJECT_EVALUATION_MANAGE
+        if graph_id == "eval_copilot"
+        else PermissionCode.PROJECT_EVALUATION_READ
+    )
+    pid = _authorize_project(request, actor, perm)
+    capped = max(1, min(limit, 50))
+    rows = await gateway.search_threads(
+        actor=actor,
+        project_id=pid,
+        payload={
+            "limit": capped,
+            "offset": 0,
+            "sort_by": "updated_at",
+            "sort_order": "desc",
+            "metadata": {"graph_id": graph_id, "eval_expert": True},
+            "select": ["thread_id", "metadata", "status", "created_at", "updated_at"],
+        },
+    )
+    items = []
+    for row in rows if isinstance(rows, list) else []:
+        if not isinstance(row, dict):
+            continue
+        meta = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        row_ref = meta.get("ref_id")
+        if ref_id and row_ref and str(row_ref) != str(ref_id):
+            continue
+        items.append(
+            {
+                "thread_id": str(row.get("thread_id") or ""),
+                "title": str(meta.get("title") or f"{graph_id} 会话"),
+                "ref_id": str(row_ref) if row_ref else None,
+                "status": str(row.get("status") or "idle"),
+                "created_at": row.get("created_at"),
+                "updated_at": row.get("updated_at"),
+            }
+        )
+    return {"items": items}
+
+
 @router.post("/studio/experts/threads", status_code=201)
 async def create_expert_thread(
     request: Request,
@@ -789,18 +838,74 @@ async def create_expert_thread(
         else PermissionCode.PROJECT_EVALUATION_READ
     )
     pid = _authorize_project(request, actor, perm)
+    meta: dict[str, Any] = {
+        "graph_id": body.graph_id,
+        "title": body.title or f"{body.graph_id} 会话",
+        "eval_expert": True,
+    }
+    if body.ref_id:
+        meta["ref_id"] = body.ref_id
     return await gateway.create_thread(
         actor=actor,
         project_id=pid,
         payload={
             "graph_id": body.graph_id,
-            "metadata": {
-                "graph_id": body.graph_id,
-                "title": body.title or f"{body.graph_id} 会话",
-                "eval_expert": True,
-            },
+            "metadata": meta,
         },
     )
+
+
+def _extract_expert_message_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for blk in content:
+            if (
+                isinstance(blk, dict)
+                and blk.get("type") == "text"
+                and isinstance(blk.get("text"), str)
+            ):
+                parts.append(blk["text"])
+        return "".join(parts)
+    return ""
+
+
+def _serialize_expert_messages(raw_messages: Any) -> list[dict[str, str]]:
+    if not isinstance(raw_messages, list):
+        return []
+    out: list[dict[str, str]] = []
+    for idx, msg in enumerate(raw_messages):
+        if not isinstance(msg, dict):
+            continue
+        raw_role = str(msg.get("role") or msg.get("type") or "").lower()
+        if raw_role in {"human", "user"}:
+            role = "user"
+        elif raw_role in {"ai", "assistant"}:
+            role = "assistant"
+        else:
+            continue
+        text = _extract_expert_message_text(msg.get("content")).strip()
+        if not text:
+            continue
+        if role == "user":
+            # 去掉自动注入的上下文关联与附件提示头，还原用户原始输入展示
+            cleaned_lines = [
+                line
+                for line in text.splitlines()
+                if not line.startswith("[上下文关联ID:")
+                and not line.startswith("[已挂载本轮参考资料")
+                and not line.startswith("- ")
+            ]
+            text = "\n".join(cleaned_lines).strip() or text
+        out.append(
+            {
+                "id": str(msg.get("id") or f"hist-{idx}"),
+                "role": role,
+                "content": text,
+            }
+        )
+    return out
 
 
 async def _load_expert_interrupts(
@@ -809,7 +914,7 @@ async def _load_expert_interrupts(
     actor: ActorContext,
     project_id: str,
     thread_id: str,
-) -> tuple[str | None, Any]:
+) -> tuple[str | None, Any, list[dict[str, str]]]:
     state = await gateway.get_thread_state(
         actor=actor,
         project_id=project_id,
@@ -817,6 +922,10 @@ async def _load_expert_interrupts(
         params={"subgraphs": False},
     )
     status = state.get("status") if isinstance(state, dict) else None
+    values = state.get("values") if isinstance(state, dict) else {}
+    messages = _serialize_expert_messages(
+        values.get("messages") if isinstance(values, dict) else []
+    )
     raw_ints: Any = state.get("interrupts") if isinstance(state, dict) else None
     if not raw_ints and isinstance(state, dict):
         task_ints: list[Any] = []
@@ -836,7 +945,7 @@ async def _load_expert_interrupts(
                     raw_ints = thread_row.get("interrupts")
         except Exception:  # noqa: BLE001
             pass
-    return status, raw_ints or []
+    return status, raw_ints or [], messages
 
 
 @router.get("/studio/experts/threads/{thread_id}/state")
@@ -847,13 +956,14 @@ async def get_expert_thread_state(
     gateway: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> dict[str, Any]:
     pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_READ)
-    status, interrupts = await _load_expert_interrupts(
+    status, interrupts, messages = await _load_expert_interrupts(
         gateway, actor=actor, project_id=pid, thread_id=thread_id
     )
     return {
         "thread_id": thread_id,
         "status": status,
         "interrupts": interrupts,
+        "messages": messages,
     }
 
 
@@ -872,7 +982,7 @@ async def stream_expert_turn(
     )
     pid = _authorize_project(request, actor, perm)
     try:
-        _status, pending_ints = await _load_expert_interrupts(
+        _status, pending_ints, _msgs = await _load_expert_interrupts(
             gateway, actor=actor, project_id=pid, thread_id=thread_id
         )
         if pending_ints:

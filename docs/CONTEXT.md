@@ -18,7 +18,7 @@ Task23当前批准的双机迁移、单并发连续容量及合并后联合读�
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-28（专题 07 `eval_copilot` AI 出题专家闭环完成，未提交 Git）。一阶段及二阶段（[专题 06](projects/20261128-independent-eval-platform/06-metric-reliability-and-migration-gap-audit.md) `Task 6.1–6.4`）与架构文档 [docs/architecture/08-evaluation-platform/](architecture/08-evaluation-platform/README.md) 已推 `origin/main`（`62063827`）；本次完成 [专题 07（Task 7.1–7.5）](projects/20261128-independent-eval-platform/07-eval-copilot-skills-and-authoring-agent.md) 全部落地——为 `eval_copilot` 实装 4 份领域 Skill、多文件上传读取、7 项 HMAC 控制面内部桥、同源 Schema/防呆与 `turns[].role` 强校验、`HumanInTheLoopMiddleware` 分级审批（新建 `<5` 免弹窗、覆写/`>=5`/试跑必审）、同线程 `cancel_own_trial_run` 免二次确认停表、反作弊红线与前端实时试跑胶囊/中断状态兜底，并通过本地 `RUNTIME_BACKEND=local` 全栈真实 `/browser` E2E 全链路验收及三端单测（已同步将 `chickener` DeepSeek 设为出题专家默认模型）。剩余边界：`v3-golden` 其余 7 题（含 RAG 与 PlanReview）、远端 Docker 沙箱与定时巡检 Cron 待补。
+> **最后更新：** 2026-11-28（专题 07 `a280251c` 已推 `origin/main` + 新增 AI 专家历史对话记录）。一阶段及二阶段（[专题 06](projects/20261128-independent-eval-platform/06-metric-reliability-and-migration-gap-audit.md) `Task 6.1–6.4`）与架构文档 [docs/architecture/08-evaluation-platform/](architecture/08-evaluation-platform/README.md) 及 [专题 07（Task 7.1–7.5）](projects/20261128-independent-eval-platform/07-eval-copilot-skills-and-authoring-agent.md) 已全数合入 `main`；当前新增 `eval_copilot` / `eval_diagnosis` 历史会话列表（`GET /studio/experts/threads`）、`/state` 消息反序列化恢复及前端「选择历史会话」与刷新自动恢复（含本地测试与 `/browser` 验证通过，待按需提交）。剩余边界：`v3-golden` 其余 7 题（含 RAG 与 PlanReview）、远端 Docker 沙箱与定时巡检 Cron 待补。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」

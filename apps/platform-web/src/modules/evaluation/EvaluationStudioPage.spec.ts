@@ -208,4 +208,35 @@ describe("EvaluationStudioPage", () => {
     chat.reset();
     expect(chat.pendingFiles.value).toEqual([]);
   });
+
+  it("loads expert thread history and restores messages when selecting a thread", async () => {
+    const studioMod = await import("@/services/evaluation/studio");
+    vi.spyOn(studioMod, "listExpertThreads").mockResolvedValueOnce([
+      {
+        thread_id: "th-1",
+        title: "历史多轮题讨论",
+        status: "idle",
+      },
+    ]);
+    vi.spyOn(studioMod, "getExpertThreadState").mockResolvedValueOnce({
+      thread_id: "th-1",
+      status: "idle",
+      interrupts: [],
+      messages: [
+        { id: "u1", role: "user", content: "生成一道退款多轮题" },
+        { id: "a1", role: "assistant", content: "已落库 COP-NL-01" },
+      ],
+    });
+    const chat = useEvalExpertChat(
+      ref("proj-1"),
+      ref("eval_copilot"),
+      ref("model-1"),
+    );
+    await chat.initForContext("suite-1");
+    expect(chat.threads.value).toHaveLength(1);
+    await chat.selectThread("th-1", "suite-1");
+    expect(chat.threadId.value).toBe("th-1");
+    expect(chat.messages.value).toHaveLength(2);
+    expect(chat.messages.value[1]?.content).toBe("已落库 COP-NL-01");
+  });
 });

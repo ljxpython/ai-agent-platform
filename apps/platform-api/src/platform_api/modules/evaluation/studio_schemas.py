@@ -138,6 +138,7 @@ class SessionsToSuiteRequest(StrictBody):
 class ExpertThreadCreateRequest(StrictBody):
     graph_id: Literal["eval_copilot", "eval_diagnosis"]
     title: str = Field(default="", max_length=128)
+    ref_id: str | None = Field(default=None, max_length=128)
 
 
 class ExpertTurnStreamRequest(StrictBody):

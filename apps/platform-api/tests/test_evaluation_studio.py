@@ -128,6 +128,44 @@ def _make_app():
         _require_session_factory=lambda: factory,
         _assert_runtime_target_allowed=lambda **kwargs: None,
         _runtime_id="default",
+        search_threads=AsyncMock(
+            return_value=[
+                {
+                    "thread_id": "th-hist-1",
+                    "status": "idle",
+                    "metadata": {
+                        "graph_id": "eval_copilot",
+                        "eval_expert": True,
+                        "title": "生成多轮退款题",
+                        "ref_id": "suite-1",
+                    },
+                    "created_at": "2026-11-28T10:00:00Z",
+                    "updated_at": "2026-11-28T10:05:00Z",
+                }
+            ]
+        ),
+        get_thread_state=AsyncMock(
+            return_value={
+                "status": "idle",
+                "interrupts": [],
+                "values": {
+                    "messages": [
+                        {
+                            "id": "m1",
+                            "type": "human",
+                            "content": "[上下文关联ID: suite-1]\n帮我生成多轮退款题",
+                        },
+                        {"id": "m2", "type": "tool", "content": '{"ok": true}'},
+                        {
+                            "id": "m3",
+                            "type": "ai",
+                            "content": "已为您生成并落库 COP-NL-01。",
+                        },
+                    ]
+                },
+            }
+        ),
+        get_thread=AsyncMock(return_value={"status": "idle", "interrupts": {}}),
         evaluation_capabilities=AsyncMock(
             return_value={
                 "schema": "evaluation-runtime/v1",
@@ -734,3 +772,25 @@ def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
     )
     assert own_cancel.status_code == 200
     assert own_cancel.json()["status"] == "cancelled"
+
+    list_threads_res = client.get(
+        "/api/evaluation/studio/experts/threads?graph_id=eval_copilot&ref_id=suite-1",
+        headers=headers,
+    )
+    assert list_threads_res.status_code == 200
+    assert list_threads_res.json()["items"][0]["thread_id"] == "th-hist-1"
+    assert list_threads_res.json()["items"][0]["title"] == "生成多轮退款题"
+
+    hist_state_res = client.get(
+        "/api/evaluation/studio/experts/threads/th-hist-1/state",
+        headers=headers,
+    )
+    assert hist_state_res.status_code == 200
+    hist_msgs = hist_state_res.json()["messages"]
+    assert len(hist_msgs) == 2
+    assert hist_msgs[0] == {"id": "m1", "role": "user", "content": "帮我生成多轮退款题"}
+    assert hist_msgs[1] == {
+        "id": "m3",
+        "role": "assistant",
+        "content": "已为您生成并落库 COP-NL-01。",
+    }

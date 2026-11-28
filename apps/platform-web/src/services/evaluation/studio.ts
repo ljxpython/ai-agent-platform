@@ -556,14 +556,42 @@ export async function setSandboxFlag(
   return data;
 }
 
+export interface ExpertThreadItem {
+  thread_id: string;
+  title: string;
+  ref_id?: string | null;
+  status: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export async function listExpertThreads(
+  projectId: string,
+  graphId: "eval_copilot" | "eval_diagnosis",
+  refId?: string | null,
+): Promise<ExpertThreadItem[]> {
+  const { data } = await platformHttpClient.get<{ items: ExpertThreadItem[] }>(
+    "/api/evaluation/studio/experts/threads",
+    {
+      params: {
+        graph_id: graphId,
+        ...(refId ? { ref_id: refId } : {}),
+      },
+      headers: projectHeaders(projectId),
+    },
+  );
+  return data.items ?? [];
+}
+
 export async function createExpertThread(
   projectId: string,
   graphId: "eval_copilot" | "eval_diagnosis",
   title = "",
+  refId?: string | null,
 ): Promise<{ thread_id: string }> {
   const { data } = await platformHttpClient.post<{ thread_id: string }>(
     "/api/evaluation/studio/experts/threads",
-    { graph_id: graphId, title },
+    { graph_id: graphId, title, ...(refId ? { ref_id: refId } : {}) },
     { headers: projectHeaders(projectId) },
   );
   return data;
@@ -576,11 +604,17 @@ export async function getExpertThreadState(
   thread_id: string;
   status?: string | null;
   interrupts: ExpertInterruptRequest[];
+  messages: Array<{ id: string; role: "user" | "assistant"; content: string }>;
 }> {
   const { data } = await platformHttpClient.get<{
     thread_id: string;
     status?: string | null;
     interrupts?: unknown;
+    messages?: Array<{
+      id: string;
+      role: "user" | "assistant";
+      content: string;
+    }>;
   }>(
     `/api/evaluation/studio/experts/threads/${encodeURIComponent(threadId)}/state`,
     { headers: projectHeaders(projectId) },
@@ -589,6 +623,7 @@ export async function getExpertThreadState(
     thread_id: data.thread_id,
     status: data.status,
     interrupts: data.interrupts ? parseExpertInterrupts(data.interrupts) : [],
+    messages: Array.isArray(data.messages) ? data.messages : [],
   };
 }
 

@@ -4,11 +4,13 @@ import {
   createExpertThread,
   getExpertThreadState,
   getRunDetail,
+  listExpertThreads,
   respondExpertInterrupt,
   streamExpertTurn,
   uploadExpertMaterial,
   type CaseUpsertPayload,
   type ExpertInterruptRequest,
+  type ExpertThreadItem,
 } from "@/services/evaluation/studio";
 import { resolvePlatformHttpErrorMessage } from "@/utils/http-error";
 
@@ -66,6 +68,8 @@ export function useEvalExpertChat(
   hooks: ExpertChatHooks = {},
 ) {
   const threadId = ref<string | null>(null);
+  const threads = ref<ExpertThreadItem[]>([]);
+  const loadingThreads = ref(false);
   const messages = ref<ExpertMessage[]>([]);
   const pendingFiles = ref<File[]>([]);
   const uploadedMaterials = ref<Array<{ fileName: string; path: string }>>([]);
@@ -145,9 +149,90 @@ export function useEvalExpertChat(
     }
   }
 
-  function reset() {
+  function _storageKey(refId?: string) {
+    return `eval_expert_last_thread:${projectId.value}:${kind.value}:${refId || "all"}`;
+  }
+
+  function _saveLastThread(id: string | null, refId?: string) {
+    try {
+      const key = _storageKey(refId);
+      if (id) window.localStorage.setItem(key, id);
+      else window.localStorage.removeItem(key);
+    } catch {
+      // Ignore storage errors in restricted environments.
+    }
+  }
+
+  function _readLastThread(refId?: string): string | null {
+    try {
+      return window.localStorage.getItem(_storageKey(refId));
+    } catch {
+      return null;
+    }
+  }
+
+  async function loadThreads(refId?: string) {
+    if (!projectId.value) return;
+    loadingThreads.value = true;
+    try {
+      threads.value = await listExpertThreads(
+        projectId.value,
+        kind.value,
+        refId,
+      );
+    } catch {
+      threads.value = [];
+    } finally {
+      loadingThreads.value = false;
+    }
+  }
+
+  async function selectThread(targetId: string, refId?: string) {
+    if (!projectId.value || !targetId || streaming.value) return;
+    stopTrialPolling();
+    error.value = "";
+    pendingFiles.value = [];
+    uploadedMaterials.value = [];
+    pendingInterrupts.value = [];
+    activeTrialRunId.value = null;
+    trialRunStatus.value = "";
+    trialRunSummary.value = "";
+    threadId.value = targetId;
+    _saveLastThread(targetId, refId);
+    try {
+      const state = await getExpertThreadState(projectId.value, targetId);
+      messages.value = state.messages.map((m) => ({
+        ...m,
+        ...(m.role === "assistant" && kind.value === "eval_copilot"
+          ? { candidates: parseCandidateCases(m.content) }
+          : {}),
+      }));
+      pendingInterrupts.value = state.interrupts;
+    } catch (cause) {
+      error.value = resolvePlatformHttpErrorMessage(
+        cause,
+        "加载历史会话记录失败。",
+        kind.value === "eval_copilot" ? "AI 出题专家" : "AI 诊断专家",
+      );
+    }
+  }
+
+  async function initForContext(refId?: string) {
+    await loadThreads(refId);
+    if (!threadId.value) {
+      const lastId = _readLastThread(refId);
+      if (lastId && threads.value.some((t) => t.thread_id === lastId)) {
+        await selectThread(lastId, refId);
+      }
+    }
+  }
+
+  function reset(refId?: string, opts?: { preserveLastThread?: boolean }) {
     stopTrialPolling();
     threadId.value = null;
+    if (!opts?.preserveLastThread) {
+      _saveLastThread(null, refId);
+    }
     messages.value = [];
     pendingFiles.value = [];
     uploadedMaterials.value = [];
@@ -244,12 +329,18 @@ export function useEvalExpertChat(
 
     try {
       if (!threadId.value) {
+        const autoTitle =
+          trimmed.replace(/\s+/g, " ").slice(0, 32) ||
+          `${kind.value} ${refId || ""}`.trim();
         const created = await createExpertThread(
           projectId.value,
           kind.value,
-          `${kind.value} ${refId || ""}`.trim(),
+          autoTitle,
+          refId,
         );
         threadId.value = created.thread_id;
+        _saveLastThread(created.thread_id, refId);
+        void loadThreads(refId);
       }
 
       const newlyUploaded: Array<{ fileName: string; path: string }> = [];
@@ -383,6 +474,8 @@ export function useEvalExpertChat(
 
   return {
     threadId,
+    threads,
+    loadingThreads,
     messages,
     pendingFiles,
     uploadedMaterials,
@@ -392,6 +485,9 @@ export function useEvalExpertChat(
     trialRunSummary,
     streaming,
     error,
+    loadThreads,
+    selectThread,
+    initForContext,
     reset,
     addPendingFiles,
     removePendingFile,

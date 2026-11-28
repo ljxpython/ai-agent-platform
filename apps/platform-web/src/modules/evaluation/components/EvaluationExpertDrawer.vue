@@ -70,8 +70,21 @@ const quickPrompts = computed(() =>
 watch(
   () => [props.kind, props.refId],
   () => {
-    chat.reset();
+    chat.reset(props.refId, { preserveLastThread: true });
+    if (props.show) {
+      void chat.initForContext(props.refId);
+    }
   },
+);
+
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) {
+      void chat.initForContext(props.refId);
+    }
+  },
+  { immediate: true },
 );
 
 function triggerFilePicker() {
@@ -116,12 +129,40 @@ const trialFinished = computed(() =>
             >关联: {{ refId.slice(0, 8) }}</span
           >
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <select
+            aria-label="选择历史会话"
+            class="pw-input py-1 px-2 text-xs max-w-[180px]"
+            :value="chat.threadId.value || ''"
+            :disabled="chat.streaming.value || chat.loadingThreads.value"
+            @change="
+              (e) => {
+                const v = (e.target as HTMLSelectElement).value;
+                if (v) void chat.selectThread(v, refId);
+                else chat.reset(refId);
+              }
+            "
+          >
+            <option value="">
+              {{
+                chat.threads.value.length
+                  ? `新对话（${chat.threads.value.length} 条历史）`
+                  : "新对话（暂无历史）"
+              }}
+            </option>
+            <option
+              v-for="t in chat.threads.value"
+              :key="t.thread_id"
+              :value="t.thread_id"
+            >
+              {{ t.title }}
+            </option>
+          </select>
           <select
             v-if="usableModelOptions.length"
             v-model="selectedModelId"
             aria-label="选择专家模型"
-            class="pw-input py-1 px-2 text-xs max-w-[200px]"
+            class="pw-input py-1 px-2 text-xs max-w-[180px]"
           >
             <option
               v-for="opt in usableModelOptions"
@@ -131,7 +172,7 @@ const trialFinished = computed(() =>
               {{ opt.label }}
             </option>
           </select>
-          <BaseButton size="sm" variant="secondary" @click="chat.reset()"
+          <BaseButton size="sm" variant="secondary" @click="chat.reset(refId)"
             >清空重置会话</BaseButton
           >
         </div>
