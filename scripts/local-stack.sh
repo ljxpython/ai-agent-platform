@@ -268,8 +268,12 @@ start_managed_key() {
         "$LOG_DIR/platform-web.log" "$PLATFORM_WEB_PORT"
       ;;
     eval-runner)
+      local eval_python="$ROOT_DIR/apps/eval-runner/.venv/bin/python"
+      if [ ! -x "$eval_python" ]; then
+        eval_python="$RUNTIME_DIR/.venv/bin/python"
+      fi
       start_process eval-runner "$ROOT_DIR/apps/eval-runner" \
-        "env PYTHONPATH=$(shell_quote "$ROOT_DIR/apps/eval-runner/src") PLATFORM_API_BASE_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT") $(shell_quote "$RUNTIME_DIR/.venv/bin/python") -m eval_runner.worker --env-file $(shell_quote "$PLATFORM_ENV_FILE")" \
+        "env PYTHONPATH=$(shell_quote "$ROOT_DIR/apps/eval-runner/src") PLATFORM_API_BASE_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT") $(shell_quote "$eval_python") -m eval_runner.worker --env-file $(shell_quote "$PLATFORM_ENV_FILE")" \
         "$LOG_DIR/eval-runner.log"
       ;;
     *)

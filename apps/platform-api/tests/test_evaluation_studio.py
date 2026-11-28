@@ -100,8 +100,11 @@ def _make_app():
         request.state.platform_context = NS(
             request_id="test-req",
             trace_id="test-trace",
+            request=NS(request_id="test-req", trace_id="test-trace"),
             tenant=NS(tenant_id="__default"),
-            project=NS(project_id=request.headers.get("x-project-id")),
+            project=NS(
+                project_id=request.headers.get("x-project-id") or target_project_id
+            ),
         )
         return await call_next(request)
 
@@ -398,3 +401,125 @@ def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
     )
     assert del_res.status_code == 200
     assert del_res.json()["archived"] is True
+
+    # 8. Internal HMAC Task 6.1 bridges: thread-setup, thread-evidence, cross-project-probe
+    async def _body_bytes():
+        yield b"csv,val\n1,10\n"
+
+    mock_gw = NS(
+        create_thread=AsyncMock(return_value={"thread_id": "th-eval-1"}),
+        upload_thread_file=AsyncMock(
+            return_value={"path": "/workspace/uploads/in.csv"}
+        ),
+        get_thread_state=AsyncMock(
+            side_effect=lambda **kw: (
+                (_ for _ in ()).throw(
+                    studio_router.ForbiddenError(code="denied", message="forbidden")
+                )
+                if kw.get("project_id") != target_project_id
+                else {
+                    "values": {"messages": [{"role": "assistant", "content": "done"}]}
+                }
+            )
+        ),
+        list_thread_runs=AsyncMock(
+            return_value=[{"run_id": "r-sub-1", "status": "success"}]
+        ),
+        thread_workspace=AsyncMock(
+            side_effect=lambda **kw: (
+                NS(body=_body_bytes())
+                if kw.get("resource") == "workspace/content"
+                else {"items": [{"path": "/workspace/work/out.csv", "is_dir": False}]}
+            )
+        ),
+        get_thread_run_diagnostics=AsyncMock(
+            return_value={
+                "observations": [{"event": "runtime.loop.transition", "signals": 0}]
+            }
+        ),
+        get_thread_execution_evidence=AsyncMock(
+            return_value={"run_id": "r-sub-1", "verified": True}
+        ),
+        send_thread_command=AsyncMock(
+            return_value={
+                "type": "success",
+                "result": {"run_id": "r-resume-1", "thread_id": "th-eval-1"},
+            }
+        ),
+        join_thread_run_stream=AsyncMock(
+            return_value=iter(
+                [
+                    b'event: values\ndata: {"messages":[{"role":"assistant","content":"resumed ok"}]}\n\n'
+                ]
+            )
+        ),
+    )
+    monkeypatch.setattr(
+        studio_router, "build_runtime_gateway_service", lambda req, act, pid: mock_gw
+    )
+    monkeypatch.setattr(
+        studio_router,
+        "load_user_actor",
+        lambda **kw: ActorContext(
+            user_id=str(kw.get("user_id") or "u1"),
+            project_roles={target_project_id: ("project_admin",)},
+        ),
+    )
+
+    def _signed_post(purpose: str, data: dict):
+        raw_b = json.dumps(data).encode()
+        st = str(int(time.time()))
+        sg = hmac.new(
+            b"test-secret-123",
+            b"\n".join([purpose.encode(), st.encode(), raw_b]),
+            hashlib.sha256,
+        ).hexdigest()
+        return client.post(
+            f"/api/evaluation/internal/{purpose}",
+            content=raw_b,
+            headers={
+                "content-type": "application/json",
+                "x-eval-time": st,
+                "x-eval-signature": sg,
+            },
+        )
+
+    setup_res = _signed_post(
+        "thread-setup", {"run_id": run_id, "fixtures": {"in.csv": "a,b\n1,2\n"}}
+    )
+    assert setup_res.status_code == 200
+    assert setup_res.json()["thread_id"] == "th-eval-1"
+    assert setup_res.json()["fixture_paths"]["in.csv"] == "/workspace/uploads/in.csv"
+
+    ev_res = _signed_post(
+        "thread-evidence",
+        {"run_id": run_id, "thread_id": "th-eval-1", "run_ids": ["r-sub-1"]},
+    )
+    assert ev_res.status_code == 200
+    assert "/workspace/work/out.csv" in ev_res.json()["artifacts"]
+    assert (
+        ev_res.json()["diagnostics"][0]["observations"][0]["event"]
+        == "runtime.loop.transition"
+    )
+
+    probe_res = _signed_post(
+        "cross-project-probe", {"run_id": run_id, "thread_id": "th-eval-1"}
+    )
+    assert probe_res.status_code == 200
+    assert probe_res.json()["denied"] is True
+
+    async def _empty_stream(*_args, **_kwargs):
+        yield b'event: values\ndata: {"messages":[{"role":"assistant","content":"resumed ok"}]}\n\n'
+
+    mock_gw.join_thread_run_stream = AsyncMock(side_effect=_empty_stream)
+    resume_res = _signed_post(
+        "execute-turn",
+        {
+            "run_id": run_id,
+            "thread_id": "th-eval-1",
+            "command": {"resume": {"int-1": {"decisions": [{"type": "approve"}]}}},
+        },
+    )
+    assert resume_res.status_code == 200
+    assert mock_gw.send_thread_command.await_count == 1
+    assert mock_gw.join_thread_run_stream.await_count == 1

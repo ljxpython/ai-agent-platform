@@ -188,15 +188,25 @@ class InternalExecutionClient:
         self,
         *,
         run_id: str,
-        content: str,
+        content: str = "",
         thread_id: str | None = None,
+        command: dict[str, Any] | None = None,
+        context_overrides: dict[str, Any] | None = None,
+        idempotency_key: str | None = None,
     ) -> tuple[str | None, SseProbeResult]:
+        payload_dict: dict[str, Any] = {"run_id": run_id}
+        if content:
+            payload_dict["content"] = content
+        if thread_id:
+            payload_dict["thread_id"] = thread_id
+        if command is not None:
+            payload_dict["command"] = command
+        if context_overrides:
+            payload_dict["context"] = context_overrides
+        if idempotency_key:
+            payload_dict["idempotency_key"] = idempotency_key
         body = json.dumps(
-            {
-                "run_id": run_id,
-                "content": content,
-                **({"thread_id": thread_id} if thread_id else {}),
-            },
+            payload_dict,
             ensure_ascii=False,
             separators=(",", ":"),
         ).encode()
@@ -240,17 +250,13 @@ class InternalExecutionClient:
                 error_category="runtime_error",
             )
 
-    def get_thread_usage(self, *, run_id: str, thread_id: str) -> dict[str, Any] | None:
-        """Fetch recorded runtime token/cost usage for an executed thread via HMAC bridge."""
-        body = json.dumps(
-            {"run_id": run_id, "thread_id": thread_id},
-            separators=(",", ":"),
-        ).encode()
-        headers = sign_internal_payload(self.internal_secret, "thread-usage", body)
+    def _post_internal_json(self, purpose: str, payload: dict[str, Any], timeout: float = 20.0) -> dict[str, Any] | None:
+        body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
+        headers = sign_internal_payload(self.internal_secret, purpose, body)
         try:
-            with httpx.Client(timeout=10.0, trust_env=False) as client:
+            with httpx.Client(timeout=timeout, trust_env=False) as client:
                 resp = client.post(
-                    f"{self.base_url}/api/evaluation/internal/thread-usage",
+                    f"{self.base_url}/api/evaluation/internal/{purpose}",
                     content=body,
                     headers=headers,
                 )
@@ -259,3 +265,64 @@ class InternalExecutionClient:
                 return data if isinstance(data, dict) else None
         except httpx.HTTPError:
             return None
+
+    def thread_setup(
+        self,
+        *,
+        run_id: str,
+        thread_id: str | None = None,
+        fixtures: dict[str, str] | None = None,
+        ensure_workspace: bool = False,
+    ) -> dict[str, Any] | None:
+        return self._post_internal_json(
+            "thread-setup",
+            {
+                "run_id": run_id,
+                **({"thread_id": thread_id} if thread_id else {}),
+                "fixtures": fixtures or {},
+                "ensure_workspace": ensure_workspace,
+            },
+            timeout=30.0,
+        )
+
+    def thread_evidence(
+        self,
+        *,
+        run_id: str,
+        thread_id: str,
+        run_ids: list[str] | None = None,
+        artifact_paths: list[str] | None = None,
+    ) -> dict[str, Any] | None:
+        return self._post_internal_json(
+            "thread-evidence",
+            {
+                "run_id": run_id,
+                "thread_id": thread_id,
+                "run_ids": run_ids or [],
+                "artifact_paths": artifact_paths or [],
+            },
+            timeout=30.0,
+        )
+
+    def cross_project_probe(
+        self,
+        *,
+        run_id: str,
+        thread_id: str,
+        isolation_project_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        return self._post_internal_json(
+            "cross-project-probe",
+            {
+                "run_id": run_id,
+                "thread_id": thread_id,
+                **({"isolation_project_id": isolation_project_id} if isolation_project_id else {}),
+            },
+            timeout=15.0,
+        )
+
+    def get_thread_usage(self, *, run_id: str, thread_id: str) -> dict[str, Any] | None:
+        """Fetch recorded runtime token/cost usage for an executed thread via HMAC bridge."""
+        return self._post_internal_json(
+            "thread-usage", {"run_id": run_id, "thread_id": thread_id}, timeout=10.0
+        )

@@ -1,6 +1,6 @@
 # 专题 02：MLflow 既有代码迁移清单与清理边界
 
-> 所属项目：[独立评测中台迁移与平台原生化改造方案](README.md)｜状态：**方案已对齐（按方案 X 分流至 `platform-api` / `eval-runner` / `runtime-service`，待开始编码）**
+> 所属项目：[独立评测中台迁移与平台原生化改造方案](README.md)｜状态：**二阶段续迁主体已完成（`simulation`、`tool_evidence`、`runtime_signals`、`rules` 全量算子、`eval-runner/.venv` DeepEval 及 `v3-golden` 导入已落地并实跑 3 题代表集；直连 MLflow Span 读取 Bridge 收敛为平台 `/internal/thread-evidence` 安全采集）**
 
 ## 1. 盘点原则与目标落点
 
@@ -74,8 +74,8 @@
 
 ## 5. 本专题规划任务（待启动实施）
 
-### Task 2.1：抽离评测核心引擎、直连平台模型网关并迁移专家 Graph
-**状态：** 已完成（done，核心模块已迁出并脱离 MLflow 强依赖与私有 `.env`）。
+### Task 2.1：抽离评测核心引擎、直连平台模型网关并迁移专家 Graph（一期骨架）
+**状态：** 部分完成（partial：核心契约、网关直连、并发运行器骨架及 `eval_copilot` / `eval_diagnosis` 已迁入并通过单测；`simulation.py`、`tool_evidence.py`、`runtime_signals.py`、`trace_reader` 受控采集、`approval`/`protected_unchanged`/`cross_project_denied` 规则与 `v3-golden` 题集导入转入[专题 06 Task 6.1–6.5](06-metric-reliability-and-migration-gap-audit.md) 接续迁移并做真跑验证）。
 **完成标准：** `contracts`、`simulation`、`tool_evidence`、`scorers`（原生 `deepeval.metrics` + 平台模型目录解析）与 `gates` 迁入 `apps/eval-runner/`；资产 CRUD 迁入 `platform-api`；出题 Copilot 与诊断专家作为标准 Graph 迁入 `runtime-service/services/` 并通过单元测试。
 **涉及位置：** `apps/eval-runner/`、`apps/platform-api/src/platform_api/modules/evaluation/`、`apps/runtime-service/src/runtime_service/services/`。
 

@@ -13,18 +13,43 @@ from sqlalchemy import create_engine, text
 
 from eval_runner.domain.contracts import Case, Evidence, GateLimits
 from eval_runner.engine.concurrent_runner import ConcurrentEvalRunner
+from eval_runner.engine.simulation import DynamicSimulationSession
+from eval_runner.evidence.context_and_artifacts import extract_retrieved_contexts
+from eval_runner.evidence.runtime_signals import recover_loop_signals
+from eval_runner.evidence.tool_evidence import extract_tool_evidence
 from eval_runner.scorers.deepeval_adapter import DEEPEVAL_METRICS, evaluate_l2_deepeval
 from eval_runner.scorers.judge import (
     JudgeBudget,
     PlatformJudgeLLM,
     estimate_tokens_cost_usd,
 )
+from eval_runner.scorers.rules import _normalize_artifact_specs
 from eval_runner.targets.platform_client import (
     InternalExecutionClient,
     PlatformModelResolver,
 )
+from eval_runner.targets.sse_probe import normalize_interrupts
 
 logger = logging.getLogger(__name__)
+
+
+def _replace_fixture_placeholders(text: str, fixture_paths: dict[str, str]) -> str:
+    out = text
+    for name, path in fixture_paths.items():
+        out = out.replace(f"{{{{{name}}}}}", path)
+    return out
+
+
+def _expected_artifact_paths(case: Case) -> list[str]:
+    paths: list[str] = list(case.expectations.get("initial_artifacts") or [])
+    for spec in _normalize_artifact_specs(case.expectations.get("artifacts")):
+        if spec.get("path"):
+            paths.append(str(spec["path"]))
+    for turn_exp in case.turn_expectations or []:
+        for spec in _normalize_artifact_specs(turn_exp.get("artifacts")):
+            if spec.get("path"):
+                paths.append(str(spec["path"]))
+    return list(dict.fromkeys(paths))
 
 
 def build_platform_executors(
@@ -35,17 +60,17 @@ def build_platform_executors(
     target_project_id: str,
     judge_model_id: str | None = None,
 ):
-    """Build real SSE turn executor and optional DeepEval L2 judge scorer."""
+    """Build real SSE turn executor with simulation/interrupts/whitebox extraction and L2 scorer."""
     exec_client = InternalExecutionClient(base_url, internal_secret)
     resolver = PlatformModelResolver(base_url, internal_secret)
 
     def _execute(case: Case, attempt_idx: int) -> Evidence:
-        turns = [t.content for t in case.turns if t.content.strip()]
-        if not turns and case.simulation:
-            goal = str(case.simulation.get("goal") or "").strip()
-            if goal:
-                turns = [goal]
-        if not turns:
+        static_turns = list(case.turns)
+        if not static_turns and case.simulation and case.simulation.goal.strip():
+            from eval_runner.domain.contracts import Turn
+
+            static_turns = [Turn(role="user", content=case.simulation.goal.strip())]
+        if not static_turns:
             return Evidence(
                 case_key=case.case_key,
                 attempt_idx=attempt_idx,
@@ -57,39 +82,291 @@ def build_platform_executors(
         thread_id: str | None = None
         trace_ids: list[str] = []
         transcript: list[dict[str, Any]] = []
+        fixture_paths: dict[str, str] = {}
+        initial_artifacts: dict[str, str] = {}
+        approval_snapshots: list[dict[str, Any]] = []
+        turn_snapshots: list[dict[str, Any]] = []
         ttft_ms: int | None = None
         total_duration = 0
         final_answer = ""
         terminal_status = "success"
         error_category = "none"
+        stream_recovered = False
 
-        for prompt in turns:
-            transcript.append({"role": "user", "content": prompt})
+        sim_judge: PlatformJudgeLLM | None = None
+        sim_session: DynamicSimulationSession | None = None
+        if case.simulation is not None:
+            if judge_model_id:
+                try:
+                    sim_conn = resolver.resolve(
+                        project_id=target_project_id, model_id=judge_model_id
+                    )
+                    sim_judge = PlatformJudgeLLM(
+                        sim_conn,
+                        budget=JudgeBudget(max_requests_per_case=case.simulation.max_requests),
+                    )
+                except Exception:  # noqa: BLE001
+                    sim_judge = None
+            sim_session = DynamicSimulationSession(case, judge=sim_judge)
+
+        expected_art_paths = _expected_artifact_paths(case)
+        needs_workspace = bool(
+            case.fixture
+            or expected_art_paths
+            or (
+                case.simulation is not None
+                and (case.simulation.interrupt_strategy or {}).get("tool_approval_policy") != "reject"
+            )
+            or any(m.name in {"artifact_correct", "protected_unchanged", "approval"} for m in case.metrics)
+        )
+        if case.fixture or needs_workspace:
+            setup_res = exec_client.thread_setup(
+                run_id=run_id,
+                fixtures=case.fixture,
+                ensure_workspace=needs_workspace and not case.fixture,
+            )
+            if isinstance(setup_res, dict) and setup_res.get("thread_id"):
+                thread_id = str(setup_res["thread_id"])
+                fixture_paths.update(setup_res.get("fixture_paths") or {})
+                initial_artifacts.update(setup_res.get("initial_artifacts") or {})
+
+        plan_context: dict[str, Any] = {}
+        if case.simulation is not None:
+            strat = case.simulation.interrupt_strategy or {}
+            if strat.get("plan_review_policy") == "critique_then_approve":
+                plan_context["plan_mode"] = True
+
+        max_rounds = case.simulation.max_turns if case.simulation is not None else len(static_turns)
+        next_prompt = static_turns[0].content
+        pending_fixtures: dict[str, str] = dict(static_turns[0].fixture)
+
+        for turn_idx in range(max_rounds):
+            if pending_fixtures:
+                up = exec_client.thread_setup(
+                    run_id=run_id,
+                    thread_id=thread_id,
+                    fixtures=pending_fixtures,
+                )
+                if isinstance(up, dict):
+                    if up.get("thread_id") and not thread_id:
+                        thread_id = str(up["thread_id"])
+                    fixture_paths.update(up.get("fixture_paths") or {})
+                    initial_artifacts.update(up.get("initial_artifacts") or {})
+                pending_fixtures = {}
+
+            resolved_prompt = _replace_fixture_placeholders(next_prompt, fixture_paths)
+            transcript.append({"role": "user", "content": resolved_prompt})
             thread_id, probe = exec_client.execute_turn(
                 run_id=run_id,
-                content=prompt,
+                content=resolved_prompt,
                 thread_id=thread_id,
+                context_overrides=plan_context or None,
             )
             if probe.run_id:
                 trace_ids.append(probe.run_id)
             if ttft_ms is None and probe.ttft_ms is not None:
                 ttft_ms = probe.ttft_ms
             total_duration += probe.duration_ms
-            if probe.final_text:
-                final_answer = probe.final_text
+            turn_answer = probe.final_text
+
+            # Handle HITL __interrupt__ resume loop (Clarification, Plan Review, Tool Approval)
+            def _sync_interrupts_from_state() -> None:
+                if not thread_id:
+                    return
+                if probe.interrupts:
+                    probe.interrupts = normalize_interrupts(probe.interrupts)
+                if (not probe.interrupts) and probe.terminal_status in {"success", "interrupted"}:
+                    chk = exec_client.thread_evidence(
+                        run_id=run_id,
+                        thread_id=thread_id,
+                        run_ids=[probe.run_id] if probe.run_id else [],
+                    )
+                    st = (chk or {}).get("state") or {}
+                    st_interrupts = normalize_interrupts(st.get("interrupts"))
+                    if st_interrupts:
+                        probe.interrupts = st_interrupts
+                        probe.terminal_status = "interrupted"
+
+            _sync_interrupts_from_state()
+            interrupt_loops = 0
+            while (
+                probe.terminal_status == "interrupted"
+                and probe.interrupts
+                and thread_id
+                and interrupt_loops < 6
+            ):
+                interrupt_loops += 1
+                if sim_session is not None:
+                    res = sim_session.resolve_interrupt(probe.interrupts, turn_idx)
+                    if res.get("error"):
+                        terminal_status = "interrupted"
+                        break
+                    if res.get("kind") == "approval":
+                        pre_ev = exec_client.thread_evidence(
+                            run_id=run_id,
+                            thread_id=thread_id,
+                            artifact_paths=expected_art_paths,
+                        )
+                        approval_snapshots.append(
+                            {
+                                "turn_index": turn_idx,
+                                "decision": res.get("decision"),
+                                "artifacts_before": (pre_ev or {}).get("artifacts") or {},
+                            }
+                        )
+                    resume_payload = res["resumes"]
+                else:
+                    # Static fallback: approve if approval requested, else break
+                    static_turn = static_turns[turn_idx] if turn_idx < len(static_turns) else None
+                    first_val = (probe.interrupts[0] or {}).get("value") or {}
+                    if isinstance(first_val, dict) and first_val.get("action_requests"):
+                        dec = (static_turn.approval if static_turn and static_turn.approval in {"approve", "reject"} else "approve")
+                        pre_ev = exec_client.thread_evidence(
+                            run_id=run_id,
+                            thread_id=thread_id,
+                            artifact_paths=expected_art_paths,
+                        )
+                        approval_snapshots.append(
+                            {"turn_index": turn_idx, "decision": dec, "artifacts_before": (pre_ev or {}).get("artifacts") or {}}
+                        )
+                        resume_payload = {
+                            it["id"]: {
+                                "decisions": [{"type": dec} for _ in (it.get("value") or {}).get("action_requests", [{}])]
+                            }
+                            for it in probe.interrupts
+                        }
+                    else:
+                        break
+
+                thread_id, probe = exec_client.execute_turn(
+                    run_id=run_id,
+                    thread_id=thread_id,
+                    command={"resume": resume_payload},
+                    context_overrides=plan_context or None,
+                )
+                if probe.run_id:
+                    trace_ids.append(probe.run_id)
+                total_duration += probe.duration_ms
+                if probe.final_text:
+                    turn_answer = probe.final_text
+                _sync_interrupts_from_state()
+
+            # Attempt recovery on SSE stream_timeout without replaying side effects
+            if probe.terminal_status == "error" and probe.error_category == "stream_timeout" and thread_id:
+                rec_ev = exec_client.thread_evidence(
+                    run_id=run_id,
+                    thread_id=thread_id,
+                    run_ids=trace_ids,
+                )
+                runs_list = (rec_ev or {}).get("runs") or []
+                settled_ok = any(isinstance(r, dict) and r.get("status") == "success" for r in runs_list)
+                msgs = ((rec_ev or {}).get("state") or {}).get("values", {}).get("messages") or []
+                last_ai = next(
+                    (
+                        str(m.get("content") or "")
+                        for m in reversed(msgs)
+                        if isinstance(m, dict) and str(m.get("role") or m.get("type") or "").lower() in {"assistant", "ai"} and m.get("content")
+                    ),
+                    "",
+                )
+                if settled_ok and last_ai:
+                    turn_answer = last_ai
+                    probe.terminal_status = "success"
+                    probe.error_category = "none"
+                    stream_recovered = True
+
+            if turn_answer:
+                final_answer = turn_answer
             transcript.append(
                 {
                     "role": "assistant",
-                    "content": probe.final_text,
+                    "content": turn_answer,
                     "ttft_ms": probe.ttft_ms,
                     "duration_ms": probe.duration_ms,
                     "run_id": probe.run_id,
                 }
             )
+            turn_snapshots.append({"index": turn_idx, "answer": turn_answer, "artifacts": {}})
+
             if probe.terminal_status != "success":
                 terminal_status = probe.terminal_status
                 error_category = probe.error_category if probe.error_category != "none" else "runtime_error"
+                if sim_session is not None:
+                    sim_session.stop_reason = (
+                        error_category if error_category != "none" else probe.terminal_status
+                    )
                 break
+
+            if sim_session is not None:
+                if turn_idx + 1 >= max_rounds:
+                    sim_session.stop_reason = "turn_limit"
+                    break
+                hist = [
+                    {
+                        "user": transcript[i].get("content", ""),
+                        "assistant": transcript[i + 1].get("content", ""),
+                    }
+                    for i in range(0, len(transcript) - 1, 2)
+                ]
+                decision, up_files, nxt_msg = sim_session.decide_next_turn(hist, turn_idx)
+                if decision.action == "stop":
+                    break
+                next_prompt = nxt_msg
+                pending_fixtures = up_files
+            else:
+                if turn_idx + 1 >= len(static_turns):
+                    break
+                next_prompt = static_turns[turn_idx + 1].content
+                pending_fixtures = dict(static_turns[turn_idx + 1].fixture)
+
+        # Post-execution authoritative whitebox evidence collection
+        messages: list[dict[str, Any]] = []
+        artifacts: dict[str, str] = {}
+        artifact_read_errors: dict[str, str] = {}
+        tool_events: list[dict[str, Any]] = []
+        tool_complete = True
+        retrieved_contexts: list[str] = []
+        contexts_state = "not_recorded"
+        loop_signals = 0
+        loop_observed = False
+        cross_project_status: int | None = None
+
+        if thread_id:
+            ev_bundle = exec_client.thread_evidence(
+                run_id=run_id,
+                thread_id=thread_id,
+                run_ids=trace_ids,
+                artifact_paths=expected_art_paths + list(initial_artifacts.keys()),
+            )
+            if isinstance(ev_bundle, dict):
+                raw_state = ev_bundle.get("state") or {}
+                raw_msgs = (raw_state.get("values") or {}).get("messages") or []
+                if isinstance(raw_msgs, list):
+                    messages = [m for m in raw_msgs if isinstance(m, dict)]
+                artifacts = dict(ev_bundle.get("artifacts") or {})
+                artifact_read_errors = dict(ev_bundle.get("artifact_read_errors") or {})
+                rejected = sim_session.rejected_interrupts if sim_session else []
+                tool_events, tool_complete = extract_tool_evidence(
+                    messages, rejected_interrupts=rejected
+                )
+                retrieved_contexts, contexts_state = extract_retrieved_contexts(messages)
+                loop_signals, loop_observed = recover_loop_signals(
+                    ev_bundle.get("diagnostics") or []
+                )
+            else:
+                tool_complete = False
+
+            if case.expectations.get("cross_project_probe") or any(
+                m.name == "cross_project_denied" for m in case.metrics
+            ):
+                probe_res = exec_client.cross_project_probe(
+                    run_id=run_id, thread_id=thread_id
+                )
+                if isinstance(probe_res, dict) and probe_res.get("status_code") is not None:
+                    cross_project_status = int(probe_res["status_code"])
+
+        if turn_snapshots and artifacts:
+            turn_snapshots[-1]["artifacts"] = artifacts
 
         usage_summary: dict[str, Any] = {}
         agent_cost_usd = 0.0
@@ -113,13 +390,35 @@ def build_platform_executors(
                     "cost_usd": agent_cost_usd,
                 }
 
+        checks_payload: dict[str, Any] = {
+            "transcript": transcript,
+            "turn_snapshots": turn_snapshots,
+            "fixture_paths": fixture_paths,
+            "artifact_read_errors": artifact_read_errors,
+            "trace_collection": {"complete": tool_complete},
+            "loop_observed": loop_observed,
+            "stream_recovered": stream_recovered,
+            "clarification_count": len(sim_session.clarification_rounds) if sim_session else 0,
+            "approval_decisions": sim_session.approval_decisions if sim_session else [],
+            **({"cross_project_status": cross_project_status} if cross_project_status is not None else {}),
+            **({"simulation": sim_session.meta_snapshot()} if sim_session is not None else {}),
+        }
+
         return Evidence(
             case_key=case.case_key,
             attempt_idx=attempt_idx,
             thread_id=thread_id,
             trace_ids=trace_ids,
             final_answer=final_answer,
-            tool_events=transcript,
+            messages=messages,
+            initial_artifacts=initial_artifacts,
+            artifacts=artifacts,
+            retrieved_contexts=retrieved_contexts,
+            contexts_state=contexts_state,
+            tool_events=tool_events,
+            approval_snapshots=approval_snapshots,
+            loop_signals=loop_signals,
+            checks=checks_payload,
             ttft_ms=ttft_ms,
             duration_ms=total_duration,
             usage=usage_summary,
@@ -206,9 +505,16 @@ def poll_and_execute_once(
                     "case_key": c["case_key"],
                     "split": c.get("split", "dev"),
                     "schema_version": c.get("schema_version", "3"),
+                    "access_policy": c.get("access_policy")
+                    or (c.get("metadata") or {}).get("access_policy", "workspace_write"),
                     "required_capabilities": c.get("required_capabilities", []),
+                    "fixture": c.get("fixture") or (c.get("metadata") or {}).get("fixture", {}),
                     "turns": c.get("turns", []),
                     "simulation": c.get("simulation"),
+                    "turn_expectations": c.get("turn_expectations")
+                    or (c.get("metadata") or {}).get("turn_expectations", []),
+                    "business_rules": c.get("business_rules")
+                    or (c.get("metadata") or {}).get("business_rules", []),
                     "expectations": c.get("expectations", {}),
                     "metrics": c.get("metrics", []),
                 }

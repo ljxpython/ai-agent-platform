@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
-from uuid import NAMESPACE_URL, uuid5
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ToolCallRequest
 from langchain_core.language_models import BaseChatModel
@@ -259,6 +259,12 @@ def repair_model_tool_calls(message: AIMessage) -> AIMessage:
             continue
         cleaned_invalid.append(itc)
 
+    for tc in cleaned_tool_calls:
+        tc_id = tc.get("id")
+        if not isinstance(tc_id, str) or not tc_id.strip():
+            tc["id"] = f"call_{uuid4().hex[:16]}"
+            mutated = True
+
     if not mutated:
         return message
 
@@ -269,18 +275,31 @@ def repair_model_tool_calls(message: AIMessage) -> AIMessage:
 
     raw_content = getattr(message, "content", None)
     if isinstance(raw_content, list):
-        filtered_content = [
-            item
-            for item in raw_content
-            if not (
+        filtered_content = []
+        valid_block_idx = 0
+        for item in raw_content:
+            if (
                 isinstance(item, dict)
                 and item.get("type")
                 in ("tool_call", "invalid_tool_call", "tool_call_chunk")
                 and not (
                     isinstance(item.get("name"), str) and item.get("name", "").strip()
                 )
-            )
-        ]
+            ):
+                continue
+            if (
+                isinstance(item, dict)
+                and item.get("type") == "tool_call"
+                and isinstance(item.get("name"), str)
+                and item.get("name", "").strip()
+            ):
+                block_id = item.get("id")
+                if (
+                    not isinstance(block_id, str) or not block_id.strip()
+                ) and valid_block_idx < len(cleaned_tool_calls):
+                    item = {**item, "id": cleaned_tool_calls[valid_block_idx]["id"]}
+                valid_block_idx += 1
+            filtered_content.append(item)
         updates["content"] = filtered_content
 
     return message.model_copy(update=updates)

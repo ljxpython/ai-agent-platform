@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
+import traceback
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
@@ -12,6 +14,8 @@ from eval_runner.domain.contracts import Case, Evidence, GateLimits
 from eval_runner.domain.metrics_summary import summarize_run_cases
 from eval_runner.engine.gates import evaluate_gate
 from eval_runner.scorers.rules import evaluate_l1_rules
+
+logger = logging.getLogger(__name__)
 
 
 class ConcurrentEvalRunner:
@@ -136,12 +140,20 @@ class ConcurrentEvalRunner:
                         "metrics": all_metrics,
                         "loop_signals": evidence.loop_signals,
                         "final_answer": evidence.final_answer,
-                        "expected_answer": case.expectations.get("expected_answer"),
-                        "transcript": evidence.tool_events,
+                        "expected_answer": case.expectations.get("expected_answer")
+                        or case.expectations.get("rubric"),
+                        "tool_events": evidence.tool_events,
+                        "artifacts": evidence.artifacts,
+                        "retrieved_contexts": evidence.retrieved_contexts,
+                        "contexts_state": evidence.contexts_state,
+                        "approval_snapshots": evidence.approval_snapshots,
+                        "simulation": (evidence.checks or {}).get("simulation"),
+                        "transcript": (evidence.checks or {}).get("transcript") or evidence.tool_events,
                         "timing_breakdown": timing_breakdown,
                     },
                 }
             except Exception as exc:  # noqa: BLE001
+                logger.exception("eval case execution failed: %s", case.case_key)
                 row = {
                     "case_key": case.case_key,
                     "attempt_idx": attempt_idx,
@@ -149,7 +161,11 @@ class ConcurrentEvalRunner:
                     "rule_passed": False,
                     "overall_score": 0.0,
                     "error_category": "eval_error",
-                    "results": {"error": str(exc), "metrics": []},
+                    "results": {
+                        "error": str(exc),
+                        "traceback": traceback.format_exc(),
+                        "metrics": [],
+                    },
                 }
             self.on_checkpoint(row)
             return row

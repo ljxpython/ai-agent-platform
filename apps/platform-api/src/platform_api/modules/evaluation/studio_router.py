@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, Request
 from starlette.concurrency import run_in_threadpool
 
 from platform_api.core.context.models import ActorContext
-from platform_api.core.errors import BadRequestError, ForbiddenError
+from platform_api.core.errors import BadRequestError, ForbiddenError, PlatformApiError
 from platform_api.entrypoints.http.dependencies import get_actor_context
 from platform_api.modules.evaluation import studio_service, targets
 from platform_api.modules.evaluation.studio_schemas import (
@@ -691,18 +691,7 @@ async def stream_expert_turn(
     )
 
 
-@router.post("/internal/execute-turn")
-async def internal_execute_turn(request: Request) -> Any:
-    raw = await request.body()
-    _verify_internal_hmac(request, "execute-turn", raw)
-    payload = json.loads(raw or b"{}")
-    run_id = str(payload.get("run_id") or "")
-    content = str(payload.get("content") or "")
-    thread_id = payload.get("thread_id")
-    if not run_id or not content:
-        raise BadRequestError(
-            code="eval_execute_turn_invalid", message="run_id and content are required"
-        )
+async def _load_eval_execution_context(request: Request, run_id: str):
     run_info = await run_in_threadpool(
         studio_service.get_run_execution_target,
         request.app.state.db_session_factory,
@@ -720,6 +709,39 @@ async def internal_execute_turn(request: Request) -> Any:
             code="eval_actor_unavailable", message="评测创建者已无目标项目运行权限。"
         )
     gateway = build_runtime_gateway_service(request, actor, target_pid)
+    return run_info, target_pid, actor, gateway
+
+
+def _fixture_content_type(name: str) -> str:
+    lower = name.lower()
+    if lower.endswith(".csv"):
+        return "text/csv"
+    if lower.endswith(".json"):
+        return "application/json"
+    if lower.endswith(".md"):
+        return "text/markdown"
+    return "text/plain"
+
+
+@router.post("/internal/execute-turn")
+async def internal_execute_turn(request: Request) -> Any:
+    raw = await request.body()
+    _verify_internal_hmac(request, "execute-turn", raw)
+    payload = json.loads(raw or b"{}")
+    run_id = str(payload.get("run_id") or "")
+    content = str(payload.get("content") or "")
+    command = payload.get("command")
+    context_overrides = payload.get("context")
+    thread_id = payload.get("thread_id")
+    idem_key = str(payload.get("idempotency_key") or f"eval:{run_id}:{uuid4()}")
+    if not run_id or (not content and command is None):
+        raise BadRequestError(
+            code="eval_execute_turn_invalid",
+            message="run_id and (content or command) are required",
+        )
+    run_info, target_pid, actor, gateway = await _load_eval_execution_context(
+        request, run_id
+    )
     resolved_thread_id = str(thread_id) if thread_id else ""
     if not resolved_thread_id:
         created = await gateway.create_thread(
@@ -734,27 +756,304 @@ async def internal_execute_turn(request: Request) -> Any:
             },
         )
         resolved_thread_id = str(created["thread_id"])
-    run_payload: dict[str, Any] = {
-        "assistant_id": run_info["target_graph_id"],
-        "input": {"messages": [{"role": "user", "content": content}]},
-        "context": {"model_id": str(run_info["target_model_id"])},
-        "stream_mode": ["messages", "values"],
-    }
-    stream = await gateway.stream_thread_run(
-        actor=actor,
-        project_id=target_pid,
-        thread_id=resolved_thread_id,
-        payload=run_payload,
-        idempotency_key=f"eval:{run_id}:{uuid4()}",
-    )
+    ctx: dict[str, Any] = {"model_id": str(run_info["target_model_id"])}
+    if isinstance(context_overrides, dict):
+        ctx.update(context_overrides)
+    if command is not None:
+        if not resolved_thread_id:
+            raise BadRequestError(
+                code="eval_resume_thread_required",
+                message="thread_id is required when resuming an interrupt",
+            )
+        resume_map = (
+            command.get("resume")
+            if isinstance(command, dict) and "resume" in command
+            else command
+        )
+        resumed = await gateway.send_thread_command(
+            actor=actor,
+            project_id=target_pid,
+            thread_id=resolved_thread_id,
+            payload={
+                "id": 0,
+                "method": "input.respond",
+                "params": {
+                    "resume": resume_map,
+                    "assistant_id": run_info["target_graph_id"],
+                },
+            },
+            idempotency_key=idem_key,
+        )
+        resumed_run_id = str((resumed.get("result") or {}).get("run_id") or "")
+        stream = await gateway.join_thread_run_stream(
+            actor=actor,
+            project_id=target_pid,
+            thread_id=resolved_thread_id,
+            run_id=resumed_run_id,
+            params={
+                "stream_mode": ["messages", "values", "updates"],
+                "stream_resumable": True,
+            },
+        )
+    else:
+        run_payload: dict[str, Any] = {
+            "assistant_id": run_info["target_graph_id"],
+            "context": ctx,
+            "stream_mode": ["messages", "values", "updates"],
+        }
+        if content:
+            run_payload["input"] = {"messages": [{"role": "user", "content": content}]}
+        stream = await gateway.stream_thread_run(
+            actor=actor,
+            project_id=target_pid,
+            thread_id=resolved_thread_id,
+            payload=run_payload,
+            idempotency_key=idem_key,
+        )
     return _runtime_sse_response(
         request,
         stream,
         thread_id=resolved_thread_id,
         stream_kind="run",
         protocol=False,
-        extra_headers={"x-eval-thread-id": resolved_thread_id},
+        extra_headers={
+            "x-eval-thread-id": resolved_thread_id,
+            "x-eval-idempotency-key": idem_key,
+        },
     )
+
+
+@router.post("/internal/thread-setup")
+async def internal_thread_setup(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "thread-setup", raw)
+    payload = json.loads(raw or b"{}")
+    run_id = str(payload.get("run_id") or "")
+    thread_id = payload.get("thread_id")
+    fixtures = payload.get("fixtures") or {}
+    ensure_workspace = bool(payload.get("ensure_workspace", False))
+    if not run_id:
+        raise BadRequestError(code="eval_setup_invalid", message="run_id is required")
+    run_info, target_pid, actor, gateway = await _load_eval_execution_context(
+        request, run_id
+    )
+    resolved_thread_id = str(thread_id) if thread_id else ""
+    if not resolved_thread_id:
+        created = await gateway.create_thread(
+            actor=actor,
+            project_id=target_pid,
+            payload={
+                "graph_id": run_info["target_graph_id"],
+                "metadata": {
+                    "graph_id": run_info["target_graph_id"],
+                    "eval_run_id": run_id,
+                },
+            },
+        )
+        resolved_thread_id = str(created["thread_id"])
+    upload_map = dict(fixtures) if isinstance(fixtures, dict) else {}
+    if not upload_map and ensure_workspace:
+        upload_map["evaluation-workspace.txt"] = "Synthetic evaluation workspace.\n"
+    fixture_paths: dict[str, str] = {}
+    initial_artifacts: dict[str, str] = {}
+    for name, text_content in upload_map.items():
+        data = str(text_content).encode("utf-8")
+        digest = hashlib.sha256(data).hexdigest()
+
+        async def _body(chunk: bytes = data):
+            yield chunk
+
+        try:
+            ref = await gateway.upload_thread_file(
+                actor=actor,
+                project_id=target_pid,
+                thread_id=resolved_thread_id,
+                sha256=digest,
+                content_type=_fixture_content_type(str(name)),
+                content_length=len(data),
+                body=_body(),
+                file_name=str(name),
+            )
+            path = str(ref.get("path") or ref.get("file_path") or "")
+            if path:
+                fixture_paths[str(name)] = path
+                initial_artifacts[path] = str(text_content)
+        except Exception:  # noqa: BLE001
+            continue
+    return {
+        "thread_id": resolved_thread_id,
+        "fixture_paths": fixture_paths,
+        "initial_artifacts": initial_artifacts,
+    }
+
+
+@router.post("/internal/thread-evidence")
+async def internal_thread_evidence(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "thread-evidence", raw)
+    payload = json.loads(raw or b"{}")
+    run_id = str(payload.get("run_id") or "")
+    thread_id = str(payload.get("thread_id") or "")
+    run_ids = [str(r) for r in (payload.get("run_ids") or []) if r]
+    artifact_paths = [str(p) for p in (payload.get("artifact_paths") or []) if p]
+    if not run_id or not thread_id:
+        raise BadRequestError(
+            code="eval_evidence_invalid", message="run_id and thread_id are required"
+        )
+    _run_info, target_pid, actor, gateway = await _load_eval_execution_context(
+        request, run_id
+    )
+    state: dict[str, Any] = {}
+    try:
+        raw_state = await gateway.get_thread_state(
+            actor=actor,
+            project_id=target_pid,
+            thread_id=thread_id,
+            params={"subgraphs": True},
+        )
+        if isinstance(raw_state, dict):
+            state = raw_state
+    except Exception:  # noqa: BLE001
+        state = {}
+
+    thread_runs: list[dict[str, Any]] = []
+    try:
+        raw_runs = await gateway.list_thread_runs(
+            actor=actor,
+            project_id=target_pid,
+            thread_id=thread_id,
+            params={"limit": 20},
+        )
+        if isinstance(raw_runs, list):
+            thread_runs = raw_runs
+        elif isinstance(raw_runs, dict) and isinstance(raw_runs.get("items"), list):
+            thread_runs = raw_runs["items"]
+    except Exception:  # noqa: BLE001
+        thread_runs = []
+
+    workspace_files: list[str] = []
+    for res_name in ("workspace/tree", "artifacts"):
+        try:
+            res = await gateway.thread_workspace(
+                actor=actor,
+                project_id=target_pid,
+                thread_id=thread_id,
+                resource=res_name,
+                path="/workspace",
+                limit=100,
+            )
+            entries = (
+                res.get("items") or res.get("entries") or res.get("artifacts") or []
+            )
+            for item in entries:
+                p = item.get("path") if isinstance(item, dict) else item
+                if isinstance(p, str) and p.startswith("/workspace/"):
+                    is_dir = isinstance(item, dict) and item.get("is_dir") is True
+                    if not is_dir and p not in workspace_files:
+                        workspace_files.append(p)
+        except Exception:  # noqa: BLE001
+            continue
+
+    candidate_paths: list[str] = []
+    for p in [*artifact_paths, *workspace_files]:
+        if p.startswith("/workspace/") and p not in candidate_paths:
+            candidate_paths.append(p)
+    artifacts: dict[str, str] = {}
+    artifact_read_errors: dict[str, str] = {}
+    for path in candidate_paths[:40]:
+        try:
+            file_payload = await gateway.thread_workspace(
+                actor=actor,
+                project_id=target_pid,
+                thread_id=thread_id,
+                resource="workspace/content",
+                path=path,
+            )
+            chunks: list[bytes] = []
+            total_bytes = 0
+            async for chunk in file_payload.body:
+                total_bytes += len(chunk)
+                if total_bytes > 512 * 1024:
+                    break
+                chunks.append(chunk)
+            artifacts[path] = b"".join(chunks).decode("utf-8", errors="replace")
+        except PlatformApiError as exc:
+            if exc.status_code != 404:
+                artifact_read_errors[path] = exc.code or str(exc)
+        except Exception as exc:  # noqa: BLE001
+            artifact_read_errors[path] = type(exc).__name__
+
+    diagnostics: list[dict[str, Any]] = []
+    receipts: list[dict[str, Any]] = []
+    for rid in run_ids[:20]:
+        try:
+            diag = await gateway.get_thread_run_diagnostics(
+                actor=actor,
+                project_id=target_pid,
+                thread_id=thread_id,
+                run_id=rid,
+                request_id=f"eval-diag:{run_id}:{rid}",
+            )
+            if isinstance(diag, dict):
+                diagnostics.append(diag)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            rec = await gateway.get_thread_execution_evidence(
+                actor=actor,
+                project_id=target_pid,
+                thread_id=thread_id,
+                run_id=rid,
+            )
+            if isinstance(rec, dict):
+                receipts.append(rec)
+        except Exception:  # noqa: BLE001
+            pass
+
+    return {
+        "thread_id": thread_id,
+        "state": state,
+        "runs": thread_runs,
+        "workspace_files": workspace_files,
+        "artifacts": artifacts,
+        "artifact_read_errors": artifact_read_errors,
+        "diagnostics": diagnostics,
+        "execution_receipts": receipts,
+    }
+
+
+@router.post("/internal/cross-project-probe")
+async def internal_cross_project_probe(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "cross-project-probe", raw)
+    payload = json.loads(raw or b"{}")
+    run_id = str(payload.get("run_id") or "")
+    thread_id = str(payload.get("thread_id") or "")
+    probe_pid = str(payload.get("isolation_project_id") or "")
+    if not run_id or not thread_id:
+        raise BadRequestError(
+            code="eval_probe_invalid", message="run_id and thread_id are required"
+        )
+    run_info, target_pid, actor, gateway = await _load_eval_execution_context(
+        request, run_id
+    )
+    if not probe_pid or probe_pid == target_pid:
+        owner_pid = str(run_info.get("owner_project_id") or "")
+        probe_pid = owner_pid if owner_pid and owner_pid != target_pid else str(uuid4())
+    try:
+        await gateway.get_thread_state(
+            actor=actor,
+            project_id=probe_pid,
+            thread_id=thread_id,
+            params={},
+        )
+        return {"probe_project_id": probe_pid, "status_code": 200, "denied": False}
+    except PlatformApiError as exc:
+        return {
+            "probe_project_id": probe_pid,
+            "status_code": exc.status_code,
+            "denied": exc.status_code in {403, 404},
+        }
 
 
 @router.post("/internal/thread-usage")
@@ -769,21 +1068,12 @@ async def internal_thread_usage(request: Request) -> dict[str, Any]:
             code="eval_thread_usage_invalid",
             message="run_id and thread_id are required",
         )
-    run_info = await run_in_threadpool(
-        studio_service.get_run_execution_target,
-        request.app.state.db_session_factory,
-        run_id=run_id,
-    )
-    target_pid = str(run_info["target_project_id"])
-    actor = await run_in_threadpool(
-        load_user_actor,
-        session_factory=request.app.state.db_session_factory,
-        user_id=str(run_info["created_by"]),
-        project_id=target_pid,
-    )
-    if actor is None:
+    try:
+        _run_info, target_pid, actor, gateway = await _load_eval_execution_context(
+            request, run_id
+        )
+    except ForbiddenError:
         return {"availability": "unavailable", "tokens": {}, "cost": {}}
-    gateway = build_runtime_gateway_service(request, actor, target_pid)
     try:
         return await gateway.get_thread_usage(
             actor=actor,

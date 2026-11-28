@@ -36,7 +36,7 @@
 
 ### Added
 
-- 原生独立评测中台全栈落地：在 `platform-web` 侧边栏增设「评测中心」专栏，上线对标 LightRAG 的题库全景、内联考题表与高级断言抽屉、自动 Readiness 守卫与默认 `xiaok` DeepSeek 并发/矩阵打擂、按题库折叠打擂大厅、真实 `eval_copilot` 出题与 `eval_diagnosis` 诊断流式抽屉及 ECharts 五维 PK 雷达图；新增 `apps/eval-runner` 并发执行器（1~5 并发、JSON-RPC SSE 探针实测 TTFT 与 DeepEval 平台模型裁判）；完成 `platform-api` 8 张 `eval_*` 表迁移与内部执行代理，并开放 `runtime-service` 4 个多图评测能力。
+- 原生独立评测中台与二阶段白盒取证仿真落地：在 `platform-web` 侧边栏增设「评测中心」专栏，上线题库全景、内联考题表与 `simulation`/`tool_constraints` 高级断言抽屉、并发/矩阵打擂、动态澄清/审批/事实披露白盒时间轴与 `Head-to-Head PK`（5 维雷达图 + 性能时延与 Token/费用剖视）；在 `apps/eval-runner` 独立 `.venv` 落地 `deepeval==3.9.9` 平台网关模型裁判、中文动态多轮仿真引擎、`tool_evidence`/`runtime_signals`/`context_and_artifacts` 真取证管线及 `approval`/`protected_unchanged`/`cross_project_denied`/`arg_subsets` 全量规则；在 `platform-api` 补齐夹具上传、工作区/运行证据采集、跨项目探测及 `input.respond` 中断续跑，并修复 `runtime-service` 流式工具调用空 `id` 导致历史 `ToolMessage` 丢失的故障（本地 `RUNTIME_BACKEND=local` 已实跑验证 3 题代表场景及 PK；其余 7 题黄金集与定时巡检 Cron 待续）。
 
 - 平台助手运行诊断全面接入 MLflow Tracing：支持在仅配置 MLflow（未配置 Langfuse）时导出全部平台结构化诊断事件并按项目实验回查诊断摘要与耗时统计，存量历史 Trace 自动降级返回可用基础关联与执行结论（已部署 `sshmy1` 并通过线上真实全链路验收）。
 

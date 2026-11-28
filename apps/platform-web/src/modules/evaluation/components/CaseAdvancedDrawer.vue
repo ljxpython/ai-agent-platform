@@ -25,21 +25,48 @@ const mode = ref<"fixed" | "simulation">("fixed");
 const promptText = ref("");
 const expectedAnswer = ref("");
 const simGoal = ref("");
-const simUserMode = ref<"cooperative" | "terse" | "impatient_reversal">(
-  "cooperative",
-);
+const simUserMode = ref<
+  | "cooperative"
+  | "terse"
+  | "impatient_reversal"
+  | "skeptical_challenger"
+  | "ambiguous_changer"
+>("cooperative");
 const hiddenFactsText = ref("[]");
 const delayedFixturesText = ref("[]");
+const interruptStrategyText = ref("{}");
 const artifactsJson = ref("[]");
+const toolConstraintsText = ref("{}");
 const selectedMetrics = ref<string[]>(["completion"]);
 
 const availableMetrics = [
   { id: "completion", label: "L1 · completion (任务完成)" },
   { id: "artifact_correct", label: "L1 · artifact_correct (产物校验)" },
+  { id: "protected_unchanged", label: "L1 · protected_unchanged (源夹具保护)" },
+  { id: "approval", label: "L1 · approval (审批防偷跑)" },
+  {
+    id: "cross_project_denied",
+    label: "L1 · cross_project_denied (跨项目隔离)",
+  },
   { id: "tool_constraints", label: "L1 · tool_constraints (工具边界)" },
+  {
+    id: "clarification_requested",
+    label: "L1 · clarification_requested (主动追问)",
+  },
+  { id: "retrieved", label: "L1 · retrieved (检索取证)" },
   { id: "RefusalAssertion", label: "L1 · RefusalAssertion (拒答合规)" },
+  {
+    id: "CounterfactualAssertion",
+    label: "L1 · CounterfactualAssertion (反事实纠偏)",
+  },
   { id: "Faithfulness", label: "L2 · Faithfulness (忠实度)" },
   { id: "ContextualRecall", label: "L2 · ContextualRecall (检索召回)" },
+  {
+    id: "ConversationalGEval",
+    label: "L2 · ConversationalGEval (多轮博弈评价)",
+  },
+  { id: "KnowledgeRetention", label: "L2 · KnowledgeRetention (多轮终态记忆)" },
+  { id: "ToolCorrectness", label: "L2 · ToolCorrectness (工具选择合规)" },
   { id: "BusinessFacts", label: "L2 · BusinessFacts (业务事实)" },
   { id: "StepEfficiency", label: "L2 · StepEfficiency (步骤效率)" },
 ];
@@ -67,8 +94,18 @@ watch(
       null,
       2,
     );
+    interruptStrategyText.value = JSON.stringify(
+      val.simulation?.interrupt_strategy ?? {},
+      null,
+      2,
+    );
     artifactsJson.value = JSON.stringify(
       val.expectations?.artifacts ?? [],
+      null,
+      2,
+    );
+    toolConstraintsText.value = JSON.stringify(
+      val.expectations?.tool_constraints ?? {},
       null,
       2,
     );
@@ -103,14 +140,18 @@ function handleSave() {
   const artifacts = safeJsonParse(artifactsJson.value || "[]", []);
   const hiddenFacts = safeJsonParse(hiddenFactsText.value || "[]", []);
   const delayedFixtures = safeJsonParse(delayedFixturesText.value || "[]", []);
+  const interruptStrategy = safeJsonParse(
+    interruptStrategyText.value || "{}",
+    {},
+  );
+  const toolConstraints = safeJsonParse(toolConstraintsText.value || "{}", {});
 
   emit("save", {
     case_key: caseKey.value.trim(),
     split: split.value,
-    turns:
-      mode.value === "fixed"
-        ? [{ role: "user", content: promptText.value }]
-        : [],
+    turns: promptText.value.trim()
+      ? [{ role: "user", content: promptText.value.trim() }]
+      : (props.item?.turns ?? []),
     simulation:
       mode.value === "simulation"
         ? {
@@ -119,14 +160,24 @@ function handleSave() {
             max_turns: 6,
             hidden_facts: hiddenFacts,
             delayed_fixtures: delayedFixtures,
+            interrupt_strategy: interruptStrategy,
           }
         : null,
     expectations: {
       ...(expectedAnswer.value.trim()
         ? { expected_answer: expectedAnswer.value.trim() }
         : {}),
-      ...(Array.isArray(artifacts) && artifacts.length > 0
-        ? { artifacts }
+      ...(Array.isArray(artifacts)
+        ? artifacts.length > 0
+          ? { artifacts }
+          : {}
+        : artifacts &&
+            Object.keys(artifacts as Record<string, unknown>).length > 0
+          ? { artifacts }
+          : {}),
+      ...(toolConstraints &&
+      Object.keys(toolConstraints as Record<string, unknown>).length > 0
+        ? { tool_constraints: toolConstraints }
         : {}),
     },
     metrics: (selectedMetrics.value.length
@@ -177,13 +228,15 @@ function handleSave() {
         />
       </div>
 
-      <div v-if="mode === 'fixed'">
-        <label class="block font-medium mb-1">首轮用户输入</label>
+      <div>
+        <label class="block font-medium mb-1"
+          >首轮用户输入（固定轮次及仿真首句）</label
+        >
         <textarea v-model="promptText" rows="3" class="pw-input w-full" />
       </div>
 
       <div
-        v-else
+        v-if="mode === 'simulation'"
         class="space-y-3 p-3 rounded-lg bg-gray-50 dark:bg-dark-800/60 border border-gray-200 dark:border-dark-700"
       >
         <div class="grid gap-3 md:grid-cols-2">
@@ -200,6 +253,14 @@ function handleSave() {
               v-model="simUserMode"
               :options="[
                 { label: '配合型 (cooperative)', value: 'cooperative' },
+                {
+                  label: '严谨质疑型 (skeptical_challenger)',
+                  value: 'skeptical_challenger',
+                },
+                {
+                  label: '含糊补改型 (ambiguous_changer)',
+                  value: 'ambiguous_changer',
+                },
                 { label: '简短追问型 (terse)', value: 'terse' },
                 {
                   label: '中途改口型 (impatient_reversal)',
@@ -225,6 +286,16 @@ function handleSave() {
           >
           <textarea
             v-model="delayedFixturesText"
+            rows="2"
+            class="pw-input w-full font-mono"
+          />
+        </div>
+        <div>
+          <label class="block font-medium mb-1"
+            >中断与审批策略 (interrupt_strategy JSON)</label
+          >
+          <textarea
+            v-model="interruptStrategyText"
             rows="2"
             class="pw-input w-full font-mono"
           />
@@ -269,6 +340,17 @@ function handleSave() {
         >
         <textarea
           v-model="artifactsJson"
+          rows="3"
+          class="pw-input w-full font-mono"
+        />
+      </div>
+
+      <div>
+        <label class="block font-medium mb-1"
+          >工具调用与参数边界约束 (expectations.tool_constraints JSON)</label
+        >
+        <textarea
+          v-model="toolConstraintsText"
           rows="3"
           class="pw-input w-full font-mono"
         />

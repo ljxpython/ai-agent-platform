@@ -103,8 +103,9 @@ docs/architecture/
 │   ├── 04-trace-and-observability.md        # 02-04 分布式全链路追踪与工业级可观测大盘 (W3C/Loki防自回声/MLflow双轨)
 │   ├── 05-data-isolation.md                 # 02-05 存储架构与数据隔离模型 (双库物理边界与红线)
 │   ├── 06-knowledge-studio-and-zero-tunnel.md # 02-06 原生知识中台与单向免隧道自治架构 (Scoped HMAC/只读MCP/Graph Studio)
-│   ├── 07-continuous-evaluation-flywheel.md # 02-07 持续评测飞轮工程实现全揭秘 (两权分离/202异步物化/AI出题/LLM裁判)
-│   └── 08-session-and-runtime-retention-ttl.md # 02-08 会话生命周期与运行时 Checkpoint 存储 TTL 自动衰减工程 (30天TTL/咨询锁)
+│   ├── 07-continuous-evaluation-flywheel.md # 02-07 持续评测飞轮工程实现全揭秘 (早期 EvalFlow 外挂架构参考)
+│   ├── 08-session-and-runtime-retention-ttl.md # 02-08 会话生命周期与运行时 Checkpoint 存储 TTL 自动衰减工程 (30天TTL/咨询锁)
+│   └── 09-independent-eval-platform-architecture-and-guide.md # 02-09 原生独立评测中台：架构设计、执行引擎剖析与使用指南 (现役主力)
 │
 ├── 03-platform-web/                         # 【第三层：前端平台宿主架构 (Vue 3.5)】
 │   ├── 01-architecture.md                   # 03-01 前端分层与工程骨架 (5层 Clean Architecture / ErrorBoundary)
@@ -173,6 +174,12 @@ docs/architecture/
     │   └── 07-real-world-lifecycle-case-study.md # 07-01-07 真实案例端到端全链路实录 (从用户一句话到沙箱结果落盘)
     ├── 02-showcase-demo-agent.md            # 07-02 演示智能体：Showcase Agent 最小骨架
     └── 03-platform-assistant-agent.md       # 07-03 平台内置全局助手智能体：只读诊断工具链、证据链与沙箱执行 (sqlglot/只读DSN)
+
+└── 08-evaluation-platform/                  # 【第八层：原生独立评测中台架构与使用指南 (现役主力)】
+    ├── README.md                            # 08-00 评测中台总览、传送门概念、切斯特顿栅栏与架构不变量红线
+    ├── 01-control-plane-and-isolation.md    # 08-01 控制面 8 张 PostgreSQL 表、版本冻结、Readiness 与 HMAC 内部桥
+    ├── 02-execution-simulation-and-evidence.md # 08-02 并发池、流式 TTFT 探针、中文动态多轮仿真与白盒取证管线
+    └── 03-metrics-gates-and-usage-guide.md  # 08-03 3×7 指标判定依据、CI 门禁退出码与一线实战使用指南
 ```
 
 ---
@@ -183,7 +190,7 @@ docs/architecture/
 |---|---|---|---|
 | **Phase 0** | **架构总纲与方法论规范** | [README.md](README.md)<br>[METHODOLOGY.md](METHODOLOGY.md) (六维硬核标准) | ✅ 100% 已完成 (done) |
 | **Phase 1** | **宏观全景与基础设施校准** | [01-overview/01-system-topology.md](01-overview/01-system-topology.md) (六大支柱交互拓扑)<br>[01-overview/02-tech-stack.md](01-overview/02-tech-stack.md) (Python 3.13 / EvalFlow / 7大选型考量)<br>[02-cross-cutting/01-communication-matrix.md](02-cross-cutting/01-communication-matrix.md) (8 大骨干通信网络大表)<br>[02-cross-cutting/04-trace-and-observability.md](02-cross-cutting/04-trace-and-observability.md) (W3C/Loki防自回声/MLflow双轨)<br>[04-platform-api/05-token-usage-and-read-models.md](04-platform-api/05-token-usage-and-read-models.md) (AI网关看板与时序聚合读模型) | ✅ 100% 已完成 (done) |
-| **Phase 2** | **四大重磅架构专篇攻坚** | [02-cross-cutting/07-continuous-evaluation-flywheel.md](02-cross-cutting/07-continuous-evaluation-flywheel.md) (持续评测飞轮工程实现全揭秘)<br>[02-cross-cutting/08-session-and-runtime-retention-ttl.md](02-cross-cutting/08-session-and-runtime-retention-ttl.md) (会话生命周期与运行时 Checkpoint TTL 衰减)<br>[05-runtime-service/05-context-blowup-defense-and-resilience.md](05-runtime-service/05-context-blowup-defense-and-resilience.md) (防死循环、防上下文撑爆与 6 大韧性中间件)<br>[07-agents/03-platform-assistant-agent.md](07-agents/03-platform-assistant-agent.md) (平台内置全局助手智能体：只读诊断与证据链) | ✅ 100% 已完成 (done) |
+| **Phase 2** | **四大重磅架构专篇攻坚** | [02-cross-cutting/07-continuous-evaluation-flywheel.md](02-cross-cutting/07-continuous-evaluation-flywheel.md) (早期持续评测飞轮参考)<br>[02-cross-cutting/08-session-and-runtime-retention-ttl.md](02-cross-cutting/08-session-and-runtime-retention-ttl.md) (会话生命周期与运行时 Checkpoint TTL 衰减)<br>[08-evaluation-platform/README.md](08-evaluation-platform/README.md) (原生独立评测中台专属专题目录，含 4 篇深度剖析与使用指南)<br>[05-runtime-service/05-context-blowup-defense-and-resilience.md](05-runtime-service/05-context-blowup-defense-and-resilience.md) (防死循环、防上下文撑爆与 6 大韧性中间件)<br>[07-agents/03-platform-assistant-agent.md](07-agents/03-platform-assistant-agent.md) (平台内置全局助手智能体：只读诊断与证据链) | ✅ 100% 已完成 (done) |
 | **Phase 3** | **三大场景时序大闭环** | [06-scenarios/08-session-to-eval-flywheel-flow.md](06-scenarios/08-session-to-eval-flywheel-flow.md) (生产会话转持续评测飞轮端到端全链路)<br>[06-scenarios/09-platform-assistant-diagnostics-flow.md](06-scenarios/09-platform-assistant-diagnostics-flow.md) (平台全局助手就地故障诊断与证据链回溯)<br>[06-scenarios/10-gateway-usage-to-trace-flow.md](06-scenarios/10-gateway-usage-to-trace-flow.md) (AI网关用量看板时序毛刺到分布式追踪下钻闭环) | ✅ 100% 已完成 (done) |
 | **Subsystems**| **前端与执行层基础专篇** | `03-platform-web/` (3篇) / `04-platform-api/` (前4篇) / `05-runtime-service/` (前4篇) | ✅ 100% 已完成 (done) |
 | **Agents** | **旗舰智能体深度精通** | `07-agents/01-dearflow-agent/` (专题 8 篇含真实案例全链路实录) / `07-agents/02-showcase-demo-agent.md` | ✅ 100% 已完成 (done) |
@@ -218,6 +225,6 @@ flowchart TD
 
 - **新同学第一步**：先看 [01-overview/01-system-topology.md](01-overview/01-system-topology.md) 在内嵌大图中看懂系统全景；接着看 [01-overview/02-tech-stack.md](01-overview/02-tech-stack.md) 了解技术依赖与 7 大选型权衡。
 - **联调与接口二开**：必读 [02-cross-cutting/01-communication-matrix.md](02-cross-cutting/01-communication-matrix.md)（8 大干线对照表）、[02-cross-cutting/02-delegation-auth.md](02-cross-cutting/02-delegation-auth.md) 与 [02-cross-cutting/03-sse-streaming-pipeline.md](02-cross-cutting/03-sse-streaming-pipeline.md)。
-- **算法评测与质量工程**：必读 [02-cross-cutting/07-continuous-evaluation-flywheel.md](02-cross-cutting/07-continuous-evaluation-flywheel.md) 与 [06-scenarios/08-session-to-eval-flywheel-flow.md](06-scenarios/08-session-to-eval-flywheel-flow.md)。
+- **算法评测与质量工程**：必读 [08-evaluation-platform/README.md](08-evaluation-platform/README.md) 专题目录（现役原生独立评测中台架构、源码剖析与一线使用指南），早期外挂架构可对照 [02-cross-cutting/07-continuous-evaluation-flywheel.md](02-cross-cutting/07-continuous-evaluation-flywheel.md) 与 [06-scenarios/08-session-to-eval-flywheel-flow.md](06-scenarios/08-session-to-eval-flywheel-flow.md)。
 - **线上运维与全链路排障**：必读 [02-cross-cutting/04-trace-and-observability.md](02-cross-cutting/04-trace-and-observability.md)、[04-platform-api/05-token-usage-and-read-models.md](04-platform-api/05-token-usage-and-read-models.md)、[06-scenarios/09-platform-assistant-diagnostics-flow.md](06-scenarios/09-platform-assistant-diagnostics-flow.md) 与 [06-scenarios/10-gateway-usage-to-trace-flow.md](06-scenarios/10-gateway-usage-to-trace-flow.md)。
 - **开发新智能体 / 接入新工具 / 防上下文撑爆**：必读 [05-runtime-service/05-context-blowup-defense-and-resilience.md](05-runtime-service/05-context-blowup-defense-and-resilience.md) 与 [07-agents/01-dearflow-agent/README.md](07-agents/01-dearflow-agent/README.md)。

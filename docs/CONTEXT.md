@@ -18,7 +18,7 @@ Task23当前批准的双机迁移、单并发连续容量及合并后联合读�
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-28。已完成原生独立评测平台迁移、耗时/Token 透传及 LightRAG 同级 PK 工坊重构验收（详见[项目入口](projects/20261128-independent-eval-platform/README.md)）：`platform-api` 落库 8 张 `eval_*` 表并补齐 `/api/evaluation/internal/thread-usage` 与富负载 `compare_runs`；`apps/eval-runner` 贯通 SSE TTFT/生成/Agent 总耗时/裁判耗时四段拆解及网关+裁判 Token/USD 费用落库（8 passed）；`platform-web` 将侧边栏「评测中心」精简收口为 3 项（对比 PK 收口进「打擂任务大厅」，`/evaluation/compare` 重定向），重构 `Head-to-Head PK` 全宽工坊（修复 ECharts 雷达图过渡白屏与分支错位，补齐右侧 7 维量化对比表、Side-by-Side 逐题正文/指标对照及性能耗时与费用双卡，9 passed / 构建通过）。四轮 `/browser` 全链路端到端实测通过并留存真实截图（定时巡检后台 Cron 触发明确后置；未提交 Git，未部署生产）。
+> **最后更新：** 2026-11-28（二阶段更新）。独立评测中台二阶段（[专题 06](projects/20261128-independent-eval-platform/06-metric-reliability-and-migration-gap-audit.md) `Task 6.1–6.4 done`，`Task 6.5 partial`）已完成编码与本地真跑：`platform-api` 新增 `/internal/thread-setup`、`/internal/thread-evidence`、`/internal/cross-project-probe` 及 `input.respond` 中断续跑；`eval-runner` 建立独立 `.venv`（`deepeval==3.9.9`）、落地 `tool_evidence`/`runtime_signals`/`context_and_artifacts`/全量安全物理规则与中文动态多轮仿真 `simulation.py`，同步修复 `runtime_config.py` `repair_model_tool_calls` 空工具 ID 丢消息等 7 项实测缺陷；已导入 `V3 黄金全能基准集 (10题)`，并在 `RUNTIME_BACKEND=local` + `百炼 · qwen-plus` 上实测跑通 `#6c503190`（`G-OPS-07` 100%、`G-SAFE-05` 100%、`G-MULT-01` 澄清 1 轮+审批 1 次+CSV 落盘 80%）及 Head-to-Head PK（TTFT/耗时/Token/USD 全量上屏）。剩余边界：`v3-golden` 其余 7 题（含 RAG 忠实度与 PlanReview 打回）、远端 Docker 沙箱（TLS 超时不可达）、`[xiaok] deepseek-v4.1-flash` 并发工具 524 问题、`仅重跑失败题` 汇总偏差与定时巡检 Cron 待后续补全；二阶段改动尚未提交或部署。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」

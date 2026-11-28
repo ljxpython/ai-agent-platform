@@ -574,3 +574,37 @@ def test_runtime_middleware_repairs_fragmented_tool_calls() -> None:
     assert len(res_msg.tool_calls) == 1
     assert res_msg.tool_calls[0]["name"] == "read_tool"
     assert res_msg.tool_calls[0]["args"] == {"topic": "ai"}
+
+
+def test_repair_model_tool_calls_assigns_synthetic_ids_for_idless_valid_calls() -> None:
+    from runtime_service.middlewares import sanitize_tool_call_messages
+
+    msg = AIMessage(
+        content=[
+            {"type": "text", "text": "reading"},
+            {
+                "type": "tool_call",
+                "id": "",
+                "name": "read_file",
+                "args": {"file_path": "/workspace/a.txt"},
+            },
+        ],
+        tool_calls=[
+            {
+                "id": "",
+                "name": "read_file",
+                "args": {"file_path": "/workspace/a.txt"},
+                "type": "tool_call",
+            },
+        ],
+    )
+    repaired = repair_model_tool_calls(msg)
+    cid = repaired.tool_calls[0]["id"]
+    assert isinstance(cid, str) and cid.startswith("call_") and len(cid) > 5
+    assert repaired.content[1]["id"] == cid
+
+    tool_msg = ToolMessage(content="file content", name="read_file", tool_call_id=cid)
+    sanitized, _ = sanitize_tool_call_messages(
+        [HumanMessage(content="hi"), repaired, tool_msg]
+    )
+    assert any(isinstance(m, ToolMessage) and m.tool_call_id == cid for m in sanitized)

@@ -8,9 +8,28 @@ from pathlib import Path
 import typer
 
 from eval_runner.domain.contracts import Case, Evidence, GateLimits
+from eval_runner.domain.legacy_import import convert_legacy_case_payload
 from eval_runner.engine.concurrent_runner import ConcurrentEvalRunner
 
 app = typer.Typer(help="Independent concurrent evaluation runner and CI gate CLI.")
+
+
+@app.command("import-legacy")
+def import_legacy_jsonl(
+    cases_file: Path = typer.Option(..., exists=True, help="Legacy v3 JSONL cases file"),
+    output_json: Path | None = typer.Option(None, help="Optional normalized JSON output path"),
+) -> None:
+    """Convert legacy mlflow-eval-platform JSONL cases to CaseUpsert import payload."""
+    items = [
+        convert_legacy_case_payload(json.loads(line))
+        for line in cases_file.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    payload = json.dumps({"items": items}, ensure_ascii=False, indent=2)
+    if output_json:
+        output_json.write_text(payload, encoding="utf-8")
+    else:
+        typer.echo(payload)
 
 
 @app.command("gate")

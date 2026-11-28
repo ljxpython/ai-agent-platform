@@ -570,24 +570,38 @@ function caseTranscript(rc: EvalRunCaseItem) {
               <div class="grid gap-3 md:grid-cols-2">
                 <div class="space-y-1">
                   <div class="font-semibold text-gray-600 dark:text-dark-300">
-                    实际回复与执行流水
+                    实际回复与多轮博弈对话流水
                   </div>
                   <div
-                    class="p-2.5 rounded bg-white dark:bg-dark-900 border border-gray-200/70 dark:border-dark-700 whitespace-pre-wrap max-h-48 overflow-y-auto"
+                    class="p-2.5 rounded bg-white dark:bg-dark-900 border border-gray-200/70 dark:border-dark-700 whitespace-pre-wrap max-h-56 overflow-y-auto space-y-2"
                   >
-                    {{
-                      (rc.results as any)?.final_answer ||
-                      (caseTranscript(rc).length
-                        ? JSON.stringify(caseTranscript(rc), null, 2)
-                        : "尚无输出正文")
-                    }}
+                    <div
+                      v-if="caseTranscript(rc).length"
+                      class="space-y-1.5 border-b border-gray-100 dark:border-dark-800 pb-2"
+                    >
+                      <div
+                        v-for="(turn, idx) in caseTranscript(rc)"
+                        :key="idx"
+                        class="text-[11px]"
+                      >
+                        <span class="font-mono font-semibold text-primary-600">
+                          [{{ turn.role }}]
+                        </span>
+                        <span>{{
+                          String(turn.content || "").slice(0, 400)
+                        }}</span>
+                      </div>
+                    </div>
+                    <div>
+                      {{ (rc.results as any)?.final_answer || "尚无输出正文" }}
+                    </div>
                   </div>
                 </div>
                 <div class="space-y-1">
                   <div class="font-semibold text-gray-600 dark:text-dark-300">
                     分级打分与裁判理由 (L1 + L2)
                   </div>
-                  <div class="space-y-1.5 max-h-48 overflow-y-auto">
+                  <div class="space-y-1.5 max-h-56 overflow-y-auto">
                     <div
                       v-for="m in caseMetrics(rc)"
                       :key="String(m.name)"
@@ -611,6 +625,75 @@ function caseTranscript(rc: EvalRunCaseItem) {
                       </StatusPill>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div
+                v-if="
+                  Array.isArray((rc.results as any)?.tool_events) &&
+                  (rc.results as any).tool_events.length
+                "
+                class="p-2.5 rounded bg-white dark:bg-dark-900 border border-gray-200/70 dark:border-dark-700 space-y-1.5"
+              >
+                <div class="font-semibold text-gray-600 dark:text-dark-300">
+                  白盒工具调用链 ({{ (rc.results as any).tool_events.length }}
+                  步)
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span
+                    v-for="(te, tidx) in (rc.results as any).tool_events"
+                    :key="tidx"
+                    class="px-2 py-0.5 rounded border font-mono text-[11px]"
+                    :class="
+                      te.status === 'executed'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        : te.status === 'blocked'
+                          ? 'bg-amber-50 border-amber-200 text-amber-700'
+                          : 'bg-rose-50 border-rose-200 text-rose-700'
+                    "
+                  >
+                    {{ te.name }} [{{ te.status }}]
+                  </span>
+                </div>
+              </div>
+
+              <div
+                v-if="(rc.results as any)?.simulation"
+                class="p-2.5 rounded bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/50 space-y-1 text-[11px]"
+              >
+                <div class="font-semibold text-indigo-700 dark:text-indigo-300">
+                  动态博弈与中断协商轴 (user_mode={{
+                    (rc.results as any).simulation.user_mode
+                  }}
+                  · 停机原因={{ (rc.results as any).simulation.stop_reason }})
+                </div>
+                <div class="text-gray-600 dark:text-dark-300 font-mono">
+                  澄清表单
+                  {{
+                    ((rc.results as any).simulation.clarification_rounds || [])
+                      .length
+                  }}
+                  轮 · Plan 审阅
+                  {{
+                    ((rc.results as any).simulation.plan_review_rounds || [])
+                      .length
+                  }}
+                  轮 · 工具审批
+                  {{
+                    ((rc.results as any).simulation.approval_decisions || [])
+                      .length
+                  }}
+                  次 · 延迟夹具
+                  {{
+                    ((rc.results as any).simulation.injected_fixtures || [])
+                      .length
+                  }}
+                  批 · 事实披露
+                  {{
+                    ((rc.results as any).simulation.disclosed_events || [])
+                      .length
+                  }}
+                  条
                 </div>
               </div>
 

@@ -1,6 +1,6 @@
 # 专题 04：评测指标体系建设与白皮书对齐方案
 
-> 所属项目：[独立评测中台迁移与平台原生化改造方案](README.md)｜状态：**方案已对齐（白皮书 7 维 + SSE TTFT + 平台模型裁判已确认，待开始编码）**
+> 所属项目：[独立评测中台迁移与平台原生化改造方案](README.md)｜状态：**已落地主体并部分真跑验证（白皮书 7 维算子、SSE TTFT、DeepEval `3.9.9` 平台模型裁判、动态多轮仿真与真实安全/工件取证已上线；10 题 `v3-golden` 已实跑 3 题代表集，RAG 类实景待补，详见[专题 06](06-metric-reliability-and-migration-gap-audit.md)）**
 > 对照基准：`../ai-research/ai-learn/01-interview-qa/06-engineering/agent-eval-architecture-whitepaper.md`
 
 ## 1. 对齐原则：实实在在，拒绝过度设计
@@ -66,7 +66,7 @@
 ## 5. 本专题规划任务（待启动实施）
 
 ### Task 4.1：补齐维度 5 与维度 7 新增算子与汇总器
-**状态：** 已完成（done，核心 L1/L2/TTFT/Pass^k/Kappa/门禁代码与单测已通过）。
+**状态：** 已完成代码实现并完成非 RAG 场景真跑（done，`#6c503190` 实证 `approval`/`protected_unchanged`/`cross_project_denied`/`artifact_correct`/`tool_constraints`/SSE TTFT/费用透传/`ConversationalGEval`/`StepEfficiency`；RAG `Faithfulness`/`ContextualRecall` 实景题待随 `Task 6.5` 剩余 7 题补测，详见[专题 06](06-metric-reliability-and-migration-gap-audit.md)）。
 **完成标准：** 实现批次死循环率聚合、DeepEval `ContextualRecall`/`ContextualPrecision`（接平台模型）接入、LightRAG `RefusalAssertion`/`CounterfactualAssertion` 接入、SSE 流式 TTFT/P50/P95/P99 统计、Pass^k 聚合、四维异常分层与 L3 Cohen's Kappa，单测验证全部通过。
 **涉及位置：** `apps/eval-runner/src/eval_runner/scorers/`、`apps/eval-runner/src/eval_runner/targets/`、`apps/eval-runner/src/eval_runner/engine/gates.py`、`apps/platform-api/src/platform_api/modules/evaluation/`。
 

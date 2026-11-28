@@ -21,6 +21,23 @@ class SseProbeResult:
     interrupts: list[dict[str, Any]] | None = None
 
 
+def normalize_interrupts(raw: Any) -> list[dict[str, Any]]:
+    """Normalize LangGraph list or dict-keyed __interrupt__ entries into [{'id': ..., 'value': ...}]."""
+    if isinstance(raw, dict):
+        out: list[dict[str, Any]] = []
+        for k, v in raw.items():
+            if isinstance(v, dict):
+                entry = dict(v)
+                entry.setdefault("id", str(k))
+                if "value" not in entry:
+                    entry = {"id": str(k), "value": entry}
+                out.append(entry)
+        return out
+    if isinstance(raw, list):
+        return [dict(item) for item in raw if isinstance(item, dict)]
+    return []
+
+
 def _text_from_content(content: Any) -> str:
     if isinstance(content, str):
         return content
@@ -131,20 +148,29 @@ def probe_sse_stream(
                 run_id = run_id or str(payload["run_id"])
             if payload.get("event") == "failed":
                 terminal_status = "error"
+            elif payload.get("event") in {"interrupted", "interrupt"}:
+                terminal_status = "interrupted"
             continue
         if method == "error":
             terminal_status = "error"
             continue
+        if isinstance(payload, dict) and payload.get("__interrupt__"):
+            normalized = normalize_interrupts(payload["__interrupt__"])
+            if normalized:
+                interrupts = normalized
+                terminal_status = "interrupted"
         if method in {"messages/partial", "messages/metadata", "messages"}:
             text = _extract_assistant_text(payload)
             if text:
                 if ttft_ms is None and text.strip():
                     ttft_ms = max(0, now_ms)
                 final_text = text if method == "messages/partial" else final_text + text
-        elif method == "values" and isinstance(payload, dict):
+        elif method in {"values", "updates"} and isinstance(payload, dict):
             if payload.get("__interrupt__"):
-                interrupts = list(payload["__interrupt__"])
-                terminal_status = "interrupted"
+                normalized = normalize_interrupts(payload["__interrupt__"])
+                if normalized:
+                    interrupts = normalized
+                    terminal_status = "interrupted"
             msgs = payload.get("messages")
             if isinstance(msgs, list):
                 text = _extract_assistant_text(msgs)
