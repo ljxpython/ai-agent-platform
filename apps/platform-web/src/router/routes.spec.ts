@@ -33,18 +33,30 @@ describe("workspace account routes", () => {
 });
 
 describe("workspace primary navigation routes", () => {
-  it("keeps old evaluation URLs as migration pages without a navigation item", () => {
-    for (const name of [
-      "workspace-evaluation",
-      "workspace-evaluation-detail",
-    ]) {
+  it("registers native evaluation studio routes and sidebar group", () => {
+    const expectedTitles: Record<string, string> = {
+      "workspace-evaluation": "题库资产全景",
+      "workspace-evaluation-cases": "考题表格与出题",
+      "workspace-evaluation-runs": "打擂任务大厅",
+      "workspace-evaluation-detail": "评测集详情",
+    };
+    for (const [name, title] of Object.entries(expectedTitles)) {
       const route = getWorkspaceChildren().find((item) => item.name === name);
-      expect(route?.meta?.title).toBe("评测入口已迁移");
+      expect(route?.meta?.title).toBe(title);
       expect(route?.meta?.requiredPermissions).toEqual([
         "project.evaluation.read",
       ]);
-      expect(route?.meta?.nav).toBeUndefined();
+      if (name !== "workspace-evaluation-detail") {
+        expect((route?.meta?.navigation as { group?: string })?.group).toBe(
+          "评测中心",
+        );
+      }
     }
+    const compareRoute = getWorkspaceChildren().find(
+      (item) => item.name === "workspace-evaluation-compare",
+    );
+    expect(compareRoute?.meta?.navigation).toBeUndefined();
+    expect(typeof compareRoute?.redirect).toBe("function");
   });
   it("does not register retired testcase workspaces", () => {
     const paths = getWorkspaceChildren().map((route) => route.path);

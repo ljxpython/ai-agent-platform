@@ -1,6 +1,6 @@
 # 独立评测中台迁移与平台原生化改造方案
 
-> 启动日期：2026-11-28｜当前状态：**架构与核心决策已对齐（待逐项审阅定稿细节，尚未进入代码开发）**
+> 启动日期：2026-11-28｜当前状态：**已完成原生化开发、耗时/Token 透传、LightRAG 同级三维度 PK 重构及 `/browser` 全链路复验（done，定时巡检后端 Cron 后置）**
 > 文档模式：多专题方案（按业务架构、代码迁移、并发引擎、指标体系、前端与验证拆分为 5 篇专题，不另建全局 `plan.md` / `tasks.md` / `verification.md`）。
 
 ## 1. 业务背景与要解决的问题
@@ -42,11 +42,11 @@
 
 | 专题编号 | 专题文档 | 覆盖内容 | 当前状态 | 关联影响域 |
 |---|---|---|---|---|
-| **01** | [总体架构、环境隔离与 Runtime 边界](01-architecture-and-isolation.md) | **方案 X** 三端职责划分、`sshmy1` 资源评估、专家入驻 `runtime-service` 回调桥、多 Graph 白名单与隔离靶场 | **方案已对齐（待开发）** | `platform-api`、`runtime-service`、`apps/eval-runner` |
-| **02** | [MLflow 既有代码迁移清单与清理边界](02-mlflow-code-migration.md) | `eval_platform` 全部模块按目标服务（`platform-api` / `eval-runner` / `runtime-service`）拆解迁移与淘汰清单 | **方案已对齐（待开发）** | `../mlflow-eval-platform/eval_platform` → 本仓三端 |
-| **03** | [评测引擎、并发调度与断点续跑机制](03-eval-service-concurrency-and-engine.md) | 复用 PG/Redis 的表结构、`eval-runner` 并发池（默认 3、范围 1~5）、检查点断点、平台网关模型解析与门禁 CLI | **方案已对齐（待开发）** | `platform-api`、`apps/eval-runner` |
-| **04** | [评测指标体系建设与白皮书对齐方案](04-metrics-and-whitepaper-alignment.md) | 3 大形态 × 7 大维度、SSE TTFT 探针、平台模型裁判、L1/L2/L3 裁决、三层归因、克制边界 | **方案已对齐（待开发）** | `apps/eval-runner`、`runtime-service`、`platform-web` |
-| **05** | [前端工作台设计（借鉴 LightRAG）与全链路浏览器验收](05-frontend-eval-studio-and-e2e.md) | 原生 Vue 工作台（严格对齐 `platform-web` 规范，对标 LightRAG 功能 + Agent 特性）、风险警告、`/browser` 截图验收 | **方案已对齐（待开发）** | `apps/platform-web` |
+| **01** | [总体架构、环境隔离与 Runtime 边界](01-architecture-and-isolation.md) | **方案 X** 三端职责划分、`sshmy1` 资源评估、专家入驻 `runtime-service` 回调桥、多 Graph 白名单与隔离靶场 | **已完成编码与单测（done）** | `platform-api`、`runtime-service`、`apps/eval-runner` |
+| **02** | [MLflow 既有代码迁移清单与清理边界](02-mlflow-code-migration.md) | `eval_platform` 全部模块按目标服务（`platform-api` / `eval-runner` / `runtime-service`）拆解迁移与淘汰清单 | **已完成核心迁移（done）** | `../mlflow-eval-platform/eval_platform` → 本仓三端 |
+| **03** | [评测引擎、并发调度与断点续跑机制](03-eval-service-concurrency-and-engine.md) | 复用 PG/Redis 的表结构、`eval-runner` 并发池（默认 3、范围 1~5）、JSON-RPC SSE TTFT 分段探针、Token/费用透传与门禁（巡检 Cron 后置） | **已完成编码与单测（done）** | `platform-api`、`apps/eval-runner`、`scripts/local-stack.sh` |
+| **04** | [评测指标体系建设与白皮书对齐方案](04-metrics-and-whitepaper-alignment.md) | 3 大形态 × 7 大维度、SSE TTFT 探针、平台模型裁判、L1/L2/L3 裁决、三层归因、克制边界 | **已完成算子与单测（done）** | `apps/eval-runner`、`runtime-service`、`platform-web` |
+| **05** | [前端工作台设计（借鉴 LightRAG）与全链路浏览器验收](05-frontend-eval-studio-and-e2e.md) | 原生 Vue 工作台（3 项精简评测专栏、PK 收口进打擂大厅、LightRAG 级 Side-by-Side 与性能剖析、雷达图修复、`/browser` 截图） | **已完成重构与 `/browser` 复验（done）** | `apps/platform-web`、`platform-api`、`eval-runner` |
 
 ---
 

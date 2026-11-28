@@ -4,9 +4,9 @@
 
 ## 服务与数据边界
 
-Platform API 管理身份、IAM、项目、Agent、模型连接、策略、公告、审计和系统设置，并提供受控 Runtime 网关。
-GraphHarbor 持有 Thread、Run、Checkpoint、Interrupt 的执行事实；Runtime 服务定义图、模型与工具装配。
-平台不运行图，不保存运行状态镜像，不提供 Operations/队列/Worker，也不接入知识库或测试用例产品业务。
+Platform API 管理身份、IAM、项目、Agent、模型连接、策略、公告、审计、系统设置和原生评测工作台资产/运行主表（`eval_*`），并提供受控 Runtime 网关。
+GraphHarbor 持有 Thread、Run、Checkpoint、Interrupt 的执行事实；Runtime 服务定义图（含评测出题与诊断专家图）、模型与工具装配；独立轻进程 `eval-runner` 承担并发评测仿真与 DeepEval 打分。
+平台不运行图，不保存运行状态镜像，不提供长阻塞评测打分 Worker，也不接入知识库产品业务。
 
 ```mermaid
 flowchart LR

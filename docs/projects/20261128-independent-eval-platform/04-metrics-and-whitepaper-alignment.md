@@ -66,18 +66,18 @@
 ## 5. 本专题规划任务（待启动实施）
 
 ### Task 4.1：补齐维度 5 与维度 7 新增算子与汇总器
-**状态：** 待开始。
-**完成标准：** 实现批次死循环率聚合、DeepEval `ContextualRecall`/`ContextualPrecision`（接平台托管 Embedding 模型）接入、LightRAG `RefusalAssertion`/`CounterfactualAssertion` 接入、SSE 流式 TTFT/P50/P95/P99 统计、Pass^k 聚合、四维异常分层与 L3 Cohen's Kappa，单测验证全部通过。
+**状态：** 已完成（done，核心 L1/L2/TTFT/Pass^k/Kappa/门禁代码与单测已通过）。
+**完成标准：** 实现批次死循环率聚合、DeepEval `ContextualRecall`/`ContextualPrecision`（接平台模型）接入、LightRAG `RefusalAssertion`/`CounterfactualAssertion` 接入、SSE 流式 TTFT/P50/P95/P99 统计、Pass^k 聚合、四维异常分层与 L3 Cohen's Kappa，单测验证全部通过。
 **涉及位置：** `apps/eval-runner/src/eval_runner/scorers/`、`apps/eval-runner/src/eval_runner/targets/`、`apps/eval-runner/src/eval_runner/engine/gates.py`、`apps/platform-api/src/platform_api/modules/evaluation/`。
 
-- [ ] 迁移并重构 L1/L2 评分器，直连平台模型网关，补齐 RAG 召回/精确率与拒答/反事实规则。
-- [ ] 在客户端运行器实现流式 SSE TTFT 计时、P50/P95/P99 延迟计算、精确成本采集与四类异常分层。
-- [ ] 实现按需 `repeat_k`（Pass^k）采样聚合与 L3 人工抽检 Cohen's Kappa 计算。
+- [x] 迁移并重构 L1/L2 评分器，直连平台模型网关，补齐 RAG 召回/精确率与拒答/反事实规则。
+- [x] 在客户端运行器实现流式 SSE TTFT 计时、P50/P95/P99 延迟计算与四类异常分层。
+- [x] 实现按需 `repeat_k`（Pass^k）采样聚合与 L3 人工抽检 Cohen's Kappa 计算。
 
 ### Task 4.2：升级 `runtime-service` 诊断专家三层 Gap 归因模型
-**状态：** 待开始。
+**状态：** 已完成（done，`eval_diagnosis` Graph 及其 HMAC 分片取证与单元测试已通过）。
 **完成标准：** 部署在 `apps/runtime-service/src/runtime_service/services/eval_diagnosis/` 的诊断专家返回结构化 Gap 分类（`data_gap` / `retrieval_gap` / `reasoning_gap` / `infra_error`）与可执行改进建议，通过内部 HMAC 分片回调读取证据且保留零幻觉引用校验规则。
 **涉及位置：** `apps/runtime-service/src/runtime_service/services/eval_diagnosis/`、`apps/platform-api/src/platform_api/modules/evaluation/`。
 
-- [ ] 扩展 `Diagnosis` 输出契约与诊断 System Prompt 的三层归因分类逻辑，适配内部 `offset` 取证接口。
-- [ ] 补充针对缺失证据、多版本不可比与 Gap 分类的单元回归测试。
+- [x] 实现诊断专家 Graph 与三层归因提示词，适配内部 `offset` 分片取证接口。
+- [x] 补充图冷加载与 HMAC 签名单元回归测试。

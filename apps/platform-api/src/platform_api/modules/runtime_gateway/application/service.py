@@ -2143,6 +2143,27 @@ class RuntimeGatewayService:
                 code="assistant_id_required",
             )
 
+        if normalized_assistant_id in {"eval_copilot", "eval_diagnosis"}:
+            session_factory = self._require_session_factory()
+            with session_scope(session_factory) as session:
+                project_uuid = self._require_project_exists(
+                    session=session, project_id=project_id
+                )
+                catalog = SqlAlchemyRuntimeCatalogRepository(session)
+                graph_ids = {
+                    str(graph.id)
+                    for graph in catalog.list_graphs(runtime_id=self._runtime_id)
+                    if graph.graph_key == normalized_assistant_id
+                }
+                disabled = any(
+                    str(policy.graph_catalog_id) in graph_ids and not policy.is_enabled
+                    for policy in SqlAlchemyRuntimePolicyRepository(
+                        session
+                    ).list_graph_policies(project_id=project_uuid)
+                )
+            if not disabled:
+                return
+
         if self._assistant_belongs_project(
             project_id=project_id,
             assistant_id=normalized_assistant_id,

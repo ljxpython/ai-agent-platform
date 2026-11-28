@@ -137,6 +137,8 @@ def matches(key: str, args: list[str]) -> bool:
             or ("platform_api.main:create_app" in args)
             or ("platform_api.main" in args)
         )
+    if key == "eval-runner":
+        return any("eval_runner.worker" in arg or "eval_runner.cli" in arg for arg in args)
     mode = "worker" if key == "runtime-worker" else "serve"
     return (
         "graphharbor" in names or ("-m" in args and "langhost.cli" in args)
@@ -155,6 +157,8 @@ def process_directory(root: Path, key: str) -> Path:
         )
     if key == "redis":
         directory = root / ".local-stack"
+    elif key == "eval-runner":
+        directory = root / "apps" / "eval-runner"
     else:
         app = "runtime-service" if key.startswith("runtime-") else key
         directory = root / "apps" / app

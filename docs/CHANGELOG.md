@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+- 新增原生独立评测中心（「题库资产全景」「考题表格汇总」「打擂任务大厅」三段式工作台），支持多图（`dearflow_agent` / `showcase_demo` / `reference_agent` / `workflow_demo`）受控并发打擂（1~5）、SSE 真实 TTFT 与生成/总耗时/裁判四段拆解、网关+裁判 Token 与费用透传、流式 AI 出题/诊断专家抽屉，以及集成于打擂大厅的 `Head-to-Head PK` 横向对撞工坊（5 维雷达图 + 7 维量化表、Side-by-Side 逐题正文对照与性能成本拓扑对比）。
+
 - 复杂评测分批读取Trace并按需展示原文，重型任务限制内存并检查主机余量，日志保留正文关联；已合main并完成两小时稳定性及联合验收。正式EvalFlow已加载，Runtime内部状态引用在独立环境验证，正式Agent未重载该采集改动。
 
 ### Fixed
@@ -33,6 +35,8 @@
 - 长会话运行不再为每个Run复制完整检查点历史；Reference Agent和平台助手采用增量消息持久化，完整原文、审批、分支和闲置30天政策保持，未开启活跃历史自动裁剪（正式引擎post50已发布、远端七项CI及平台补验通过；原远端缺陷已修复，生产独立恢复/切换待授权）。
 
 ### Added
+
+- 原生独立评测中台全栈落地：在 `platform-web` 侧边栏增设「评测中心」专栏，上线对标 LightRAG 的题库全景、内联考题表与高级断言抽屉、自动 Readiness 守卫与默认 `xiaok` DeepSeek 并发/矩阵打擂、按题库折叠打擂大厅、真实 `eval_copilot` 出题与 `eval_diagnosis` 诊断流式抽屉及 ECharts 五维 PK 雷达图；新增 `apps/eval-runner` 并发执行器（1~5 并发、JSON-RPC SSE 探针实测 TTFT 与 DeepEval 平台模型裁判）；完成 `platform-api` 8 张 `eval_*` 表迁移与内部执行代理，并开放 `runtime-service` 4 个多图评测能力。
 
 - 平台助手运行诊断全面接入 MLflow Tracing：支持在仅配置 MLflow（未配置 Langfuse）时导出全部平台结构化诊断事件并按项目实验回查诊断摘要与耗时统计，存量历史 Trace 自动降级返回可用基础关联与执行结论（已部署 `sshmy1` 并通过线上真实全链路验收）。
 

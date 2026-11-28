@@ -4,12 +4,43 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: "projects/:projectId/evaluation",
     name: "workspace-evaluation",
-    component: () => import("@/modules/evaluation/EvaluationMovedPage.vue"),
+    component: () => import("@/modules/evaluation/EvaluationStudioPage.vue"),
     meta: {
-      title: "评测入口已迁移",
+      title: "题库资产全景",
       requiredPermissions: ["project.evaluation.read"],
       permissionProjectSource: "route",
+      evalTab: "panorama",
     },
+  },
+  {
+    path: "projects/:projectId/evaluation/cases",
+    name: "workspace-evaluation-cases",
+    component: () => import("@/modules/evaluation/EvaluationStudioPage.vue"),
+    meta: {
+      title: "考题表格与出题",
+      requiredPermissions: ["project.evaluation.read"],
+      permissionProjectSource: "route",
+      evalTab: "editor",
+    },
+  },
+  {
+    path: "projects/:projectId/evaluation/runs",
+    name: "workspace-evaluation-runs",
+    component: () => import("@/modules/evaluation/EvaluationStudioPage.vue"),
+    meta: {
+      title: "打擂任务大厅",
+      requiredPermissions: ["project.evaluation.read"],
+      permissionProjectSource: "route",
+      evalTab: "runs",
+    },
+  },
+  {
+    path: "projects/:projectId/evaluation/compare",
+    name: "workspace-evaluation-compare",
+    redirect: (to) => ({
+      name: "workspace-evaluation-runs",
+      params: { projectId: to.params.projectId },
+    }),
   },
   {
     path: "settings/notifications",
@@ -24,11 +55,12 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: "projects/:projectId/evaluation/:itemId",
     name: "workspace-evaluation-detail",
-    component: () => import("@/modules/evaluation/EvaluationMovedPage.vue"),
+    component: () => import("@/modules/evaluation/EvaluationStudioPage.vue"),
     meta: {
-      title: "评测入口已迁移",
+      title: "评测集详情",
       requiredPermissions: ["project.evaluation.read"],
       permissionProjectSource: "route",
+      evalTab: "editor",
     },
   },
   {
@@ -439,6 +471,21 @@ const navigation: Record<
     group: "Dear Agent",
     label: "长期记忆",
     icon: "shield",
+  },
+  "workspace-evaluation": {
+    group: "评测中心",
+    label: "题库资产全景",
+    icon: "overview",
+  },
+  "workspace-evaluation-cases": {
+    group: "评测中心",
+    label: "考题表格汇总",
+    icon: "table",
+  },
+  "workspace-evaluation-runs": {
+    group: "评测中心",
+    label: "打擂任务大厅",
+    icon: "activity",
   },
   "workspace-models": {
     group: "项目管理",

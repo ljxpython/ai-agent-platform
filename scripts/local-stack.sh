@@ -267,6 +267,11 @@ start_managed_key() {
         "env VITE_PLATFORM_API_URL=/ VITE_PLATFORM_API_RUNTIME_ENABLED=true VITE_DEV_PORT=$(shell_quote "$PLATFORM_WEB_PORT") VITE_DEV_PROXY_TARGET=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT") pnpm exec vite --host 127.0.0.1 --port $(shell_quote "$PLATFORM_WEB_PORT")" \
         "$LOG_DIR/platform-web.log" "$PLATFORM_WEB_PORT"
       ;;
+    eval-runner)
+      start_process eval-runner "$ROOT_DIR/apps/eval-runner" \
+        "env PYTHONPATH=$(shell_quote "$ROOT_DIR/apps/eval-runner/src") PLATFORM_API_BASE_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT") $(shell_quote "$RUNTIME_DIR/.venv/bin/python") -m eval_runner.worker --env-file $(shell_quote "$PLATFORM_ENV_FILE")" \
+        "$LOG_DIR/eval-runner.log"
+      ;;
     *)
       die "unknown managed process: $key"
       ;;
@@ -490,6 +495,8 @@ start() {
   start_managed_key platform-api
   wait_http platform-api "http://127.0.0.1:$PLATFORM_API_PORT/_system/health"
   require_managed_process platform-api
+  start_managed_key eval-runner
+  require_managed_process eval-runner
   start_managed_key platform-web
   wait_http platform-web "http://127.0.0.1:$PLATFORM_WEB_PORT"
   require_managed_process platform-web
@@ -500,7 +507,7 @@ start() {
 status() {
   printf '[environment] %s\n[web] http://127.0.0.1:%s\n[api] http://127.0.0.1:%s\n[runtime] http://127.0.0.1:%s\n[state] %s\n' \
     "${LOCAL_STACK_ID:-primary}" "$PLATFORM_WEB_PORT" "$PLATFORM_API_PORT" "$RUNTIME_PORT" "$STATE_DIR"
-  local keys=(runtime-api runtime-worker platform-api platform-web)
+  local keys=(runtime-api runtime-worker platform-api eval-runner platform-web)
   if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then keys+=(redis); fi
   if [ -n "${KNOWLEDGE_SOURCE_DIR:-}" ]; then keys+=(knowledge-mcp knowledge-embedding); fi
   for key in "${keys[@]}"; do
@@ -540,8 +547,8 @@ restart_one() {
   local key="$1"
   load_runtime_env
   case "$key" in
-    runtime-api|runtime-worker|platform-api|platform-web) ;;
-    *) die "restart-one requires one of runtime-api, runtime-worker, platform-api, platform-web" ;;
+    runtime-api|runtime-worker|platform-api|eval-runner|platform-web) ;;
+    *) die "restart-one requires one of runtime-api, runtime-worker, platform-api, eval-runner, platform-web" ;;
   esac
   # Reject invalid Runtime configuration before stopping a healthy process.
   case "$key" in
@@ -556,7 +563,7 @@ restart_one() {
     runtime-api) wait_http runtime-api "http://127.0.0.1:$RUNTIME_PORT/ready" 120 ;;
     platform-api) wait_http platform-api "http://127.0.0.1:$PLATFORM_API_PORT/_system/health" ;;
     platform-web) wait_http platform-web "http://127.0.0.1:$PLATFORM_WEB_PORT" ;;
-    runtime-worker) require_managed_process "$key" ;;
+    runtime-worker|eval-runner) require_managed_process "$key" ;;
   esac
 }
 
@@ -589,6 +596,7 @@ PY
 
 stop_stack() {
   stop_process platform-web
+  stop_process eval-runner
   stop_process platform-api
   stop_process runtime-worker
   stop_process runtime-api

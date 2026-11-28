@@ -28,6 +28,14 @@
     "platform_assistant": {
       "path": "./src/runtime_service/graphs/platform_assistant.py:get_agent",
       "description": "Platform assistant: authorized SQL, diagnostics, documents and conversation; no sandbox."
+    },
+    "eval_copilot": {
+      "path": "./src/runtime_service/graphs/eval_copilot.py:get_agent",
+      "description": "Evaluation authoring copilot: draft, calculate, and validate Case v3 tests."
+    },
+    "eval_diagnosis": {
+      "path": "./src/runtime_service/graphs/eval_diagnosis.py:get_agent",
+      "description": "Evaluation diagnosis expert: paginated evidence inspection and 3-layer RCA Gap."
     }
   },
   "env": ".env",

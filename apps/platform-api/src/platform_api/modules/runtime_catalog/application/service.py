@@ -321,19 +321,38 @@ class RuntimeCatalogService:
                         project_id=project_id,
                     ),
                 )
-            agent = SqlAlchemyAssistantsRepository(session).get_by_project_and_graph_id(
-                project_id=project_uuid, graph_id=values.get("agent_key") or ""
-            )
-            if agent is None or agent.status != "active":
-                raise ForbiddenError(
-                    code="runtime_target_denied", message="Agent is unavailable"
+            agent_key = values.get("agent_key") or ""
+            if agent_key in {"eval_copilot", "eval_diagnosis"}:
+                required_perm = (
+                    PermissionCode.PROJECT_EVALUATION_MANAGE
+                    if agent_key == "eval_copilot"
+                    else PermissionCode.PROJECT_EVALUATION_READ
                 )
+                self._policy_engine.require(
+                    actor=actor,
+                    authorization=AuthorizationRequest(
+                        permission=required_perm,
+                        project_id=project_id,
+                    ),
+                )
+                target_graph_key = agent_key
+            else:
+                agent = SqlAlchemyAssistantsRepository(
+                    session
+                ).get_by_project_and_graph_id(
+                    project_id=project_uuid, graph_id=agent_key
+                )
+                if agent is None or agent.status != "active":
+                    raise ForbiddenError(
+                        code="runtime_target_denied", message="Agent is unavailable"
+                    )
+                target_graph_key = agent.graph_id
             graph_ids = {
                 str(graph.id)
                 for graph in SqlAlchemyRuntimeCatalogRepository(session).list_graphs(
                     runtime_id=self._runtime_id
                 )
-                if graph.graph_key == agent.graph_id
+                if graph.graph_key == target_graph_key
             }
             if any(
                 str(policy.graph_catalog_id) in graph_ids and not policy.is_enabled

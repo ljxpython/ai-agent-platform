@@ -215,6 +215,12 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     if facts:
         startup.authorize(config, facts)
         with startup.phase("factory.context_resolution"):
+            if facts.scope.operation == "run-create":
+                from runtime_service.observability.evaluation_hooks import (
+                    verify_evaluation_target,
+                )
+
+                await verify_evaluation_target(config, facts)
             raw_context = config.get("context")
             context = parse_runtime_context(raw_context)
             if context.offload_conversation:
@@ -231,6 +237,14 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 policy=policy,
                 defaults=_DEFAULTS,
             )
+            if facts.scope.operation == "run-create":
+                from runtime_service.observability.evaluation_hooks import (
+                    record_evaluation_execution,
+                )
+
+                await record_evaluation_execution(
+                    config, resolved, facts, "reference_agent", None
+                )
         startup.metadata["model_id"] = resolved.model_id
         with startup.phase("factory.model_connection"):
             bundle = (

@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "eval-runner"
+version = "0.1.0"
+description = "Concurrent evaluation runner, SSE TTFT probe, L1/DeepEval scorer, and CI gate CLI for ai-agent-platform."
+requires-python = ">=3.13"
+dependencies = [
+    "pydantic>=2.10,<3",
+    "httpx>=0.28,<1",
+    "sqlalchemy>=2.0,<3",
+    "psycopg[binary]>=3.2,<4",
+    "redis>=5.0,<6",
+    "openai>=1.60,<2",
+    "typer>=0.15,<1",
+]
+
+[project.optional-dependencies]
+deepeval = ["deepeval>=2.0,<4"]
+mlflow = ["mlflow-skinny>=2.18,<4"]
+
+[project.scripts]
+eval-runner = "eval_runner.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eval_runner"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

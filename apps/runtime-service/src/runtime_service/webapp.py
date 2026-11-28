@@ -439,14 +439,17 @@ async def graph_capability(
     ):
         raise HTTPException(403, "graph scope denied")
     result = graph_capabilities(graph_id)
-    if graph_id == "dearflow_agent":
-        from runtime_service.observability.evaluation_target import capabilities
+    from runtime_service.observability.evaluation_hooks import (
+        EVALUABLE_GRAPHS,
+        read_evaluation_capabilities,
+    )
 
+    if graph_id in EVALUABLE_GRAPHS:
         scope = facts["runtime_scope"]
         result = {
             **result,
-            "evaluation": await asyncio.to_thread(
-                capabilities, scope["tenant_id"], scope["project_id"]
+            "evaluation": await read_evaluation_capabilities(
+                scope["tenant_id"], scope["project_id"], result
             ),
         }
     return result

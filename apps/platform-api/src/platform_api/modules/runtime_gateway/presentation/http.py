@@ -387,6 +387,7 @@ def _runtime_sse_response(
     stream_kind: str,
     protocol: bool,
     run_id: str | None = None,
+    extra_headers: dict[str, str] | None = None,
 ) -> RuntimeStreamingResponse:
     context = request.state.platform_context
     metadata = getattr(request.state, "audit_metadata", None)
@@ -424,6 +425,7 @@ def _runtime_sse_response(
             stream, protocol=protocol, on_close=note_frame_close
         ),
         media_type="text/event-stream",
+        headers=extra_headers,
         on_open=lambda: emit("runtime.stream.opened"),
         on_close=lambda fallback, duration: emit(
             "runtime.stream.closed",
@@ -473,13 +475,14 @@ def _delegation_operation(request: Request) -> str:
     return "read"
 
 
-def get_runtime_gateway_service(
+def build_runtime_gateway_service(
     request: Request,
-    actor: ActorContext = Depends(get_actor_context),
+    actor: ActorContext,
+    project_id: str,
 ) -> RuntimeGatewayService:
     settings = request.app.state.settings
     session_factory = getattr(request.app.state, "db_session_factory", None)
-    project_id = _require_project_id(request)
+    request.state.audit_project_id = project_id
     context = request.state.platform_context
     correlation = {
         "request_id": context.request.request_id,
@@ -690,6 +693,14 @@ def get_runtime_gateway_service(
         ),
         tenant_id=context.tenant.tenant_id or "__default",
     )
+
+
+def get_runtime_gateway_service(
+    request: Request,
+    actor: ActorContext = Depends(get_actor_context),
+) -> RuntimeGatewayService:
+    project_id = _require_project_id(request)
+    return build_runtime_gateway_service(request, actor, project_id)
 
 
 @router.get("/info")

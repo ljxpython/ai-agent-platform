@@ -83,19 +83,32 @@
 ## 6. 本专题规划任务（待启动实施）
 
 ### Task 3.1：`platform-api` 评测表迁移、控制面 API 与 Readiness 接口
-**状态：** 待开始。
-**完成标准：** 在 `apps/platform-api` 完成 7 张 `eval_*` 表 Alembic 迁移及同步 CRUD API、Readiness 能力分级校验（含非专用靶场风险标签）、DeepEval 模型连接内部解析端点、以及 Redis 短 TTL 进度桥接与单测。
+**状态：** 已完成（done，`platform-api` 全套评测测试 128 passed）。
+**完成标准：** 在 `apps/platform-api` 完成 7 张 `eval_*` 表（+ `eval_sandbox_projects`）Alembic 迁移及同步 CRUD API、Readiness 能力分级校验（含非专用靶场风险标签）、DeepEval 模型连接内部解析端点，单元测试全通。
 **涉及位置：** `apps/platform-api/migrations/`、`apps/platform-api/src/platform_api/modules/evaluation/`。
 
-- [ ] 新增 `eval_*` Alembic 迁移脚本与 Repository / Service 层（严格遵循同步 SQLAlchemy 规范）。
-- [ ] 实现资产 CRUD、冻结发布、任务创建/控制（Pause/Resume/Retry Failed/Re-score）、Readiness 校验及 PK 对比接口。
-- [ ] 实现内部裁判模型连接解析、预算用量回写及 Redis 精简进度流（强制 TTL 与载荷上限）。
+- [x] 新增 `eval_*` Alembic 迁移脚本与同步 CRUD Service / Router 层。
+- [x] 实现资产 CRUD、冻结发布、任务创建/控制（Pause/Resume/Retry Failed/Re-score）、Readiness 校验及 PK 对比接口。
+- [x] 实现内部裁判模型连接解析与 HMAC 数据分片回调。
 
 ### Task 3.2：搭建 `apps/eval-runner` 并发执行池、TTFT 探针与门禁 CLI
-**状态：** 待开始。
+**状态：** 部分完成（partial，核心调度/TTFT/门禁/单测已通过；`local-stack.sh` 编排注册与真实数据库 Worker 轮询待全栈联调阶段接入）。
 **完成标准：** `eval-runner` 支持默认 `3`（`1~5`）并发运行多 Graph 用例，验证流式 SSE 测 TTFT、Pause/Resume/Retry Failed、单题异常零连坐、同证据重评、矩阵打擂与 CLI 门禁退出码。
 **涉及位置：** `apps/eval-runner/`、`scripts/local-stack.sh`、`scripts/local_stack_processes.py`。
 
-- [ ] 初始化 `apps/eval-runner` 包与 CLI（`worker` / `gate` / `patrol` / `import-legacy`），接入 `scripts/local-stack.sh`。
-- [ ] 实现信号量并发调度池、SSE 流式 TTFT 探针、检查点断点续跑与平台模型连接适配器。
-- [ ] 补齐并发故障恢复、门禁退出码与隔离验证单元测试。
+- [x] 初始化 `apps/eval-runner` 包与 CLI（`worker` / `gate`）。
+- [x] 实现信号量并发调度池（`1..5`）、SSE 流式 TTFT 探针（完整兼容 LangGraph v3 JSON-RPC 包格式与 delta 累加）、平台模型连接适配器与单题异常隔离。
+- [x] 补齐并发故障恢复、门禁退出码与 7 维汇总单元测试（7 passed）。
+- [x] 补全真实平台执行器（经 `platform-api` 内部 HMAC `/api/evaluation/internal/execute-turn` 代理驱动目标 Graph 流式 SSE 测 TTFT + `PlatformJudgeLLM` 直连平台目录模型打分）、`eval_runner.worker` 守护循环及 `scripts/local-stack.sh` 托管集成。
+
+### Task 3.3：Agent 总耗时 / TTFT 分段拆解与 Token / 费用全链路透传（含巡检执行后置说明）
+**状态：** 已完成（done，`platform-api` 单测 `1 passed` + `eval-runner` 单测 `8 passed`，并在本地真实跑通 `#77350f73`：`TTFT 15732 ms` / `生成耗时 2148 ms` / `Agent 总耗时 17880 ms` / `469 tok` / `$0.000717`）
+**完成标准：**
+1. `eval-runner` 单题与批次统计拆解并持久化四段真实耗时：`ttft_ms`（首字延迟）、`generation_ms`（首字后生成与工具耗时 = `agent_duration_ms - ttft_ms`）、`agent_duration_ms`（被测 Agent 端到端总耗时）与 `judge_ms`（L2 裁判打分耗时），并产出批次 P50 / P95 / 单题均耗汇总。
+2. `platform-api` 新增内部 HMAC 只读接口 `/api/evaluation/internal/thread-usage`，由 `eval-runner` 在单题执行收口后拉取 `gateway.get_thread_usage` 实测 Token 与费用，连同 `PlatformJudgeLLM` 的裁判 Token 与费用写入 `eval_run_cases.token_usage_json`、`cost_usd` 及 `eval_runs.summary_metrics_json`。
+3. `eval_patrol_schedules` 定时巡检后台 Cron 自动触发器确认尚未实施，经协商明确**后置至后续迭代实现**（当前仅保留表结构与占位 API）。
+**涉及位置：** `apps/platform-api/src/platform_api/modules/evaluation/studio_router.py`、`apps/platform-api/src/platform_api/entrypoints/http/middleware/auth_context.py`、`apps/eval-runner/src/eval_runner/`。
+
+- [x] 新增 `/api/evaluation/internal/thread-usage` HMAC 端点并开放鉴权白名单，按 `run_id` + `thread_id` 查询目标项目真实 Token 与已知费用。
+- [x] 更新 `ConcurrentEvalRunner`、`PlatformJudgeLLM`、`metrics_summary.py` 与 `worker.py`：记录分段耗时 `timing_breakdown`（TTFT / 首字后生成 / Agent 总耗时 / 裁判耗时）、落库 `token_usage_json` 与 `cost_usd`，并汇总运行均值。
+- [x] 在文档与状态中明确标注「定时巡检后台 Cron 执行器后置实现」。

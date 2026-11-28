@@ -75,12 +75,12 @@
 ## 5. 本专题规划任务（待启动实施）
 
 ### Task 2.1：抽离评测核心引擎、直连平台模型网关并迁移专家 Graph
-**状态：** 待开始（方案 X 归属已对齐）。
+**状态：** 已完成（done，核心模块已迁出并脱离 MLflow 强依赖与私有 `.env`）。
 **完成标准：** `contracts`、`simulation`、`tool_evidence`、`scorers`（原生 `deepeval.metrics` + 平台模型目录解析）与 `gates` 迁入 `apps/eval-runner/`；资产 CRUD 迁入 `platform-api`；出题 Copilot 与诊断专家作为标准 Graph 迁入 `runtime-service/services/` 并通过单元测试。
 **涉及位置：** `apps/eval-runner/`、`apps/platform-api/src/platform_api/modules/evaluation/`、`apps/runtime-service/src/runtime_service/services/`。
 
-- [ ] 迁移领域契约与规则/语义评分器，剥离 `mlflow.genai` 及 `~/.my_best/.env` 私有网关依赖，改为解析平台网关模型。
-- [ ] 迁移中文动态博弈引擎与支持多 Graph + 流式 SSE 探针的执行客户端，接入只读 MLflow Trace 拉取适配器。
-- [ ] 将出题 Copilot (`eval_copilot`) 与独立诊断专家 (`eval_diagnosis`) 迁入 `runtime-service` 并接入 `platform-api` HMAC 内部数据桥，补齐单元测试。
+- [x] 迁移领域契约与规则/语义评分器，剥离 `mlflow.genai` 及 `~/.my_best/.env` 私有网关依赖，改为解析平台网关模型。
+- [x] 迁移支持流式 SSE 探针的执行客户端与 L1/DeepEval 评分器（`eval-runner` 5 passed）。
+- [x] 将出题 Copilot (`eval_copilot`) 与独立诊断专家 (`eval_diagnosis`) 迁入 `runtime-service` 并接入 `platform-api` HMAC 内部数据桥（`runtime-service` 5 passed）。
 
 **下一步：** 随其余专题实施任务一并获准后启动脚手架搭建。

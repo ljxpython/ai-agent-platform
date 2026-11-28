@@ -18,7 +18,7 @@ Task23当前批准的双机迁移、单并发连续容量及合并后联合读�
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-25。已完成平台助手 MLflow 运行诊断读写双通、Checkpoint 游标分页按 `run_id` 精确匹配、`require_scope` 默认租户 `__default` 对齐与 Worker 独立 `INFO` 结构化诊断日志链路修复（详见[项目入口](projects/20261125-platform-assistant-mlflow-diagnostics/README.md)），并已部署至 `sshmy1` 生产环境通过真实多轮全链路验收（`runtime-service` observability 186 passed、`platform-api` 123 passed / 6 subtests passed；`sshmy1` 实测存量旧 Run 返回 `partial` + `persistent_state`，新 Run 立即查询 `1.575s` 返回 `available` + 3576B 紧凑标签 + Loki 14 条跨服务日志，第 2 轮后回查第 1 轮精确命中历史 checkpoint 与 `SpanEvents`）。此前已同步部署非 HTTPS 剪贴板降级、完整 `run_id` 复制按钮与按 Thread 前缀检索能力；两条工程经验已沉淀至 `docs/lessons/`。
+> **最后更新：** 2026-11-28。已完成原生独立评测平台迁移、耗时/Token 透传及 LightRAG 同级 PK 工坊重构验收（详见[项目入口](projects/20261128-independent-eval-platform/README.md)）：`platform-api` 落库 8 张 `eval_*` 表并补齐 `/api/evaluation/internal/thread-usage` 与富负载 `compare_runs`；`apps/eval-runner` 贯通 SSE TTFT/生成/Agent 总耗时/裁判耗时四段拆解及网关+裁判 Token/USD 费用落库（8 passed）；`platform-web` 将侧边栏「评测中心」精简收口为 3 项（对比 PK 收口进「打擂任务大厅」，`/evaluation/compare` 重定向），重构 `Head-to-Head PK` 全宽工坊（修复 ECharts 雷达图过渡白屏与分支错位，补齐右侧 7 维量化对比表、Side-by-Side 逐题正文/指标对照及性能耗时与费用双卡，9 passed / 构建通过）。四轮 `/browser` 全链路端到端实测通过并留存真实截图（定时巡检后台 Cron 触发明确后置；未提交 Git，未部署生产）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」

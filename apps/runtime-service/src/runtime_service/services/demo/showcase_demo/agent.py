@@ -147,6 +147,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
         startup.authorize(config, facts)
         with startup.phase("factory.context_resolution"):
+            from runtime_service.observability.evaluation_hooks import (
+                verify_evaluation_target,
+            )
+
+            await verify_evaluation_target(config, facts)
             context = parse_runtime_context(config.get("context"))
             if context.offload_conversation and not context_management_enabled():
                 raise RuntimeAuthError("runtime.context.offload_disabled")
@@ -188,6 +193,17 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         with startup.phase("factory.workspace"):
             workspace = create_workspace(
                 facts.principal.tenant_id, facts.principal.project_id, thread_id
+            )
+            from runtime_service.observability.evaluation_hooks import (
+                record_evaluation_execution,
+            )
+
+            await record_evaluation_execution(
+                config,
+                resolved,
+                facts,
+                "showcase_demo",
+                None if workspace is None else workspace.root,
             )
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.

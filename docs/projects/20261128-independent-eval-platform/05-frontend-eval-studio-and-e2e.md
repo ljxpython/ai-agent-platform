@@ -1,18 +1,18 @@
 # 专题 05：前端工作台设计（借鉴 LightRAG）与全链路浏览器验收
 
-> 所属项目：[独立评测中台迁移与平台原生化改造方案](README.md)｜状态：**方案已对齐（方案 X + 原生 Vue 规范 + 风险预警 + 并发 1~5 已确认，待开始编码）**
+> 所属项目：[独立评测中台迁移与平台原生化改造方案](README.md)｜状态：**正在进行前端全面升级对齐与全栈联调（in_progress）**
 
 ## 1. 设计目标：彻底告别 MLflow 壳层，融合两家之长
 
 前端设计要解决“原先在 MLflow 页面里展示用例集、多轮对话、对比矩阵和运行进度非常别扭且频繁卡死”的问题，同时避免 `AuthoringPage.tsx` 四千行单文件泥潭。
 
-整体视觉与交互**借鉴 `../LightRAG` 评测工坊（`DatasetPanoramaView` + `EvaluationTaskCenter` + `EvaluationComparisonModal`）的清晰工作台动线**，并**完整保留 `../mlflow-eval-platform` 已经打磨出来的硬核 Agent 评测细节**（多轮动态博弈时间轴、隐藏事实/延迟夹具表单、Step 1~4 降噪、AI 出题 Copilot 与诊断专家抽屉），统一遵循 `apps/platform-web/docs/frontend-development-playbook.md`（Vue 3 + ECharts 6 + 平台标准组件）。
+整体视觉与交互**借鉴 `../LightRAG` 评测工坊（`DatasetPanoramaView` + `考题表格汇总` + `EvaluationTaskCenter` + `EvaluationComparisonModal`）的清晰工作台动线**，并**完整保留 `../mlflow-eval-platform` 已经打磨出来的硬核 Agent 评测细节**（多轮动态博弈时间轴、隐藏事实/延迟夹具表单、Step 1~4 降噪、AI 出题 Copilot 与诊断专家抽屉），统一遵循 `apps/platform-web/docs/frontend-development-playbook.md`（Vue 3 + ECharts 6 + 平台标准组件）。
 
 > **载体与工程规范已确认**：放弃旧 MLflow 前端及 iframe 方案，直接以 **Vue 3 + ECharts 6 原生重构进 `apps/platform-web`**。设计必须严格遵循：
 > - `apps/platform-web/docs/frontend-development-playbook.md`（模块结构、Zod 契约与单组件粒度拆解）
 > - `apps/platform-web/docs/control-plane-page-standard.md`（控制面页面骨架与数据状态规范）
 > - `apps/platform-web/docs/frontend-visual-baseline-standard.md`（统一使用 `PageHeader`、`pw-card`/`pw-panel`、`BaseSelect`、`DataTable`、`MetricCard`、`FilterToolbar`、`PaginationBar`、`SurfaceCard` 与双栏编排；严格禁止原生 `<select>`、高圆角毛玻璃等违规样式，支持平台统一深浅主题）。
-> 功能结构借鉴 `../LightRAG` 评测工坊（全景、就绪守卫、矩阵打擂、PK 对比）并原生融合 Agent 多轮博弈/工具轨迹特性。
+> **导航专栏约定**：在 `AppSidebar.vue` / `useNavigation.ts` 中设立独立侧边栏分组 **「评测中心」**（位于 `Dear Agent` 之后），精简收口为 3 个直达入口：`题库资产全景`、`考题表格与出题`、`打擂任务大厅`；**多版本对比 PK 与门禁直整合入「打擂任务大厅」内发起与展示（不再单独设置左侧对比页面，旧 `/evaluation/compare` 路径重定向至打擂任务大厅）**，定时巡检自动调度执行确认后置实现；默认推理与裁判模型优先选择启用中的 `xiaok` DeepSeek 模型。
 
 ---
 
@@ -77,24 +77,55 @@
 
 ---
 
-## 4. 本专题规划任务（待启动实施）
+## 4. 本专题规划任务（实施与验证清单）
 
-### Task 5.1：实现 `platform-web` 评测工作台核心模块
-**状态：** 待开始（原生 Vue 载体、视觉基线与后端方案 X 均已对齐）。
-**完成标准：** 替换 `EvaluationMovedPage.vue`，落地资产全景、编辑器、隔离靶场开考弹窗（含风险警告、能力分级 Readiness 与 `1~5` 并发调节）、并发任务大厅、7 维结果详情、PK 对比与诊断抽屉；完成 Vitest 单元测试、`pnpm typecheck`、`pnpm lint` 与 `pnpm build`。
+### Task 5.1：搭建 `platform-web` 评测工作台基础骨架（初版）
+**状态：** 已完成（done，基础路由、服务层、初版组件、`vue-tsc` 与 Vitest 通过；首轮联调暴露出开考弹窗未自动触发 Readiness 导致 HTTP 400 进 ErrorBoundary、默认选错故障测试模型、侧边栏缺独立评测专栏，且交互深度未对齐 LightRAG）。
+**完成标准：** 建立 `modules/evaluation/` 基础目录与前后端联调通路。
 **涉及位置：** `apps/platform-web/src/modules/evaluation/`、`apps/platform-web/src/router/routes.ts`。
 
-- [ ] 搭建模块服务层、Zod 契约与状态 Composable（按组件粒度规范拆解，严格遵守既有视觉组件基线）。
-- [ ] 实现资产全景页、三栏用例编辑器与连接 `runtime-service` `eval_copilot` 的 AI Diff 抽屉。
-- [ ] 实现隔离靶场开考弹窗（含非专用项目风险警告、平台裁判模型选择、能力分级 Readiness 守卫、并发 `1~5` 与矩阵配置）。
-- [ ] 实现任务大厅（暂停/续跑/重试失败）、7 维成绩带（含真实 TTFT）、单题博弈/工件取证舱、MLflow Trace 跳转与 `eval_diagnosis` 诊断抽屉。
-- [ ] 实现基于 ECharts 的多版本横向对比 PK 视图与 L3 人工抽检标注界面。
+- [x] 搭建模块服务层与基础 Composable。
+- [x] 建立初版全景/编辑/开考/对比页面并通过初轮静态构建。
 
-### Task 5.2：全栈联调与 `/browser` 端到端真实验证
-**状态：** 待开始（依赖全栈模块就绪）。
-**完成标准：** 启动 `platform-web` + `platform-api` + `runtime-service` + `eval-runner` + `MLflow` + PostgreSQL + Redis 完整链路，完成 S1~S5 全部场景真实操作并通过 `/browser` 留存关键步骤截图。
+### Task 5.1b：缺陷根治、侧边栏评测专栏与 LightRAG 同级体验全面重构
+**状态：** 已完成（done，全部交互改造、StatusPill 文本对齐与雷达图切 Tab 重绘均已修复并通过 `vue-tsc`、Vitest 9 passed 及 Vite 构建）。
+**完成标准：**
+1. **缺陷与模型默认值根治**：开考弹窗打开与切换项目/Agent 时自动执行 Readiness Guard 并显式弹出非沙箱风险勾选；全部异步操作由 `resolvePlatformHttpErrorMessage` 收口到页面内提示，杜绝 Axios 异常触发全页 `ErrorBoundary`；默认推理模型与裁判模型优先选中平台启用中的 `xiaok` DeepSeek 模型。
+2. **侧边栏独立「评测中心」专栏**：在 `routes.ts` 与 `useNavigation.ts` 注册独立大组「评测中心」，拆出「题库资产全景」「考题表格与出题」「打擂任务大厅」「对比 PK 与门禁」直达入口。
+3. **资产全景重构（对标 LightRAG 全景）**：宽体题库资产卡（来源项目徽标、版本哈希、题目数、默认图、展开显示来源文档/会话血缘与前 3 题预览 + 「前往表格查看全部 N 题 →」 + 删除题库）；顶部接入「全部 / 专属 / 基准」分段筛选与「从线上会话导入」（复用 `PickSessionMaterials`）和「导入 JSONL」（带默认目标 Graph 选择）入口。
+4. **考题表格汇总与 AI Copilot 真接入（对标 LightRAG 表格编辑）**：全宽内联可编辑高密度表格（序号、标识/分区、Question 内联编辑、Ground Truth/期望答案内联编辑、上下文与工件摘要芯片、批量保存与单行删除）；右侧滑出「Agent 高级配置抽屉」保留多轮、动态博弈 `hidden_facts` / `delayed_fixtures` 与物理产物断言；右侧滑出真连通 `runtime-service` 图 `eval_copilot` 的流式对话抽屉并支持识别候选考题一键采纳。
+5. **打擂任务大厅、7 维取证与诊断专家真接入（对标 LightRAG 任务大厅）**：顶部 4 张大卡（总打擂场次/并发进行中/历史平均分/最高通过率）；按题库折叠聚合打擂组（最高均分 + 最新得分 & Delta 涨跌）；运行进度/日志折叠、重跑/对比/`MLflow ↗` 按钮；单场 7 维 Scorecard 与逐题白盒详情（真实回复/得分/L1-L2 理由/L3 人工标注）；真连通 `eval_diagnosis` 图的三层 Gap 归因对话抽屉；`ComparisonPkDialog` 完整 3 Tab（宏观雷达、Case Diff 过滤、成本 TTFT 延迟）。
+**涉及位置：** `apps/platform-web/src/router/routes.ts`、`apps/platform-web/src/composables/useNavigation.ts`、`apps/platform-web/src/modules/evaluation/`、`apps/platform-api/src/platform_api/modules/evaluation/`。
+
+- [x] 修复开考自动 Readiness 检查、全局错误处理（告别 ErrorBoundary）、以及 `xiaok` DeepSeek 默认模型选择。
+- [x] 在侧边栏新增独立「评测中心」专栏及 4 个子能力入口，更新 `routes.spec.ts` 与导航测试。
+- [x] 重构 `DatasetPanoramaPanel` 对齐 LightRAG 全景卡片、三源筛选、样例预览与会话/JSONL 导入（含后端删除/导入/样例摘要支撑）。
+- [x] 重构 `CaseEditorPanel` 为全宽内联可编辑考题表格 + `CaseAdvancedDrawer` 高级抽屉 + 真连通 `eval_copilot` 抽屉与候选考题一键采纳。
+- [x] 重构 `RunResultsPanel` & `ComparisonPkDialog` 为 4 大卡 + 题库折叠打擂组 + 7 维单题取证舱 + MLflow 跳转 + 真连通 `eval_diagnosis` 诊断抽屉，并修补 `StatusPill` 插槽文本与雷达图切 Tab 保留。
+- [x] 通过 `vue-tsc --noEmit`、Vitest 全部单测与 `pnpm build`。
+
+### Task 5.2：全栈联调与 `/browser` 端到端真实验证（每个功能点关键步骤截图）
+**状态：** 已完成（done，三轮 `/browser` 全链路真实端到端回归通过，核心链路 0 报错且已留存全套真实流式响应、TTFT 实测、7 维白盒详情与五维差异 PK 雷达图截图；其中 `eval_copilot` 首次工具调用偶发一次 `runtime.execution_failed`，清空重置会话后流式生成与 2 道候选 JSON 识别正常完成，StatusPill 插槽与切 Tab 雷达图也已补充修复并通过单测构建）。
+**完成标准：** 启动 `platform-web` + `platform-api` + `runtime-service` + `eval-runner` 完整链路，通过 `/browser` 依次验证全部功能点、零阻塞故障，并逐点留存关键步骤截图。
 **涉及位置：** `docs/projects/20261128-independent-eval-platform/implementation/`。
 
-- [ ] 准备独立测试环境与隔离靶场项目（遵循 `docs/standards/worktree-development.md`）。
-- [ ] 使用真实模型运行并发评测用例与对比矩阵，核对 MLflow Trace 写入与回查。
-- [ ] 调用 `/browser` 完成 S1~S5 全链路走查并保存关键截图与验证报告。
+- [x] 通过 `scripts/local-stack.sh start` 升级本地 PostgreSQL（`20261128_0016`）并修复预算版本倒挂恢复模型网关/问答小助手可用性。
+- [x] 拉起接入真实执行器与平台模型裁判的 `eval-runner` 后台轮询并跑通真实 `xiaok` DeepSeek（`070cced3-350b-42ec-b678-994dd07b7078`）并发批跑（实测批次 `#653fa186` 状态 `completed`、`TSR 100%`、`TTFT P50 18309 ms` / `P95 30344 ms`）。
+- [x] 调用 `/browser` 对问答小助手恢复、侧边栏「评测中心」专栏、题库全景与新建/JSONL 导入、考题表格内联编辑、`eval_copilot` 流式出题与候选识别、冻结版本与自动 Readiness + `xiaok` 模型并发开考、打擂大厅与 7 维成绩白盒详情、`eval_diagnosis` 流式三层 Gap 诊断以及五维差异对比 PK 雷达图与 Diff Tab 逐项真实测试并全部截图。
+
+### Task 5.3：将对比 PK 集成进打擂任务大厅、全面重做三维度 PK 工坊与 `/browser` 全链路复验
+**状态：** 已完成（done，`vue-tsc` 0 错、`vitest` 9 passed、`vite build` 通过，`/browser` 实测 0 console/network error 并留存 6 张全链路截图，包括新打擂 `#77350f73` 的真实 Token `469` / `$0.000717`、Radar 图 `509x288`、Side-by-Side 对照、性能拓扑双卡及切回/对调稳定性）
+**完成标准：**
+1. **收口导航与整合进打擂大厅**：移除左侧边栏与页头中的独立「对比 PK 与门禁」页面（`/evaluation/compare` 重定向至 `打擂任务大厅`）；对比 PK 直接由 `打擂任务大厅` 顶部工具栏与历史打擂勾选触发（自动避开同场次自对比）；将专用靶场切换按钮集成至大厅/开考入口，未实现的定时巡检 Cron 明确后置。
+2. **重做多版本横向对撞 PK 工坊（对齐 LightRAG 第三、四、五幅图设计）**：
+   - **壳层与工程诊断横幅**：宽度升级为 `full`，顶部增加动态工程诊断建议横幅、`[⇄ 对调基准]` 与同排 `基准 VS 对比` 实时下拉切换。
+   - **Tab 1（宏观概览对决）**：修复 `v-show` / `v-else` 模板分支错位，并用 `ResizeObserver` + 动画延迟重试彻底解决 `BaseDialog` 过渡期 ECharts 0 宽高白屏问题；右侧配齐 7 维核心指标并排对比表（综合分、TSR、L1、TTFT P50/P95、总耗时、死循环率、Token 与费用及红绿 Delta）。
+   - **Tab 2（用例胜负榜 Side-by-Side Diff）**：扩充后端 `compare_runs` 接口返回题目原文、黄金答案、双方实际回复正文、L1/L2 逐项得分与裁判理由、工具调用步数及 `MLflow Trace ↗`；前端支持全/退化/提升/持平过滤 + 关键词筛选，左右并排卡片展示真实回答与裁决依据对照。
+   - **Tab 3（性能与时延剖析）**：对齐 LightRAG 耗时拓扑双卡，分别拆解展示 **TTFT 首字延迟（P50/P95/P99）**、**首字后生成与工具耗时**、**Agent 端到端均耗与整场总耗时**、**L2 裁判打分耗时**、**Agent + 裁判 Token 与费用透传**及**死循环与异常分布**，底部附带指标采集口径真实度说明。
+3. **全链路端到端复验**：重启更新后的服务端与前端，用真实新打擂运行两条不同配置并触发 `/browser` 逐点验证与关键截图。
+**涉及位置：** `apps/platform-web/src/router/routes.ts`、`apps/platform-web/src/modules/evaluation/`、`apps/platform-api/src/platform_api/modules/evaluation/studio_service.py`、`apps/platform-web/src/services/evaluation/studio.ts`。
+
+- [x] 移除独立对比页面与侧边栏入口，保留 `/evaluation/compare` 重定向并在 `打擂任务大厅` 整合双通道对比 PK 与靶场设置，定时巡检后端调度标记后置。
+- [x] 扩展后端 `compare_runs` 返回题目、黄金答案、双方正文、分级指标理由、分段耗时及 Token/费用对比字段并补充单测。
+- [x] 全面重构 `ComparisonPkDialog.vue`：修复雷达图白屏与模板分支错位，补齐右侧指标对比表、Side-by-Side 逐题对比卡片及 LightRAG 风格性能与成本拓扑卡。
+- [x] 全栈校验（Pytest + `vue-tsc` + Vitest + Vite build + `check_docs.py`）并通过 `/browser` 跑通全链路测试与截图。

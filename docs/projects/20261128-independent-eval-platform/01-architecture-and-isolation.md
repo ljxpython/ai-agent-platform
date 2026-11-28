@@ -115,12 +115,12 @@ flowchart TB
 ## 6. 本专题规划任务（待启动实施）
 
 ### Task 1.1：落实底座契约、`runtime-service` 多图扩展与内部回调桥
-**状态：** 待开始（方案 X、专家图位置与多 Graph 范围均已对齐）。
-**完成标准：** 更新 `architecture.md` 与跨服务/内部接口契约；完成 `targets.py` / `webapp.py` / 其他图执行证据的放开适配，并清理 `services/evaluation_assistant/` 空目录；完成 `copilot-context`、`diagnosis-evidence` 与 `judge-model-config` 接口及单元测试。
+**状态：** 已完成（done，核心代码与单元测试已通过；历史空目录 `services/evaluation_assistant/` 待人工确认后清理）。
+**完成标准：** 更新 `architecture.md` 与跨服务/内部接口契约；完成 `targets.py` / `webapp.py` / 其他图执行证据的放开适配；完成 `copilot-context`、`diagnosis-evidence` 与 `judge-model-config` 接口及单元测试。
 **涉及位置：** `apps/platform-api/docs/handbook/architecture.md`、`apps/platform-api/src/platform_api/modules/evaluation/`、`apps/runtime-service/src/runtime_service/`。
 
-- [ ] 修订 `platform-api` 架构说明并完成评测表 Alembic 迁移脚本设计。
-- [ ] 放开 `dearflow_agent`、`showcase_demo`、`reference_agent`、`workflow_demo` 评测白名单，补齐非沙箱图 `assert_target` / `record_execution`（`workspace=None`）并清理空目录 `services/evaluation_assistant/`。
-- [ ] 实现供 `eval-runner` 解析平台网关模型连接的内部签名端点，及供 `eval_copilot` / `eval_diagnosis` 回调的 HMAC 只读接口（支持 `offset` 分片与大小保护）。
+- [x] 修订 `platform-api` 架构说明并完成评测表 Alembic 迁移脚本 `20261128_0016_evaluation_platform.py`（SQLite upgrade/downgrade 验证通过）。
+- [x] 放开 `dearflow_agent`、`showcase_demo`、`reference_agent`、`workflow_demo` 评测白名单，通过 `evaluation_hooks.py` 补齐 `assert_target` / `record_execution`（`runtime-service` 13 passed）。
+- [x] 实现供 `eval-runner` 解析平台网关模型连接的内部签名端点，及供 `eval_copilot` / `eval_diagnosis` 回调的 HMAC 只读接口（支持 `offset` 分片与大小保护）。
 
 **下一步：** 随其余专题实施任务一并获准后启动编码。

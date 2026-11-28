@@ -12,6 +12,9 @@ from platform_api.modules.evaluation.materials import (
     router as evaluation_materials_router,
 )
 from platform_api.modules.evaluation.router import router as evaluation_router
+from platform_api.modules.evaluation.studio_router import (
+    router as evaluation_studio_router,
+)
 from platform_api.modules.evaluation.workbench import (
     router as evaluation_workbench_router,
 )
@@ -72,6 +75,7 @@ api_router.include_router(users_router)
 api_router.include_router(service_accounts_router)
 api_router.include_router(announcements_router)
 api_router.include_router(evaluation_router)
+api_router.include_router(evaluation_studio_router)
 api_router.include_router(evaluation_workbench_router)
 api_router.include_router(evaluation_materials_router)
 api_router.include_router(assistants_router)

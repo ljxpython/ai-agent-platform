@@ -145,6 +145,12 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     pii_config = pii_config_for_facts(facts, configurable.get("thread_id"))
     startup.authorize(config, facts)
     with startup.phase("factory.context_resolution"):
+        if not local and facts.scope.operation == "run-create":
+            from runtime_service.observability.evaluation_hooks import (
+                verify_evaluation_target,
+            )
+
+            await verify_evaluation_target(config, facts)
         run_budget = read_run_budget(
             config, required=not local and facts.scope.operation == "run-create"
         )
@@ -160,6 +166,14 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             policy=facts.policy,
             defaults=_DEFAULTS,
         )
+        if not local and facts.scope.operation == "run-create":
+            from runtime_service.observability.evaluation_hooks import (
+                record_evaluation_execution,
+            )
+
+            await record_evaluation_execution(
+                config, resolved, facts, "workflow_demo", None
+            )
     startup.metadata["model_id"] = resolved.model_id
     injected = _runtime_model(config, local=local)
 

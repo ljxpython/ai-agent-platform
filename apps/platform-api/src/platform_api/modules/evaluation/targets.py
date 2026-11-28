@@ -21,6 +21,33 @@ from platform_api.modules.runtime_policies.application import (
     RuntimePolicyOverlayService,
 )
 
+EVALUABLE_GRAPHS: frozenset[str] = frozenset(
+    {"dearflow_agent", "showcase_demo", "reference_agent", "workflow_demo"}
+)
+
+_DEFAULT_GRAPH_FEATURES: dict[str, dict[str, bool]] = {
+    "dearflow_agent": {
+        "workspace_files": True,
+        "clarification": True,
+        "plan_mode": True,
+    },
+    "showcase_demo": {
+        "workspace_files": True,
+        "clarification": False,
+        "plan_mode": True,
+    },
+    "reference_agent": {
+        "workspace_files": False,
+        "clarification": False,
+        "plan_mode": True,
+    },
+    "workflow_demo": {
+        "workspace_files": False,
+        "clarification": False,
+        "plan_mode": False,
+    },
+}
+
 
 class Parameters(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -62,12 +89,12 @@ def configured_target(gateway, actor, project_id, spec):
     ).get_assistant(actor=actor, assistant_id=str(spec.agent_id))
     if (
         item.project_id != project_id
-        or item.graph_id != "dearflow_agent"
+        or item.graph_id not in EVALUABLE_GRAPHS
         or item.status != "active"
     ):
         raise BadRequestError(
             code="evaluation_target_invalid",
-            message="评测Agent不属于当前项目或未启用。",
+            message="评测Agent不属于当前项目、未启用或不支持评测。",
         )
     gateway._assert_runtime_target_allowed(
         project_id=project_id, assistant_id=item.graph_id
@@ -208,3 +235,98 @@ async def create_run(gateway, actor, project_id, thread_id, body, key):
         idempotency_key=key,
         evaluation_target=body.target,
     )
+
+
+def infer_case_required_capabilities(case: dict) -> list[str]:
+    """Infer capability tags required by a case from explicit tags or assertions."""
+    explicit = list(case.get("required_capabilities") or [])
+    required = set(str(x) for x in explicit if x)
+    expectations = case.get("expectations") or {}
+    if expectations.get("artifacts") or case.get("fixture"):
+        required.add("workspace_files")
+    for turn in case.get("turns") or []:
+        if isinstance(turn, dict) and turn.get("fixture"):
+            required.add("workspace_files")
+    metrics = case.get("metrics") or []
+    for metric in metrics:
+        name = metric.get("name") if isinstance(metric, dict) else str(metric)
+        if name in {"artifact_correct", "no_write", "protected_unchanged"}:
+            required.add("workspace_files")
+        if name == "clarification_requested":
+            required.add("clarification")
+    return sorted(required)
+
+
+async def check_readiness(
+    gateway,
+    session_factory,
+    *,
+    actor,
+    target_project_id: str,
+    agent_id: UUID,
+    model_id: UUID,
+    judge_model_id: UUID | None = None,
+    embedding_model_id: UUID | None = None,
+    suite_cases: list[dict] | None = None,
+    eval_project_id: str = "",
+) -> dict:
+    """Validate target project, graph capability match, models, and sandbox risk."""
+    from platform_api.modules.evaluation.models import EvalSandboxProject
+
+    spec = TargetRequest(agent_id=agent_id, model_id=model_id)
+    agent, _ = await run_in_threadpool(
+        configured_target, gateway, actor, target_project_id, spec
+    )
+    runtime = await gateway.evaluation_capabilities(
+        project_id=target_project_id, graph_id=agent["graph_id"]
+    )
+    graph_features = runtime.get("graph_features") or _DEFAULT_GRAPH_FEATURES.get(
+        agent["graph_id"],
+        {"workspace_files": False, "clarification": False, "plan_mode": False},
+    )
+
+    def _check_db():
+        with session_factory() as session:
+            sandbox_row = session.get(EvalSandboxProject, target_project_id)
+            is_sandbox = bool(
+                (sandbox_row and sandbox_row.is_sandbox)
+                or (eval_project_id and target_project_id == eval_project_id)
+            )
+            missing_models = []
+            for label, mid in (
+                ("judge_model", judge_model_id),
+                ("embedding_model", embedding_model_id),
+            ):
+                if mid is not None:
+                    rec = session.get(RuntimeCatalogModelRecord, mid)
+                    if rec is None or not rec.enabled:
+                        missing_models.append(label)
+            return is_sandbox, missing_models
+
+    is_sandbox, missing_models = await run_in_threadpool(_check_db)
+    incompatible_cases = []
+    for case in suite_cases or []:
+        req = infer_case_required_capabilities(case)
+        missing_caps = [cap for cap in req if not graph_features.get(cap, False)]
+        if missing_caps:
+            incompatible_cases.append(
+                {
+                    "case_key": case.get("case_key", ""),
+                    "missing_capabilities": missing_caps,
+                }
+            )
+    ready = len(missing_models) == 0 and len(incompatible_cases) == 0
+    return {
+        "ready": ready,
+        "target_project_id": target_project_id,
+        "graph_id": agent["graph_id"],
+        "graph_features": graph_features,
+        "is_sandbox": is_sandbox,
+        "sandbox_warning": (
+            None
+            if is_sandbox
+            else "所选项目不是专用评测靶场，评测将写入该项目的会话、预算与 MLflow 追踪记录，请确认后执行。"
+        ),
+        "missing_models": missing_models,
+        "incompatible_cases": incompatible_cases,
+    }

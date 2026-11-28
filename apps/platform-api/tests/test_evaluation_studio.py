@@ -1,0 +1,400 @@
+"""Tests for native evaluation studio control-plane API, readiness, and multi-graph targets."""
+
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+import time
+from types import SimpleNamespace as NS
+from unittest.mock import AsyncMock
+from uuid import uuid4
+
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from platform_api.core.context.models import ActorContext
+from platform_api.core.db.base import Base
+from platform_api.core.db.init_db import import_core_models
+from platform_api.core.errors import register_exception_handlers
+from platform_api.entrypoints.http.dependencies import get_actor_context
+from platform_api.modules.agents.infra.sqlalchemy.models import AgentRecord
+from platform_api.modules.evaluation import studio_router, targets
+from platform_api.modules.evaluation.models import EvalRunCase
+from platform_api.modules.runtime_catalog.infra.sqlalchemy.models import (
+    RuntimeCatalogModelRecord,
+)
+from platform_api.modules.runtime_gateway.presentation.http import (
+    get_runtime_gateway_service,
+)
+
+
+def _make_app():
+    import_core_models()
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+    project_id = str(uuid4())
+    target_project_uuid = uuid4()
+    target_project_id = str(target_project_uuid)
+    user_uuid = uuid4()
+    user_id = str(user_uuid)
+    agent_id = uuid4()
+    model_id = uuid4()
+    judge_model_id = uuid4()
+
+    with factory() as session:
+        session.add(
+            AgentRecord(
+                id=agent_id,
+                project_id=target_project_uuid,
+                name="Ref Agent",
+                graph_id="reference_agent",
+                status="active",
+                context={},
+                created_by=user_uuid,
+                updated_by=user_uuid,
+            )
+        )
+        session.add(
+            RuntimeCatalogModelRecord(
+                id=model_id,
+                display_name="DeepSeek V4 Flash",
+                provider="deepseek",
+                base_url="https://api.example.com/v1",
+                protocol="openai-compatible",
+                model_name="deepseek-chat",
+                api_key_ciphertext="enc",
+                enabled=True,
+                scope_type="platform",
+            )
+        )
+        session.add(
+            RuntimeCatalogModelRecord(
+                id=judge_model_id,
+                display_name="Judge DeepSeek V4",
+                provider="deepseek",
+                base_url="https://api.example.com/v1",
+                protocol="openai-compatible",
+                model_name="deepseek-chat",
+                api_key_ciphertext="enc",
+                enabled=True,
+                scope_type="platform",
+            )
+        )
+        session.commit()
+
+    app = FastAPI()
+    register_exception_handlers(app)
+
+    @app.middleware("http")
+    async def _attach_state(request, call_next):
+        request.state.platform_context = NS(
+            request_id="test-req",
+            trace_id="test-trace",
+            tenant=NS(tenant_id="__default"),
+            project=NS(project_id=request.headers.get("x-project-id")),
+        )
+        return await call_next(request)
+
+    app.state.db_session_factory = factory
+    app.state.settings = NS(
+        evaluation_project_id="",
+        runtime_delegation_secret="test-secret-123",
+        model_config_master_key="",
+    )
+    actor = ActorContext(
+        user_id=user_id,
+        project_roles={
+            project_id: ("project_admin",),
+            target_project_id: ("project_admin",),
+        },
+    )
+    app.dependency_overrides[get_actor_context] = lambda: actor
+
+    fake_gateway = NS(
+        _authorize=lambda **kwargs: None,
+        _require_session_factory=lambda: factory,
+        _assert_runtime_target_allowed=lambda **kwargs: None,
+        _runtime_id="default",
+        evaluation_capabilities=AsyncMock(
+            return_value={
+                "schema": "evaluation-runtime/v1",
+                "available": True,
+                "manifest": {"package_sha256": "pkg-sha"},
+                "tools": [],
+                "graph_features": {
+                    "workspace_files": False,
+                    "clarification": False,
+                    "plan_mode": True,
+                },
+            }
+        ),
+    )
+    app.dependency_overrides[get_runtime_gateway_service] = lambda: fake_gateway
+    app.include_router(studio_router.router)
+    return (
+        app,
+        factory,
+        project_id,
+        target_project_id,
+        str(agent_id),
+        str(model_id),
+        str(judge_model_id),
+    )
+
+
+def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
+    monkeypatch,
+):
+    (
+        app,
+        factory,
+        project_id,
+        target_project_id,
+        agent_id,
+        model_id,
+        judge_model_id,
+    ) = _make_app()
+    monkeypatch.setattr(
+        targets,
+        "configured_target",
+        lambda gateway, actor, pid, spec: (
+            {
+                "id": str(spec.agent_id),
+                "project_id": pid,
+                "name": "Ref Agent",
+                "graph_id": "reference_agent",
+                "status": "active",
+                "context": {},
+            },
+            {"model": {"model_id": str(spec.model_id)}},
+        ),
+    )
+    client = TestClient(app)
+    headers = {"x-project-id": project_id}
+
+    # 1. Create suite + upsert case requiring workspace_files + publish
+    suite_res = client.post(
+        "/api/evaluation/studio/suites",
+        headers=headers,
+        json={
+            "name": "核心多图评测集",
+            "suite_type": "regression",
+            "default_graph_id": "reference_agent",
+        },
+    )
+    assert suite_res.status_code == 201, suite_res.text
+    suite_id = suite_res.json()["id"]
+
+    case_res = client.put(
+        f"/api/evaluation/studio/suites/{suite_id}/cases",
+        headers=headers,
+        json={
+            "case_key": "case_file_check",
+            "split": "dev",
+            "turns": [{"role": "user", "content": "check file"}],
+            "expectations": {"artifacts": [{"path": "/workspace/work/out.txt"}]},
+            "metrics": [{"name": "artifact_correct"}],
+        },
+    )
+    assert case_res.status_code == 200
+    assert "workspace_files" in case_res.json()["required_capabilities"]
+
+    pub_res = client.post(
+        f"/api/evaluation/studio/suites/{suite_id}/publish",
+        headers=headers,
+        json={"note": "v1"},
+    )
+    assert pub_res.status_code == 201
+    version_id = pub_res.json()["id"]
+
+    # 2. Readiness detects non-sandbox warning and graph incompatibility
+    ready_res = client.post(
+        "/api/evaluation/studio/readiness",
+        headers=headers,
+        json={
+            "suite_id": suite_id,
+            "target_project_id": target_project_id,
+            "agent_id": agent_id,
+            "model_id": model_id,
+            "judge_model_id": judge_model_id,
+        },
+    )
+    assert ready_res.status_code == 200
+    ready_data = ready_res.json()
+    assert ready_data["is_sandbox"] is False
+    assert ready_data["sandbox_warning"] is not None
+    assert ready_data["ready"] is False
+    assert ready_data["incompatible_cases"][0]["case_key"] == "case_file_check"
+
+    # 3. Non-sandbox without confirm is rejected; with confirm + skip_incompatible succeeds
+    bad_run = client.post(
+        "/api/evaluation/studio/runs",
+        headers=headers,
+        json={
+            "suite_id": suite_id,
+            "version_id": version_id,
+            "target_project_id": target_project_id,
+            "agent_id": agent_id,
+            "model_id": model_id,
+            "judge_model_id": judge_model_id,
+            "concurrency": 3,
+        },
+    )
+    assert bad_run.status_code == 400
+
+    # Concurrency > 5 rejected by Pydantic
+    over_conc = client.post(
+        "/api/evaluation/studio/runs",
+        headers=headers,
+        json={
+            "suite_id": suite_id,
+            "version_id": version_id,
+            "target_project_id": target_project_id,
+            "agent_id": agent_id,
+            "model_id": model_id,
+            "concurrency": 6,
+            "confirm_non_sandbox": True,
+            "skip_incompatible": True,
+        },
+    )
+    assert over_conc.status_code == 422
+
+    ok_run = client.post(
+        "/api/evaluation/studio/runs",
+        headers=headers,
+        json={
+            "suite_id": suite_id,
+            "version_id": version_id,
+            "target_project_id": target_project_id,
+            "agent_id": agent_id,
+            "model_id": model_id,
+            "judge_model_id": judge_model_id,
+            "concurrency": 4,
+            "confirm_non_sandbox": True,
+            "skip_incompatible": True,
+        },
+    )
+    assert ok_run.status_code == 201
+    run_id = ok_run.json()["id"]
+
+    # 4. Run control (pause -> resume) & L3 human review
+    paused = client.post(
+        f"/api/evaluation/studio/runs/{run_id}/control",
+        headers=headers,
+        json={"action": "pause"},
+    )
+    assert paused.status_code == 200
+    assert paused.json()["status"] == "paused"
+
+    resumed = client.post(
+        f"/api/evaluation/studio/runs/{run_id}/control",
+        headers=headers,
+        json={"action": "resume"},
+    )
+    assert resumed.status_code == 200
+    assert resumed.json()["status"] == "queued"
+
+    with factory() as session:
+        rc = session.query(EvalRunCase).filter_by(run_id=run_id).first()
+        rc_id = rc.id
+    review = client.post(
+        f"/api/evaluation/studio/run-cases/{rc_id}/review",
+        headers=headers,
+        json={"human_verdict": "pass", "reason": "人工复核通过"},
+    )
+    assert review.status_code == 201
+
+    # 5. Internal HMAC diagnosis-evidence slice
+    body_bytes = json.dumps(
+        {"project_id": project_id, "run_id": run_id, "ref": "overview", "offset": 0}
+    ).encode()
+    stamp = str(int(time.time()))
+    sig = hmac.new(
+        b"test-secret-123",
+        b"\n".join([b"diagnosis-evidence", stamp.encode(), body_bytes]),
+        hashlib.sha256,
+    ).hexdigest()
+    diag_res = client.post(
+        "/api/evaluation/internal/diagnosis-evidence",
+        content=body_bytes,
+        headers={
+            "content-type": "application/json",
+            "x-eval-time": stamp,
+            "x-eval-signature": sig,
+        },
+    )
+    assert diag_res.status_code == 200
+    assert diag_res.json()["reference"] == "overview"
+
+    # 6. Import cases & verify sample_cases preview in list_suites & soft archive
+    imp_res = client.post(
+        f"/api/evaluation/studio/suites/{suite_id}/cases/import",
+        headers=headers,
+        json={
+            "items": [
+                {
+                    "case_key": "imported_001",
+                    "split": "holdout",
+                    "turns": [{"role": "user", "content": "请总结本次变更"}],
+                    "expectations": {"expected_answer": "变更摘要"},
+                    "metrics": ["completion"],
+                }
+            ]
+        },
+    )
+    assert imp_res.status_code == 200
+    assert imp_res.json()["imported"] == 1
+
+    listed = client.get("/api/evaluation/studio/suites", headers=headers)
+    assert listed.status_code == 200
+    suite_entry = next(s for s in listed.json()["items"] if s["id"] == suite_id)
+    assert len(suite_entry["sample_cases"]) >= 1
+    assert suite_entry["runs_count"] >= 1
+
+    # 7. Enriched compare_runs includes question, ground truth, and both sides' payload
+    with factory() as session:
+        rc = session.query(EvalRunCase).filter_by(run_id=run_id).first()
+        rc.status = "completed"
+        rc.rule_passed = True
+        rc.overall_score = 0.85
+        rc.ttft_ms = 420
+        rc.duration_ms = 1200
+        rc.token_usage_json = {"total_tokens": 120}
+        rc.results_json = {
+            "final_answer": "模型输出文本",
+            "metrics": [
+                {
+                    "name": "artifact_correct",
+                    "layer": "L1",
+                    "passed": True,
+                    "score": 0.85,
+                }
+            ],
+            "timing_breakdown": {"ttft_ms": 420, "generation_ms": 780},
+        }
+        session.commit()
+    cmp_res = client.get(
+        f"/api/evaluation/studio/runs/compare?baseline_id={run_id}&candidate_id={run_id}",
+        headers=headers,
+    )
+    assert cmp_res.status_code == 200
+    cmp_item = cmp_res.json()["unchanged"][0]
+    assert cmp_item["question"] == "check file"
+    assert cmp_item["baseline"]["final_answer"] == "模型输出文本"
+    assert cmp_item["candidate"]["token_usage"]["total_tokens"] == 120
+
+    del_res = client.delete(
+        f"/api/evaluation/studio/suites/{suite_id}", headers=headers
+    )
+    assert del_res.status_code == 200
+    assert del_res.json()["archived"] is True
