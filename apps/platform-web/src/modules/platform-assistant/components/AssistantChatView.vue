@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { usePlatformAssistantStore } from "../stores/usePlatformAssistantStore";
 import { usePlatformAssistantSession } from "../composables/usePlatformAssistantSession";
 import { useAuthStore } from "@/stores/auth";
@@ -54,6 +54,12 @@ watch(
   },
   { immediate: true },
 );
+
+onMounted(() => {
+  if (store.boundProjectId && store.availableModels.length === 0) {
+    void store.loadAvailableModels();
+  }
+});
 
 async function handleSendMessage(text: string) {
   if (store.loading) return;
@@ -426,8 +432,14 @@ function getToolCardSummary(evidenceId: string) {
       :disabled="
         store.loading || session.turnStatus.value === 'awaiting_review'
       "
+      :models="store.availableModels"
+      :project-id="store.boundProjectId"
+      :selected-model-id="store.selectedModelId"
+      :default-model-id="store.defaultModelId"
+      :default-model-name="store.defaultModelName"
       @send="handleSendMessage"
       @stop="session.stopCurrentRun"
+      @update:selected-model-id="store.setSelectedModelId"
     >
       <template #context>
         <AssistantContextPill

@@ -23,6 +23,7 @@ const props = defineProps<{
   readinessError?: string;
   submitError?: string;
   busy?: boolean;
+  selectedCaseKeys?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -36,6 +37,7 @@ const emit = defineEmits<{
       model_id: string;
       judge_model_id: string | null;
       embedding_model_id: string | null;
+      case_keys?: string[];
     },
   ];
   launch: [
@@ -51,6 +53,7 @@ const emit = defineEmits<{
       repeat_k: number;
       confirm_non_sandbox: boolean;
       skip_incompatible: boolean;
+      case_keys?: string[];
     },
   ];
   launchMatrix: [
@@ -64,6 +67,7 @@ const emit = defineEmits<{
       repeat_k: number;
       confirm_non_sandbox: boolean;
       variants: Array<{ agent_id: string; model_id: string; label?: string }>;
+      case_keys?: string[];
     },
   ];
 }>();
@@ -120,6 +124,9 @@ function triggerReadiness() {
     model_id: probeModel,
     judge_model_id: judgeModelId.value || null,
     embedding_model_id: embeddingModelId.value || null,
+    case_keys: props.selectedCaseKeys?.length
+      ? props.selectedCaseKeys
+      : undefined,
   });
 }
 
@@ -217,6 +224,9 @@ const canSubmit = computed(() => {
 
 function submitLaunch() {
   if (!props.suite || !canSubmit.value) return;
+  const caseKeys = props.selectedCaseKeys?.length
+    ? props.selectedCaseKeys
+    : undefined;
   if (launchMode.value === "matrix") {
     emit("launchMatrix", {
       suite_id: props.suite.id,
@@ -234,6 +244,7 @@ function submitLaunch() {
           selectableModels.value.find((m) => m.value === mid)?.label ||
           mid.slice(0, 8),
       })),
+      case_keys: caseKeys,
     });
     return;
   }
@@ -249,6 +260,7 @@ function submitLaunch() {
     repeat_k: Number(repeatK.value),
     confirm_non_sandbox: confirmNonSandbox.value,
     skip_incompatible: skipIncompatible.value,
+    case_keys: caseKeys,
   });
 }
 </script>
@@ -293,6 +305,40 @@ function submitLaunch() {
         <BaseButton size="sm" variant="secondary" @click="triggerReadiness">
           重新执行 Readiness Guard
         </BaseButton>
+      </div>
+
+      <div
+        v-if="selectedCaseKeys && selectedCaseKeys.length > 0"
+        class="flex items-center justify-between px-3.5 py-2.5 rounded-lg bg-primary-50/80 dark:bg-primary-950/40 border border-primary-200/90 dark:border-primary-800/50 text-xs"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <span
+            class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary-600 text-white font-mono text-[11px] font-bold"
+          >
+            {{ selectedCaseKeys.length }}
+          </span>
+          <span
+            class="font-medium text-primary-900 dark:text-primary-100 shrink-0"
+          >
+            已选局部打擂用例：
+          </span>
+          <span
+            class="font-mono text-[11px] text-primary-700 dark:text-primary-300 truncate"
+            :title="selectedCaseKeys.join(', ')"
+          >
+            {{ selectedCaseKeys.slice(0, 5).join(", ")
+            }}{{
+              selectedCaseKeys.length > 5
+                ? ` 等共 ${selectedCaseKeys.length} 题`
+                : ""
+            }}
+          </span>
+        </div>
+        <span
+          class="shrink-0 text-[11px] font-medium text-primary-700 dark:text-primary-300 bg-primary-100/60 dark:bg-primary-900/40 px-2 py-0.5 rounded"
+        >
+          仅运行勾选题目
+        </span>
       </div>
 
       <StateBanner

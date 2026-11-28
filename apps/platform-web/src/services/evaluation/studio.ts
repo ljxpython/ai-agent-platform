@@ -385,6 +385,7 @@ export async function checkReadiness(
     model_id: string;
     judge_model_id?: string | null;
     embedding_model_id?: string | null;
+    case_keys?: string[];
   },
 ): Promise<ReadinessResult> {
   const { data } = await platformHttpClient.post<ReadinessResult>(
@@ -409,6 +410,7 @@ export async function createRun(
     repeat_k: number;
     confirm_non_sandbox: boolean;
     skip_incompatible: boolean;
+    case_keys?: string[];
   },
 ): Promise<EvalRunItem> {
   const { data } = await platformHttpClient.post<EvalRunItem>(
@@ -431,6 +433,7 @@ export async function createMatrixRuns(
     repeat_k: number;
     confirm_non_sandbox: boolean;
     variants: Array<{ agent_id: string; model_id: string; label?: string }>;
+    case_keys?: string[];
   },
 ): Promise<{ matrix_group_id: string; runs: EvalRunItem[] }> {
   const { data } = await platformHttpClient.post<{

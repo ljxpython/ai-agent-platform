@@ -2,22 +2,43 @@
 import { ref } from "vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import ChatModelSelector from "@/modules/chat/components/ChatModelSelector.vue";
+import type { RuntimeModelItem } from "@/types/management";
 
-const props = defineProps<{
-  disabled?: boolean;
-  isRunning?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    disabled?: boolean;
+    isRunning?: boolean;
+    models?: RuntimeModelItem[];
+    selectedModelId?: string;
+    defaultModelId?: string;
+    defaultModelName?: string;
+    projectId?: string;
+  }>(),
+  {
+    disabled: false,
+    isRunning: false,
+    models: () => [],
+    selectedModelId: "",
+    defaultModelId: "",
+    defaultModelName: "",
+    projectId: "",
+  },
+);
 
 const emit = defineEmits<{
   (e: "send", text: string): void;
   (e: "stop"): void;
+  (e: "update:selectedModelId", value: string): void;
 }>();
 
 const inputContent = ref("");
 
 function handleKeyDown(event: KeyboardEvent) {
   if (event.key === "Enter" && !event.shiftKey) {
+    if (event.isComposing) return;
     event.preventDefault();
+    if (props.isRunning || props.disabled) return;
     handleSend();
   }
 }
@@ -46,16 +67,28 @@ function handleSend() {
         rows="3"
         class="w-full bg-transparent resize-none border-none outline-none ring-0 focus:outline-none focus:ring-0 focus:border-none p-1 text-xs text-gray-900 dark:text-white placeholder-gray-400"
         placeholder="咨询平台用法、排查异常、或探讨创意... (Enter 发送, Shift+Enter 换行)"
-        :disabled="isRunning || disabled"
+        :disabled="disabled"
         @keydown="handleKeyDown"
       />
 
-      <div class="flex items-center justify-between pt-1">
-        <span class="text-[10px] text-gray-400 select-none">
+      <div class="flex items-center justify-between pt-1 gap-2">
+        <span class="text-[10px] text-gray-400 select-none truncate min-w-0">
           只读环境 · 生产写入须逐次审批
         </span>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- 渠道与模型选择器 -->
+          <ChatModelSelector
+            v-if="projectId && models && models.length > 0"
+            :models="models"
+            :project-id="projectId"
+            :selected-model-id="selectedModelId"
+            :default-model-id="defaultModelId"
+            :default-model-name="defaultModelName"
+            :disabled="isRunning || disabled"
+            @update:selected-model-id="emit('update:selectedModelId', $event)"
+          />
+
           <!-- 运行中停止按钮 -->
           <BaseButton
             v-if="isRunning"

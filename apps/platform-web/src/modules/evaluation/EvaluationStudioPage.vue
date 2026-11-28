@@ -45,8 +45,16 @@ const modelOptions = ref<
 >([]);
 const runtimeModels = ref<RuntimeModelItem[]>([]);
 const defaultModelId = ref("");
+const selectedCaseKeys = ref<string[]>([]);
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+watch(
+  () => studio.activeSuite.value?.id,
+  () => {
+    selectedCaseKeys.value = [];
+  },
+);
 
 function syncTabFromRoute() {
   const metaTab = route.meta?.evalTab as EvalTab | undefined;
@@ -365,7 +373,9 @@ function openMlflowDashboard() {
       :suite="studio.activeSuite.value"
       :cases="studio.suiteCases.value"
       :versions="studio.suiteVersions.value"
+      :selected-case-keys="selectedCaseKeys"
       :busy="studio.busyAction.value"
+      @update:selected-case-keys="(k) => (selectedCaseKeys = k)"
       @switch-suite="(id) => studio.openSuite(id)"
       @save-case="(p) => studio.saveCase(studio.activeSuite.value!.id, p)"
       @save-batch="
@@ -407,6 +417,7 @@ function openMlflowDashboard() {
       :readiness-error="studio.readinessError.value"
       :submit-error="modalSubmitError"
       :busy="studio.busyAction.value"
+      :selected-case-keys="selectedCaseKeys"
       @close="showLaunchModal = false"
       @target-project-change="loadTargetOptions"
       @check-readiness="studio.runReadiness"

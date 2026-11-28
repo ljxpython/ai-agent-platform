@@ -108,4 +108,57 @@ describe("usePlatformAssistantStore", () => {
     await store.ensureBootstrap("other-project");
     expect(store.activeThreadId).toBeNull();
   });
+
+  it("支持设置选中的模型并正确计算 currentModelId 与 defaultModelName", () => {
+    const store = usePlatformAssistantStore();
+    store.bootstrapConfig = {
+      project_id: "proj-1",
+      personal_project: true,
+      assistant_id: "platform_assistant",
+      agent_id: "a-1",
+      model_id: "model-default",
+      history: true,
+    };
+    store.availableModels = [
+      {
+        id: "model-default",
+        model: "deepseek-chat",
+        display_name: "DeepSeek 官方",
+        provider: "deepseek",
+        api_style: "openai-compatible",
+        base_url: "https://api.deepseek.com",
+        protocol: "openai-compatible",
+        credential_configured: true,
+        enabled: true,
+        scope_type: "platform",
+      },
+      {
+        id: "model-custom",
+        model: "qwen-plus",
+        display_name: "通义千问 Plus",
+        provider: "qwen",
+        api_style: "openai-compatible",
+        base_url: "https://dashscope.aliyuncs.com",
+        protocol: "openai-compatible",
+        credential_configured: true,
+        enabled: true,
+        scope_type: "platform",
+      },
+    ];
+
+    // 默认情况下，currentModelId 为 bootstrap 返回的 model_id，defaultModelName 正确匹配
+    expect(store.currentModelId).toBe("model-default");
+    expect(store.defaultModelId).toBe("model-default");
+    expect(store.defaultModelName).toBe("DeepSeek 官方");
+
+    // 用户切换模型
+    store.setSelectedModelId("model-custom");
+    expect(store.selectedModelId).toBe("model-custom");
+    expect(store.currentModelId).toBe("model-custom");
+
+    // 用户重置为跟随默认配置
+    store.setSelectedModelId("");
+    expect(store.selectedModelId).toBe("");
+    expect(store.currentModelId).toBe("model-default");
+  });
 });

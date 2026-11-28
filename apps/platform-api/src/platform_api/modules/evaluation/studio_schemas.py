@@ -56,6 +56,7 @@ class ReadinessRequest(StrictBody):
     model_id: UUID
     judge_model_id: UUID | None = None
     embedding_model_id: UUID | None = None
+    case_keys: list[str] | None = Field(default=None, max_length=500)
 
 
 class RunCreate(StrictBody):
@@ -90,6 +91,7 @@ class MatrixCreate(StrictBody):
     repeat_k: int = Field(default=1, ge=1, le=5)
     confirm_non_sandbox: bool = False
     variants: list[MatrixVariant] = Field(min_length=1, max_length=8)
+    case_keys: list[str] | None = Field(default=None, max_length=500)
 
 
 class RunControlRequest(StrictBody):

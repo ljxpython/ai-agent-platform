@@ -320,6 +320,10 @@ async def readiness_check(
         project_id=pid,
         suite_id=str(body.suite_id),
     )
+    cases = detail["cases"]
+    if body.case_keys:
+        selected_set = set(body.case_keys)
+        cases = [c for c in cases if c.get("case_key") in selected_set]
     return await targets.check_readiness(
         gateway,
         request.app.state.db_session_factory,
@@ -329,7 +333,7 @@ async def readiness_check(
         model_id=body.model_id,
         judge_model_id=body.judge_model_id,
         embedding_model_id=body.embedding_model_id,
-        suite_cases=detail["cases"],
+        suite_cases=cases,
         eval_project_id=request.app.state.settings.evaluation_project_id,
     )
 
@@ -348,6 +352,10 @@ async def create_run(
         project_id=pid,
         suite_id=str(body.suite_id),
     )
+    suite_cases = detail["cases"]
+    if body.case_keys:
+        selected_set = set(body.case_keys)
+        suite_cases = [c for c in suite_cases if c.get("case_key") in selected_set]
     readiness = await targets.check_readiness(
         gateway,
         request.app.state.db_session_factory,
@@ -357,7 +365,7 @@ async def create_run(
         model_id=body.model_id,
         judge_model_id=body.judge_model_id,
         embedding_model_id=body.embedding_model_id,
-        suite_cases=detail["cases"],
+        suite_cases=suite_cases,
         eval_project_id=request.app.state.settings.evaluation_project_id,
     )
     if not readiness["is_sandbox"] and not body.confirm_non_sandbox:
@@ -417,6 +425,7 @@ async def create_matrix_runs(
             repeat_k=body.repeat_k,
             confirm_non_sandbox=body.confirm_non_sandbox,
             skip_incompatible=True,
+            case_keys=body.case_keys,
         )
         snap = await targets.snapshot(
             gateway,

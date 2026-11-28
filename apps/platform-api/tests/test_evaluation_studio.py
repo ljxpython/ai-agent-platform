@@ -250,6 +250,19 @@ def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
     assert case_res.status_code == 200
     assert "workspace_files" in case_res.json()["required_capabilities"]
 
+    case_simple_res = client.put(
+        f"/api/evaluation/studio/suites/{suite_id}/cases",
+        headers=headers,
+        json={
+            "case_key": "case_simple",
+            "split": "dev",
+            "turns": [{"role": "user", "content": "hello"}],
+            "expectations": {},
+            "metrics": [{"name": "completion"}],
+        },
+    )
+    assert case_simple_res.status_code == 200
+
     pub_res = client.post(
         f"/api/evaluation/studio/suites/{suite_id}/publish",
         headers=headers,
@@ -276,6 +289,22 @@ def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
     assert ready_data["sandbox_warning"] is not None
     assert ready_data["ready"] is False
     assert ready_data["incompatible_cases"][0]["case_key"] == "case_file_check"
+
+    # 2b. Readiness with case_keys only checks selected cases (case_simple has no incompatible requirements)
+    ready_selective = client.post(
+        "/api/evaluation/studio/readiness",
+        headers=headers,
+        json={
+            "suite_id": suite_id,
+            "target_project_id": target_project_id,
+            "agent_id": agent_id,
+            "model_id": model_id,
+            "judge_model_id": judge_model_id,
+            "case_keys": ["case_simple"],
+        },
+    )
+    assert ready_selective.status_code == 200
+    assert len(ready_selective.json()["incompatible_cases"]) == 0
 
     # 3. Non-sandbox without confirm is rejected; with confirm + skip_incompatible succeeds
     bad_run = client.post(
@@ -326,7 +355,45 @@ def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
         },
     )
     assert ok_run.status_code == 201
+    assert ok_run.json()["summary_metrics"]["total_cases"] == 2
     run_id = ok_run.json()["id"]
+
+    # 3b. Selective case runs & selective matrix runs
+    ok_run_selective = client.post(
+        "/api/evaluation/studio/runs",
+        headers=headers,
+        json={
+            "suite_id": suite_id,
+            "version_id": version_id,
+            "target_project_id": target_project_id,
+            "agent_id": agent_id,
+            "model_id": model_id,
+            "judge_model_id": judge_model_id,
+            "concurrency": 2,
+            "confirm_non_sandbox": True,
+            "case_keys": ["case_simple"],
+        },
+    )
+    assert ok_run_selective.status_code == 201
+    assert ok_run_selective.json()["summary_metrics"]["total_cases"] == 1
+
+    ok_matrix_selective = client.post(
+        "/api/evaluation/studio/runs/matrix",
+        headers=headers,
+        json={
+            "suite_id": suite_id,
+            "version_id": version_id,
+            "target_project_id": target_project_id,
+            "judge_model_id": judge_model_id,
+            "concurrency": 2,
+            "confirm_non_sandbox": True,
+            "case_keys": ["case_simple"],
+            "variants": [{"agent_id": agent_id, "model_id": model_id, "label": "V1"}],
+        },
+    )
+    assert ok_matrix_selective.status_code == 201
+    assert len(ok_matrix_selective.json()["runs"]) == 1
+    assert ok_matrix_selective.json()["runs"][0]["summary_metrics"]["total_cases"] == 1
 
     # 4. Run control (pause -> resume) & L3 human review
     paused = client.post(

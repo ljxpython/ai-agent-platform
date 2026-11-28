@@ -29,6 +29,7 @@ const props = defineProps<{
   suite: EvalSuiteItem | null;
   cases: EvalCaseItem[];
   versions: EvalSuiteVersionSummary[];
+  selectedCaseKeys?: string[];
   busy?: boolean;
 }>();
 
@@ -40,6 +41,7 @@ const emit = defineEmits<{
   publishVersion: [];
   launchSuite: [suite: EvalSuiteItem];
   openCopilot: [];
+  "update:selectedCaseKeys": [keys: string[]];
 }>();
 
 const keyword = ref("");
@@ -102,6 +104,63 @@ const devCount = computed(
 const holdoutCount = computed(
   () => rows.value.filter((r) => r.split === "holdout").length,
 );
+
+const selectedKeysSet = computed(() => new Set(props.selectedCaseKeys || []));
+const selectedCount = computed(() => props.selectedCaseKeys?.length ?? 0);
+
+const isAllVisibleSelected = computed(() => {
+  if (!filteredRows.value.length) return false;
+  return filteredRows.value.every((r) => selectedKeysSet.value.has(r.case_key));
+});
+
+const isSomeVisibleSelected = computed(() => {
+  if (!filteredRows.value.length) return false;
+  return (
+    !isAllVisibleSelected.value &&
+    filteredRows.value.some((r) => selectedKeysSet.value.has(r.case_key))
+  );
+});
+
+function toggleSelectAllVisible(checked: boolean) {
+  const current = new Set(props.selectedCaseKeys || []);
+  if (checked) {
+    for (const row of filteredRows.value) {
+      if (row.case_key) current.add(row.case_key);
+    }
+  } else {
+    for (const row of filteredRows.value) {
+      current.delete(row.case_key);
+    }
+  }
+  emit("update:selectedCaseKeys", Array.from(current));
+}
+
+function toggleSelectRow(caseKey: string, checked: boolean) {
+  const current = new Set(props.selectedCaseKeys || []);
+  if (checked) {
+    current.add(caseKey);
+  } else {
+    current.delete(caseKey);
+  }
+  emit("update:selectedCaseKeys", Array.from(current));
+}
+
+function clearSelection() {
+  emit("update:selectedCaseKeys", []);
+}
+
+function invertSelection() {
+  const current = new Set(props.selectedCaseKeys || []);
+  for (const row of filteredRows.value) {
+    if (!row.case_key) continue;
+    if (current.has(row.case_key)) {
+      current.delete(row.case_key);
+    } else {
+      current.add(row.case_key);
+    }
+  }
+  emit("update:selectedCaseKeys", Array.from(current));
+}
 
 function addInlineRow() {
   const nextKey = `case_${String(rows.value.length + 1).padStart(3, "0")}`;
@@ -264,7 +323,11 @@ function removeRow(row: EditableRow) {
             variant="primary"
             @click="emit('launchSuite', suite)"
           >
-            发起评测打擂 →
+            {{
+              selectedCount > 0
+                ? `发起评测打擂 (${selectedCount} 题) →`
+                : "发起评测打擂 →"
+            }}
           </BaseButton>
         </div>
       </div>
@@ -278,6 +341,41 @@ function removeRow(row: EditableRow) {
 
     <SurfaceCard v-else class="overflow-hidden">
       <div
+        v-if="selectedCount > 0"
+        class="px-4 py-2 bg-primary-50/80 dark:bg-primary-950/40 border-b border-primary-200/80 dark:border-primary-900/40 flex items-center justify-between text-xs"
+      >
+        <div
+          class="flex items-center gap-2 text-primary-900 dark:text-primary-100"
+        >
+          <span
+            class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary-600 text-white font-mono text-[11px] font-bold"
+          >
+            {{ selectedCount }}
+          </span>
+          <span
+            >已勾选
+            <strong>{{ selectedCount }}</strong> 道考题用于局部评测打擂</span
+          >
+        </div>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="text-[11px] text-gray-600 dark:text-dark-300 hover:text-gray-900 dark:hover:text-white underline cursor-pointer"
+            @click="invertSelection"
+          >
+            反选
+          </button>
+          <button
+            type="button"
+            class="text-[11px] text-primary-700 dark:text-primary-300 hover:underline font-medium cursor-pointer"
+            @click="clearSelection"
+          >
+            清空选择
+          </button>
+        </div>
+      </div>
+
+      <div
         v-if="!filteredRows.length"
         class="p-10 text-center text-xs text-gray-500"
       >
@@ -289,7 +387,23 @@ function removeRow(row: EditableRow) {
             <tr
               class="border-b border-gray-200 dark:border-dark-700 bg-gray-50 dark:bg-dark-800/70 text-gray-500"
             >
-              <th class="py-2.5 px-3 w-12 text-center">#</th>
+              <th class="py-2.5 px-3 w-16 text-center">
+                <div class="flex items-center justify-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    class="rounded border-gray-300 dark:border-dark-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                    :checked="isAllVisibleSelected"
+                    :indeterminate="isSomeVisibleSelected"
+                    title="全选 / 取消全选可见考题"
+                    @change="
+                      toggleSelectAllVisible(
+                        ($event.target as HTMLInputElement).checked,
+                      )
+                    "
+                  />
+                  <span>#</span>
+                </div>
+              </th>
               <th class="py-2.5 px-3 w-40">用例标识与分区</th>
               <th class="py-2.5 px-3 min-w-[260px]">
                 提问问题 / 仿真目标 (内联可编辑)
@@ -305,11 +419,29 @@ function removeRow(row: EditableRow) {
             <tr
               v-for="(row, idx) in filteredRows"
               :key="row.case_key"
-              class="align-top hover:bg-gray-50/70 dark:hover:bg-dark-800/40"
-              :class="row.dirty ? 'bg-amber-50/40 dark:bg-amber-950/10' : ''"
+              class="align-top hover:bg-gray-50/70 dark:hover:bg-dark-800/40 transition-colors"
+              :class="[
+                row.dirty ? 'bg-amber-50/40 dark:bg-amber-950/10' : '',
+                selectedKeysSet.has(row.case_key)
+                  ? 'bg-primary-50/40 dark:bg-primary-950/20'
+                  : '',
+              ]"
             >
               <td class="py-3 px-3 text-center font-mono text-gray-400">
-                {{ idx + 1 }}
+                <div class="flex items-center justify-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    class="rounded border-gray-300 dark:border-dark-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+                    :checked="selectedKeysSet.has(row.case_key)"
+                    @change="
+                      toggleSelectRow(
+                        row.case_key,
+                        ($event.target as HTMLInputElement).checked,
+                      )
+                    "
+                  />
+                  <span>{{ idx + 1 }}</span>
+                </div>
               </td>
               <td class="py-3 px-3 space-y-1.5">
                 <input
