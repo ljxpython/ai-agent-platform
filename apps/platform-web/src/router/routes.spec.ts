@@ -38,6 +38,7 @@ describe("workspace primary navigation routes", () => {
       "workspace-evaluation": "题库资产全景",
       "workspace-evaluation-cases": "考题表格与出题",
       "workspace-evaluation-runs": "打擂任务大厅",
+      "workspace-evaluation-patrols": "定时巡检",
       "workspace-evaluation-detail": "评测集详情",
     };
     for (const [name, title] of Object.entries(expectedTitles)) {

@@ -15,6 +15,7 @@ dependencies = [
     "redis>=5.0,<6",
     "openai>=1.60,<2",
     "typer>=0.15,<1",
+    "croniter>=3,<8",
 ]
 
 [project.optional-dependencies]

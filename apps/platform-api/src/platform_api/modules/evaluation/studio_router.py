@@ -20,16 +20,18 @@ from platform_api.core.errors import (
     PlatformApiError,
 )
 from platform_api.entrypoints.http.dependencies import get_actor_context
-from platform_api.modules.evaluation import studio_service, targets
+from platform_api.modules.evaluation import patrol_service, studio_service, targets
 from platform_api.modules.evaluation.studio_schemas import (
     CaseImportRequest,
     CaseUpsert,
+    CronPreviewRequest,
     ExpertRespondRequest,
     ExpertThreadCreateRequest,
     ExpertTurnStreamRequest,
     HumanReviewCreate,
     MatrixCreate,
     PatrolCreate,
+    PatrolUpdate,
     PublishVersionRequest,
     ReadinessRequest,
     RunControlRequest,
@@ -338,18 +340,20 @@ async def readiness_check(
     )
 
 
-@router.post("/studio/runs", status_code=201)
-async def create_run(
+async def _prepare_and_create_eval_run(
     request: Request,
+    *,
+    owner_project_id: str,
+    actor: ActorContext,
+    gateway: RuntimeGatewayService,
     body: RunCreate,
-    actor: ActorContext = Depends(get_actor_context),
-    gateway: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+    trigger_type: str = "manual",
+    patrol_schedule_id: str | None = None,
 ) -> dict[str, Any]:
-    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_EXECUTE)
     detail = await run_in_threadpool(
         studio_service.get_suite_detail,
         request.app.state.db_session_factory,
-        project_id=pid,
+        project_id=owner_project_id,
         suite_id=str(body.suite_id),
     )
     suite_cases = detail["cases"]
@@ -393,11 +397,31 @@ async def create_run(
     return await run_in_threadpool(
         studio_service.create_run_record,
         request.app.state.db_session_factory,
-        owner_project_id=pid,
+        owner_project_id=owner_project_id,
         actor_id=actor.user_id or "unknown",
         body=body,
         target_snapshot=snap,
         incompatible_keys=incompatible_keys if body.skip_incompatible else None,
+        trigger_type=trigger_type,
+        patrol_schedule_id=patrol_schedule_id,
+    )
+
+
+@router.post("/studio/runs", status_code=201)
+async def create_run(
+    request: Request,
+    body: RunCreate,
+    actor: ActorContext = Depends(get_actor_context),
+    gateway: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> dict[str, Any]:
+    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_EXECUTE)
+    return await _prepare_and_create_eval_run(
+        request,
+        owner_project_id=pid,
+        actor=actor,
+        gateway=gateway,
+        body=body,
+        trigger_type="manual",
     )
 
 
@@ -580,7 +604,7 @@ def list_patrols(
     actor: ActorContext = Depends(get_actor_context),
 ) -> dict[str, Any]:
     pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_READ)
-    return studio_service.list_patrols(
+    return patrol_service.list_patrols(
         request.app.state.db_session_factory, project_id=pid
     )
 
@@ -592,11 +616,141 @@ def create_patrol(
     actor: ActorContext = Depends(get_actor_context),
 ) -> dict[str, Any]:
     pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_MANAGE)
-    return studio_service.create_patrol(
+    return patrol_service.create_patrol(
         request.app.state.db_session_factory,
         project_id=pid,
         actor_id=actor.user_id or "unknown",
         body=body,
+    )
+
+
+@router.post("/studio/patrols/cron-preview")
+def preview_patrol_cron(
+    request: Request,
+    body: CronPreviewRequest,
+    actor: ActorContext = Depends(get_actor_context),
+) -> dict[str, Any]:
+    _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_READ)
+    return patrol_service.preview_cron_runs(
+        body.cron_expr, body.timezone, count=body.count
+    )
+
+
+@router.patch("/studio/patrols/{schedule_id}")
+def update_patrol(
+    request: Request,
+    schedule_id: UUID,
+    body: PatrolUpdate,
+    actor: ActorContext = Depends(get_actor_context),
+) -> dict[str, Any]:
+    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_MANAGE)
+    return patrol_service.update_patrol(
+        request.app.state.db_session_factory,
+        project_id=pid,
+        schedule_id=str(schedule_id),
+        body=body,
+    )
+
+
+@router.delete("/studio/patrols/{schedule_id}")
+def delete_patrol(
+    request: Request,
+    schedule_id: UUID,
+    actor: ActorContext = Depends(get_actor_context),
+) -> dict[str, Any]:
+    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_MANAGE)
+    return patrol_service.delete_patrol(
+        request.app.state.db_session_factory,
+        project_id=pid,
+        schedule_id=str(schedule_id),
+    )
+
+
+async def _dispatch_patrol_schedule(
+    request: Request,
+    *,
+    schedule_id: str,
+    owner_project_id: str | None,
+    actor: ActorContext,
+    advance_schedule: bool,
+    gateway: RuntimeGatewayService | None = None,
+) -> dict[str, Any]:
+    prep = await run_in_threadpool(
+        patrol_service.load_patrol_dispatch_context,
+        request.app.state.db_session_factory,
+        schedule_id=schedule_id,
+        project_id=owner_project_id,
+        advance_schedule=advance_schedule,
+    )
+    if prep.get("overlap_skipped"):
+        return {
+            "status": "skipped_overlap",
+            "active_run_id": prep["active_run_id"],
+            "schedule": prep["schedule"],
+        }
+    sched = prep["schedule"]
+    resolved_gateway = gateway or build_runtime_gateway_service(
+        request, actor, sched["target_project_id"]
+    )
+    run_body = RunCreate(
+        suite_id=UUID(sched["suite_id"]),
+        version_id=UUID(prep["resolved_version_id"]),
+        target_project_id=sched["target_project_id"],
+        agent_id=UUID(sched["target_agent_id"]),
+        model_id=UUID(sched["target_model_id"]),
+        judge_model_id=(
+            UUID(sched["judge_model_id"]) if sched.get("judge_model_id") else None
+        ),
+        embedding_model_id=(
+            UUID(sched["embedding_model_id"])
+            if sched.get("embedding_model_id")
+            else None
+        ),
+        mode="regression",
+        concurrency=int(sched.get("concurrency") or 2),
+        repeat_k=int(sched.get("repeat_k") or 1),
+        confirm_non_sandbox=bool(sched.get("confirm_non_sandbox", False)),
+        skip_incompatible=bool(sched.get("skip_incompatible", True)),
+        case_keys=list(sched.get("case_keys") or []) or None,
+    )
+    run = await _prepare_and_create_eval_run(
+        request,
+        owner_project_id=sched["owner_project_id"],
+        actor=actor,
+        gateway=resolved_gateway,
+        body=run_body,
+        trigger_type="patrol",
+        patrol_schedule_id=sched["id"],
+    )
+    updated_sched = await run_in_threadpool(
+        patrol_service.mark_patrol_dispatched,
+        request.app.state.db_session_factory,
+        schedule_id=sched["id"],
+        run_id=run["id"],
+        note=(
+            f"v{prep['resolved_version_num']} 巡检已入队 #{run['id'][:8]}"
+            if advance_schedule
+            else f"已手动触发 v{prep['resolved_version_num']} 巡检 #{run['id'][:8]}"
+        ),
+    )
+    return {"status": "dispatched", "run": run, "schedule": updated_sched}
+
+
+@router.post("/studio/patrols/{schedule_id}/trigger", status_code=201)
+async def trigger_patrol(
+    request: Request,
+    schedule_id: UUID,
+    actor: ActorContext = Depends(get_actor_context),
+    gateway: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> dict[str, Any]:
+    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_MANAGE)
+    return await _dispatch_patrol_schedule(
+        request,
+        schedule_id=str(schedule_id),
+        owner_project_id=pid,
+        actor=actor,
+        advance_schedule=False,
+        gateway=gateway,
     )
 
 
@@ -1581,3 +1735,224 @@ async def internal_thread_usage(request: Request) -> dict[str, Any]:
         )
     except Exception:  # noqa: BLE001
         return {"availability": "unavailable", "tokens": {}, "cost": {}}
+
+
+async def _emit_patrol_notification(
+    request: Request,
+    *,
+    schedule: dict[str, Any],
+    alert_type: str,
+    level_str: str,
+    summary_text: str,
+    run_id: str | None = None,
+    details: dict[str, Any] | None = None,
+    is_recovery: bool = False,
+) -> dict[str, Any]:
+    from platform_api.core.db import session_scope
+    from platform_api.modules.notifications.repository import (
+        SqlAlchemyNotificationsRepository,
+    )
+    from platform_api.modules.notifications.router import (
+        _feishu_client,
+        _governance_engine,
+    )
+    from platform_api.modules.notifications.schemas import (
+        AlertIncomingPayload,
+        NotificationCategory,
+        NotificationLevel,
+    )
+    from platform_api.modules.notifications.service import NotificationService
+
+    owner_pid = str(schedule["owner_project_id"])
+    try:
+        proj_uuid = UUID(owner_pid)
+    except ValueError:
+        proj_uuid = None
+    action_url = f"/workspace/projects/{owner_pid}/evaluation/runs" + (
+        f"?runId={run_id}" if run_id else ""
+    )
+
+    with session_scope(request.app.state.db_session_factory) as session:
+        repo = SqlAlchemyNotificationsRepository(session)
+        notif_svc = NotificationService(
+            repository=repo,
+            governance_engine=_governance_engine,
+            feishu_client=_feishu_client,
+        )
+        if is_recovery:
+            resolved_ext = await notif_svc.resolve_alert(
+                "eval_patrol", alert_type, schedule["id"]
+            )
+            notif_svc.create_notification(
+                title=f"[巡检恢复] {schedule['name']}",
+                content=summary_text,
+                level=NotificationLevel.INFO,
+                category=NotificationCategory.EVAL,
+                project_id=proj_uuid,
+                action_url=action_url,
+                extra_metadata={
+                    "schedule_id": schedule["id"],
+                    "run_id": run_id,
+                    "recovered": True,
+                    **(details or {}),
+                },
+            )
+            return {
+                "dispatched": True,
+                "recovered": True,
+                "resolved_external": resolved_ext,
+            }
+
+        payload = AlertIncomingPayload(
+            source="eval_patrol",
+            alert_type=alert_type,
+            target_id=schedule["id"],
+            level=NotificationLevel(level_str),
+            summary=summary_text[:512],
+            project_id=proj_uuid,
+            action_url=action_url,
+            details={
+                "schedule_id": schedule["id"],
+                "schedule_name": schedule["name"],
+                "run_id": run_id,
+                **(details or {}),
+            },
+        )
+        dispatched, fingerprint, count = await notif_svc.process_incoming_alert(payload)
+        return {
+            "dispatched": dispatched,
+            "fingerprint": fingerprint,
+            "occurrence_count": count,
+        }
+
+
+@router.post("/internal/patrol-dispatch")
+async def internal_patrol_dispatch(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "patrol-dispatch", raw)
+    payload = json.loads(raw or b"{}")
+    schedule_id = str(payload.get("schedule_id") or "")
+    if not schedule_id:
+        raise BadRequestError(
+            code="eval_patrol_id_required", message="schedule_id is required"
+        )
+
+    def _load_actor():
+        from platform_api.modules.evaluation.models import EvalPatrolSchedule
+
+        with request.app.state.db_session_factory() as session:
+            row = session.get(EvalPatrolSchedule, schedule_id)
+            if row is None:
+                return None, None
+            act = load_user_actor(
+                session_factory=request.app.state.db_session_factory,
+                user_id=row.created_by,
+                project_id=row.target_project_id,
+            )
+            return row.target_project_id, act
+
+    target_pid, actor = await run_in_threadpool(_load_actor)
+    if target_pid is None:
+        return {"status": "not_found", "schedule_id": schedule_id}
+    if actor is None:
+        blocked = await run_in_threadpool(
+            patrol_service.mark_patrol_blocked,
+            request.app.state.db_session_factory,
+            schedule_id=schedule_id,
+            reason="巡检创建者账号已失效，无法代为鉴权。",
+        )
+        if blocked["should_alert"]:
+            await _emit_patrol_notification(
+                request,
+                schedule=blocked["schedule"],
+                alert_type="eval_infra_error",
+                level_str="error",
+                summary_text=f"巡检「{blocked['schedule']['name']}」调度受阻：创建者鉴权失败",
+            )
+        return {"status": "blocked", "reason": "actor_not_found"}
+
+    try:
+        return await _dispatch_patrol_schedule(
+            request,
+            schedule_id=schedule_id,
+            owner_project_id=None,
+            actor=actor,
+            advance_schedule=True,
+        )
+    except PlatformApiError as exc:
+        blocked = await run_in_threadpool(
+            patrol_service.mark_patrol_blocked,
+            request.app.state.db_session_factory,
+            schedule_id=schedule_id,
+            reason=exc.message,
+        )
+        if blocked["should_alert"]:
+            await _emit_patrol_notification(
+                request,
+                schedule=blocked["schedule"],
+                alert_type="eval_infra_error",
+                level_str="warning",
+                summary_text=f"巡检「{blocked['schedule']['name']}」预检阻塞：{exc.message}",
+                details={"error_code": exc.code},
+            )
+        return {"status": "blocked", "code": exc.code, "reason": exc.message}
+
+
+@router.post("/internal/patrol-report")
+async def internal_patrol_report(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "patrol-report", raw)
+    payload = json.loads(raw or b"{}")
+    schedule_id = str(payload.get("schedule_id") or "")
+    run_id = str(payload.get("run_id") or "")
+    verdict = str(payload.get("verdict") or "failed")
+    summary_text = str(payload.get("summary_text") or "")
+    reasons = list(payload.get("reasons") or [])
+    metrics_snapshot = dict(payload.get("metrics_snapshot") or {})
+
+    outcome = await run_in_threadpool(
+        patrol_service.record_patrol_report,
+        request.app.state.db_session_factory,
+        schedule_id=schedule_id,
+        run_id=run_id,
+        verdict=verdict,
+        summary_text=summary_text,
+    )
+    sched = outcome["schedule"]
+    notify_res: dict[str, Any] = {"dispatched": False}
+
+    if outcome["should_recover"]:
+        prev_type = (
+            "eval_infra_error"
+            if outcome["prev_status"] in {"infra_error", "blocked"}
+            else "eval_degraded"
+        )
+        notify_res = await _emit_patrol_notification(
+            request,
+            schedule=sched,
+            alert_type=prev_type,
+            level_str="info",
+            summary_text=summary_text or f"定时巡检「{sched['name']}」已恢复正常通过。",
+            run_id=run_id,
+            details={"metrics": metrics_snapshot},
+            is_recovery=True,
+        )
+    elif outcome["should_alert"]:
+        alert_type = "eval_infra_error" if verdict == "infra_error" else "eval_degraded"
+        level_str = "error" if verdict in {"failed", "infra_error"} else "warning"
+        notify_res = await _emit_patrol_notification(
+            request,
+            schedule=sched,
+            alert_type=alert_type,
+            level_str=level_str,
+            summary_text=summary_text
+            or f"定时巡检「{sched['name']}」触发{verdict}告警",
+            run_id=run_id,
+            details={
+                "verdict": verdict,
+                "reasons": reasons,
+                "consecutive_failures": sched["consecutive_failures"],
+                "metrics": metrics_snapshot,
+            },
+        )
+    return {"schedule": sched, "notification": notify_res}

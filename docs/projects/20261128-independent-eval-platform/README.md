@@ -1,7 +1,7 @@
 # 独立评测中台迁移与平台原生化改造方案
 
-> 启动日期：2026-11-28｜当前状态：**部分完成（partial：一至五阶段专题 01–09 核心能力均已交付并通过本地全栈 `/browser` 验收，其中专题 09 打擂任务大厅优化已全栈闭环；`Task 6.5` 剩余 7 题 `v3-golden` 含 RAG/PlanReview、远端沙箱与定时巡检 Cron 待续）**
-> 文档模式：多专题方案（按业务架构、代码迁移、并发引擎、指标体系、前端与验证、二阶段审计、三阶段出题专家、四阶段指定用例打擂及五阶段任务大厅优化拆分为 9 篇专题，不另建全局 `plan.md` / `tasks.md` / `verification.md`）。
+> 启动日期：2026-11-28｜当前状态：**部分完成（partial：一至六阶段专题 01–10 核心能力均已交付并通过本地全栈 `/browser` 验收，其中专题 10 定时巡检与平台告警闭环已全栈落地；`Task 6.5` 剩余 7 题 `v3-golden` 与远端沙箱待续）**
+> 文档模式：多专题方案（按业务架构、代码迁移、并发引擎、指标体系、前端与验证、二阶段审计、三阶段出题专家、四阶段指定用例打擂、五阶段任务大厅优化及六阶段定时巡检拆分为 10 篇专题，不另建全局 `plan.md` / `tasks.md` / `verification.md`）。
 
 ## 1. 业务背景与要解决的问题
 
@@ -51,6 +51,7 @@
 | **07** | [AI 出题专家（Eval Copilot）Skill 体系与自然语言出题落库方案](07-eval-copilot-skills-and-authoring-agent.md) | 为 `eval_copilot` 配备内置出题 Skill 包、资料读取、题库/能力查询、同源强校验、受控写库，以及人工授权试跑、失败自愈修复与终止评测闭环（Task 7.1–7.5） | **已完成（done：三端编码、单测、HITL `input.requested`/`threads.interrupts` 全链路闭环与真实 `/browser` 验收通过）** | `runtime-service`、`platform-api`、`platform-web` |
 | **08** | [指定用例勾选打擂与局部回归方案](08-case-level-selective-evaluation.md) | 考题列表 Checkbox 改造（单选/全选/反选/状态感知）、开考弹窗与主页按钮联动、`MatrixCreate` 补齐与精准 Readiness（Task 8.1–8.4） | **已完成（done：前端复选框单选/全选/反选与文案联动、API Client 与开考弹窗范围透传、后端 Matrix/Readiness 契约扩展，全栈类型检查与单测通过）** | `platform-web`、`platform-api`、`apps/eval-runner` |
 | **09** | [打擂任务大厅深度优化（结果删除、同评测集历史对比与实时进度日志）](09-task-hall-optimization.md) | 评测结果安全删除、同评测集历史多维指标趋势与对照矩阵、进行中任务队列/Case 状态看板与终端级实时日志流（Task 9.1–9.5） | **已完成（done：数据库迁移 `20261128_0017`、控制面删除/日志增量接口、`eval-runner` 实时进度与日志发射、前端三端改造及真实 `/browser` 全链路验收通过，未部署生产）** | `platform-web`、`platform-api`、`apps/eval-runner` |
+| **10** | [定时巡检调度、退化基线门禁与平台告警闭环](10-scheduled-patrol-and-alerting.md) | `eval_patrol_schedules` 模型补齐、`eval-runner` 轻量 Cron 调度与 `Forbid` 防重入、绝对/相对退化判定、复用 `notifications` 站内信与飞书卡片、前端「定时巡检」Tab（Task 10.1–10.4） | **已完成（done：数据库迁移 `20261128_0018`、控制面 CRUD/trigger/cron-preview 与 HMAC 调度告警桥、`eval-runner` 周期领锁与基线对比、前端「定时巡检」Tab 及两轮 `/browser` 实测与 9 张截图留存全部通过，未部署生产）** | `platform-api`、`apps/eval-runner`、`platform-web` |
 
 ---
 

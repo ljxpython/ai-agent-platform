@@ -97,6 +97,8 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
         ("POST", "/api/evaluation/internal/thread-setup"),
         ("POST", "/api/evaluation/internal/thread-evidence"),
         ("POST", "/api/evaluation/internal/cross-project-probe"),
+        ("POST", "/api/evaluation/internal/patrol-dispatch"),
+        ("POST", "/api/evaluation/internal/patrol-report"),
         ("POST", "/api/alerts/incoming"),
         ("POST", "/api/alerts/resolve"),
         ("DELETE", "/api/identity/session"),

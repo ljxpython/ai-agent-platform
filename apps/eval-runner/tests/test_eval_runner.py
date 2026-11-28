@@ -600,3 +600,129 @@ def test_worker_logs_pre_batch_validation_error(tmp_path):
         assert len(logs) == 1
         assert logs[0]["level"] == "ERROR"
         assert "[批次] 执行异常中断" in logs[0]["message"]
+
+
+def test_patrol_cron_misfire_baseline_regression_and_worker_tick(tmp_path, monkeypatch):
+    from datetime import UTC, datetime
+    from sqlalchemy import create_engine, text
+    from eval_runner.domain.contracts import Evidence
+    from eval_runner.engine.patrol import compute_next_run_at, evaluate_patrol_outcome
+    from eval_runner.worker import poll_and_execute_once, poll_due_patrols_once
+
+    # 1. Timezone-aware cron & misfire skipping
+    ref = datetime(2026, 11, 28, 12, 0, tzinfo=UTC)  # 20:00 Asia/Shanghai
+    nxt = compute_next_run_at("0 3 * * *", "Asia/Shanghai", after=ref)
+    assert nxt > ref
+    assert nxt.isoformat() == "2026-11-28T19:00:00+00:00"  # next 03:00 CST
+
+    # 2. Baseline regression detection (passes absolute gate >= 0.70, but drops >= 0.05 from 1.0 -> 0.80)
+    outcome_deg = evaluate_patrol_outcome(
+        {
+            "tsr_pass_at_1": 0.80,
+            "overall_score": 0.80,
+            "l1_pass_rate": 1.0,
+            "loop_rate": 0.0,
+            "ttft_ms": {"p95": 1000},
+            "total_cases": 5,
+            "error_breakdown": {},
+        },
+        [],
+        gate_config={"min_tsr": 0.70, "regression_drop_threshold": 0.05},
+        baseline_summary={"tsr_pass_at_1": 1.0, "overall_score": 1.0, "ttft_ms": {"p95": 500}},
+    )
+    assert outcome_deg["verdict"] == "degraded"
+    assert any("tsr_regression" in r for r in outcome_deg["reasons"])
+    assert any("ttft_p95_spike" in r for r in outcome_deg["reasons"])
+
+    # 3. Worker patrol tick + end-of-run report
+    db_url = f"sqlite:///{tmp_path / 'eval_patrol_worker.db'}"
+    engine = create_engine(db_url)
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE eval_suite_versions (id TEXT PRIMARY KEY, frozen_cases_json TEXT)"))
+        conn.execute(
+            text(
+                "CREATE TABLE eval_patrol_schedules (id TEXT PRIMARY KEY, cron_expr TEXT, timezone TEXT, "
+                "enabled BOOLEAN, next_run_at TIMESTAMP, gate_config_json TEXT, updated_at TIMESTAMP)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_runs (id TEXT PRIMARY KEY, version_id TEXT, target_project_id TEXT, "
+                "judge_model_id TEXT, concurrency INT, repeat_k INT, status TEXT, gate_exit_code INT, "
+                "summary_metrics_json TEXT, patrol_schedule_id TEXT, created_at TEXT, finished_at TEXT)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_run_cases (id TEXT PRIMARY KEY, run_id TEXT, case_key TEXT, "
+                "attempt_idx INT, status TEXT, thread_id TEXT, trace_ids_json TEXT, rule_passed BOOLEAN, "
+                "overall_score FLOAT, duration_ms INT, ttft_ms INT, token_usage_json TEXT, cost_usd FLOAT, "
+                "error_category TEXT, results_json TEXT, updated_at TEXT)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_run_logs (id TEXT PRIMARY KEY, run_id TEXT, seq INT, "
+                "level TEXT, case_key TEXT, message TEXT, created_at TEXT)"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO eval_patrol_schedules VALUES ('p1', '0 * * * *', 'Asia/Shanghai', 1, "
+                "'2026-11-28 01:00:00+00:00', :gcfg, '2026-11-28 00:00:00+00:00')"
+            ),
+            {"gcfg": json.dumps({"min_tsr": 0.8, "regression_drop_threshold": 0.05})},
+        )
+        conn.execute(
+            text("INSERT INTO eval_suite_versions VALUES ('v1', :cases)"),
+            {"cases": json.dumps([{"case_key": "c1", "turns": [{"role": "user", "content": "hi"}], "metrics": ["completion"]}])},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO eval_runs (id, version_id, target_project_id, judge_model_id, concurrency, repeat_k, status, patrol_schedule_id, created_at) "
+                "VALUES ('r-patrol', 'v1', 'proj-1', NULL, 1, 1, 'queued', 'p1', '2026-11-28T02:00:00Z')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO eval_run_cases (id, run_id, case_key, attempt_idx, status) "
+                "VALUES ('rc-p1', 'r-patrol', 'c1', 1, 'pending')"
+            )
+        )
+
+    dispatched_ids: list[str] = []
+    reported_payloads: list[dict] = []
+
+    class _FakePatrolClient:
+        def __init__(self, base_url, secret):
+            pass
+
+        def dispatch_schedule(self, schedule_id: str):
+            dispatched_ids.append(schedule_id)
+            return {"status": "dispatched"}
+
+        def report_patrol(self, **kwargs):
+            reported_payloads.append(kwargs)
+            return {"ok": True}
+
+    monkeypatch.setattr("eval_runner.worker.PatrolInternalClient", _FakePatrolClient)
+
+    tick_res = poll_due_patrols_once(
+        db_url,
+        base_url="http://127.0.0.1:2142",
+        internal_secret="sec",
+        now=datetime(2026, 11, 28, 2, 5, tzinfo=UTC),
+    )
+    assert dispatched_ids == ["p1"]
+    assert len(tick_res) == 1
+    assert tick_res[0]["next_run_at"].startswith("2026-11-28T03:00:00")
+
+    poll_and_execute_once(
+        db_url,
+        execute_fn=lambda c, k: Evidence(case_key=c.case_key, attempt_idx=k, final_answer="ok", duration_ms=100, ttft_ms=30),
+        base_url="http://127.0.0.1:2142",
+        internal_secret="sec",
+    )
+    assert len(reported_payloads) == 1
+    assert reported_payloads[0]["schedule_id"] == "p1"
+    assert reported_payloads[0]["verdict"] == "passed"

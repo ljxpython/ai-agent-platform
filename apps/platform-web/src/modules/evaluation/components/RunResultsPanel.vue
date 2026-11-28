@@ -39,6 +39,7 @@ const emit = defineEmits<{
 const selectedCompareIds = ref<string[]>([]);
 const expandedSuites = ref<Record<string, boolean>>({});
 const expandedRunId = ref<string | null>(props.activeRun?.id ?? null);
+const triggerFilter = ref<"all" | "patrol" | "manual">("all");
 
 watch(
   () => props.activeRun?.id,
@@ -135,7 +136,19 @@ const inFlightRuns = computed(() =>
 );
 
 const historyRuns = computed(() =>
-  props.runs.filter((r) => !inFlightStatuses.has(r.status)),
+  props.runs.filter((r) => {
+    if (inFlightStatuses.has(r.status)) return false;
+    if (triggerFilter.value === "patrol") return r.trigger_type === "patrol";
+    if (triggerFilter.value === "manual") return r.trigger_type !== "patrol";
+    return true;
+  }),
+);
+
+const patrolHistoryCount = computed(
+  () =>
+    props.runs.filter(
+      (r) => !inFlightStatuses.has(r.status) && r.trigger_type === "patrol",
+    ).length,
 );
 
 const runningCount = computed(
@@ -314,6 +327,9 @@ function statusTone(status: string) {
                   <StatusPill :tone="statusTone(r.status)">
                     {{ r.status }} · {{ runProgress(r).percent }}%
                   </StatusPill>
+                  <StatusPill v-if="r.trigger_type === 'patrol'" tone="info">
+                    定时巡检{{ r.patrol_name ? ` · ${r.patrol_name}` : "" }}
+                  </StatusPill>
                   <StatusPill tone="neutral">{{
                     r.target_graph_id
                   }}</StatusPill>
@@ -431,6 +447,46 @@ function statusTone(status: string) {
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <div
+            class="inline-flex rounded-lg border border-gray-200 dark:border-dark-700 p-0.5 text-xs"
+          >
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-md"
+              :class="
+                triggerFilter === 'all'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 dark:text-dark-300'
+              "
+              @click="triggerFilter = 'all'"
+            >
+              全部
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-md"
+              :class="
+                triggerFilter === 'patrol'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 dark:text-dark-300'
+              "
+              @click="triggerFilter = 'patrol'"
+            >
+              定时巡检 ({{ patrolHistoryCount }})
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1 rounded-md"
+              :class="
+                triggerFilter === 'manual'
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 dark:text-dark-300'
+              "
+              @click="triggerFilter = 'manual'"
+            >
+              手动打擂
+            </button>
+          </div>
           <BaseButton
             size="sm"
             variant="secondary"
@@ -568,6 +624,14 @@ function statusTone(status: string) {
                       <StatusPill :tone="statusTone(run.status)">{{
                         run.status
                       }}</StatusPill>
+                      <StatusPill
+                        v-if="run.trigger_type === 'patrol'"
+                        tone="info"
+                      >
+                        定时巡检{{
+                          run.patrol_name ? ` · ${run.patrol_name}` : ""
+                        }}
+                      </StatusPill>
                       <StatusPill tone="neutral">{{
                         run.target_graph_id
                       }}</StatusPill>

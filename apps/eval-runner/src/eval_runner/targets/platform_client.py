@@ -326,3 +326,50 @@ class InternalExecutionClient:
         return self._post_internal_json(
             "thread-usage", {"run_id": run_id, "thread_id": thread_id}, timeout=10.0
         )
+
+
+class PatrolInternalClient:
+    """Internal HMAC client for scheduled patrol dispatch & result alert reporting."""
+
+    def __init__(self, base_url: str, internal_secret: str, timeout: float = 30.0):
+        self.base_url = base_url.rstrip("/")
+        self.internal_secret = internal_secret
+        self.timeout = timeout
+
+    def _post(self, purpose: str, payload: dict[str, Any]) -> dict[str, Any]:
+        body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        headers = sign_internal_payload(self.internal_secret, purpose, body)
+        with httpx.Client(timeout=self.timeout, trust_env=False) as client:
+            resp = client.post(
+                f"{self.base_url}/api/evaluation/internal/{purpose}",
+                content=body,
+                headers=headers,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data if isinstance(data, dict) else {}
+
+    def dispatch_schedule(self, schedule_id: str) -> dict[str, Any]:
+        return self._post("patrol-dispatch", {"schedule_id": schedule_id})
+
+    def report_patrol(
+        self,
+        *,
+        schedule_id: str,
+        run_id: str,
+        verdict: str,
+        summary_text: str,
+        reasons: list[str],
+        metrics_snapshot: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self._post(
+            "patrol-report",
+            {
+                "schedule_id": schedule_id,
+                "run_id": run_id,
+                "verdict": verdict,
+                "summary_text": summary_text,
+                "reasons": reasons,
+                "metrics_snapshot": metrics_snapshot,
+            },
+        )

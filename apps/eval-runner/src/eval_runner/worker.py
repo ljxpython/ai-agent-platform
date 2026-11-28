@@ -20,6 +20,7 @@ from eval_runner.domain.metrics_summary import (
     summarize_run_cases,
 )
 from eval_runner.engine.concurrent_runner import ConcurrentEvalRunner
+from eval_runner.engine.patrol import compute_next_run_at, evaluate_patrol_outcome
 from eval_runner.engine.simulation import DynamicSimulationSession
 from eval_runner.evidence.context_and_artifacts import extract_retrieved_contexts
 from eval_runner.evidence.runtime_signals import recover_loop_signals
@@ -33,6 +34,7 @@ from eval_runner.scorers.judge import (
 from eval_runner.scorers.rules import _normalize_artifact_specs
 from eval_runner.targets.platform_client import (
     InternalExecutionClient,
+    PatrolInternalClient,
     PlatformModelResolver,
 )
 from eval_runner.targets.sse_probe import normalize_interrupts
@@ -506,16 +508,26 @@ def poll_and_execute_once(
 ) -> dict[str, Any] | None:
     """Claim one queued EvalRun from platform DB, execute pending cases, and persist summary."""
     engine = create_engine(database_url)
+    insp = inspect(engine)
+    run_cols = {c["name"] for c in insp.get_columns("eval_runs")}
+    has_patrol_col = "patrol_schedule_id" in run_cols
+    skip_locked_clause = " FOR UPDATE SKIP LOCKED" if engine.dialect.name == "postgresql" else ""
+    select_cols = (
+        "id, version_id, target_project_id, judge_model_id, concurrency, repeat_k, patrol_schedule_id"
+        if has_patrol_col
+        else "id, version_id, target_project_id, judge_model_id, concurrency, repeat_k"
+    )
     with engine.begin() as conn:
         run_row = conn.execute(
             text(
-                "SELECT id, version_id, target_project_id, judge_model_id, concurrency, repeat_k "
-                "FROM eval_runs WHERE status = 'queued' ORDER BY created_at ASC LIMIT 1"
+                f"SELECT {select_cols} "
+                f"FROM eval_runs WHERE status = 'queued' ORDER BY created_at ASC LIMIT 1{skip_locked_clause}"
             )
         ).mappings().first()
         if run_row is None:
             return None
         run_id = run_row["id"]
+        patrol_schedule_id = run_row["patrol_schedule_id"] if has_patrol_col else None
         conn.execute(
             text("UPDATE eval_runs SET status = 'running' WHERE id = :id"),
             {"id": run_id},
@@ -781,6 +793,18 @@ def poll_and_execute_once(
                     "finished_at": datetime.now(UTC),
                 },
             )
+        if patrol_schedule_id and base_url and internal_secret:
+            try:
+                PatrolInternalClient(base_url, internal_secret).report_patrol(
+                    schedule_id=str(patrol_schedule_id),
+                    run_id=str(run_id),
+                    verdict="infra_error",
+                    summary_text=f"巡检执行异常中断: {str(exc)[:200]}",
+                    reasons=["worker_unexpected_error"],
+                    metrics_snapshot={},
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception("Failed reporting patrol error for run %s", run_id)
         raise
     with engine.begin() as conn:
         cur = conn.execute(
@@ -823,7 +847,148 @@ def poll_and_execute_once(
                     "finished_at": datetime.now(UTC) if final_status in {"completed", "failed", "cancelled"} else None,
                 },
             )
+    if (
+        patrol_schedule_id
+        and final_status in {"completed", "failed"}
+        and base_url
+        and internal_secret
+    ):
+        try:
+            _report_patrol_run_outcome(
+                engine=engine,
+                schedule_id=str(patrol_schedule_id),
+                run_id=str(run_id),
+                summary=out["summary"],
+                case_records=out.get("cases") or [],
+                base_url=base_url,
+                internal_secret=internal_secret,
+            )
+        except Exception:  # noqa: BLE001
+            logger.exception("Failed reporting patrol outcome for run %s", run_id)
     return {"run_id": run_id, "status": final_status, **out}
+
+
+def _parse_json_field(raw: Any, default: Any) -> Any:
+    if isinstance(raw, str):
+        try:
+            return json.loads(raw)
+        except ValueError:
+            return default
+    return raw if raw is not None else default
+
+
+def _report_patrol_run_outcome(
+    *,
+    engine,
+    schedule_id: str,
+    run_id: str,
+    summary: dict[str, Any],
+    case_records: list[dict[str, Any]],
+    base_url: str,
+    internal_secret: str,
+) -> dict[str, Any] | None:
+    with engine.begin() as conn:
+        sched_row = conn.execute(
+            text("SELECT gate_config_json FROM eval_patrol_schedules WHERE id = :sid"),
+            {"sid": schedule_id},
+        ).mappings().first()
+        gate_cfg = _parse_json_field(sched_row["gate_config_json"], {}) if sched_row else {}
+        base_row = conn.execute(
+            text(
+                "SELECT summary_metrics_json FROM eval_runs "
+                "WHERE patrol_schedule_id = :sid AND id != :rid AND status = 'completed' "
+                "AND (gate_exit_code = 0 OR gate_exit_code IS NULL) "
+                "ORDER BY created_at DESC LIMIT 1"
+            ),
+            {"sid": schedule_id, "rid": run_id},
+        ).mappings().first()
+        baseline_summary = (
+            _parse_json_field(base_row["summary_metrics_json"], None) if base_row else None
+        )
+    outcome = evaluate_patrol_outcome(
+        summary,
+        case_records,
+        gate_config=gate_cfg,
+        baseline_summary=baseline_summary,
+    )
+    return PatrolInternalClient(base_url, internal_secret).report_patrol(
+        schedule_id=schedule_id,
+        run_id=run_id,
+        verdict=outcome["verdict"],
+        summary_text=outcome["summary_text"],
+        reasons=outcome["reasons"],
+        metrics_snapshot=outcome["metrics_snapshot"],
+    )
+
+
+def poll_due_patrols_once(
+    database_url: str,
+    *,
+    base_url: str | None = None,
+    internal_secret: str | None = None,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Claim due enabled patrols atomically, advance next_run_at, and dispatch via platform-api."""
+    engine = create_engine(database_url)
+    insp = inspect(engine)
+    if not insp.has_table("eval_patrol_schedules"):
+        return []
+    cols = {c["name"] for c in insp.get_columns("eval_patrol_schedules")}
+    if "next_run_at" not in cols:
+        return []
+
+    ref_now = (now or datetime.now(UTC)).astimezone(UTC)
+    skip_locked = " FOR UPDATE SKIP LOCKED" if engine.dialect.name == "postgresql" else ""
+    claimed: list[dict[str, Any]] = []
+
+    with engine.begin() as conn:
+        rows = conn.execute(
+            text(
+                f"SELECT id, cron_expr, timezone FROM eval_patrol_schedules "
+                f"WHERE enabled = :enabled AND next_run_at IS NOT NULL AND next_run_at <= :now "
+                f"ORDER BY next_run_at ASC LIMIT 5{skip_locked}"
+            ),
+            {"enabled": True, "now": ref_now},
+        ).mappings().all()
+        for row in rows:
+            try:
+                nxt = compute_next_run_at(
+                    str(row["cron_expr"]),
+                    str(row["timezone"] or "Asia/Shanghai"),
+                    after=ref_now,
+                )
+            except Exception:  # noqa: BLE001
+                logger.exception("Invalid cron on patrol %s", row["id"])
+                continue
+            conn.execute(
+                text(
+                    "UPDATE eval_patrol_schedules SET next_run_at = :nxt, updated_at = :now "
+                    "WHERE id = :id"
+                ),
+                {"id": row["id"], "nxt": nxt, "now": ref_now},
+            )
+            claimed.append({"schedule_id": str(row["id"]), "next_run_at": nxt.isoformat()})
+
+    if not claimed or not base_url or not internal_secret:
+        return claimed
+
+    client = PatrolInternalClient(base_url, internal_secret)
+    results: list[dict[str, Any]] = []
+    for item in claimed:
+        try:
+            res = client.dispatch_schedule(item["schedule_id"])
+            results.append({"schedule_id": item["schedule_id"], "next_run_at": item["next_run_at"], **res})
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Patrol dispatch failed for %s", item["schedule_id"])
+            results.append(
+                {
+                    "schedule_id": item["schedule_id"],
+                    "next_run_at": item["next_run_at"],
+                    "status": "dispatch_error",
+                    "error": str(exc),
+                }
+            )
+    return results
 
 
 def run_worker_loop(
@@ -832,8 +997,9 @@ def run_worker_loop(
     base_url: str | None = None,
     internal_secret: str | None = None,
     poll_interval: float = 2.0,
+    patrol_interval: float = 15.0,
 ) -> None:
-    """Continuously poll for queued EvalRuns and execute them cleanly."""
+    """Continuously poll for queued EvalRuns and due scheduled patrols."""
     db_url = database_url or os.environ.get("PLATFORM_API_DATABASE_URL", "")
     api_url = base_url or os.environ.get("PLATFORM_API_BASE_URL", "http://127.0.0.1:2142")
     secret = internal_secret or os.environ.get("PLATFORM_API_RUNTIME_DELEGATION_SECRET", "")
@@ -841,7 +1007,19 @@ def run_worker_loop(
         raise RuntimeError("PLATFORM_API_DATABASE_URL is required for eval-runner worker")
 
     logger.info("eval-runner worker polling %s (api=%s)", db_url.split("@")[-1], api_url)
+    last_patrol_check = 0.0
     while True:
+        now_mono = time.monotonic()
+        if secret and (now_mono - last_patrol_check) >= patrol_interval:
+            last_patrol_check = now_mono
+            try:
+                dispatched = poll_due_patrols_once(
+                    db_url, base_url=api_url, internal_secret=secret
+                )
+                for item in dispatched:
+                    logger.info("Patrol tick %s -> %s", item.get("schedule_id"), item.get("status"))
+            except Exception:  # noqa: BLE001
+                logger.exception("eval-runner patrol tick error")
         try:
             handled = poll_and_execute_once(
                 db_url,

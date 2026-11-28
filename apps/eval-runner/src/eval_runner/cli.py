@@ -91,3 +91,30 @@ def run_worker(
         typer.echo(json.dumps(res or {"status": "idle"}, ensure_ascii=False))
         return
     typer.echo(f"eval-runner worker initialized (default_concurrency={concurrency})")
+
+
+@app.command("patrol-tick")
+def run_patrol_tick(
+    env_file: Path | None = typer.Option(None, help="Optional .env file to load"),
+) -> None:
+    """Scan due patrol schedules once and dispatch them via platform-api."""
+    import os
+    from eval_runner.worker import poll_due_patrols_once
+
+    if env_file and env_file.exists():
+        for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, val = line.split("=", 1)
+            key = key.strip()
+            val = val.strip().strip("'").strip('"')
+            if key and key not in os.environ:
+                os.environ[key] = val
+
+    results = poll_due_patrols_once(
+        os.environ["PLATFORM_API_DATABASE_URL"],
+        base_url=os.environ.get("PLATFORM_API_BASE_URL", "http://127.0.0.1:2142"),
+        internal_secret=os.environ.get("PLATFORM_API_RUNTIME_DELEGATION_SECRET"),
+    )
+    typer.echo(json.dumps({"items": results}, ensure_ascii=False))

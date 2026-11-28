@@ -10,6 +10,7 @@ import {
   createSuite,
   createSuiteFromSessions,
   deleteCase,
+  deletePatrol,
   deleteRun,
   getRunDetail,
   getRunLogs,
@@ -18,9 +19,12 @@ import {
   listPatrols,
   listRuns,
   listSuites,
+  previewPatrolCron,
   publishSuiteVersion,
   setSandboxFlag,
   submitHumanReview,
+  triggerPatrol,
+  updatePatrol,
   upsertCase,
   type CaseUpsertPayload,
   type CompareRunsResult,
@@ -29,7 +33,9 @@ import {
   type EvalRunItem,
   type EvalSuiteItem,
   type EvalSuiteVersionSummary,
+  type PatrolCreatePayload,
   type PatrolScheduleItem,
+  type PatrolUpdatePayload,
   type ReadinessResult,
 } from "@/services/evaluation/studio";
 import { resolvePlatformHttpErrorMessage } from "@/utils/http-error";
@@ -323,12 +329,60 @@ export function useEvaluationStudio(projectId: Ref<string>) {
     });
   }
 
-  async function addPatrol(payload: Parameters<typeof createPatrol>[1]) {
+  async function addPatrol(payload: PatrolCreatePayload) {
     return runSafely("创建定时巡检", async () => {
       const created = await createPatrol(projectId.value, payload);
       patrols.value = await listPatrols(projectId.value);
-      notice.value = `已启用定时巡检「${created.name}」。`;
+      notice.value = `已创建定时巡检「${created.name}」。`;
       return created;
+    });
+  }
+
+  async function editPatrol(scheduleId: string, payload: PatrolUpdatePayload) {
+    return runSafely("更新定时巡检", async () => {
+      const updated = await updatePatrol(projectId.value, scheduleId, payload);
+      patrols.value = await listPatrols(projectId.value);
+      notice.value = `已更新定时巡检「${updated.name}」。`;
+      return updated;
+    });
+  }
+
+  async function removePatrol(scheduleId: string) {
+    return runSafely("删除定时巡检", async () => {
+      await deletePatrol(projectId.value, scheduleId);
+      patrols.value = patrols.value.filter((p) => p.id !== scheduleId);
+      notice.value = "定时巡检配置已删除（历史巡检打擂记录已保留）。";
+      return true;
+    });
+  }
+
+  async function runPatrolNow(scheduleId: string) {
+    return runSafely("立即触发巡检", async () => {
+      const res = await triggerPatrol(projectId.value, scheduleId);
+      const [patrolRows, runRows] = await Promise.all([
+        listPatrols(projectId.value),
+        listRuns(projectId.value),
+      ]);
+      patrols.value = patrolRows;
+      runs.value = runRows;
+      if (res.run) {
+        await openRun(res.run.id);
+      }
+      notice.value = `巡检「${res.schedule?.name || ""}」已立即入队执行。`;
+      return res;
+    });
+  }
+
+  async function checkPatrolCron(
+    cronExpr: string,
+    timezone = "Asia/Shanghai",
+    count = 5,
+  ) {
+    if (!projectId.value) return null;
+    return previewPatrolCron(projectId.value, {
+      cron_expr: cronExpr,
+      timezone,
+      count,
     });
   }
 
@@ -381,6 +435,10 @@ export function useEvaluationStudio(projectId: Ref<string>) {
     loadComparison,
     reviewCase,
     addPatrol,
+    editPatrol,
+    removePatrol,
+    runPatrolNow,
+    checkPatrolCron,
     toggleSandbox,
   };
 }

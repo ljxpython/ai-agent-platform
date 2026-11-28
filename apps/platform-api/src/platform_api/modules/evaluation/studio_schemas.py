@@ -103,18 +103,75 @@ class HumanReviewCreate(StrictBody):
     reason: str = Field(default="", max_length=2000)
 
 
+class PatrolGateConfig(StrictBody):
+    min_tsr: float = Field(default=0.70, ge=0.0, le=1.0)
+    min_l1_pass_rate: float = Field(default=0.90, ge=0.0, le=1.0)
+    max_loop_rate: float = Field(default=0.10, ge=0.0, le=1.0)
+    max_p95_ttft_ms: int | None = Field(default=None, ge=100, le=600000)
+    regression_drop_threshold: float = Field(default=0.05, ge=0.0, le=1.0)
+    ttft_spike_ratio: float = Field(default=0.50, ge=0.0, le=10.0)
+    consecutive_alert_threshold: int = Field(default=1, ge=1, le=10)
+
+
 class PatrolCreate(StrictBody):
     name: str = Field(min_length=1, max_length=128)
     suite_id: UUID
-    version_id: UUID
+    version_policy: Literal["latest_published", "pinned"] = "latest_published"
+    version_id: UUID | None = None
     target_project_id: str = Field(min_length=1, max_length=64)
-    target_graph_id: Literal[
-        "dearflow_agent", "showcase_demo", "reference_agent", "workflow_demo"
-    ]
+    target_graph_id: (
+        Literal["dearflow_agent", "showcase_demo", "reference_agent", "workflow_demo"]
+        | None
+    ) = None
+    target_agent_id: UUID | None = None
+    target_model_id: UUID | None = None
     judge_model_id: UUID | None = None
+    embedding_model_id: UUID | None = None
+    case_keys: list[str] = Field(default_factory=list, max_length=500)
+    concurrency: int = Field(default=2, ge=1, le=5)
+    repeat_k: int = Field(default=1, ge=1, le=5)
+    skip_incompatible: bool = True
+    confirm_non_sandbox: bool = False
     cron_expr: str = Field(min_length=5, max_length=64)
+    timezone: str = Field(default="Asia/Shanghai", max_length=64)
     enabled: bool = True
+    concurrency_policy: Literal["forbid", "allow"] = "forbid"
+    gate_config: PatrolGateConfig = Field(default_factory=PatrolGateConfig)
     notify_channels: list[str] = Field(default_factory=list, max_length=10)
+    notify_on_recovery: bool = True
+
+
+class PatrolUpdate(StrictBody):
+    name: str | None = Field(default=None, min_length=1, max_length=128)
+    version_policy: Literal["latest_published", "pinned"] | None = None
+    version_id: UUID | None = None
+    target_project_id: str | None = Field(default=None, min_length=1, max_length=64)
+    target_graph_id: (
+        Literal["dearflow_agent", "showcase_demo", "reference_agent", "workflow_demo"]
+        | None
+    ) = None
+    target_agent_id: UUID | None = None
+    target_model_id: UUID | None = None
+    judge_model_id: UUID | None = None
+    embedding_model_id: UUID | None = None
+    case_keys: list[str] | None = Field(default=None, max_length=500)
+    concurrency: int | None = Field(default=None, ge=1, le=5)
+    repeat_k: int | None = Field(default=None, ge=1, le=5)
+    skip_incompatible: bool | None = None
+    confirm_non_sandbox: bool | None = None
+    cron_expr: str | None = Field(default=None, min_length=5, max_length=64)
+    timezone: str | None = Field(default=None, max_length=64)
+    enabled: bool | None = None
+    concurrency_policy: Literal["forbid", "allow"] | None = None
+    gate_config: PatrolGateConfig | None = None
+    notify_channels: list[str] | None = Field(default=None, max_length=10)
+    notify_on_recovery: bool | None = None
+
+
+class CronPreviewRequest(StrictBody):
+    cron_expr: str = Field(min_length=5, max_length=64)
+    timezone: str = Field(default="Asia/Shanghai", max_length=64)
+    count: int = Field(default=5, ge=1, le=10)
 
 
 class SandboxFlagRequest(StrictBody):

@@ -63,3 +63,12 @@
 - **错误：** 在内部路由函数签名注入 `Depends(get_runtime_gateway_service)`，其内部强制调用 `_require_project_id(request)` 读取浏览器请求头 `x-project-id`，导致内部回调稳定报 `HTTP 400`。
 - **正确：** 内部 HMAC 路由不得使用要求前端请求头的 FastAPI 依赖，应从校验后的 JSON payload 解析 `project_id` 与 `actor_id`，显式调用 `load_user_actor(...)` 与 `build_runtime_gateway_service(request, actor, target_project_id)` 构造网关。
 - **日期：** 2026-11-28；用户批准沉淀，证据见[专题 07](../projects/20261128-independent-eval-platform/07-eval-copilot-skills-and-authoring-agent.md)。
+
+---
+
+## [坑] `eval_*` 字符串 UUID 与 `Uuid` 主键混查及 `eval-runner` 精简测试表兼容
+
+- **场景：** `eval_patrol_schedules`（`String(64)` 外键）关联查询 `AgentRecord`（`Uuid(as_uuid=True)`），以及 `eval-runner/worker.py` 读取 `eval_runs` 新增列（如 `patrol_schedule_id`）。
+- **错误：** 直接用字符串 `id` 过滤 `Uuid` 列触发 `'str' object has no attribute 'hex'`；`worker.py` 硬编码查询新增列导致只建了精简 SQLite 表的旧单测 `no such column` 报错。
+- **正确：** 查询 `Uuid` 模型列前显式转换为 `UUID(...)`；`worker.py` 对扩展列先用 `inspect(engine).get_columns(...)` 探查后再拼接查询，兼顾生产迁移与轻量化夹具测试。
+- **日期：** 2026-11-28；用户批准沉淀，证据见[专题 10](../projects/20261128-independent-eval-platform/10-scheduled-patrol-and-alerting.md)。

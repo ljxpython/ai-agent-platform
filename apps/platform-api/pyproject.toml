@@ -18,6 +18,7 @@ dependencies = [
     "prometheus-client>=0.21.0",
     "apprise>=1.9.0",
     "sqlglot>=28,<29",
+    "croniter>=3,<8",
 ]
 
 [dependency-groups]

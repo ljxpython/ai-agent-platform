@@ -147,6 +147,12 @@ class EvalRun(Base):
     matrix_group_id: Mapped[str | None] = mapped_column(
         String(36), nullable=True, index=True
     )
+    trigger_type: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="manual", index=True
+    )
+    patrol_schedule_id: Mapped[str | None] = mapped_column(
+        String(36), nullable=True, index=True
+    )
     mode: Mapped[str] = mapped_column(String(32), nullable=False, default="regression")
     concurrency: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     repeat_k: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -210,22 +216,61 @@ class EvalPatrolSchedule(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     suite_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
-    version_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    version_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    version_policy: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="latest_published"
+    )
     owner_project_id: Mapped[str] = mapped_column(
         String(64), nullable=False, index=True
     )
     target_project_id: Mapped[str] = mapped_column(String(64), nullable=False)
     target_graph_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_agent_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    target_model_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     judge_model_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    embedding_model_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    case_keys_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    concurrency: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
+    repeat_k: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    skip_incompatible: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
+    confirm_non_sandbox: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
     cron_expr: Mapped[str] = mapped_column(String(64), nullable=False)
+    timezone: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="Asia/Shanghai"
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    concurrency_policy: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="forbid"
+    )
+    gate_config_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     notify_channels_json: Mapped[list] = mapped_column(
         JSON, nullable=False, default=list
+    )
+    notify_on_recovery: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True
+    )
+    next_run_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    last_triggered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_status: Mapped[str] = mapped_column(String(32), nullable=False, default="idle")
+    last_message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    consecutive_failures: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
     )
     last_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_by: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
 

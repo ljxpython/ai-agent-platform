@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+- 独立评测中台定时巡检与退化告警闭环落地：新增「定时巡检」独立标签页与配置工坊（Cron 预设与未来 5 次执行时间预览、版本策略追踪最新或锁定、冒烟用例范围勾选、立即试跑与启停编辑删除），`eval-runner` 内置时区感知 Cron 周期调度、`FOR UPDATE SKIP LOCKED` 与 `Forbid` 并发防重入、绝对门禁与相对上次通过基线退化检测，并复用平台站内信（🔔）与告警渠道推送退化告警及自愈恢复通知，打擂大厅同步支持定时巡检徽标与来源筛选。
+
 - 打擂任务大厅能力补齐：新增评测结果安全删除（`DELETE /api/evaluation/studio/runs/{run_id}` + 二次确认弹窗，拦截进行中任务并级联清理评审与日志）、同评测集历史多维指标趋势与对照矩阵工坊（`SuiteHistoryMetricsDialog.vue`，含 `metrics_breakdown` 子指标对比与 ECharts 三组维度趋势）、以及进行中评测队列进度条、Case 执行状态明细筛选与深色终端级实时增量日志弹窗（`eval_run_logs` + `RunLogTerminalDialog.vue`）。
 
 - 新增原生独立评测中心（「题库资产全景」「考题表格汇总」「打擂任务大厅」三段式工作台），支持多图（`dearflow_agent` / `showcase_demo` / `reference_agent` / `workflow_demo`）受控并发打擂（1~5）、SSE 真实 TTFT 与生成/总耗时/裁判四段拆解、网关+裁判 Token 与费用透传、流式 AI 出题/诊断专家抽屉（专属头像、左右拖拽拉伸与宽屏切换、渠道分组模型搜索选择、内置领域 Skills、多格式资料上传读取、分级 HITL 授权落库/试跑/主动终止及卡片式历史对话切换与刷新自动恢复），以及集成于打擂大厅的 `Head-to-Head PK` 横向对撞工坊（5 维雷达图 + 7 维量化表、Side-by-Side 逐题正文对照与性能成本拓扑对比）。

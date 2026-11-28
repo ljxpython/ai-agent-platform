@@ -18,7 +18,7 @@ Task23当前批准的双机迁移、单并发连续容量及合并后联合读�
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-28（完成独立评测中台[专题 09](projects/20261128-independent-eval-platform/09-task-hall-optimization.md) 打擂任务大厅深度优化：`eval_run_logs` 迁移 `20261128_0017`、评测结果安全删除、同评测集多维历史指标 ECharts 趋势与对照矩阵、进行中队列实时进度/Case 状态过滤及终端级增量日志流；API 2 passed / Runner 15 passed / Web 27 passed + `vue-tsc` + `vite build` 及 `/browser` 全链路实测通过）。
+> **最后更新：** 2026-11-28（完成独立评测中台[专题 10](projects/20261128-independent-eval-platform/10-scheduled-patrol-and-alerting.md) 定时巡检调度与退化告警闭环：数据库迁移 `20261128_0018`、控制面 CRUD/trigger/cron-preview 与 HMAC 调度告警桥、`eval-runner` 轻量 Cron Tick 与 `Forbid` 防重入/基线退化判定、前端「定时巡检」Tab 与站内信联动；API 3 passed / Runner 17 passed / Web 9 套件 38 passed + `vue-tsc` + `vite build` 及两轮 `/browser` 全链路实测与 9 张截图留存通过，未部署生产）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -134,13 +134,15 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 
 ## 最近改动
 
-2026-11-28 | **打擂任务大厅深度优化全栈交付（本地已验，未部署生产）**：新增 PostgreSQL `eval_run_logs` 轻量日志表（迁移 `20261128_0017`，单条 1000 字符截断、单 Run 上限 2000 条，严禁日志入 Redis）；控制面新增 `DELETE /studio/runs/{run_id}`（`PROJECT_EVALUATION_MANAGE` 权限、拒绝删除进行中任务、级联清理评审与日志）与 `GET /studio/runs/{run_id}/logs` 游标增量拉取，并在 `list_runs` 补充版本/模型展示名称；`eval-runner` 增加 `running` 用例中间态、实时刷新 `progress` 与 `recent_logs` 至 `summary_metrics_json` 并聚合 `metrics_breakdown`；前端 `RunResultsPanel.vue` / `RunEvidenceDetail.vue` / `RunLogTerminalDialog.vue` / `SuiteHistoryMetricsDialog.vue` 落地进行中队列专区、Case 状态看板、终端实时日志与同评测集多指标对比工坊，并修复发起打擂后未同步 `/evaluation/runs` URL 的问题。API 2 passed、Runner 15 passed、Web 7 套件 27 passed / `vue-tsc` / `vite build` 及 `/browser` 真实全链路验收通过。
+2026-11-28 | **定时巡检调度与平台告警闭环全栈交付（本地已验，未部署生产）**：Alembic 迁移 `20261128_0018` 补齐 `eval_patrol_schedules`（`target_agent_id`、`target_model_id`、`version_policy`、`case_keys_json`、`timezone`、`gate_config_json`、`next_run_at`、`last_status`、`consecutive_failures`）与 `eval_runs`（`trigger_type`、`patrol_schedule_id`）；控制面新增 `PATCH`/`DELETE`/`trigger`/`cron-preview` 与 HMAC `/internal/patrol-dispatch`、`/internal/patrol-report` 并复用 `NotificationService`（站内信 + `AlertGovernanceEngine` 防抖 + 飞书交互卡片/恢复通知）；`eval-runner` 新增 `patrol.py` 严格时区 Cron/Misfire 与相对基线退化判定及 `FOR UPDATE SKIP LOCKED` + `Forbid` 防重入周期调度；`platform-web` 新增「定时巡检」Tab 与配置弹窗及大厅巡检筛选标签。API 3 passed、Runner 17 passed、Web 9 套件 38 passed / `vue-tsc` / `vite build` 及两轮 `/browser` 实测（含真实 `*/1 * * * *` 后台自动触发与 🔔 站内信跳转）通过。
 
 ## 近期评测基础
 
 2026-11-13 | **Agent 自动化评测首期交付**：EvalFlow 扩展完成历史评分/主动回归、20题、真实模型基线、门禁与Badcase审核；三次开发集运行保留 KnowledgeRetention 分歧，holdout曾用于裁判诊断。真实CI、生产发布和全新盲测集后置，详见项目 Final 记录。
 
 ## 本月归并
+
+2026-11-28 | 完成打擂任务大厅深度优化（安全删除、历史多维对比工坊、实时进度与终端增量日志流）。
 
 2026-11-28 | 完成 `RunResultsPanel.vue` 取证行内就地展开重构，消除跳底割裂。
 2026-11-25 | 平台助手上线 `sshmy1`（Loki/非HTTPS复制/Thread检索与摘要），并完成跨服务联调验证。

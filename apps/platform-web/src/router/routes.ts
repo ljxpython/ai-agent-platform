@@ -35,6 +35,17 @@ const workspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: "projects/:projectId/evaluation/patrols",
+    name: "workspace-evaluation-patrols",
+    component: () => import("@/modules/evaluation/EvaluationStudioPage.vue"),
+    meta: {
+      title: "定时巡检",
+      requiredPermissions: ["project.evaluation.read"],
+      permissionProjectSource: "route",
+      evalTab: "patrols",
+    },
+  },
+  {
     path: "projects/:projectId/evaluation/compare",
     name: "workspace-evaluation-compare",
     redirect: (to) => ({
@@ -485,6 +496,11 @@ const navigation: Record<
   "workspace-evaluation-runs": {
     group: "评测中心",
     label: "打擂任务大厅",
+    icon: "activity",
+  },
+  "workspace-evaluation-patrols": {
+    group: "评测中心",
+    label: "定时巡检",
     icon: "activity",
   },
   "workspace-models": {

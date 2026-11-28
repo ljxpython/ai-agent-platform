@@ -111,6 +111,9 @@ export interface EvalRunItem {
   judge_model_name?: string | null;
   embedding_model_id: string | null;
   matrix_group_id: string | null;
+  trigger_type?: string;
+  patrol_schedule_id?: string | null;
+  patrol_name?: string | null;
   mode: string;
   concurrency: number;
   repeat_k: number;
@@ -200,18 +203,94 @@ export interface CompareRunsResult {
   unchanged: CompareDiffCaseItem[];
 }
 
+export interface PatrolGateConfigPayload {
+  min_tsr: number;
+  min_l1_pass_rate: number;
+  max_loop_rate: number;
+  max_p95_ttft_ms: number | null;
+  regression_drop_threshold: number;
+  ttft_spike_ratio: number;
+  consecutive_alert_threshold: number;
+}
+
 export interface PatrolScheduleItem {
   id: string;
   name: string;
   suite_id: string;
-  version_id: string;
+  suite_name?: string | null;
+  version_id: string | null;
+  version_policy: "latest_published" | "pinned";
+  owner_project_id: string;
   target_project_id: string;
+  target_project_name?: string | null;
   target_graph_id: string;
+  target_agent_id: string | null;
+  target_agent_name?: string | null;
+  target_model_id: string | null;
+  target_model_name?: string | null;
   judge_model_id: string | null;
+  judge_model_name?: string | null;
+  embedding_model_id: string | null;
+  case_keys: string[];
+  concurrency: number;
+  repeat_k: number;
+  skip_incompatible: boolean;
+  confirm_non_sandbox: boolean;
   cron_expr: string;
+  timezone: string;
   enabled: boolean;
+  concurrency_policy: "forbid" | "allow";
+  gate_config: Partial<PatrolGateConfigPayload>;
   notify_channels: string[];
+  notify_on_recovery: boolean;
+  next_run_at: string | null;
+  last_triggered_at: string | null;
+  last_status: string;
+  last_message: string;
+  consecutive_failures: number;
   last_run_id: string | null;
+  last_run_status?: string | null;
+  last_run_gate_exit_code?: number | null;
+  last_run_score?: number | null;
+  created_by: string;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PatrolCreatePayload {
+  name: string;
+  suite_id: string;
+  version_policy: "latest_published" | "pinned";
+  version_id?: string | null;
+  target_project_id: string;
+  target_graph_id?: EvalSuiteItem["default_graph_id"] | null;
+  target_agent_id: string;
+  target_model_id: string;
+  judge_model_id?: string | null;
+  embedding_model_id?: string | null;
+  case_keys?: string[];
+  concurrency?: number;
+  repeat_k?: number;
+  skip_incompatible?: boolean;
+  confirm_non_sandbox?: boolean;
+  cron_expr: string;
+  timezone?: string;
+  enabled?: boolean;
+  concurrency_policy?: "forbid" | "allow";
+  gate_config?: Partial<PatrolGateConfigPayload>;
+  notify_channels?: string[];
+  notify_on_recovery?: boolean;
+}
+
+export type PatrolUpdatePayload = Partial<
+  Omit<PatrolCreatePayload, "suite_id">
+>;
+
+export interface CronPreviewResult {
+  cron_expr: string;
+  timezone: string;
+  next_runs: string[];
+  next_runs_utc: string[];
 }
 
 export interface CaseUpsertPayload {
@@ -590,24 +669,73 @@ export async function listPatrols(
 
 export async function createPatrol(
   projectId: string,
-  payload: {
-    name: string;
-    suite_id: string;
-    version_id: string;
-    target_project_id: string;
-    target_graph_id: EvalSuiteItem["default_graph_id"];
-    judge_model_id?: string | null;
-    cron_expr: string;
-    enabled?: boolean;
-  },
-): Promise<{ id: string; name: string; enabled: boolean }> {
-  const { data } = await platformHttpClient.post<{
+  payload: PatrolCreatePayload,
+): Promise<PatrolScheduleItem> {
+  const { data } = await platformHttpClient.post<PatrolScheduleItem>(
+    "/api/evaluation/studio/patrols",
+    payload,
+    {
+      headers: projectHeaders(projectId),
+    },
+  );
+  return data;
+}
+
+export async function updatePatrol(
+  projectId: string,
+  scheduleId: string,
+  payload: PatrolUpdatePayload,
+): Promise<PatrolScheduleItem> {
+  const { data } = await platformHttpClient.patch<PatrolScheduleItem>(
+    `/api/evaluation/studio/patrols/${scheduleId}`,
+    payload,
+    { headers: projectHeaders(projectId) },
+  );
+  return data;
+}
+
+export async function deletePatrol(
+  projectId: string,
+  scheduleId: string,
+): Promise<{ deleted: boolean; id: string }> {
+  const { data } = await platformHttpClient.delete<{
+    deleted: boolean;
     id: string;
-    name: string;
-    enabled: boolean;
-  }>("/api/evaluation/studio/patrols", payload, {
+  }>(`/api/evaluation/studio/patrols/${scheduleId}`, {
     headers: projectHeaders(projectId),
   });
+  return data;
+}
+
+export async function triggerPatrol(
+  projectId: string,
+  scheduleId: string,
+): Promise<{
+  status: string;
+  run: EvalRunItem;
+  schedule: PatrolScheduleItem;
+}> {
+  const { data } = await platformHttpClient.post<{
+    status: string;
+    run: EvalRunItem;
+    schedule: PatrolScheduleItem;
+  }>(
+    `/api/evaluation/studio/patrols/${scheduleId}/trigger`,
+    {},
+    { headers: projectHeaders(projectId) },
+  );
+  return data;
+}
+
+export async function previewPatrolCron(
+  projectId: string,
+  payload: { cron_expr: string; timezone?: string; count?: number },
+): Promise<CronPreviewResult> {
+  const { data } = await platformHttpClient.post<CronPreviewResult>(
+    "/api/evaluation/studio/patrols/cron-preview",
+    payload,
+    { headers: projectHeaders(projectId) },
+  );
   return data;
 }
 

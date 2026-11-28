@@ -1052,3 +1052,270 @@ def test_delete_run_and_incremental_run_logs(monkeypatch):
         assert session.query(EvalHumanReview).count() == 0
         patrol = session.query(EvalPatrolSchedule).one()
         assert patrol.last_run_id is None
+
+
+def test_patrol_schedule_crud_trigger_overlap_and_alert_recovery(monkeypatch):
+    from platform_api.modules.evaluation.models import EvalPatrolSchedule, EvalRun
+    from platform_api.modules.notifications.models import NotificationRecord
+
+    app, factory, project_id, target_project_id, agent_id, model_id, judge_model_id = (
+        _make_app()
+    )
+    client = TestClient(app)
+    headers = {"x-project-id": project_id}
+
+    monkeypatch.setattr(
+        targets,
+        "snapshot",
+        AsyncMock(
+            return_value={
+                "schema": "evaluation-target/v1",
+                "spec": {"agent_id": str(agent_id), "model_id": str(model_id)},
+                "agent": {"id": str(agent_id), "graph_id": "reference_agent"},
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        targets,
+        "check_readiness",
+        AsyncMock(
+            return_value={
+                "ready": True,
+                "is_sandbox": True,
+                "sandbox_warning": None,
+                "missing_models": [],
+                "incompatible_cases": [],
+                "graph_features": {},
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        studio_router,
+        "load_user_actor",
+        lambda **kw: ActorContext(
+            user_id=str(kw.get("user_id") or "u1"),
+            project_roles={target_project_id: ("project_admin",)},
+        ),
+    )
+    monkeypatch.setattr(
+        studio_router,
+        "build_runtime_gateway_service",
+        lambda req, act, pid: NS(),
+    )
+
+    # 1. Create suite + 2 published versions
+    suite_res = client.post(
+        "/api/evaluation/studio/suites",
+        headers=headers,
+        json={"name": "Patrol Smoke Suite", "default_graph_id": "reference_agent"},
+    )
+    assert suite_res.status_code == 201
+    suite_id = suite_res.json()["id"]
+
+    c_res = client.put(
+        f"/api/evaluation/studio/suites/{suite_id}/cases",
+        headers=headers,
+        json={
+            "case_key": "smoke_01",
+            "split": "dev",
+            "turns": [{"role": "user", "content": "ping"}],
+            "expectations": {"expected_answer": "pong"},
+            "metrics": ["completion"],
+        },
+    )
+    assert c_res.status_code == 200
+
+    v1 = client.post(
+        f"/api/evaluation/studio/suites/{suite_id}/publish",
+        headers=headers,
+        json={"note": "v1"},
+    ).json()["id"]
+    v2 = client.post(
+        f"/api/evaluation/studio/suites/{suite_id}/publish",
+        headers=headers,
+        json={"note": "v2"},
+    ).json()["id"]
+
+    # 2. Cron preview validation
+    prev_ok = client.post(
+        "/api/evaluation/studio/patrols/cron-preview",
+        headers=headers,
+        json={"cron_expr": "0 3 * * *", "timezone": "Asia/Shanghai", "count": 5},
+    )
+    assert prev_ok.status_code == 200
+    assert len(prev_ok.json()["next_runs"]) == 5
+
+    prev_bad = client.post(
+        "/api/evaluation/studio/patrols/cron-preview",
+        headers=headers,
+        json={"cron_expr": "bad cron", "timezone": "Asia/Shanghai"},
+    )
+    assert prev_bad.status_code == 400
+
+    # 3. Create patrol (latest_published)
+    create_res = client.post(
+        "/api/evaluation/studio/patrols",
+        headers=headers,
+        json={
+            "name": "凌晨核心冒烟巡检",
+            "suite_id": suite_id,
+            "version_policy": "latest_published",
+            "target_project_id": target_project_id,
+            "target_agent_id": str(agent_id),
+            "target_model_id": str(model_id),
+            "judge_model_id": str(judge_model_id),
+            "case_keys": ["smoke_01"],
+            "cron_expr": "0 3 * * *",
+            "timezone": "Asia/Shanghai",
+            "enabled": True,
+            "concurrency_policy": "forbid",
+            "confirm_non_sandbox": True,
+        },
+    )
+    assert create_res.status_code == 201
+    patrol = create_res.json()
+    patrol_id = patrol["id"]
+    assert patrol["target_graph_id"] == "reference_agent"
+    assert patrol["next_run_at"] is not None
+    assert patrol["suite_name"] == "Patrol Smoke Suite"
+
+    # 4. List + Patch + Trigger Now
+    list_res = client.get("/api/evaluation/studio/patrols", headers=headers)
+    assert list_res.status_code == 200
+    assert len(list_res.json()["items"]) == 1
+
+    patch_res = client.patch(
+        f"/api/evaluation/studio/patrols/{patrol_id}",
+        headers=headers,
+        json={"name": "凌晨核心冒烟巡检-v2", "concurrency": 3},
+    )
+    assert patch_res.status_code == 200
+    assert patch_res.json()["name"] == "凌晨核心冒烟巡检-v2"
+    assert patch_res.json()["concurrency"] == 3
+
+    trig_res = client.post(
+        f"/api/evaluation/studio/patrols/{patrol_id}/trigger", headers=headers
+    )
+    assert trig_res.status_code == 201
+    run = trig_res.json()["run"]
+    assert run["version_id"] == v2  # followed latest_published
+    assert run["trigger_type"] == "patrol"
+    assert run["patrol_schedule_id"] == patrol_id
+
+    # Verify list_runs exposes patrol metadata
+    runs_res = client.get("/api/evaluation/studio/runs", headers=headers)
+    assert runs_res.status_code == 200
+    assert runs_res.json()["items"][0]["patrol_name"] == "凌晨核心冒烟巡检-v2"
+
+    # 5. Forbid overlap check on both manual trigger (409) & HMAC dispatch (skipped_overlap)
+    overlap_manual = client.post(
+        f"/api/evaluation/studio/patrols/{patrol_id}/trigger", headers=headers
+    )
+    assert overlap_manual.status_code == 409
+
+    def _signed_post(purpose: str, data: dict):
+        raw_b = json.dumps(data).encode()
+        st = str(int(time.time()))
+        sg = hmac.new(
+            b"test-secret-123",
+            b"\n".join([purpose.encode(), st.encode(), raw_b]),
+            hashlib.sha256,
+        ).hexdigest()
+        return client.post(
+            f"/api/evaluation/internal/{purpose}",
+            content=raw_b,
+            headers={
+                "content-type": "application/json",
+                "x-eval-time": st,
+                "x-eval-signature": sg,
+            },
+        )
+
+    skip_res = _signed_post("patrol-dispatch", {"schedule_id": patrol_id})
+    assert skip_res.status_code == 200
+    assert skip_res.json()["status"] == "skipped_overlap"
+
+    # 6. Mark run completed, report degradation alert -> then recovery notification
+    with factory() as session:
+        r_row = session.get(EvalRun, run["id"])
+        r_row.status = "failed"
+        session.commit()
+
+    rep_fail = _signed_post(
+        "patrol-report",
+        {
+            "schedule_id": patrol_id,
+            "run_id": run["id"],
+            "verdict": "degraded",
+            "summary_text": "TSR 从 100% 跌至 50%",
+            "reasons": ["tsr_drop:0.50"],
+        },
+    )
+    assert rep_fail.status_code == 200
+    assert rep_fail.json()["schedule"]["consecutive_failures"] == 1
+    assert rep_fail.json()["notification"]["dispatched"] is not None
+
+    with factory() as session:
+        notifs = session.query(NotificationRecord).all()
+        assert len(notifs) == 1
+        assert notifs[0].category == "eval"
+        assert "TSR" in notifs[0].title
+
+    # Trigger second patrol run under pinned v1 & recover
+    client.patch(
+        f"/api/evaluation/studio/patrols/{patrol_id}",
+        headers=headers,
+        json={"version_policy": "pinned", "version_id": v1},
+    )
+    disp2 = _signed_post("patrol-dispatch", {"schedule_id": patrol_id})
+    assert disp2.status_code == 200
+    assert disp2.json()["status"] == "dispatched"
+    run2_id = disp2.json()["run"]["id"]
+    assert disp2.json()["run"]["version_id"] == v1
+
+    rep_ok = _signed_post(
+        "patrol-report",
+        {
+            "schedule_id": patrol_id,
+            "run_id": run2_id,
+            "verdict": "passed",
+            "summary_text": "巡检恢复通过 (TSR 100%)",
+            "reasons": [],
+        },
+    )
+    assert rep_ok.status_code == 200
+    assert rep_ok.json()["schedule"]["consecutive_failures"] == 0
+    assert rep_ok.json()["notification"]["recovered"] is True
+
+    with factory() as session:
+        notifs = (
+            session.query(NotificationRecord)
+            .order_by(NotificationRecord.created_at.asc())
+            .all()
+        )
+        assert len(notifs) == 2
+        assert "[巡检恢复]" in notifs[1].title
+
+    # 7. Permission enforcement: member cannot update/trigger/delete patrol
+    orig_override = app.dependency_overrides[get_actor_context]
+    app.dependency_overrides[get_actor_context] = lambda: ActorContext(
+        user_id="member-u",
+        project_roles={project_id: ("project_member",)},
+    )
+    assert (
+        client.delete(
+            f"/api/evaluation/studio/patrols/{patrol_id}", headers=headers
+        ).status_code
+        == 403
+    )
+    app.dependency_overrides[get_actor_context] = orig_override
+
+    # 8. Delete patrol preserves run history & clears patrol_schedule_id
+    del_patrol = client.delete(
+        f"/api/evaluation/studio/patrols/{patrol_id}", headers=headers
+    )
+    assert del_patrol.status_code == 200
+    assert del_patrol.json() == {"deleted": True, "id": patrol_id}
+    with factory() as session:
+        assert session.query(EvalPatrolSchedule).count() == 0
+        assert session.get(EvalRun, run["id"]).patrol_schedule_id is None

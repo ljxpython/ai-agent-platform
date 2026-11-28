@@ -118,6 +118,8 @@ def _serialize_run(row: EvalRun) -> dict[str, Any]:
         "judge_model_id": row.judge_model_id,
         "embedding_model_id": row.embedding_model_id,
         "matrix_group_id": row.matrix_group_id,
+        "trigger_type": getattr(row, "trigger_type", "manual"),
+        "patrol_schedule_id": getattr(row, "patrol_schedule_id", None),
         "mode": row.mode,
         "concurrency": row.concurrency,
         "repeat_k": row.repeat_k,
@@ -409,6 +411,8 @@ def create_run_record(
     target_snapshot: dict[str, Any],
     incompatible_keys: set[str] | None = None,
     matrix_group_id: str | None = None,
+    trigger_type: str = "manual",
+    patrol_schedule_id: str | None = None,
 ) -> dict[str, Any]:
     with session_scope(factory) as session:
         suite = session.get(EvalSuite, str(body.suite_id))
@@ -465,6 +469,8 @@ def create_run_record(
                 str(body.embedding_model_id) if body.embedding_model_id else None
             ),
             matrix_group_id=matrix_group_id,
+            trigger_type=trigger_type,
+            patrol_schedule_id=patrol_schedule_id,
             mode=getattr(body, "mode", "regression"),
             concurrency=body.concurrency,
             repeat_k=body.repeat_k,
@@ -512,6 +518,21 @@ def list_runs(
             str(m.id): m.display_name
             for m in session.scalars(select(RuntimeCatalogModelRecord)).all()
         }
+        patrol_ids = {
+            r.patrol_schedule_id for r in rows if getattr(r, "patrol_schedule_id", None)
+        }
+        patrol_names = (
+            {
+                p.id: p.name
+                for p in session.scalars(
+                    select(EvalPatrolSchedule).where(
+                        EvalPatrolSchedule.id.in_(patrol_ids)
+                    )
+                ).all()
+            }
+            if patrol_ids
+            else {}
+        )
         return {
             "items": [
                 {
@@ -522,6 +543,11 @@ def list_runs(
                     "target_model_name": model_names.get(r.target_model_id),
                     "judge_model_name": (
                         model_names.get(r.judge_model_id) if r.judge_model_id else None
+                    ),
+                    "patrol_name": (
+                        patrol_names.get(r.patrol_schedule_id)
+                        if getattr(r, "patrol_schedule_id", None)
+                        else None
                     ),
                 }
                 for r in rows
@@ -956,51 +982,17 @@ def set_sandbox_flag(
 
 
 def list_patrols(factory, *, project_id: str) -> dict[str, Any]:
-    with session_scope(factory) as session:
-        rows = session.scalars(
-            select(EvalPatrolSchedule)
-            .where(EvalPatrolSchedule.owner_project_id == project_id)
-            .order_by(EvalPatrolSchedule.created_at.desc())
-        ).all()
-        return {
-            "items": [
-                {
-                    "id": r.id,
-                    "name": r.name,
-                    "suite_id": r.suite_id,
-                    "version_id": r.version_id,
-                    "target_project_id": r.target_project_id,
-                    "target_graph_id": r.target_graph_id,
-                    "judge_model_id": r.judge_model_id,
-                    "cron_expr": r.cron_expr,
-                    "enabled": r.enabled,
-                    "notify_channels": r.notify_channels_json,
-                    "last_run_id": r.last_run_id,
-                }
-                for r in rows
-            ]
-        }
+    from platform_api.modules.evaluation import patrol_service
+
+    return patrol_service.list_patrols(factory, project_id=project_id)
 
 
 def create_patrol(factory, *, project_id: str, actor_id: str, body) -> dict[str, Any]:
-    with session_scope(factory) as session:
-        row = EvalPatrolSchedule(
-            id=str(uuid4()),
-            name=body.name.strip(),
-            suite_id=str(body.suite_id),
-            version_id=str(body.version_id),
-            owner_project_id=project_id,
-            target_project_id=body.target_project_id,
-            target_graph_id=body.target_graph_id,
-            judge_model_id=str(body.judge_model_id) if body.judge_model_id else None,
-            cron_expr=body.cron_expr,
-            enabled=body.enabled,
-            notify_channels_json=body.notify_channels,
-            created_by=actor_id,
-        )
-        session.add(row)
-        session.flush()
-        return {"id": row.id, "name": row.name, "enabled": row.enabled}
+    from platform_api.modules.evaluation import patrol_service
+
+    return patrol_service.create_patrol(
+        factory, project_id=project_id, actor_id=actor_id, body=body
+    )
 
 
 def read_diagnosis_evidence_slice(
