@@ -18,7 +18,7 @@ Task23当前批准的双机迁移、单并发连续容量及合并后联合读�
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-28（专题 07 `a280251c` 已推 `origin/main` + 新增 AI 专家历史对话记录）。一阶段及二阶段（[专题 06](projects/20261128-independent-eval-platform/06-metric-reliability-and-migration-gap-audit.md) `Task 6.1–6.4`）与架构文档 [docs/architecture/08-evaluation-platform/](architecture/08-evaluation-platform/README.md) 及 [专题 07（Task 7.1–7.5）](projects/20261128-independent-eval-platform/07-eval-copilot-skills-and-authoring-agent.md) 已全数合入 `main`；当前新增 `eval_copilot` / `eval_diagnosis` 历史会话列表（`GET /studio/experts/threads`）、`/state` 消息反序列化恢复及前端「选择历史会话」与刷新自动恢复（含本地测试与 `/browser` 验证通过，待按需提交）。剩余边界：`v3-golden` 其余 7 题（含 RAG 与 PlanReview）、远端 Docker 沙箱与定时巡检 Cron 待补。
+> **最后更新：** 2026-11-28（专题 07 `a280251c` + 历史会话 `79f535d9` 已推 `origin/main`，当前完成 AI 专家抽屉 UI 全面升级）。一阶段及二阶段（[专题 06](projects/20261128-independent-eval-platform/06-metric-reliability-and-migration-gap-audit.md) `Task 6.1–6.4`）与架构文档 [docs/architecture/08-evaluation-platform/](architecture/08-evaluation-platform/README.md) 及 [专题 07（Task 7.1–7.5）](projects/20261128-independent-eval-platform/07-eval-copilot-skills-and-authoring-agent.md) 已全数合入 `main`；当前为 `EvaluationExpertDrawer` 生成并接入专属 Q 版头像 `/eval-copilot-avatar.png`、复用 `BaseDrawer` 拖拽拉伸与宽屏切换、复用 `ChatModelSelector` 渠道分组模型选择并升级卡片式历史会话视图（本地 `vue-tsc`、`vitest` 5/5 与 `/browser` 实测通过，待按需提交）。剩余边界：`v3-golden` 其余 7 题（含 RAG 与 PlanReview）、远端 Docker 沙箱与定时巡检 Cron 待补。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」

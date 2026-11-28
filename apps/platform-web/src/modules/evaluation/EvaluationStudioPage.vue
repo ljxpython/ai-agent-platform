@@ -21,6 +21,7 @@ import {
 } from "@/services/evaluation/studio";
 import { listRuntimeProjects } from "@/services/projects/projects.service";
 import { listRuntimeModels } from "@/services/runtime/runtime.service";
+import type { RuntimeModelItem } from "@/types/management";
 
 type EvalTab = "panorama" | "editor" | "runs";
 
@@ -42,6 +43,7 @@ const agentOptions = ref<Array<{ label: string; value: string }>>([]);
 const modelOptions = ref<
   Array<{ label: string; value: string; isBroken?: boolean }>
 >([]);
+const runtimeModels = ref<RuntimeModelItem[]>([]);
 const defaultModelId = ref("");
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -114,6 +116,9 @@ async function loadTargetOptions(targetPid: string) {
     }));
     const models = modelsRes.models ?? [];
     defaultModelId.value = pickPreferredDeepSeekModelId(models);
+    runtimeModels.value = models.filter(
+      (m) => m.enabled && !isFaultInjectionTestModel(m),
+    );
     modelOptions.value = models
       .filter((m) => m.enabled)
       .map((m) => ({
@@ -424,6 +429,7 @@ function openMlflowDashboard() {
       :ref-id="expertRefId"
       :default-model-id="defaultModelId"
       :model-options="modelOptions"
+      :models="runtimeModels"
       @close="showExpertDrawer = false"
       @adopt-cases="handleAdoptCopilotCases"
       @cases-updated="handleExpertCasesUpdated"

@@ -239,4 +239,64 @@ describe("EvaluationStudioPage", () => {
     expect(chat.messages.value).toHaveLength(2);
     expect(chat.messages.value[1]?.content).toBe("已落库 COP-NL-01");
   });
+
+  it("renders EvaluationExpertDrawer with avatar, resizable width toggle, history view, and ChatModelSelector", async () => {
+    const { default: EvaluationExpertDrawer } =
+      await import("@/modules/evaluation/components/EvaluationExpertDrawer.vue");
+    const wrapper = mount(EvaluationExpertDrawer, {
+      props: {
+        show: true,
+        projectId: "proj-1",
+        kind: "eval_copilot",
+        refId: "suite-1",
+        defaultModelId: "model-1",
+        models: [
+          {
+            id: "model-1",
+            model: "deepseek-v4.1-flash",
+            display_name: "Chickener DeepSeek",
+            provider: "chickener",
+            api_style: "openai-compatible",
+            base_url: "https://chickener.top/v1",
+            protocol: "openai-compatible",
+            credential_configured: true,
+            enabled: true,
+            scope_type: "platform",
+          },
+        ],
+      },
+      global: {
+        stubs: {
+          BaseDrawer: {
+            template:
+              "<div><slot name='title' /><slot name='header-actions' /><slot /></div>",
+            props: ["show", "title", "resizable", "customWidth", "minWidth"],
+          },
+          BaseIcon: { template: "<span />", props: ["name", "size"] },
+          BaseButton: {
+            template: "<button @click=\"$emit('click')\"><slot /></button>",
+          },
+          BaseInput: { template: "<input />" },
+          MarkdownContent: { template: "<div />", props: ["content"] },
+          StateBanner: { template: "<div />" },
+          StatusPill: { template: "<span />" },
+          RouterLink: { template: "<a><slot /></a>", props: ["to"] },
+        },
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(wrapper.html()).toContain("/eval-copilot-avatar.png");
+    expect(
+      wrapper.find('[data-testid="expert-toggle-width-btn"]').text(),
+    ).toContain("宽屏");
+    await wrapper
+      .find('[data-testid="expert-toggle-width-btn"]')
+      .trigger("click");
+    expect(
+      wrapper.find('[data-testid="expert-toggle-width-btn"]').text(),
+    ).toContain("标准");
+    expect(wrapper.text()).toContain("Chickener DeepSeek");
+    await wrapper.find('[data-testid="expert-history-btn"]').trigger("click");
+    expect(wrapper.text()).toContain("历史会话");
+  });
 });
