@@ -458,13 +458,13 @@ def _interrupt_ids(state: Any) -> set[str]:
     if not isinstance(state, dict):
         return set()
     interrupts = state.get("interrupts")
-    if isinstance(interrupts, dict):
+    if isinstance(interrupts, dict) and interrupts:
         return {
             interrupt_id
             for interrupt_id in (clean_str(key) for key in interrupts)
             if interrupt_id
         }
-    if isinstance(interrupts, list):
+    if isinstance(interrupts, list) and interrupts:
         return {
             interrupt_id
             for interrupt in interrupts
@@ -4425,7 +4425,8 @@ class RuntimeGatewayService:
             parent = previous
             if previous is None:
                 state = await self._upstream.get_thread_state(thread_id, {})
-                if not set(interrupt_ids) <= _interrupt_ids(state):
+                active_ids = _interrupt_ids(state) | _interrupt_ids(thread)
+                if not set(interrupt_ids) <= active_ids:
                     raise ConflictError(
                         code="interrupt_not_active",
                         message="Interrupt is no longer active",
@@ -4439,8 +4440,13 @@ class RuntimeGatewayService:
                         message="Checkpoint has no originating Run",
                     )
                 parent = await run_in_threadpool(load_request, checkpoint_run_id)
-                validate_clarification_resumes(state, resumes)
-                validate_plan_resumes(state, resumes, actor)
+                validation_state = (
+                    state
+                    if _interrupt_ids(state)
+                    else {**ensure_dict(state), "interrupts": thread.get("interrupts")}
+                )
+                validate_clarification_resumes(validation_state, resumes)
+                validate_plan_resumes(validation_state, resumes, actor)
             if parent is None:
                 raise ConflictError(
                     code="run_request_missing",

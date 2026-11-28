@@ -45,3 +45,21 @@
 - **错误：** 假定上游 `POST /threads/{thread_id}/history` 的 `metadata={"run_id": ...}` 过滤生效而只取 `limit=1`，一旦有后续 Run 写入即误判 `run_mismatch`；且默认租户在鉴权域传 `TenantRecord.id`（UUID）而运行时实际以 `tenant_id="__default"` 落库，导致运行诊断全部查不到。
 - **正确：** 读取 checkpoint 采取先探最新 1 条、未命中再带 `before` 游标向后有界分页匹配目标 `run_id`（附游标去重防死循环）；默认租户（`slug == "__default"`）向 Runtime 统一传递 `tenant_id="__default"` 保持跨服务契约一致。
 - **日期：** 2026-11-25；用户批准沉淀，证据见[平台助手接入 MLflow 追踪诊断专项](../projects/20261125-platform-assistant-mlflow-diagnostics/verification.md)。
+
+---
+
+## [坑] HITL 中断下 `/state` 与 `/threads` 数据分裂且 SSE 使用 `input.requested`
+
+- **场景：** 使用 LangGraph `HumanInTheLoopMiddleware`（如 `eval_copilot` / 专家抽屉）触发人工审批中断并通过 `/respond` 恢复。
+- **错误：** 仅在 SSE 消费 `values.__interrupt__` / `updates.__interrupt__`（`updates` 中为字符串化 `Interrupt(...)`），且在控制面 `_interrupt_ids` / `interrupt_entries` 中因 `state["interrupts"] == []` 提前返回空集合而未合并 `threads.interrupts`，导致前端不弹审批卡或提交审批时误报 `409 Interrupt is no longer active`。
+- **正确：** 前端同时监听 `input.requested` / `input` / `lifecycle.interrupts` 帧并在流结束后通过 `/state`（合并 `threads.interrupts`）兜底同步；控制面 `input.respond` 与状态校验对 `interrupts` 空容器不提前截断，统一合并 `tasks[].interrupts` 与 `GET /threads/{id}` 返回的 `thread["interrupts"]`。
+- **日期：** 2026-11-28；用户批准沉淀，证据见[专题 07](../projects/20261128-independent-eval-platform/07-eval-copilot-skills-and-authoring-agent.md)。
+
+---
+
+## [坑] 内部 HMAC 桥路由误用浏览器向 `get_runtime_gateway_service` 依赖
+
+- **场景：** 控制面 `/api/evaluation/internal/*` 路由供 `runtime-service` 通过 HMAC 签名内部回调。
+- **错误：** 在内部路由函数签名注入 `Depends(get_runtime_gateway_service)`，其内部强制调用 `_require_project_id(request)` 读取浏览器请求头 `x-project-id`，导致内部回调稳定报 `HTTP 400`。
+- **正确：** 内部 HMAC 路由不得使用要求前端请求头的 FastAPI 依赖，应从校验后的 JSON payload 解析 `project_id` 与 `actor_id`，显式调用 `load_user_actor(...)` 与 `build_runtime_gateway_service(request, actor, target_project_id)` 构造网关。
+- **日期：** 2026-11-28；用户批准沉淀，证据见[专题 07](../projects/20261128-independent-eval-platform/07-eval-copilot-skills-and-authoring-agent.md)。

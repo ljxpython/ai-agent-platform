@@ -13,12 +13,18 @@ from fastapi import APIRouter, Depends, Request
 from starlette.concurrency import run_in_threadpool
 
 from platform_api.core.context.models import ActorContext
-from platform_api.core.errors import BadRequestError, ForbiddenError, PlatformApiError
+from platform_api.core.errors import (
+    BadRequestError,
+    ConflictError,
+    ForbiddenError,
+    PlatformApiError,
+)
 from platform_api.entrypoints.http.dependencies import get_actor_context
 from platform_api.modules.evaluation import studio_service, targets
 from platform_api.modules.evaluation.studio_schemas import (
     CaseImportRequest,
     CaseUpsert,
+    ExpertRespondRequest,
     ExpertThreadCreateRequest,
     ExpertTurnStreamRequest,
     HumanReviewCreate,
@@ -578,11 +584,180 @@ async def internal_copilot_context(request: Request) -> dict[str, Any]:
     raw = await request.body()
     _verify_internal_hmac(request, "copilot-context", raw)
     payload = json.loads(raw or b"{}")
-    return await run_in_threadpool(
+    detail = await run_in_threadpool(
         studio_service.get_suite_detail,
         request.app.state.db_session_factory,
         project_id=str(payload["project_id"]),
         suite_id=str(payload["suite_id"]),
+    )
+    filter_keys = set(str(k) for k in (payload.get("case_keys") or []) if k)
+    if filter_keys:
+        detail["cases"] = [
+            c for c in detail["cases"] if c.get("case_key") in filter_keys
+        ]
+    return detail
+
+
+@router.post("/internal/copilot-suites")
+async def internal_copilot_suites(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "copilot-suites", raw)
+    payload = json.loads(raw or b"{}")
+    return await run_in_threadpool(
+        studio_service.copilot_list_suites,
+        request.app.state.db_session_factory,
+        project_id=str(payload["project_id"]),
+    )
+
+
+@router.post("/internal/copilot-capabilities")
+async def internal_copilot_capabilities(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "copilot-capabilities", raw)
+    payload = json.loads(raw or b"{}")
+    return await run_in_threadpool(
+        studio_service.copilot_list_capabilities,
+        request.app.state.db_session_factory,
+        project_id=str(payload["project_id"]),
+    )
+
+
+@router.post("/internal/copilot-failures")
+async def internal_copilot_failures(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "copilot-failures", raw)
+    payload = json.loads(raw or b"{}")
+    return await run_in_threadpool(
+        studio_service.copilot_list_failures,
+        request.app.state.db_session_factory,
+        project_id=str(payload["project_id"]),
+        suite_id=payload.get("suite_id"),
+        run_id=payload.get("run_id"),
+        limit=min(50, max(1, int(payload.get("limit") or 20))),
+    )
+
+
+@router.post("/internal/copilot-save-cases")
+async def internal_copilot_save_cases(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "copilot-save-cases", raw)
+    payload = json.loads(raw or b"{}")
+    return await run_in_threadpool(
+        studio_service.copilot_save_cases,
+        request.app.state.db_session_factory,
+        project_id=str(payload["project_id"]),
+        suite_id=str(payload["suite_id"]),
+        items=list(payload.get("items") or []),
+        mode=str(payload.get("mode") or "create_only"),
+    )
+
+
+@router.post("/internal/copilot-trial-run")
+async def internal_copilot_trial_run(
+    request: Request,
+) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "copilot-trial-run", raw)
+    payload = json.loads(raw or b"{}")
+    project_id = str(payload["project_id"])
+    actor_id = str(payload.get("actor_id") or "copilot")
+    suite_id = str(payload["suite_id"])
+    case_keys = [str(k) for k in (payload.get("case_keys") or []) if k]
+    if not case_keys or len(case_keys) > 5:
+        raise BadRequestError(
+            code="copilot_trial_case_limit",
+            message="单次授权试跑必须指定 1 到 5 道题目。",
+        )
+    prep = await run_in_threadpool(
+        studio_service.copilot_prepare_trial_version,
+        request.app.state.db_session_factory,
+        project_id=project_id,
+        suite_id=suite_id,
+        actor_id=actor_id,
+        case_keys=case_keys,
+        target_project_id=payload.get("target_project_id"),
+        agent_id=payload.get("agent_id"),
+        model_id=payload.get("model_id"),
+        judge_model_id=payload.get("judge_model_id"),
+    )
+    actor = await run_in_threadpool(
+        load_user_actor,
+        session_factory=request.app.state.db_session_factory,
+        user_id=actor_id,
+        project_id=prep["target_project_id"],
+    )
+    if actor is None:
+        raise ForbiddenError(code="copilot_actor_not_found", message="操作用户不存在。")
+    gateway = build_runtime_gateway_service(request, actor, prep["target_project_id"])
+    snap = await targets.snapshot(
+        gateway,
+        actor,
+        prep["target_project_id"],
+        targets.TargetRequest(
+            agent_id=UUID(prep["agent_id"]),
+            model_id=UUID(prep["model_id"]),
+        ),
+    )
+    if payload.get("copilot_thread_id"):
+        snap["copilot_thread_id"] = str(payload["copilot_thread_id"])
+    snap["copilot_trial"] = True
+    run_body = RunCreate(
+        suite_id=UUID(suite_id),
+        version_id=UUID(prep["version"]["id"]),
+        target_project_id=prep["target_project_id"],
+        agent_id=UUID(prep["agent_id"]),
+        model_id=UUID(prep["model_id"]),
+        judge_model_id=UUID(prep["judge_model_id"]),
+        mode="regression",
+        concurrency=1,
+        repeat_k=1,
+        confirm_non_sandbox=True,
+        skip_incompatible=True,
+        case_keys=case_keys,
+    )
+    return await run_in_threadpool(
+        studio_service.create_run_record,
+        request.app.state.db_session_factory,
+        owner_project_id=project_id,
+        actor_id=actor_id,
+        body=run_body,
+        target_snapshot=snap,
+    )
+
+
+@router.post("/internal/copilot-run-status")
+async def internal_copilot_run_status(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "copilot-run-status", raw)
+    payload = json.loads(raw or b"{}")
+    return await run_in_threadpool(
+        studio_service.copilot_run_status,
+        request.app.state.db_session_factory,
+        project_id=str(payload["project_id"]),
+        run_id=str(payload["run_id"]),
+        case_key=payload.get("case_key"),
+    )
+
+
+@router.post("/internal/copilot-control-run")
+async def internal_copilot_control_run(request: Request) -> dict[str, Any]:
+    raw = await request.body()
+    _verify_internal_hmac(request, "copilot-control-run", raw)
+    payload = json.loads(raw or b"{}")
+    action = str(payload.get("action") or "cancel")
+    if action not in {"cancel", "pause"}:
+        raise BadRequestError(
+            code="copilot_control_action_invalid",
+            message="仅支持 cancel 或 pause 操作。",
+        )
+    return await run_in_threadpool(
+        studio_service.copilot_control_run,
+        request.app.state.db_session_factory,
+        project_id=str(payload["project_id"]),
+        run_id=str(payload["run_id"]),
+        action=action,
+        copilot_thread_id=payload.get("copilot_thread_id"),
+        require_own=bool(payload.get("require_own", False)),
     )
 
 
@@ -628,6 +803,60 @@ async def create_expert_thread(
     )
 
 
+async def _load_expert_interrupts(
+    gateway: RuntimeGatewayService,
+    *,
+    actor: ActorContext,
+    project_id: str,
+    thread_id: str,
+) -> tuple[str | None, Any]:
+    state = await gateway.get_thread_state(
+        actor=actor,
+        project_id=project_id,
+        thread_id=thread_id,
+        params={"subgraphs": False},
+    )
+    status = state.get("status") if isinstance(state, dict) else None
+    raw_ints: Any = state.get("interrupts") if isinstance(state, dict) else None
+    if not raw_ints and isinstance(state, dict):
+        task_ints: list[Any] = []
+        for task in state.get("tasks") or []:
+            if isinstance(task, dict) and task.get("interrupts"):
+                task_ints.extend(task["interrupts"])
+        if task_ints:
+            raw_ints = task_ints
+    if not raw_ints:
+        try:
+            thread_row = await gateway.get_thread(
+                actor=actor, project_id=project_id, thread_id=thread_id
+            )
+            if isinstance(thread_row, dict):
+                status = status or thread_row.get("status")
+                if thread_row.get("interrupts"):
+                    raw_ints = thread_row.get("interrupts")
+        except Exception:  # noqa: BLE001
+            pass
+    return status, raw_ints or []
+
+
+@router.get("/studio/experts/threads/{thread_id}/state")
+async def get_expert_thread_state(
+    request: Request,
+    thread_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    gateway: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> dict[str, Any]:
+    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_READ)
+    status, interrupts = await _load_expert_interrupts(
+        gateway, actor=actor, project_id=pid, thread_id=thread_id
+    )
+    return {
+        "thread_id": thread_id,
+        "status": status,
+        "interrupts": interrupts,
+    }
+
+
 @router.post("/studio/experts/threads/{thread_id}/stream")
 async def stream_expert_turn(
     request: Request,
@@ -642,6 +871,19 @@ async def stream_expert_turn(
         else PermissionCode.PROJECT_EVALUATION_READ
     )
     pid = _authorize_project(request, actor, perm)
+    try:
+        _status, pending_ints = await _load_expert_interrupts(
+            gateway, actor=actor, project_id=pid, thread_id=thread_id
+        )
+        if pending_ints:
+            raise ConflictError(
+                code="expert_interrupt_pending",
+                message="当前会话存在待处理的人工授权确认，请先点击「允许执行」或「拒绝」。",
+            )
+    except ConflictError:
+        raise
+    except Exception:  # noqa: BLE001
+        pass
     resolved_model_id = body.model_id
     if not resolved_model_id:
 
@@ -659,15 +901,27 @@ async def stream_expert_turn(
                     )
                 ).all()
             safe = [r for r in rows if "broken" not in (r.model_name or "").lower()]
-            pick = next(
-                (
-                    r
-                    for r in safe
-                    if (r.provider or "").lower() == "xiaok"
-                    and "deepseek" in (r.model_name or "").lower()
-                ),
-                None,
-            ) or (safe[0] if safe else None)
+            pick = (
+                next(
+                    (
+                        r
+                        for r in safe
+                        if (r.provider or "").lower() == "chickener"
+                        and "deepseek" in (r.model_name or "").lower()
+                    ),
+                    None,
+                )
+                or next(
+                    (
+                        r
+                        for r in safe
+                        if (r.provider or "").lower() == "xiaok"
+                        and "deepseek" in (r.model_name or "").lower()
+                    ),
+                    None,
+                )
+                or (safe[0] if safe else None)
+            )
             return str(pick.id) if pick else None
 
         resolved_model_id = await run_in_threadpool(_pick_default_model)
@@ -675,7 +929,7 @@ async def stream_expert_turn(
     payload: dict[str, Any] = {
         "assistant_id": body.graph_id,
         "input": {"messages": [{"role": "user", "content": body.content}]},
-        "stream_mode": ["messages", "values"],
+        "stream_mode": ["messages", "values", "updates"],
     }
     if resolved_model_id:
         payload["context"] = {"model_id": resolved_model_id}
@@ -688,6 +942,95 @@ async def stream_expert_turn(
     )
     return _runtime_sse_response(
         request, stream, thread_id=thread_id, stream_kind="run", protocol=False
+    )
+
+
+@router.post("/studio/experts/threads/{thread_id}/respond")
+async def respond_expert_interrupt(
+    request: Request,
+    thread_id: str,
+    body: ExpertRespondRequest,
+    actor: ActorContext = Depends(get_actor_context),
+    gateway: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    perm = (
+        PermissionCode.PROJECT_EVALUATION_MANAGE
+        if body.graph_id == "eval_copilot"
+        else PermissionCode.PROJECT_EVALUATION_READ
+    )
+    pid = _authorize_project(request, actor, perm)
+    idem_key = request.headers.get("Idempotency-Key") or str(uuid4())
+    resume_map = (
+        body.command.get("resume")
+        if isinstance(body.command, dict) and "resume" in body.command
+        else body.command
+    )
+    resumed = await gateway.send_thread_command(
+        actor=actor,
+        project_id=pid,
+        thread_id=thread_id,
+        payload={
+            "id": 0,
+            "method": "input.respond",
+            "params": {
+                "resume": resume_map,
+                "assistant_id": body.graph_id,
+            },
+        },
+        idempotency_key=idem_key,
+    )
+    resumed_run_id = str((resumed.get("result") or {}).get("run_id") or "")
+    stream = await gateway.join_thread_run_stream(
+        actor=actor,
+        project_id=pid,
+        thread_id=thread_id,
+        run_id=resumed_run_id,
+        params={
+            "stream_mode": ["messages", "values", "updates"],
+            "stream_resumable": True,
+        },
+    )
+    return _runtime_sse_response(
+        request, stream, thread_id=thread_id, stream_kind="run", protocol=False
+    )
+
+
+@router.post("/studio/experts/threads/{thread_id}/upload")
+async def upload_expert_material(
+    request: Request,
+    thread_id: str,
+    file_name: str = "material.txt",
+    actor: ActorContext = Depends(get_actor_context),
+    gateway: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> dict[str, Any]:
+    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_MANAGE)
+    data = await request.body()
+    if not data:
+        raise BadRequestError(
+            code="eval_upload_empty", message="上传的参考资料不能为空。"
+        )
+    if len(data) > 10 * 1024 * 1024:
+        raise BadRequestError(
+            code="eval_upload_too_large", message="单份参考资料不能超过 10MB。"
+        )
+    digest = hashlib.sha256(data).hexdigest()
+    safe_name = (file_name or "material.txt").strip() or "material.txt"
+    content_type = request.headers.get("content-type") or _fixture_content_type(
+        safe_name
+    )
+
+    async def _body(chunk: bytes = data):
+        yield chunk
+
+    return await gateway.upload_thread_file(
+        actor=actor,
+        project_id=pid,
+        thread_id=thread_id,
+        sha256=digest,
+        content_type=content_type,
+        content_length=len(data),
+        body=_body(),
+        file_name=safe_name,
     )
 
 

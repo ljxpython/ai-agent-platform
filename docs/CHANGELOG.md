@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 
-- 新增原生独立评测中心（「题库资产全景」「考题表格汇总」「打擂任务大厅」三段式工作台），支持多图（`dearflow_agent` / `showcase_demo` / `reference_agent` / `workflow_demo`）受控并发打擂（1~5）、SSE 真实 TTFT 与生成/总耗时/裁判四段拆解、网关+裁判 Token 与费用透传、流式 AI 出题/诊断专家抽屉，以及集成于打擂大厅的 `Head-to-Head PK` 横向对撞工坊（5 维雷达图 + 7 维量化表、Side-by-Side 逐题正文对照与性能成本拓扑对比）。
+- 新增原生独立评测中心（「题库资产全景」「考题表格汇总」「打擂任务大厅」三段式工作台），支持多图（`dearflow_agent` / `showcase_demo` / `reference_agent` / `workflow_demo`）受控并发打擂（1~5）、SSE 真实 TTFT 与生成/总耗时/裁判四段拆解、网关+裁判 Token 与费用透传、流式 AI 出题/诊断专家抽屉（现已升级为内置领域 Skills + 多格式资料上传读取 + 分级 HITL 授权落库/试跑/主动终止闭环），以及集成于打擂大厅的 `Head-to-Head PK` 横向对撞工坊（5 维雷达图 + 7 维量化表、Side-by-Side 逐题正文对照与性能成本拓扑对比）。
 
 - 复杂评测分批读取Trace并按需展示原文，重型任务限制内存并检查主机余量，日志保留正文关联；已合main并完成两小时稳定性及联合验收。正式EvalFlow已加载，Runtime内部状态引用在独立环境验证，正式Agent未重载该采集改动。
 

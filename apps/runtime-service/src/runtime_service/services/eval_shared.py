@@ -79,6 +79,23 @@ def eval_internal_post(
             )
             resp.raise_for_status()
             return resp.json()
+    except httpx.HTTPStatusError as exc:
+        detail = ""
+        try:
+            err_body = exc.response.json()
+            err_obj = err_body.get("error") if isinstance(err_body, dict) else None
+            if isinstance(err_obj, dict) and err_obj.get("message"):
+                detail = str(err_obj["message"])
+            elif isinstance(err_body, dict) and err_body.get("detail"):
+                detail = str(err_body["detail"])
+        except ValueError:
+            detail = exc.response.text[:300]
+        msg = (
+            f"HTTP {exc.response.status_code}: {detail}"
+            if detail
+            else f"HTTP {exc.response.status_code}"
+        )
+        raise ToolException(msg) from exc
     except (httpx.HTTPError, ValueError) as exc:
         raise ToolException(f"eval_internal_unavailable:{type(exc).__name__}") from exc
 
@@ -89,6 +106,8 @@ async def build_eval_expert_graph(
     graph_id: str,
     defaults: AgentDefaults,
     tools_factory,
+    extra_middleware: Sequence[Any] = (),
+    state_schema: Any = None,
 ) -> Pregel:
     """Shared LangGraph composition root for evaluation expert agents."""
     with StartupDiagnostics(graph_id) as startup:
@@ -145,9 +164,9 @@ async def build_eval_expert_graph(
             ),
             TokenBudgetMiddleware(exit_behavior="end"),
             ExecutionBudgetMiddleware(
-                run_limit=16, exit_behavior="end", graph_key=graph_id
+                run_limit=24, exit_behavior="end", graph_key=graph_id
             ),
-            ToolCallLimitMiddleware(run_limit=24, exit_behavior="error"),
+            ToolCallLimitMiddleware(run_limit=32, exit_behavior="error"),
             *(
                 [
                     ModelResilienceMiddleware(
@@ -166,16 +185,23 @@ async def build_eval_expert_graph(
             ),
             MessageQueueMiddleware(),
             *([PiiRedactionMiddleware(pii)] if pii.enabled else []),
+            *extra_middleware,
         ]
-        tools: Sequence[BaseTool] = tools_factory(facts)
-        agent = create_agent(
-            model=model,
-            tools=list(tools),
-            system_prompt=defaults.system_prompt,
-            middleware=middleware,
-            context_schema=RuntimeContext,
-            name=graph_id,
-        )
+        try:
+            tools: Sequence[BaseTool] = tools_factory(facts, config)
+        except TypeError:
+            tools = tools_factory(facts)
+        agent_kwargs: dict[str, Any] = {
+            "model": model,
+            "tools": list(tools),
+            "system_prompt": defaults.system_prompt,
+            "middleware": middleware,
+            "context_schema": RuntimeContext,
+            "name": graph_id,
+        }
+        if state_schema is not None:
+            agent_kwargs["state_schema"] = state_schema
+        agent = create_agent(**agent_kwargs)
         bound = dict(config)
         bound["configurable"] = {
             key: value for key, value in configurable.items() if key != RUN_BUDGET_KEY

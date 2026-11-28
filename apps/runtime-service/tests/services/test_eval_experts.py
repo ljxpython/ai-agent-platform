@@ -10,6 +10,9 @@ import json
 from runtime_service.graphs import eval_copilot, eval_diagnosis
 from runtime_service.services import eval_shared
 from runtime_service.services.eval_copilot.agent import (
+    _normalize_upload_path,
+    list_skill_topics,
+    read_skill_content,
     safe_calculate,
     validate_case_draft,
 )
@@ -38,6 +41,79 @@ def test_copilot_calculator_and_case_validation():
     bad = validate_case_draft(json.dumps({"case_key": "", "metrics": []}))
     assert bad["valid"] is False
     assert "case_key_required" in bad["errors"]
+
+    anti_pitfall = validate_case_draft(
+        json.dumps(
+            {
+                "case_key": "COP-PIT-1",
+                "turns": [{"role": "user", "content": "读取 {{missing.csv}} 并计算"}],
+                "expectations": {
+                    "artifacts": [
+                        {
+                            "path": "/workspace/work/out.csv",
+                            "kind": "contains",
+                            "expected": "x",
+                        }
+                    ],
+                    "tool_constraints": {"required": ["magic_tool"]},
+                },
+                "metrics": ["completion", "Faithfulness"],
+            }
+        ),
+        graph_id="dearflow_agent",
+    )
+    assert anti_pitfall["valid"] is False
+    assert any(
+        "unknown_tools_for_dearflow_agent:magic_tool" in e
+        for e in anti_pitfall["errors"]
+    )
+    assert any(
+        "undeclared_fixture_placeholders:missing.csv" in e
+        for e in anti_pitfall["errors"]
+    )
+    assert any(
+        "non_rag_case_with_rag_metrics:Faithfulness" in e
+        for e in anti_pitfall["errors"]
+    )
+    assert "artifact_correct" in " ".join(anti_pitfall["errors"])
+
+    wrapped = validate_case_draft(
+        '```json\n{"case": {"case_key": "COP-WRAP-1", "turns": [{"role": "user", "content": "hi"}], "metrics": ["completion"]}}\n```'
+    )
+    assert wrapped == {"valid": True, "errors": []}
+
+    bad_role = validate_case_draft(
+        {
+            "case_key": "COP-BAD-ROLE",
+            "turns": [
+                {"role": "user", "content": "我要退款"},
+                {"role": "assistant", "content": "请问原因"},
+            ],
+            "metrics": ["completion"],
+        }
+    )
+    assert bad_role["valid"] is False
+    assert any("invalid_turn_role:1:assistant" in e for e in bad_role["errors"])
+
+
+def test_copilot_skills_and_upload_path_guard():
+    from runtime_service.runtime.capabilities import graph_capabilities, graph_tools
+
+    topics = {item["topic"] for item in list_skill_topics()}
+    assert {
+        "case-v3-schema",
+        "multi-turn-simulation",
+        "metrics-and-anti-pitfalls",
+        "code-and-tool-scenarios",
+    } <= topics
+    assert "ambiguous_changer" in read_skill_content("multi-turn-simulation")
+    assert _normalize_upload_path("spec.md") == "/workspace/uploads/spec.md"
+    assert (
+        _normalize_upload_path("/workspace/uploads/a.csv") == "/workspace/uploads/a.csv"
+    )
+    assert graph_capabilities("eval_copilot")["files"] is True
+    assert "read_file" in graph_tools("eval_copilot")
+    assert "write_file" in graph_tools("eval_copilot")
 
 
 def test_eval_internal_post_signs_hmac_headers(monkeypatch):

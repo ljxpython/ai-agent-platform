@@ -61,7 +61,7 @@ def graph_capabilities(graph_id: str) -> dict:
         "schema_version": 1,
         "graph_id": graph_id,
         "plan_mode": graph_id in PLAN_GRAPHS,
-        "files": graph_id in {"showcase_demo", "dearflow_agent"},
+        "files": graph_id in {"showcase_demo", "dearflow_agent", "eval_copilot"},
         "workspace": graph_id in {"showcase_demo", "dearflow_agent"},
         "background_tasks": graph_id in {"showcase_demo", "dearflow_agent"}
         and query_enabled(),

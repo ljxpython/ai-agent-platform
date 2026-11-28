@@ -1,7 +1,7 @@
 # 独立评测中台迁移与平台原生化改造方案
 
-> 启动日期：2026-11-28｜当前状态：**部分完成（partial：一阶段控制面、LightRAG 工坊、TTFT/Token 透传与 PK 已交付；二阶段 `Task 6.1–6.4` 白盒取证、L1/L2 全算子、DeepEval 独立运行器与中文动态多轮仿真已完成编码并真实跑通 3 题代表集；`Task 6.5` 10 题 `v3-golden` 已入库但剩余 7 题含 RAG/PlanReview、远端沙箱与定时巡检 Cron 待续，详见专题 06）**
-> 文档模式：多专题方案（按业务架构、代码迁移、并发引擎、指标体系、前端与验证、以及二阶段审计拆分为 6 篇专题，不另建全局 `plan.md` / `tasks.md` / `verification.md`）。
+> 启动日期：2026-11-28｜当前状态：**部分完成（partial：一阶段及二阶段 `Task 6.1–6.4` 已推 `main`；三阶段专题 07 `Task 7.1–7.5` AI 出题专家 Skills、分级确认、授权试跑与真实全链路浏览器验收 `A1/A3/B/C/D1/D2/E/F` 已完成（done）；`Task 6.5` 剩余 7 题 `v3-golden` 含 RAG/PlanReview、远端沙箱与定时巡检 Cron 待续）**
+> 文档模式：多专题方案（按业务架构、代码迁移、并发引擎、指标体系、前端与验证、二阶段审计及三阶段出题专家演进拆分为 7 篇专题，不另建全局 `plan.md` / `tasks.md` / `verification.md`）。
 
 ## 1. 业务背景与要解决的问题
 
@@ -48,6 +48,7 @@
 | **04** | [评测指标体系建设与白皮书对齐方案](04-metrics-and-whitepaper-alignment.md) | 3 大形态 × 7 大维度、SSE TTFT 探针、平台模型裁判、L1/L2/L3 裁决、三层归因、克制边界 | **已完成设计并实装（partial 实证：L1 安全/工件规则、动态仿真与 DeepEval 裁判已在 3 题真跑；RAG 类 7 题尚待补测）** | `apps/eval-runner`、`runtime-service`、`platform-web` |
 | **05** | [前端工作台设计（借鉴 LightRAG）与全链路浏览器验收](05-frontend-eval-studio-and-e2e.md) | 原生 Vue 工作台（3 项精简评测专栏、PK 收口进打擂大厅、LightRAG 级 Side-by-Side 与性能剖析、雷达图修复、动态交互轴、`/browser` 截图） | **已完成（done：含二阶段动态澄清轮次/审批次数/事实披露事件轴与 PK 实测截图）** | `apps/platform-web`、`platform-api`、`eval-runner` |
 | **06** | [7 维指标判定依据审计、老仓迁移落差与二阶段攻坚计划](06-metric-reliability-and-migration-gap-audit.md) | 逐维实盘核查判定依据可信度、控制面取证/续跑、L1/L2 算子、动态多轮仿真、真实缺陷修复与 `v3-golden` 真跑验证（Task 6.1–6.5） | **部分完成（partial：`Task 6.1–6.4 done`；`Task 6.5` 已导入 10 题并在 local 栈真跑 3 题与 PK，剩余 7 题与远端沙箱待补）** | `platform-api`、`apps/eval-runner`、`runtime-service`、`platform-web` |
+| **07** | [AI 出题专家（Eval Copilot）Skill 体系与自然语言出题落库方案](07-eval-copilot-skills-and-authoring-agent.md) | 为 `eval_copilot` 配备内置出题 Skill 包、资料读取、题库/能力查询、同源强校验、受控写库，以及人工授权试跑、失败自愈修复与终止评测闭环（Task 7.1–7.5） | **已完成（done：三端编码、单测、HITL `input.requested`/`threads.interrupts` 全链路闭环与真实 `/browser` 验收通过）** | `runtime-service`、`platform-api`、`platform-web` |
 
 ---
 
@@ -65,4 +66,4 @@
    - 允许用户选用任意具备运行权限的项目作为目标隔离靶场，但对**非专用测试靶场项目在开考弹窗给出明显黄/红风险警告**，确认后放行。
 7. **前端工程载体与规范**：直接在 `apps/platform-web` 以 Vue 3 + ECharts 6 原生重构（放弃 iframe 与旧 MLflow 壳层），功能交互对齐 LightRAG 并融合 Agent 特性，视觉组件严格遵循 `platform-web` 控制面与视觉基线规范。
 
-> **当前阶段事实说明**：一阶段与二阶段 `Task 6.1–6.4` 代码均已在本仓落地并经本地端到端实测验证；未做未经授权的二阶段 Git 提交/推送与生产部署，剩余 `v3-golden` 7 题（RAG/PlanReview）与定时巡检 Cron 待后续窗口补完。
+> **当前阶段事实说明**：一阶段与二阶段 `Task 6.1–6.4` 代码已合推 `main`（`62063827`），架构深潜文档已沉淀于 [docs/architecture/08-evaluation-platform/](../../architecture/08-evaluation-platform/README.md)；**三阶段 [专题 07（Task 7.1–7.5）](07-eval-copilot-skills-and-authoring-agent.md) 已完成全部开发、单测与真实全栈 `/browser` E2E 闭环验证（未提交 Git）**。剩余 `v3-golden` 7 题（RAG/PlanReview）与定时巡检 Cron 待后续窗口补完。

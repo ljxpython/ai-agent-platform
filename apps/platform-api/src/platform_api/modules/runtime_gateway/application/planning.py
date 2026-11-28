@@ -57,7 +57,7 @@ def _snapshot_fields(raw: object) -> dict | None:
 
 def interrupt_entries(state: dict) -> dict[str, dict]:
     raw = state.get("interrupts")
-    if isinstance(raw, dict):
+    if isinstance(raw, dict) and raw:
         return {
             key: value.get("value", value)
             for key, value in raw.items()
@@ -65,7 +65,7 @@ def interrupt_entries(state: dict) -> dict[str, dict]:
         }
     records = (
         raw
-        if isinstance(raw, list)
+        if isinstance(raw, list) and raw
         else [
             i
             for task in state.get("tasks", [])

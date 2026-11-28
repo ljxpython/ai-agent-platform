@@ -453,6 +453,15 @@ def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
                 ]
             )
         ),
+        evaluation_capabilities=AsyncMock(
+            return_value={
+                "schema": "evaluation-runtime/v1",
+                "available": True,
+                "manifest": {"package_sha256": "pkg-sha"},
+                "tools": ["read_file", "write_file"],
+                "graph_features": {"workspace_files": True},
+            }
+        ),
     )
     monkeypatch.setattr(
         studio_router, "build_runtime_gateway_service", lambda req, act, pid: mock_gw
@@ -523,3 +532,205 @@ def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
     assert resume_res.status_code == 200
     assert mock_gw.send_thread_command.await_count == 1
     assert mock_gw.join_thread_run_stream.await_count == 1
+
+    # Copilot authoring bridges: suites, capabilities, strong validation, graded save, control run ownership
+    cop_suite_res = client.post(
+        "/api/evaluation/studio/suites",
+        headers=headers,
+        json={
+            "name": "Copilot 出题测试集",
+            "suite_type": "curated",
+            "default_graph_id": "dearflow_agent",
+        },
+    )
+    assert cop_suite_res.status_code == 201
+    cop_suite_id = cop_suite_res.json()["id"]
+
+    suites_res = _signed_post("copilot-suites", {"project_id": project_id})
+    assert suites_res.status_code == 200
+    assert any(s["id"] == cop_suite_id for s in suites_res.json()["items"])
+
+    caps_res = _signed_post("copilot-capabilities", {"project_id": project_id})
+    assert caps_res.status_code == 200
+    assert "read_file" in caps_res.json()["graphs"]["dearflow_agent"]["tools"]
+
+    bad_case_res = _signed_post(
+        "copilot-save-cases",
+        {
+            "project_id": project_id,
+            "suite_id": cop_suite_id,
+            "mode": "create_only",
+            "items": [
+                {
+                    "case_key": "COP-BAD-01",
+                    "turns": [{"role": "user", "content": "计算 1+1"}],
+                    "expectations": {
+                        "tool_constraints": {"required": ["magic_unknown_tool"]}
+                    },
+                    "metrics": ["completion", "Faithfulness"],
+                }
+            ],
+        },
+    )
+    assert bad_case_res.status_code == 400
+    assert (
+        "unknown_tools_for_dearflow_agent:magic_unknown_tool"
+        in bad_case_res.json()["error"]["message"]
+    )
+    assert (
+        "non_rag_case_with_rag_metrics:Faithfulness"
+        in bad_case_res.json()["error"]["message"]
+    )
+
+    create_res = _signed_post(
+        "copilot-save-cases",
+        {
+            "project_id": project_id,
+            "suite_id": cop_suite_id,
+            "mode": "create_only",
+            "items": [
+                {
+                    "case_key": "COP-NEW-01",
+                    "schema_version": 3,
+                    "split": "dev",
+                    "tags": ["smoke"],
+                    "description": "copilot normalize check",
+                    "fixture": {"sales.csv": "id,amt\n1,100\n"},
+                    "expected_artifacts": [
+                        {
+                            "path": "/workspace/work/summary.txt",
+                            "kind": "contains",
+                            "expected": "100",
+                        }
+                    ],
+                    "tool_constraints": {
+                        "required": ["read_file"],
+                        "protected_files": ["/workspace/work/policy_lock.txt"],
+                    },
+                    "turns": [
+                        {
+                            "role": "user",
+                            "content": "读取 {{sales.csv}} 并输出 summary.txt",
+                        }
+                    ],
+                    "simulation": {
+                        "goal": "读取文件并输出摘要",
+                        "user_mode": "ambiguous_changer",
+                        "max_turns": 6,
+                    },
+                    "metrics": [
+                        "completion",
+                        "protected_unchanged",
+                        "artifact_correct",
+                        "ConversationalGEval",
+                    ],
+                }
+            ],
+        },
+    )
+    assert create_res.status_code == 200
+    assert create_res.json()["created"] == ["COP-NEW-01"]
+    saved_item = create_res.json()["items"][0]
+    assert saved_item["schema_version"] == "3"
+    assert saved_item["metadata"]["tags"] == ["smoke"]
+    assert (
+        saved_item["expectations"]["artifacts"][0]["path"]
+        == "/workspace/work/summary.txt"
+    )
+    assert saved_item["expectations"]["tool_constraints"]["required"] == ["read_file"]
+    assert "policy_lock.txt" in saved_item["turns"][0]["fixture"]
+
+    overwrite_blocked = _signed_post(
+        "copilot-save-cases",
+        {
+            "project_id": project_id,
+            "suite_id": cop_suite_id,
+            "mode": "create_only",
+            "items": [
+                {
+                    "case_key": "COP-NEW-01",
+                    "turns": [{"role": "user", "content": "updated"}],
+                    "metrics": ["completion"],
+                }
+            ],
+        },
+    )
+    assert overwrite_blocked.status_code == 409
+
+    upsert_ok = _signed_post(
+        "copilot-save-cases",
+        {
+            "project_id": project_id,
+            "suite_id": cop_suite_id,
+            "mode": "upsert",
+            "items": [
+                {
+                    "case_key": "COP-NEW-01",
+                    "turns": [{"role": "user", "content": "updated content"}],
+                    "metrics": ["completion", "StepEfficiency"],
+                }
+            ],
+        },
+    )
+    assert upsert_ok.status_code == 200
+    assert upsert_ok.json()["updated"] == ["COP-NEW-01"]
+
+    status_res = _signed_post(
+        "copilot-run-status", {"project_id": project_id, "run_id": run_id}
+    )
+    assert status_res.status_code == 200
+    assert status_res.json()["run"]["id"] == run_id
+
+    cancel_ext_denied = _signed_post(
+        "copilot-control-run",
+        {
+            "project_id": project_id,
+            "run_id": run_id,
+            "action": "cancel",
+            "copilot_thread_id": "th-copilot-9",
+            "require_own": True,
+        },
+    )
+    assert cancel_ext_denied.status_code == 409
+
+    cancel_ok = _signed_post(
+        "copilot-control-run",
+        {
+            "project_id": project_id,
+            "run_id": run_id,
+            "action": "cancel",
+            "require_own": False,
+        },
+    )
+    assert cancel_ok.status_code == 200
+    assert cancel_ok.json()["status"] == "cancelled"
+
+    trial_res = _signed_post(
+        "copilot-trial-run",
+        {
+            "project_id": project_id,
+            "actor_id": "u1",
+            "suite_id": cop_suite_id,
+            "case_keys": ["COP-NEW-01"],
+            "target_project_id": target_project_id,
+            "agent_id": agent_id,
+            "model_id": model_id,
+            "judge_model_id": judge_model_id,
+            "copilot_thread_id": "th-copilot-trial",
+        },
+    )
+    assert trial_res.status_code == 200, trial_res.text
+    assert trial_res.json()["mode"] == "regression"
+    trial_run_id = trial_res.json()["id"]
+    own_cancel = _signed_post(
+        "copilot-control-run",
+        {
+            "project_id": project_id,
+            "run_id": trial_run_id,
+            "action": "cancel",
+            "copilot_thread_id": "th-copilot-trial",
+            "require_own": True,
+        },
+    )
+    assert own_cancel.status_code == 200
+    assert own_cancel.json()["status"] == "cancelled"

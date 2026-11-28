@@ -47,6 +47,7 @@ def graph_tools(graph_id: str) -> tuple[str, ...]:
         "showcase_demo": (*SHOWCASE_TOOLS, *configured_mcp_names()),
         "dearflow_agent": (*DEAR_TOOLS, *configured_mcp_names()),
         "platform_assistant": PLATFORM_ASSISTANT_TOOLS,
+        "eval_copilot": ("read_file", "write_file"),
     }[graph_id]
 
 

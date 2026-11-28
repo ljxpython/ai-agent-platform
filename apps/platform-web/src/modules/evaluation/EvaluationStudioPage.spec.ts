@@ -1,6 +1,8 @@
 import { mount } from "@vue/test-utils";
+import { ref } from "vue";
 import { describe, expect, it, vi } from "vitest";
 import EvaluationStudioPage from "@/modules/evaluation/EvaluationStudioPage.vue";
+import { useEvalExpertChat } from "@/modules/evaluation/composables/useEvalExpertChat";
 import { pickPreferredDeepSeekModelId } from "@/services/evaluation/studio";
 import type { RuntimeModelItem } from "@/types/management";
 
@@ -185,5 +187,25 @@ describe("EvaluationStudioPage", () => {
     expect(wrapper.text()).toContain("独立评测工坊与白盒诊断平台");
     expect(wrapper.text()).toContain("多图回归黄金集");
     expect(wrapper.text()).toContain("如何核对成本？");
+  });
+
+  it("supports queuing multiple mixed reference files and deduplicating by filename", () => {
+    const chat = useEvalExpertChat(
+      ref("proj-1"),
+      ref("eval_copilot"),
+      ref("model-1"),
+    );
+    const md = new File(["# rule"], "rule.md", { type: "text/markdown" });
+    const csv = new File(["a,b\n1,2\n"], "sample.csv", { type: "text/csv" });
+    const dup = new File(["# dup"], "rule.md", { type: "text/markdown" });
+    chat.addPendingFiles([md, csv, dup]);
+    expect(chat.pendingFiles.value.map((f) => f.name)).toEqual([
+      "rule.md",
+      "sample.csv",
+    ]);
+    chat.removePendingFile("rule.md");
+    expect(chat.pendingFiles.value.map((f) => f.name)).toEqual(["sample.csv"]);
+    chat.reset();
+    expect(chat.pendingFiles.value).toEqual([]);
   });
 });

@@ -234,6 +234,17 @@ async function handleAdoptCopilotCases(items: CaseUpsertPayload[]) {
   showExpertDrawer.value = false;
 }
 
+async function handleExpertCasesUpdated() {
+  if (studio.activeSuite.value) {
+    await studio.openSuite(studio.activeSuite.value.id);
+  }
+  await studio.refreshAll();
+}
+
+async function handleExpertTrialRunUpdated() {
+  await studio.refreshAll();
+}
+
 async function handleImportJsonlSuite(payload: {
   name: string;
   suite_type: EvalSuiteItem["suite_type"];
@@ -412,8 +423,11 @@ function openMlflowDashboard() {
       :kind="expertKind"
       :ref-id="expertRefId"
       :default-model-id="defaultModelId"
+      :model-options="modelOptions"
       @close="showExpertDrawer = false"
       @adopt-cases="handleAdoptCopilotCases"
+      @cases-updated="handleExpertCasesUpdated"
+      @trial-run-updated="handleExpertTrialRunUpdated"
     />
   </div>
 </template>

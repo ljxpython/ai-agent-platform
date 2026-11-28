@@ -145,3 +145,9 @@ class ExpertTurnStreamRequest(StrictBody):
     content: str = Field(min_length=1, max_length=16000)
     model_id: str | None = Field(default=None, max_length=64)
     ref_id: str | None = Field(default=None, max_length=128)
+
+
+class ExpertRespondRequest(StrictBody):
+    graph_id: Literal["eval_copilot", "eval_diagnosis"]
+    command: dict[str, Any]
+    run_id: str | None = Field(default=None, max_length=128)

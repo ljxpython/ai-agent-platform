@@ -212,6 +212,17 @@ export function pickPreferredDeepSeekModelId(
   );
   const candidates =
     enabled.length > 0 ? enabled : models.filter((m) => m.enabled);
+  const exactChickener = candidates.find(
+    (m) =>
+      m.provider.toLowerCase() === "chickener" &&
+      (m.model.toLowerCase().includes("deepseek") ||
+        m.display_name.toLowerCase().includes("deepseek")),
+  );
+  if (exactChickener) return exactChickener.id;
+  const anyChickener = candidates.find(
+    (m) => m.provider.toLowerCase() === "chickener",
+  );
+  if (anyChickener) return anyChickener.id;
   const exactXiaok = candidates.find(
     (m) =>
       m.provider.toLowerCase() === "xiaok" &&
@@ -558,6 +569,29 @@ export async function createExpertThread(
   return data;
 }
 
+export async function getExpertThreadState(
+  projectId: string,
+  threadId: string,
+): Promise<{
+  thread_id: string;
+  status?: string | null;
+  interrupts: ExpertInterruptRequest[];
+}> {
+  const { data } = await platformHttpClient.get<{
+    thread_id: string;
+    status?: string | null;
+    interrupts?: unknown;
+  }>(
+    `/api/evaluation/studio/experts/threads/${encodeURIComponent(threadId)}/state`,
+    { headers: projectHeaders(projectId) },
+  );
+  return {
+    thread_id: data.thread_id,
+    status: data.status,
+    interrupts: data.interrupts ? parseExpertInterrupts(data.interrupts) : [],
+  };
+}
+
 function extractTextBlocks(content: unknown): string {
   if (typeof content === "string") return content;
   if (Array.isArray(content)) {
@@ -636,31 +670,159 @@ function extractLastAssistantFromValues(payload: unknown): string {
   return "";
 }
 
-export async function streamExpertTurn(
+export interface ExpertInterruptRequest {
+  id: string;
+  actionName: string;
+  argsSummary: string;
+  description: string;
+  raw: Record<string, unknown>;
+}
+
+export async function uploadExpertMaterial(
   projectId: string,
   threadId: string,
-  payload: {
-    graph_id: "eval_copilot" | "eval_diagnosis";
-    content: string;
-    model_id?: string | null;
-    ref_id?: string | null;
-  },
-  callbacks: {
-    onChunk: (fullText: string) => void;
-    onError?: (message: string) => void;
-  },
-): Promise<string> {
+  file: File,
+): Promise<{ path?: string; file_path?: string; sha256?: string }> {
   const authorizedFetch = createLanggraphAuthorizedFetch();
   const base = platformApiBaseUrl.replace(/\/+$/, "");
-  const url = `${base}/api/evaluation/studio/experts/threads/${encodeURIComponent(threadId)}/stream`;
+  const url = `${base}/api/evaluation/studio/experts/threads/${encodeURIComponent(threadId)}/upload?file_name=${encodeURIComponent(file.name)}`;
   const response = await authorizedFetch(url, {
     method: "POST",
     headers: {
-      "content-type": "application/json",
+      "content-type": file.type || "application/octet-stream",
       "x-project-id": projectId,
     },
-    body: JSON.stringify(payload),
+    body: file,
   });
+  if (!response.ok) {
+    throw new Error(`参考资料上传失败 (${response.status})`);
+  }
+  return (await response.json()) as {
+    path?: string;
+    file_path?: string;
+    sha256?: string;
+  };
+}
+
+function parseExpertInterrupts(raw: unknown): ExpertInterruptRequest[] {
+  const out: ExpertInterruptRequest[] = [];
+  const pushItem = (id: string, val: unknown) => {
+    if (!val || typeof val !== "object") return;
+    const v = val as Record<string, unknown>;
+    const actions = Array.isArray(v.action_requests)
+      ? (v.action_requests as Array<Record<string, unknown>>)
+      : [];
+    const configs = Array.isArray(v.review_configs)
+      ? (v.review_configs as Array<Record<string, unknown>>)
+      : [];
+    const firstAct = actions[0] ?? {};
+    const firstCfg = configs[0] ?? {};
+    const actionName = String(firstAct.name || v.name || "sensitive_action");
+    const argsObj = firstAct.args ?? firstAct.arguments ?? {};
+    const argsStr =
+      typeof argsObj === "string" ? argsObj : JSON.stringify(argsObj);
+    out.push({
+      id: id || `int-${out.length + 1}`,
+      actionName,
+      argsSummary: argsStr.slice(0, 260),
+      description: String(
+        firstAct.description ||
+          firstCfg.description ||
+          "该操作将写入题库或发起定向试跑，请确认是否允许。",
+      ),
+      raw: v,
+    });
+  };
+
+  if (Array.isArray(raw)) {
+    for (let i = 0; i < raw.length; i++) {
+      const item = raw[i] as Record<string, unknown> | undefined;
+      if (!item || typeof item !== "object") continue;
+      pushItem(String(item.id || `int-${i + 1}`), item.value ?? item);
+    }
+  } else if (raw && typeof raw === "object") {
+    for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+      if (v && typeof v === "object" && "value" in (v as object)) {
+        const inner = v as Record<string, unknown>;
+        pushItem(String(inner.id || k), inner.value);
+      } else {
+        pushItem(k, v);
+      }
+    }
+  }
+  return out;
+}
+
+function scanToolOutcomesFromValues(
+  payload: unknown,
+  seenToolCallIds: Set<string>,
+  callbacks: {
+    onCasesMutated?: () => void;
+    onTrialRun?: (runId: string) => void;
+    onTrialRunUpdated?: () => void;
+  },
+) {
+  if (!payload || typeof payload !== "object") return;
+  const msgs = (payload as { messages?: unknown }).messages;
+  if (!Array.isArray(msgs)) return;
+  for (const item of msgs) {
+    if (!item || typeof item !== "object") continue;
+    const msg = item as Record<string, unknown>;
+    const role = String(msg.role ?? msg.type ?? "").toLowerCase();
+    if (role !== "tool") continue;
+    const callId = String(msg.tool_call_id ?? msg.id ?? "");
+    const dedupKey =
+      callId || `${msg.name}:${String(msg.content).slice(0, 80)}`;
+    if (seenToolCallIds.has(dedupKey)) continue;
+    seenToolCallIds.add(dedupKey);
+    const toolName = String(msg.name ?? "");
+    const rawContent = extractTextBlocks(msg.content);
+    let parsed: Record<string, unknown> | null = null;
+    try {
+      const candidate = JSON.parse(rawContent);
+      if (candidate && typeof candidate === "object") {
+        parsed = candidate as Record<string, unknown>;
+      }
+    } catch {
+      parsed = null;
+    }
+    if (
+      (toolName === "create_new_eval_cases" ||
+        toolName === "update_existing_eval_cases") &&
+      parsed &&
+      "suite_id" in parsed
+    ) {
+      callbacks.onCasesMutated?.();
+    } else if (
+      toolName === "launch_trial_run" &&
+      parsed &&
+      typeof parsed.id === "string"
+    ) {
+      callbacks.onTrialRun?.(parsed.id);
+    } else if (
+      (toolName === "cancel_own_trial_run" ||
+        toolName === "cancel_external_eval_run") &&
+      parsed &&
+      "status" in parsed
+    ) {
+      callbacks.onTrialRunUpdated?.();
+    }
+  }
+}
+
+export interface ExpertStreamCallbacks {
+  onChunk: (fullText: string) => void;
+  onError?: (message: string) => void;
+  onInterrupt?: (interrupts: ExpertInterruptRequest[]) => void;
+  onCasesMutated?: () => void;
+  onTrialRun?: (runId: string) => void;
+  onTrialRunUpdated?: () => void;
+}
+
+async function consumeExpertSseResponse(
+  response: Response,
+  callbacks: ExpertStreamCallbacks,
+): Promise<string> {
   if (!response.ok || !response.body) {
     throw new Error(`专家会话请求失败 (${response.status})`);
   }
@@ -670,6 +832,7 @@ export async function streamExpertTurn(
   let buffer = "";
   let eventName = "";
   let fullText = "";
+  const seenToolOutcomes = new Set<string>();
 
   const processLine = (rawLine: string) => {
     const line = rawLine.trim();
@@ -697,15 +860,56 @@ export async function streamExpertTurn(
       callbacks.onError?.(msg);
       throw new Error(msg);
     }
-    if (
-      method === "lifecycle" &&
-      (data as { event?: string })?.event === "failed"
-    ) {
-      const errObj = (data as { error?: { message?: string } })?.error;
-      const msg = String(errObj?.message || "专家图执行失败");
-      callbacks.onError?.(msg);
-      throw new Error(msg);
+    if (method === "lifecycle" && data && typeof data === "object") {
+      const ev = data as {
+        event?: string;
+        status?: string;
+        error?: { message?: string } | string;
+        interrupts?: unknown;
+      };
+      if (ev.interrupts) {
+        const list = parseExpertInterrupts(ev.interrupts);
+        if (list.length > 0) callbacks.onInterrupt?.(list);
+      }
+      if (ev.event === "failed" || ev.status === "error") {
+        const msg =
+          typeof ev.error === "string"
+            ? ev.error
+            : String(ev.error?.message || "专家图执行失败");
+        callbacks.onError?.(msg);
+        throw new Error(msg);
+      }
     }
+
+    if (
+      (method === "input.requested" || method === "input") &&
+      data &&
+      typeof data === "object"
+    ) {
+      const obj = data as Record<string, unknown>;
+      const inner = (
+        obj.data && typeof obj.data === "object" ? obj.data : obj
+      ) as Record<string, unknown>;
+      const intId = String(inner.interrupt_id ?? obj.interrupt_id ?? "");
+      const val = inner.value ?? inner.payload ?? obj.value ?? inner;
+      const list = parseExpertInterrupts(
+        intId ? [{ id: intId, value: val }] : [val],
+      );
+      if (list.length > 0) callbacks.onInterrupt?.(list);
+    }
+
+    if (
+      (method === "updates" || method === "values") &&
+      data &&
+      typeof data === "object"
+    ) {
+      const rawInt = (data as { __interrupt__?: unknown }).__interrupt__;
+      if (rawInt) {
+        const list = parseExpertInterrupts(rawInt);
+        if (list.length > 0) callbacks.onInterrupt?.(list);
+      }
+    }
+
     if (method === "messages" && Array.isArray(data)) {
       const chunk = extractDeltaFromMessagesArray(data);
       if (chunk) {
@@ -722,10 +926,17 @@ export async function streamExpertTurn(
         }
       }
     } else if (method === "values") {
+      scanToolOutcomesFromValues(data, seenToolOutcomes, callbacks);
       const valText = extractLastAssistantFromValues(data);
       if (valText) {
         fullText = valText;
         callbacks.onChunk(fullText);
+      }
+    } else if (method === "updates" && data && typeof data === "object") {
+      for (const nodeVal of Object.values(data as Record<string, unknown>)) {
+        if (nodeVal && typeof nodeVal === "object") {
+          scanToolOutcomesFromValues(nodeVal, seenToolOutcomes, callbacks);
+        }
       }
     }
   };
@@ -744,4 +955,52 @@ export async function streamExpertTurn(
     }
   }
   return fullText;
+}
+
+export async function streamExpertTurn(
+  projectId: string,
+  threadId: string,
+  payload: {
+    graph_id: "eval_copilot" | "eval_diagnosis";
+    content: string;
+    model_id?: string | null;
+    ref_id?: string | null;
+  },
+  callbacks: ExpertStreamCallbacks,
+): Promise<string> {
+  const authorizedFetch = createLanggraphAuthorizedFetch();
+  const base = platformApiBaseUrl.replace(/\/+$/, "");
+  const url = `${base}/api/evaluation/studio/experts/threads/${encodeURIComponent(threadId)}/stream`;
+  const response = await authorizedFetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-project-id": projectId,
+    },
+    body: JSON.stringify(payload),
+  });
+  return consumeExpertSseResponse(response, callbacks);
+}
+
+export async function respondExpertInterrupt(
+  projectId: string,
+  threadId: string,
+  payload: {
+    graph_id: "eval_copilot" | "eval_diagnosis";
+    command: { resume: Record<string, unknown> };
+  },
+  callbacks: ExpertStreamCallbacks,
+): Promise<string> {
+  const authorizedFetch = createLanggraphAuthorizedFetch();
+  const base = platformApiBaseUrl.replace(/\/+$/, "");
+  const url = `${base}/api/evaluation/studio/experts/threads/${encodeURIComponent(threadId)}/respond`;
+  const response = await authorizedFetch(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-project-id": projectId,
+    },
+    body: JSON.stringify(payload),
+  });
+  return consumeExpertSseResponse(response, callbacks);
 }
