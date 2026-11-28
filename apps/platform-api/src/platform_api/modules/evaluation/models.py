@@ -237,3 +237,19 @@ class EvalSandboxProject(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class EvalRunLog(Base):
+    __tablename__ = "eval_run_logs"
+    __table_args__ = (
+        UniqueConstraint("run_id", "seq", name="uq_eval_run_logs_run_seq"),
+    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    seq: Mapped[int] = mapped_column(Integer, nullable=False)
+    level: Mapped[str] = mapped_column(String(16), nullable=False, default="INFO")
+    case_key: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    message: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

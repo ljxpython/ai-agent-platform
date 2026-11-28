@@ -94,6 +94,8 @@ vi.mock("@/services/evaluation/studio", async (importOriginal) => {
     createRun: vi.fn(),
     getRunDetail: vi.fn(),
     controlRun: vi.fn(),
+    deleteRun: vi.fn(),
+    getRunLogs: vi.fn(),
     compareRuns: vi.fn(),
     submitHumanReview: vi.fn(),
   };
@@ -156,6 +158,10 @@ describe("EvaluationStudioPage", () => {
           BaseDialog: {
             template: "<div v-if='show'><slot /></div>",
             props: ["show", "title", "width"],
+          },
+          ConfirmDialog: {
+            template: "<div v-if='show'>{{ title }}</div>",
+            props: ["show", "title", "message", "danger", "confirmText"],
           },
           BaseDrawer: {
             template: "<div v-if='show'><slot /></div>",

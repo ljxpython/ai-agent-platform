@@ -1,7 +1,7 @@
 # 独立评测中台迁移与平台原生化改造方案
 
-> 启动日期：2026-11-28｜当前状态：**部分完成（partial：一阶段及二阶段 `Task 6.1–6.4` 已推 `main`；三阶段专题 07 `Task 7.1–7.5` AI 出题专家已完成；四阶段 [专题 08](08-case-level-selective-evaluation.md) 指定用例勾选打擂与局部回归方案已就绪；`Task 6.5` 剩余 7 题 `v3-golden` 含 RAG/PlanReview、远端沙箱与定时巡检 Cron 待续）**
-> 文档模式：多专题方案（按业务架构、代码迁移、并发引擎、指标体系、前端与验证、二阶段审计、三阶段出题专家及四阶段指定用例打擂拆分为 8 篇专题，不另建全局 `plan.md` / `tasks.md` / `verification.md`）。
+> 启动日期：2026-11-28｜当前状态：**部分完成（partial：一至五阶段专题 01–09 核心能力均已交付并通过本地全栈 `/browser` 验收，其中专题 09 打擂任务大厅优化已全栈闭环；`Task 6.5` 剩余 7 题 `v3-golden` 含 RAG/PlanReview、远端沙箱与定时巡检 Cron 待续）**
+> 文档模式：多专题方案（按业务架构、代码迁移、并发引擎、指标体系、前端与验证、二阶段审计、三阶段出题专家、四阶段指定用例打擂及五阶段任务大厅优化拆分为 9 篇专题，不另建全局 `plan.md` / `tasks.md` / `verification.md`）。
 
 ## 1. 业务背景与要解决的问题
 
@@ -50,6 +50,7 @@
 | **06** | [7 维指标判定依据审计、老仓迁移落差与二阶段攻坚计划](06-metric-reliability-and-migration-gap-audit.md) | 逐维实盘核查判定依据可信度、控制面取证/续跑、L1/L2 算子、动态多轮仿真、真实缺陷修复与 `v3-golden` 真跑验证（Task 6.1–6.5） | **部分完成（partial：`Task 6.1–6.4 done`；`Task 6.5` 已导入 10 题并在 local 栈真跑 3 题与 PK，剩余 7 题与远端沙箱待补）** | `platform-api`、`apps/eval-runner`、`runtime-service`、`platform-web` |
 | **07** | [AI 出题专家（Eval Copilot）Skill 体系与自然语言出题落库方案](07-eval-copilot-skills-and-authoring-agent.md) | 为 `eval_copilot` 配备内置出题 Skill 包、资料读取、题库/能力查询、同源强校验、受控写库，以及人工授权试跑、失败自愈修复与终止评测闭环（Task 7.1–7.5） | **已完成（done：三端编码、单测、HITL `input.requested`/`threads.interrupts` 全链路闭环与真实 `/browser` 验收通过）** | `runtime-service`、`platform-api`、`platform-web` |
 | **08** | [指定用例勾选打擂与局部回归方案](08-case-level-selective-evaluation.md) | 考题列表 Checkbox 改造（单选/全选/反选/状态感知）、开考弹窗与主页按钮联动、`MatrixCreate` 补齐与精准 Readiness（Task 8.1–8.4） | **已完成（done：前端复选框单选/全选/反选与文案联动、API Client 与开考弹窗范围透传、后端 Matrix/Readiness 契约扩展，全栈类型检查与单测通过）** | `platform-web`、`platform-api`、`apps/eval-runner` |
+| **09** | [打擂任务大厅深度优化（结果删除、同评测集历史对比与实时进度日志）](09-task-hall-optimization.md) | 评测结果安全删除、同评测集历史多维指标趋势与对照矩阵、进行中任务队列/Case 状态看板与终端级实时日志流（Task 9.1–9.5） | **已完成（done：数据库迁移 `20261128_0017`、控制面删除/日志增量接口、`eval-runner` 实时进度与日志发射、前端三端改造及真实 `/browser` 全链路验收通过，未部署生产）** | `platform-web`、`platform-api`、`apps/eval-runner` |
 
 ---
 

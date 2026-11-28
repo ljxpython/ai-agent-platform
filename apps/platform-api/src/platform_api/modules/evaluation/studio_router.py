@@ -490,6 +490,42 @@ def get_run(
     )
 
 
+@router.delete("/studio/runs/{run_id}")
+def delete_run(
+    request: Request,
+    run_id: UUID,
+    actor: ActorContext = Depends(get_actor_context),
+) -> dict[str, Any]:
+    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_MANAGE)
+    return studio_service.delete_run(
+        request.app.state.db_session_factory,
+        project_id=pid,
+        run_id=str(run_id),
+    )
+
+
+@router.get("/studio/runs/{run_id}/logs")
+def get_run_logs(
+    request: Request,
+    run_id: UUID,
+    after_seq: int = 0,
+    limit: int = 200,
+    case_key: str | None = None,
+    level: Literal["INFO", "WARN", "ERROR"] | None = None,
+    actor: ActorContext = Depends(get_actor_context),
+) -> dict[str, Any]:
+    pid = _authorize_project(request, actor, PermissionCode.PROJECT_EVALUATION_READ)
+    return studio_service.get_run_logs(
+        request.app.state.db_session_factory,
+        project_id=pid,
+        run_id=str(run_id),
+        after_seq=after_seq,
+        limit=limit,
+        case_key=case_key,
+        level=level,
+    )
+
+
 @router.post("/studio/runs/{run_id}/control")
 def control_run(
     request: Request,

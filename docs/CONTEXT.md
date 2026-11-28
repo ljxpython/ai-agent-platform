@@ -18,7 +18,7 @@ Task23当前批准的双机迁移、单并发连续容量及合并后联合读�
 
 用户于2026-11-21批准沉淀OOM经验：Runtime内部CHAIN采集去重写入本仓经验库；有界取证、软内存阈值与Loki标签治理写入关联EvalFlow经验库，索引已更新。该知识提交仅文档；随后Task22的正式加载与生产验收单独留证。
 
-> **最后更新：** 2026-11-28（重构 `RunResultsPanel.vue` 取证详情为行内手风琴就地展开（Inline Expansion），彻底根除跨评测集跳至页面底部的视觉割裂；支持再次点击就地折叠收起、单用例自动展开、`vue-tsc` 与单测全绿）。
+> **最后更新：** 2026-11-28（完成独立评测中台[专题 09](projects/20261128-independent-eval-platform/09-task-hall-optimization.md) 打擂任务大厅深度优化：`eval_run_logs` 迁移 `20261128_0017`、评测结果安全删除、同评测集多维历史指标 ECharts 趋势与对照矩阵、进行中队列实时进度/Case 状态过滤及终端级增量日志流；API 2 passed / Runner 15 passed / Web 27 passed + `vue-tsc` + `vite build` 及 `/browser` 全链路实测通过）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -134,7 +134,7 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 
 ## 最近改动
 
-2026-11-25 | **平台助手 MLflow 运行诊断双通支持、Checkpoint 分页匹配与 Worker 诊断日志修复（本地已完成，未部署生产）**：`runtime-service` 在开启 `TRACING_PROVIDER=mlflow` 时实现启动前事件缓冲补挂与全量结构化诊断事件 SpanEvent 写入（`run_inline=True` 消除异步回调竞态），并在 `query_run_diagnostics` 适配按 `project-{project_id}`/默认实验检索 MLflow Trace 投影（历史旧 Trace 诚实降级为 `partial`，新 Run 返回完整 `available`）；为 `log_diagnostic` 补齐无 root handler 下的独立 `INFO` 流输出，并为 `log_context_metric` 与模型剖面注入受控标量关联字段。`platform-api` 将 `read_checkpoint` 从单一 `limit=1` 升级为首页 `limit=1` 快速探测 + `before` 游标分页扫寻目标 `run_id`，消除多轮会话查早期轮次的 `run_mismatch` 误报。Runtime 137 passed、API 122 passed（含 6 子测试）及跨进程 HTTP + JWT HMAC + SQLite MLflow + 日志过滤端到端验证通过。
+2026-11-28 | **打擂任务大厅深度优化全栈交付（本地已验，未部署生产）**：新增 PostgreSQL `eval_run_logs` 轻量日志表（迁移 `20261128_0017`，单条 1000 字符截断、单 Run 上限 2000 条，严禁日志入 Redis）；控制面新增 `DELETE /studio/runs/{run_id}`（`PROJECT_EVALUATION_MANAGE` 权限、拒绝删除进行中任务、级联清理评审与日志）与 `GET /studio/runs/{run_id}/logs` 游标增量拉取，并在 `list_runs` 补充版本/模型展示名称；`eval-runner` 增加 `running` 用例中间态、实时刷新 `progress` 与 `recent_logs` 至 `summary_metrics_json` 并聚合 `metrics_breakdown`；前端 `RunResultsPanel.vue` / `RunEvidenceDetail.vue` / `RunLogTerminalDialog.vue` / `SuiteHistoryMetricsDialog.vue` 落地进行中队列专区、Case 状态看板、终端实时日志与同评测集多指标对比工坊，并修复发起打擂后未同步 `/evaluation/runs` URL 的问题。API 2 passed、Runner 15 passed、Web 7 套件 27 passed / `vue-tsc` / `vite build` 及 `/browser` 真实全链路验收通过。
 
 ## 近期评测基础
 
@@ -142,7 +142,9 @@ EvalFlow全链路专项在本仓仅追加通知同origin判定、旧评测工作
 
 ## 本月归并
 
+2026-11-28 | 完成 `RunResultsPanel.vue` 取证行内就地展开重构，消除跳底割裂。
 2026-11-25 | 平台助手上线 `sshmy1`（Loki/非HTTPS复制/Thread检索与摘要），并完成跨服务联调验证。
+2026-11-25 | 平台助手 MLflow 诊断双通支持与 Checkpoint 分页匹配修复（本地已验，未部署）。
 2026-11-18 | 完成 AI 网关使用看板（Vue 3+ECharts）重构及 EvalFlow 独立部署与连接配置合入推送。
 2026-11-17 | 完成跨项目排障、转评测集异步闭环与密钥脱敏误判治理，消除弹窗超时与 403 阻断。
 2026-11-16 | 平台助手全栈验收交付，主环境评测配置与沙箱准入恢复并跑通。

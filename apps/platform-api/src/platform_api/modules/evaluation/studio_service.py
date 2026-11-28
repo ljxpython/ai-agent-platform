@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from platform_api.core.db import session_scope
 from platform_api.core.errors import BadRequestError, ConflictError, NotFoundError
@@ -19,6 +19,7 @@ from platform_api.modules.evaluation.models import (
     EvalPatrolSchedule,
     EvalRun,
     EvalRunCase,
+    EvalRunLog,
     EvalSandboxProject,
     EvalSuite,
     EvalSuiteVersion,
@@ -368,6 +369,37 @@ def publish_suite_version(
         return _serialize_version(version)
 
 
+def _compute_progress_dict(cases: list[EvalRunCase]) -> dict[str, Any]:
+    counts = {
+        "completed": 0,
+        "failed": 0,
+        "error": 0,
+        "running": 0,
+        "pending": 0,
+        "paused": 0,
+        "cancelled": 0,
+        "skipped_incompatible": 0,
+    }
+    for c in cases:
+        st = c.status or "pending"
+        if st in counts:
+            counts[st] += 1
+        else:
+            counts["pending"] += 1
+    total = len(cases)
+    active_total = total - counts["skipped_incompatible"]
+    done = counts["completed"] + counts["failed"] + counts["error"]
+    denom = active_total if active_total > 0 else total
+    percent = int(round((done / denom) * 100)) if denom > 0 else 0
+    return {
+        "total": total,
+        "active_total": active_total,
+        "done": done,
+        **counts,
+        "percent": min(100, max(0, percent)),
+    }
+
+
 def create_run_record(
     factory,
     *,
@@ -399,8 +431,27 @@ def create_run_record(
             raise BadRequestError(
                 code="eval_cases_empty", message="没有可执行的测试用例。"
             )
+        run_id = str(uuid4())
+        incompatible = incompatible_keys or set()
+        run_case_rows: list[EvalRunCase] = []
+        for case in cases:
+            for attempt_idx in range(1, body.repeat_k + 1):
+                status = (
+                    "skipped_incompatible"
+                    if case["case_key"] in incompatible
+                    else "pending"
+                )
+                row = EvalRunCase(
+                    id=str(uuid4()),
+                    run_id=run_id,
+                    case_key=case["case_key"],
+                    attempt_idx=attempt_idx,
+                    status=status,
+                )
+                run_case_rows.append(row)
+                session.add(row)
         run = EvalRun(
-            id=str(uuid4()),
+            id=run_id,
             suite_id=suite.id,
             version_id=version.id,
             owner_project_id=owner_project_id,
@@ -418,27 +469,13 @@ def create_run_record(
             concurrency=body.concurrency,
             repeat_k=body.repeat_k,
             status="queued",
-            summary_metrics_json={"total_cases": len(cases) * body.repeat_k},
+            summary_metrics_json={
+                "total_cases": len(cases) * body.repeat_k,
+                "progress": _compute_progress_dict(run_case_rows),
+            },
             created_by=actor_id,
         )
         session.add(run)
-        incompatible = incompatible_keys or set()
-        for case in cases:
-            for attempt_idx in range(1, body.repeat_k + 1):
-                status = (
-                    "skipped_incompatible"
-                    if case["case_key"] in incompatible
-                    else "pending"
-                )
-                session.add(
-                    EvalRunCase(
-                        id=str(uuid4()),
-                        run_id=run.id,
-                        case_key=case["case_key"],
-                        attempt_idx=attempt_idx,
-                        status=status,
-                    )
-                )
         session.flush()
         return _serialize_run(run)
 
@@ -460,12 +497,32 @@ def list_runs(
         project_names = {
             str(p.id): p.name for p in session.scalars(select(ProjectRecord)).all()
         }
+        version_ids = {r.version_id for r in rows if r.version_id}
+        version_nums = (
+            {
+                v.id: v.version_num
+                for v in session.scalars(
+                    select(EvalSuiteVersion).where(EvalSuiteVersion.id.in_(version_ids))
+                ).all()
+            }
+            if version_ids
+            else {}
+        )
+        model_names = {
+            str(m.id): m.display_name
+            for m in session.scalars(select(RuntimeCatalogModelRecord)).all()
+        }
         return {
             "items": [
                 {
                     **_serialize_run(r),
                     "suite_name": suite_names.get(r.suite_id),
                     "target_project_name": project_names.get(r.target_project_id),
+                    "version_num": version_nums.get(r.version_id),
+                    "target_model_name": model_names.get(r.target_model_id),
+                    "judge_model_name": (
+                        model_names.get(r.judge_model_id) if r.judge_model_id else None
+                    ),
                 }
                 for r in rows
             ]
@@ -494,9 +551,112 @@ def get_run_detail(factory, *, project_id: str, run_id: str) -> dict[str, Any]:
             .where(EvalRunCase.run_id == run_id)
             .order_by(EvalRunCase.case_key.asc(), EvalRunCase.attempt_idx.asc())
         ).all()
+        suite = session.get(EvalSuite, run.suite_id)
+        version = session.get(EvalSuiteVersion, run.version_id)
+        model_names = {
+            str(m.id): m.display_name
+            for m in session.scalars(select(RuntimeCatalogModelRecord)).all()
+        }
         return {
-            "run": _serialize_run(run),
+            "run": {
+                **_serialize_run(run),
+                "suite_name": suite.name if suite else None,
+                "version_num": version.version_num if version else None,
+                "target_model_name": model_names.get(run.target_model_id),
+                "judge_model_name": (
+                    model_names.get(run.judge_model_id) if run.judge_model_id else None
+                ),
+            },
             "cases": [_serialize_run_case(c) for c in cases],
+        }
+
+
+def delete_run(factory, *, project_id: str, run_id: str) -> dict[str, Any]:
+    with session_scope(factory) as session:
+        run = session.get(EvalRun, run_id)
+        if run is None or run.owner_project_id != project_id:
+            raise NotFoundError(
+                code="eval_run_not_found", message="评测运行记录不存在。"
+            )
+        if run.status in {"queued", "running", "rescoring"}:
+            raise ConflictError(
+                code="eval_run_active_cannot_delete",
+                message="任务正在队列或执行中，请先暂停或中止后再删除。",
+            )
+        patrols = session.scalars(
+            select(EvalPatrolSchedule).where(EvalPatrolSchedule.last_run_id == run_id)
+        ).all()
+        for p in patrols:
+            p.last_run_id = None
+        case_ids_subq = select(EvalRunCase.id).where(EvalRunCase.run_id == run_id)
+        session.execute(
+            delete(EvalHumanReview).where(
+                EvalHumanReview.run_case_id.in_(case_ids_subq)
+            )
+        )
+        session.execute(delete(EvalRunCase).where(EvalRunCase.run_id == run_id))
+        session.execute(delete(EvalRunLog).where(EvalRunLog.run_id == run_id))
+        session.delete(run)
+        session.flush()
+        return {"deleted": True, "run_id": run_id}
+
+
+def get_run_logs(
+    factory,
+    *,
+    project_id: str,
+    run_id: str,
+    after_seq: int = 0,
+    limit: int = 200,
+    case_key: str | None = None,
+    level: str | None = None,
+) -> dict[str, Any]:
+    with session_scope(factory) as session:
+        run = session.get(EvalRun, run_id)
+        if run is None or run.owner_project_id != project_id:
+            raise NotFoundError(
+                code="eval_run_not_found", message="评测运行记录不存在。"
+            )
+        clamped_limit = max(1, min(500, int(limit or 200)))
+        stmt = (
+            select(EvalRunLog)
+            .where(EvalRunLog.run_id == run_id)
+            .where(EvalRunLog.seq > after_seq)
+        )
+        if case_key:
+            stmt = stmt.where(EvalRunLog.case_key == case_key)
+        if level:
+            stmt = stmt.where(EvalRunLog.level == level)
+        rows = session.scalars(
+            stmt.order_by(EvalRunLog.seq.asc()).limit(clamped_limit)
+        ).all()
+        summary = (
+            run.summary_metrics_json
+            if isinstance(run.summary_metrics_json, dict)
+            else {}
+        )
+        progress = summary.get("progress")
+        if not isinstance(progress, dict):
+            cases = session.scalars(
+                select(EvalRunCase).where(EvalRunCase.run_id == run_id)
+            ).all()
+            progress = _compute_progress_dict(cases)
+        last_seq = rows[-1].seq if rows else after_seq
+        return {
+            "run_id": run_id,
+            "status": run.status,
+            "progress": progress,
+            "logs": [
+                {
+                    "seq": r.seq,
+                    "level": r.level,
+                    "case_key": r.case_key,
+                    "message": r.message,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                }
+                for r in rows
+            ],
+            "last_seq": last_seq,
         }
 
 
@@ -552,6 +712,13 @@ def control_run(
         elif action == "rescore":
             run.status = "rescoring"
             run.finished_at = None
+        prev_summary = (
+            dict(run.summary_metrics_json)
+            if isinstance(run.summary_metrics_json, dict)
+            else {}
+        )
+        prev_summary["progress"] = _compute_progress_dict(cases)
+        run.summary_metrics_json = prev_summary
         session.flush()
         return _serialize_run(run)
 

@@ -63,18 +63,52 @@ export interface EvalCaseItem {
   updated_at: string | null;
 }
 
+export interface EvalRunProgress {
+  total: number;
+  active_total?: number;
+  done: number;
+  completed: number;
+  failed: number;
+  error: number;
+  running: number;
+  pending: number;
+  paused: number;
+  cancelled: number;
+  skipped_incompatible: number;
+  percent: number;
+}
+
+export interface EvalRunLogEntry {
+  seq: number;
+  level: "INFO" | "WARN" | "ERROR" | string;
+  case_key: string | null;
+  message: string;
+  created_at: string | null;
+}
+
+export interface EvalRunLogsResponse {
+  run_id: string;
+  status: string;
+  progress: EvalRunProgress;
+  logs: EvalRunLogEntry[];
+  last_seq: number;
+}
+
 export interface EvalRunItem {
   id: string;
   suite_id: string;
   suite_name?: string | null;
   version_id: string;
+  version_num?: number | null;
   owner_project_id: string;
   target_project_id: string;
   target_project_name?: string | null;
   target_graph_id: string;
   target_agent_id: string;
   target_model_id: string;
+  target_model_name?: string | null;
   judge_model_id: string | null;
+  judge_model_name?: string | null;
   embedding_model_id: string | null;
   matrix_group_id: string | null;
   mode: string;
@@ -481,6 +515,39 @@ export async function controlRun(
     `/api/evaluation/studio/runs/${runId}/control`,
     { action },
     { headers: projectHeaders(projectId) },
+  );
+  return data;
+}
+
+export async function deleteRun(
+  projectId: string,
+  runId: string,
+): Promise<{ deleted: boolean; run_id: string }> {
+  const { data } = await platformHttpClient.delete<{
+    deleted: boolean;
+    run_id: string;
+  }>(`/api/evaluation/studio/runs/${runId}`, {
+    headers: projectHeaders(projectId),
+  });
+  return data;
+}
+
+export async function getRunLogs(
+  projectId: string,
+  runId: string,
+  params?: {
+    after_seq?: number;
+    limit?: number;
+    case_key?: string;
+    level?: string;
+  },
+): Promise<EvalRunLogsResponse> {
+  const { data } = await platformHttpClient.get<EvalRunLogsResponse>(
+    `/api/evaluation/studio/runs/${runId}/logs`,
+    {
+      headers: projectHeaders(projectId),
+      params,
+    },
   );
   return data;
 }

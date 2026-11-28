@@ -27,14 +27,18 @@ class ConcurrentEvalRunner:
         concurrency: int = 3,
         max_judge_concurrency: int = 3,
         is_paused: Callable[[], bool] | None = None,
+        on_case_start: Callable[[str, int], None] | None = None,
         on_checkpoint: Callable[[dict[str, Any]], None] | None = None,
+        emit_log: Callable[[str, str | None, str], None] | None = None,
     ):
         if not 1 <= concurrency <= 5:
             raise ValueError("concurrency must be within 1..5")
         self.concurrency = concurrency
         self.judge_semaphore = threading.Semaphore(max_judge_concurrency)
         self.is_paused = is_paused or (lambda: False)
+        self.on_case_start = on_case_start or (lambda _k, _a: None)
         self.on_checkpoint = on_checkpoint or (lambda _row: None)
+        self.emit_log = emit_log or (lambda _lvl, _k, _msg: None)
 
     def run_batch(
         self,
@@ -54,14 +58,30 @@ class ConcurrentEvalRunner:
                     "attempt_idx": attempt_idx,
                     "status": "paused",
                 }
+                self.emit_log("WARN", case.case_key, f"[{case.case_key} #{attempt_idx}] 收到暂停/中止信号，保持待续")
                 self.on_checkpoint(row)
                 return row
+            self.on_case_start(case.case_key, attempt_idx)
+            rounds_desc = (
+                f"动态博弈<= {case.simulation.max_turns} 轮"
+                if case.simulation is not None
+                else f"固定 {len(case.turns) or 1} 轮"
+            )
+            self.emit_log("INFO", case.case_key, f"[{case.case_key} #{attempt_idx}] 开始执行 ({rounds_desc})")
             try:
                 evidence = execute_fn(case, attempt_idx)
                 l1 = [m.model_dump() for m in evaluate_l1_rules(case, evidence)]
+                if l1:
+                    l1_ok = sum(1 for m in l1 if m["passed"])
+                    self.emit_log(
+                        "INFO",
+                        case.case_key,
+                        f"[{case.case_key} #{attempt_idx}] L1 硬规则校验完成 ({l1_ok}/{len(l1)} 通过)",
+                    )
                 l2: list[dict[str, Any]] = []
                 judge_ms = 0
                 if score_l2_fn is not None and evidence.error_category == "none":
+                    self.emit_log("INFO", case.case_key, f"[{case.case_key} #{attempt_idx}] 开始 L2 裁判打分...")
                     t_judge = time.monotonic()
                     with self.judge_semaphore:
                         l2 = score_l2_fn(case, evidence)
@@ -152,8 +172,23 @@ class ConcurrentEvalRunner:
                         "timing_breakdown": timing_breakdown,
                     },
                 }
+                log_lvl = "INFO" if status == "completed" else ("WARN" if status == "failed" else "ERROR")
+                self.emit_log(
+                    log_lvl,
+                    case.case_key,
+                    (
+                        f"[{case.case_key} #{attempt_idx}] 用例结束 · 状态={status} · "
+                        f"综合分={overall} · TTFT={evidence.ttft_ms if evidence.ttft_ms is not None else '-'}ms · "
+                        f"耗时={evidence.duration_ms}ms · 费用=${total_cost:.6f}"
+                    ),
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.exception("eval case execution failed: %s", case.case_key)
+                self.emit_log(
+                    "ERROR",
+                    case.case_key,
+                    f"[{case.case_key} #{attempt_idx}] 执行异常: {str(exc)[:300]}",
+                )
                 row = {
                     "case_key": case.case_key,
                     "attempt_idx": attempt_idx,

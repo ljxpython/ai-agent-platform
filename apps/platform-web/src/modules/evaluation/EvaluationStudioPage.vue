@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import BaseButton from "@/components/base/BaseButton.vue";
+import ConfirmDialog from "@/components/base/ConfirmDialog.vue";
 import PageHeader from "@/components/layout/PageHeader.vue";
 import StateBanner from "@/components/platform/StateBanner.vue";
 import CaseEditorPanel from "@/modules/evaluation/components/CaseEditorPanel.vue";
@@ -9,7 +10,9 @@ import ComparisonPkDialog from "@/modules/evaluation/components/ComparisonPkDial
 import DatasetPanoramaPanel from "@/modules/evaluation/components/DatasetPanoramaPanel.vue";
 import EvaluationExpertDrawer from "@/modules/evaluation/components/EvaluationExpertDrawer.vue";
 import LaunchRunModal from "@/modules/evaluation/components/LaunchRunModal.vue";
+import RunLogTerminalDialog from "@/modules/evaluation/components/RunLogTerminalDialog.vue";
 import RunResultsPanel from "@/modules/evaluation/components/RunResultsPanel.vue";
+import SuiteHistoryMetricsDialog from "@/modules/evaluation/components/SuiteHistoryMetricsDialog.vue";
 import { useEvaluationStudio } from "@/modules/evaluation/composables/useEvaluationStudio";
 import { env } from "@/config/env";
 import { listAgents } from "@/services/agents/agents.service";
@@ -17,6 +20,7 @@ import {
   isFaultInjectionTestModel,
   pickPreferredDeepSeekModelId,
   type CaseUpsertPayload,
+  type EvalRunItem,
   type EvalSuiteItem,
 } from "@/services/evaluation/studio";
 import { listRuntimeProjects } from "@/services/projects/projects.service";
@@ -46,6 +50,12 @@ const modelOptions = ref<
 const runtimeModels = ref<RuntimeModelItem[]>([]);
 const defaultModelId = ref("");
 const selectedCaseKeys = ref<string[]>([]);
+const logTerminalRun = ref<EvalRunItem | null>(null);
+const showLogDialog = ref(false);
+const deleteConfirmRun = ref<EvalRunItem | null>(null);
+const showHistoryDialog = ref(false);
+const historySuiteName = ref("");
+const historySuiteRuns = ref<EvalRunItem[]>([]);
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -91,7 +101,10 @@ watch(
 
 const hasInFlightRun = computed(() =>
   studio.runs.value.some(
-    (r) => r.status === "queued" || r.status === "running",
+    (r) =>
+      r.status === "queued" ||
+      r.status === "running" ||
+      r.status === "rescoring",
   ),
 );
 
@@ -211,7 +224,7 @@ async function handleLaunchSubmit(
     return;
   }
   showLaunchModal.value = false;
-  activeTab.value = "runs";
+  switchTab("runs");
 }
 
 async function handleMatrixSubmit(
@@ -224,12 +237,41 @@ async function handleMatrixSubmit(
     return;
   }
   showLaunchModal.value = false;
-  activeTab.value = "runs";
+  switchTab("runs");
 }
 
 async function handleCompare(baselineId: string, candidateId: string) {
   const res = await studio.loadComparison(baselineId, candidateId);
-  if (res) showPkModal.value = true;
+  if (res) {
+    showHistoryDialog.value = false;
+    showPkModal.value = true;
+  }
+}
+
+function handleOpenRunLogs(run: EvalRunItem) {
+  logTerminalRun.value = run;
+  showLogDialog.value = true;
+}
+
+function handleOpenSuiteHistory(
+  _suiteId: string,
+  suiteName: string,
+  items: EvalRunItem[],
+) {
+  historySuiteName.value = suiteName;
+  historySuiteRuns.value = items;
+  showHistoryDialog.value = true;
+}
+
+function handleRequestDeleteRun(run: EvalRunItem) {
+  deleteConfirmRun.value = run;
+}
+
+async function confirmDeleteRun() {
+  if (!deleteConfirmRun.value) return;
+  const targetId = deleteConfirmRun.value.id;
+  deleteConfirmRun.value = null;
+  await studio.removeRun(targetId);
 }
 
 function handleExpertDrawer(
@@ -402,6 +444,38 @@ function openMlflowDashboard() {
       @rerun-suite="handleRerunBySuiteId"
       @toggle-sandbox="() => studio.toggleSandbox(true)"
       @open-diagnosis="(id) => handleExpertDrawer('eval_diagnosis', id)"
+      @delete-run="handleRequestDeleteRun"
+      @open-logs="handleOpenRunLogs"
+      @open-suite-history="handleOpenSuiteHistory"
+    />
+
+    <ConfirmDialog
+      :show="Boolean(deleteConfirmRun)"
+      danger
+      title="确认彻底删除此打擂结果？"
+      :message="
+        deleteConfirmRun
+          ? `即将删除打擂 #${deleteConfirmRun.id.slice(0, 8)}（题库：${deleteConfirmRun.suite_name || deleteConfirmRun.suite_id.slice(0, 8)}，状态：${deleteConfirmRun.status}）。删除后将清除数据库中的评分、用例证据摘要、人工标定与执行日志，不可撤销。`
+          : ''
+      "
+      confirm-text="彻底删除"
+      @confirm="confirmDeleteRun"
+      @cancel="deleteConfirmRun = null"
+    />
+
+    <RunLogTerminalDialog
+      :show="showLogDialog"
+      :run="logTerminalRun"
+      :fetch-logs="studio.fetchRunLogs"
+      @close="showLogDialog = false"
+    />
+
+    <SuiteHistoryMetricsDialog
+      :show="showHistoryDialog"
+      :suite-name="historySuiteName"
+      :runs="historySuiteRuns"
+      @close="showHistoryDialog = false"
+      @compare-two="handleCompare"
     />
 
     <LaunchRunModal

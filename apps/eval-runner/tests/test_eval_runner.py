@@ -430,3 +430,107 @@ def test_simulation_whitelists_expected_non_absent_artifacts_for_approval():
         0,
     )
     assert bad["decision"] == "reject"
+
+
+def test_worker_progress_metrics_breakdown_and_run_logs(tmp_path):
+    from sqlalchemy import create_engine, text
+    from eval_runner.domain.contracts import Evidence
+    from eval_runner.worker import poll_and_execute_once
+
+    db_url = f"sqlite:///{tmp_path / 'eval_worker_logs.db'}"
+    engine = create_engine(db_url)
+    with engine.begin() as conn:
+        conn.execute(
+            text("CREATE TABLE eval_suite_versions (id TEXT PRIMARY KEY, frozen_cases_json TEXT)")
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_runs (id TEXT PRIMARY KEY, version_id TEXT, target_project_id TEXT, "
+                "judge_model_id TEXT, concurrency INT, "
+                "repeat_k INT, status TEXT, gate_exit_code INT, summary_metrics_json TEXT, "
+                "created_at TEXT, finished_at TEXT)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_run_cases (id TEXT PRIMARY KEY, run_id TEXT, case_key TEXT, "
+                "attempt_idx INT, status TEXT, thread_id TEXT, trace_ids_json TEXT, "
+                "rule_passed BOOLEAN, overall_score FLOAT, duration_ms INT, ttft_ms INT, "
+                "token_usage_json TEXT, cost_usd FLOAT, error_category TEXT, results_json TEXT, updated_at TEXT)"
+            )
+        )
+        conn.execute(
+            text(
+                "CREATE TABLE eval_run_logs (id TEXT PRIMARY KEY, run_id TEXT, seq INT, "
+                "level TEXT, case_key TEXT, message TEXT, created_at TEXT)"
+            )
+        )
+        conn.execute(
+            text("INSERT INTO eval_suite_versions VALUES (:id, :cases)"),
+            {
+                "id": "v1",
+                "cases": json.dumps(
+                    [
+                        {"case_key": "c1", "turns": [{"role": "user", "content": "hi"}], "metrics": ["completion"]},
+                        {"case_key": "c2", "turns": [{"role": "user", "content": "bye"}], "metrics": ["completion"]},
+                    ]
+                ),
+            },
+        )
+        conn.execute(
+            text(
+                "INSERT INTO eval_runs (id, version_id, target_project_id, judge_model_id, concurrency, repeat_k, status, created_at) "
+                "VALUES ('r1', 'v1', 'proj-1', NULL, 2, 1, 'queued', '2026-11-28T00:00:00Z')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO eval_run_cases (id, run_id, case_key, attempt_idx, status) "
+                "VALUES ('rc1', 'r1', 'c1', 1, 'pending'), ('rc2', 'r1', 'c2', 1, 'pending')"
+            )
+        )
+
+    observed_running_statuses: list[str] = []
+
+    def _exec(case, attempt_idx):
+        with engine.begin() as conn:
+            st = conn.execute(
+                text("SELECT status FROM eval_run_cases WHERE case_key = :k"),
+                {"k": case.case_key},
+            ).scalar_one()
+            observed_running_statuses.append(st)
+        return Evidence(
+            case_key=case.case_key,
+            attempt_idx=attempt_idx,
+            final_answer="ok" if case.case_key == "c1" else "",
+            duration_ms=120,
+            ttft_ms=40,
+        )
+
+    res = poll_and_execute_once(db_url, execute_fn=_exec)
+    assert res is not None
+    assert observed_running_statuses == ["running", "running"]
+    assert "metrics_breakdown" in res["summary"]
+    assert res["summary"]["metrics_breakdown"]["completion"]["avg_score"] == 0.5
+    assert res["summary"]["metrics_breakdown"]["completion"]["pass_rate"] == 0.5
+
+    with engine.begin() as conn:
+        run_summary = json.loads(
+            conn.execute(
+                text("SELECT summary_metrics_json FROM eval_runs WHERE id = 'r1'")
+            ).scalar_one()
+        )
+        assert run_summary["progress"]["total"] == 2
+        assert run_summary["progress"]["done"] == 2
+        assert run_summary["progress"]["completed"] == 1
+        assert run_summary["progress"]["failed"] == 1
+        assert run_summary["progress"]["percent"] == 100
+        assert len(run_summary["recent_logs"]) > 0
+
+        logs = conn.execute(
+            text("SELECT seq, level, case_key, message FROM eval_run_logs WHERE run_id = 'r1' ORDER BY seq ASC")
+        ).mappings().all()
+        assert len(logs) >= 6
+        assert [r["seq"] for r in logs] == list(range(1, len(logs) + 1))
+        assert any("[批次] 开始执行评测" in r["message"] for r in logs)
+        assert any("[批次] 执行收口" in r["message"] for r in logs)

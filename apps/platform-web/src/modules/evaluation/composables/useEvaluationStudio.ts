@@ -10,7 +10,9 @@ import {
   createSuite,
   createSuiteFromSessions,
   deleteCase,
+  deleteRun,
   getRunDetail,
+  getRunLogs,
   getSuiteDetail,
   importSuiteCases,
   listPatrols,
@@ -264,10 +266,35 @@ export function useEvaluationStudio(projectId: Ref<string>) {
   ) {
     return runSafely("控制评测任务", async () => {
       const updated = await controlRun(projectId.value, runId, action);
-      activeRun.value = updated;
       runs.value = runs.value.map((r) => (r.id === updated.id ? updated : r));
+      if (activeRun.value?.id === updated.id) {
+        const detail = await getRunDetail(projectId.value, runId);
+        activeRun.value = detail.run;
+        runCases.value = detail.cases;
+      }
       return updated;
     });
+  }
+
+  async function removeRun(runId: string) {
+    return runSafely("删除评测结果", async () => {
+      await deleteRun(projectId.value, runId);
+      runs.value = runs.value.filter((r) => r.id !== runId);
+      if (activeRun.value?.id === runId) {
+        activeRun.value = null;
+        runCases.value = [];
+      }
+      notice.value = `评测记录 #${runId.slice(0, 8)} 已彻底删除。`;
+      return true;
+    });
+  }
+
+  async function fetchRunLogs(
+    runId: string,
+    params?: Parameters<typeof getRunLogs>[2],
+  ) {
+    if (!projectId.value) return null;
+    return getRunLogs(projectId.value, runId, params);
   }
 
   async function loadComparison(baselineId: string, candidateId: string) {
@@ -349,6 +376,8 @@ export function useEvaluationStudio(projectId: Ref<string>) {
     openRun,
     pollRunningRuns,
     sendRunControl,
+    removeRun,
+    fetchRunLogs,
     loadComparison,
     reviewCase,
     addPatrol,

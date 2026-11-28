@@ -5,13 +5,20 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 
 from eval_runner.domain.contracts import Case, Evidence, GateLimits
+from eval_runner.domain.metrics_summary import (
+    compute_progress_summary,
+    summarize_run_cases,
+)
 from eval_runner.engine.concurrent_runner import ConcurrentEvalRunner
 from eval_runner.engine.simulation import DynamicSimulationSession
 from eval_runner.evidence.context_and_artifacts import extract_retrieved_contexts
@@ -59,10 +66,12 @@ def build_platform_executors(
     run_id: str,
     target_project_id: str,
     judge_model_id: str | None = None,
+    emit_log: Callable[[str, str | None, str], None] | None = None,
 ):
     """Build real SSE turn executor with simulation/interrupts/whitebox extraction and L2 scorer."""
     exec_client = InternalExecutionClient(base_url, internal_secret)
     resolver = PlatformModelResolver(base_url, internal_secret)
+    log_fn = emit_log or (lambda _lvl, _k, _msg: None)
 
     def _execute(case: Case, attempt_idx: int) -> Evidence:
         static_turns = list(case.turns)
@@ -168,6 +177,15 @@ def build_platform_executors(
                 ttft_ms = probe.ttft_ms
             total_duration += probe.duration_ms
             turn_answer = probe.final_text
+            log_fn(
+                "INFO",
+                case.case_key,
+                (
+                    f"[{case.case_key} #{attempt_idx}] 第 {turn_idx + 1} 轮响应完成 · "
+                    f"TTFT={probe.ttft_ms if probe.ttft_ms is not None else '-'}ms · "
+                    f"耗时={probe.duration_ms}ms · 状态={probe.terminal_status}"
+                ),
+            )
 
             # Handle HITL __interrupt__ resume loop (Clarification, Plan Review, Tool Approval)
             def _sync_interrupts_from_state() -> None:
@@ -214,6 +232,14 @@ def build_platform_executors(
                                 "artifacts_before": (pre_ev or {}).get("artifacts") or {},
                             }
                         )
+                    log_fn(
+                        "INFO",
+                        case.case_key,
+                        (
+                            f"[{case.case_key} #{attempt_idx}] 捕获中断"
+                            f"({res.get('kind') or 'interrupt'}) -> 决策={res.get('decision', 'submitted')}"
+                        ),
+                    )
                     resume_payload = res["resumes"]
                 else:
                     # Static fallback: approve if approval requested, else break
@@ -274,6 +300,11 @@ def build_platform_executors(
                     probe.terminal_status = "success"
                     probe.error_category = "none"
                     stream_recovered = True
+                    log_fn(
+                        "WARN",
+                        case.case_key,
+                        f"[{case.case_key} #{attempt_idx}] SSE 超时后已从线程终态安全恢复输出",
+                    )
 
             if turn_answer:
                 final_answer = turn_answer
@@ -352,6 +383,14 @@ def build_platform_executors(
                 retrieved_contexts, contexts_state = extract_retrieved_contexts(messages)
                 loop_signals, loop_observed = recover_loop_signals(
                     ev_bundle.get("diagnostics") or []
+                )
+                log_fn(
+                    "INFO",
+                    case.case_key,
+                    (
+                        f"[{case.case_key} #{attempt_idx}] 白盒取证完成 · 工具={len(tool_events)}步 · "
+                        f"死循环信号={loop_signals}"
+                    ),
                 )
             else:
                 tool_complete = False
@@ -528,37 +567,149 @@ def poll_and_execute_once(
             if r["case_key"] in case_map
         ]
 
+        max_logs_per_run = 2000
+        db_lock = threading.Lock()
+        has_log_table = inspect(engine).has_table("eval_run_logs")
+        seq_state = {"seq": 0, "truncated": False}
+        recent_logs: list[str] = []
+        if has_log_table:
+            with engine.begin() as conn:
+                max_seq = conn.execute(
+                    text("SELECT COALESCE(MAX(seq), 0) FROM eval_run_logs WHERE run_id = :rid"),
+                    {"rid": run_id},
+                ).scalar_one()
+                seq_state["seq"] = int(max_seq or 0)
+                if seq_state["seq"] >= max_logs_per_run:
+                    seq_state["truncated"] = True
+
+        def _sync_run_progress_locked(conn) -> dict[str, Any]:
+            all_rows = conn.execute(
+                text("SELECT status FROM eval_run_cases WHERE run_id = :rid"),
+                {"rid": run_id},
+            ).mappings().all()
+            progress = compute_progress_summary([dict(r) for r in all_rows])
+            cur_raw = conn.execute(
+                text("SELECT summary_metrics_json FROM eval_runs WHERE id = :id"),
+                {"id": run_id},
+            ).scalar_one_or_none()
+            if isinstance(cur_raw, str):
+                try:
+                    cur_summary = json.loads(cur_raw)
+                except ValueError:
+                    cur_summary = {}
+            elif isinstance(cur_raw, dict):
+                cur_summary = dict(cur_raw)
+            else:
+                cur_summary = {}
+            cur_summary["progress"] = progress
+            if recent_logs:
+                cur_summary["recent_logs"] = list(recent_logs)
+            conn.execute(
+                text("UPDATE eval_runs SET summary_metrics_json = :summary WHERE id = :id"),
+                {
+                    "id": run_id,
+                    "summary": json.dumps(cur_summary, ensure_ascii=False),
+                },
+            )
+            return progress
+
+        def _emit_log(level: str, case_key: str | None, message: str) -> None:
+            clean_msg = (message or "").strip()[:1000]
+            if not clean_msg:
+                return
+            ts_str = datetime.now(UTC).strftime("%H:%M:%S")
+            formatted = f"[{ts_str}] [{level}] {clean_msg}"
+            with db_lock:
+                recent_logs.append(formatted)
+                if len(recent_logs) > 15:
+                    del recent_logs[:-15]
+                if has_log_table and not seq_state["truncated"]:
+                    if seq_state["seq"] >= max_logs_per_run:
+                        seq_state["truncated"] = True
+                        seq_state["seq"] += 1
+                        with engine.begin() as conn:
+                            conn.execute(
+                                text(
+                                    "INSERT INTO eval_run_logs (id, run_id, seq, level, case_key, message, created_at) "
+                                    "VALUES (:id, :run_id, :seq, :level, :case_key, :message, :created_at)"
+                                ),
+                                {
+                                    "id": str(uuid4()),
+                                    "run_id": run_id,
+                                    "seq": seq_state["seq"],
+                                    "level": "WARN",
+                                    "case_key": None,
+                                    "message": "[系统] 当前批次日志已达到单场上限 (2000 条)，后续日志已截断保护。",
+                                    "created_at": datetime.now(UTC),
+                                },
+                            )
+                    else:
+                        seq_state["seq"] += 1
+                        with engine.begin() as conn:
+                            conn.execute(
+                                text(
+                                    "INSERT INTO eval_run_logs (id, run_id, seq, level, case_key, message, created_at) "
+                                    "VALUES (:id, :run_id, :seq, :level, :case_key, :message, :created_at)"
+                                ),
+                                {
+                                    "id": str(uuid4()),
+                                    "run_id": run_id,
+                                    "seq": seq_state["seq"],
+                                    "level": level,
+                                    "case_key": case_key,
+                                    "message": clean_msg,
+                                    "created_at": datetime.now(UTC),
+                                },
+                            )
+
+        def _on_case_start(case_key: str, attempt_idx: int) -> None:
+            rc_id = row_id_by_key.get((case_key, attempt_idx))
+            if not rc_id:
+                return
+            with db_lock:
+                with engine.begin() as conn:
+                    conn.execute(
+                        text(
+                            "UPDATE eval_run_cases SET status = 'running', updated_at = :updated_at "
+                            "WHERE id = :id"
+                        ),
+                        {"id": rc_id, "updated_at": datetime.now(UTC)},
+                    )
+                    _sync_run_progress_locked(conn)
+
         def _on_checkpoint(item: dict[str, Any]) -> None:
             rc_id = row_id_by_key.get((item["case_key"], item["attempt_idx"]))
             if not rc_id:
                 return
-            with engine.begin() as conn:
-                conn.execute(
-                    text(
-                        "UPDATE eval_run_cases SET status = :status, thread_id = :thread_id, "
-                        "trace_ids_json = :trace_ids, rule_passed = :rule_passed, "
-                        "overall_score = :overall_score, duration_ms = :duration_ms, "
-                        "ttft_ms = :ttft_ms, token_usage_json = :token_usage, "
-                        "cost_usd = :cost_usd, "
-                        "error_category = :error_category, results_json = :results, "
-                        "updated_at = :updated_at WHERE id = :id"
-                    ),
-                    {
-                        "id": rc_id,
-                        "status": item["status"],
-                        "thread_id": item.get("thread_id"),
-                        "trace_ids": json.dumps(item.get("trace_ids") or []),
-                        "rule_passed": item.get("rule_passed"),
-                        "overall_score": item.get("overall_score"),
-                        "duration_ms": item.get("duration_ms"),
-                        "ttft_ms": item.get("ttft_ms"),
-                        "token_usage": json.dumps(item.get("token_usage") or {}),
-                        "cost_usd": item.get("cost_usd"),
-                        "error_category": item.get("error_category"),
-                        "results": json.dumps(item.get("results") or {}, ensure_ascii=False),
-                        "updated_at": datetime.now(UTC),
-                    },
-                )
+            with db_lock:
+                with engine.begin() as conn:
+                    conn.execute(
+                        text(
+                            "UPDATE eval_run_cases SET status = :status, thread_id = :thread_id, "
+                            "trace_ids_json = :trace_ids, rule_passed = :rule_passed, "
+                            "overall_score = :overall_score, duration_ms = :duration_ms, "
+                            "ttft_ms = :ttft_ms, token_usage_json = :token_usage, "
+                            "cost_usd = :cost_usd, "
+                            "error_category = :error_category, results_json = :results, "
+                            "updated_at = :updated_at WHERE id = :id"
+                        ),
+                        {
+                            "id": rc_id,
+                            "status": item["status"],
+                            "thread_id": item.get("thread_id"),
+                            "trace_ids": json.dumps(item.get("trace_ids") or []),
+                            "rule_passed": item.get("rule_passed"),
+                            "overall_score": item.get("overall_score"),
+                            "duration_ms": item.get("duration_ms"),
+                            "ttft_ms": item.get("ttft_ms"),
+                            "token_usage": json.dumps(item.get("token_usage") or {}),
+                            "cost_usd": item.get("cost_usd"),
+                            "error_category": item.get("error_category"),
+                            "results": json.dumps(item.get("results") or {}, ensure_ascii=False),
+                            "updated_at": datetime.now(UTC),
+                        },
+                    )
+                    _sync_run_progress_locked(conn)
 
         def _is_paused() -> bool:
             with engine.begin() as conn:
@@ -575,6 +726,7 @@ def poll_and_execute_once(
                 run_id=str(run_id),
                 target_project_id=str(run_row["target_project_id"]),
                 judge_model_id=str(run_row["judge_model_id"]) if run_row["judge_model_id"] else None,
+                emit_log=_emit_log,
             )
             if score_l2_fn is None:
                 score_l2_fn = auto_l2
@@ -582,10 +734,25 @@ def poll_and_execute_once(
         def _default_exec(case: Case, attempt_idx: int) -> Evidence:
             return Evidence(case_key=case.case_key, attempt_idx=attempt_idx, final_answer="ok")
 
+        eff_concurrency = max(1, min(5, int(run_row["concurrency"] or 3)))
+        _emit_log(
+            "INFO",
+            None,
+            (
+                f"[批次] 开始执行评测 · 并发={eff_concurrency} · 待测用例={len(batch)} 题 · "
+                f"目标项目={run_row['target_project_id']}"
+            ),
+        )
+        with db_lock:
+            with engine.begin() as conn:
+                _sync_run_progress_locked(conn)
+
         runner = ConcurrentEvalRunner(
-            concurrency=max(1, min(5, int(run_row["concurrency"] or 3))),
+            concurrency=eff_concurrency,
             is_paused=_is_paused,
+            on_case_start=_on_case_start,
             on_checkpoint=_on_checkpoint,
+            emit_log=_emit_log,
         )
         out = runner.run_batch(
             cases=batch,
@@ -595,6 +762,10 @@ def poll_and_execute_once(
         )
     except Exception as exc:
         logger.exception("eval run %s aborted with unexpected error", run_id)
+        try:
+            _emit_log("ERROR", None, f"[批次] 执行异常中断: {str(exc)[:300]}")
+        except Exception:  # noqa: BLE001
+            pass
         with engine.begin() as conn:
             conn.execute(
                 text(
@@ -617,19 +788,38 @@ def poll_and_execute_once(
             if cur in {"paused", "cancelled"}
             else ("completed" if out["gate"]["exit_code"] == 0 else "failed")
         )
-        conn.execute(
-            text(
-                "UPDATE eval_runs SET status = :status, gate_exit_code = :code, "
-                "summary_metrics_json = :summary, finished_at = :finished_at WHERE id = :id"
-            ),
-            {
-                "id": run_id,
-                "status": final_status,
-                "code": out["gate"]["exit_code"],
-                "summary": json.dumps(out["summary"], ensure_ascii=False),
-                "finished_at": datetime.now(UTC) if final_status in {"completed", "failed", "cancelled"} else None,
-            },
-        )
+    _emit_log(
+        "INFO" if final_status == "completed" else "WARN",
+        None,
+        (
+            f"[批次] 执行收口 · 终态={final_status} · "
+            f"TSR={round((out['summary'].get('tsr_pass_at_1') or 0) * 100)}% · "
+            f"综合分={round((out['summary'].get('overall_score') or 0) * 100)}% · "
+            f"门禁退出码={out['gate']['exit_code']}"
+        ),
+    )
+    with db_lock:
+        with engine.begin() as conn:
+            all_rows = conn.execute(
+                text("SELECT status FROM eval_run_cases WHERE run_id = :rid"),
+                {"rid": run_id},
+            ).mappings().all()
+            final_summary = dict(out["summary"])
+            final_summary["progress"] = compute_progress_summary([dict(r) for r in all_rows])
+            final_summary["recent_logs"] = list(recent_logs)
+            conn.execute(
+                text(
+                    "UPDATE eval_runs SET status = :status, gate_exit_code = :code, "
+                    "summary_metrics_json = :summary, finished_at = :finished_at WHERE id = :id"
+                ),
+                {
+                    "id": run_id,
+                    "status": final_status,
+                    "code": out["gate"]["exit_code"],
+                    "summary": json.dumps(final_summary, ensure_ascii=False),
+                    "finished_at": datetime.now(UTC) if final_status in {"completed", "failed", "cancelled"} else None,
+                },
+            )
     return {"run_id": run_id, "status": final_status, **out}
 
 

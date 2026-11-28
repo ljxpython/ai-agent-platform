@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import BaseButton from "@/components/base/BaseButton.vue";
-import BaseInput from "@/components/base/BaseInput.vue";
 import SurfaceCard from "@/components/base/SurfaceCard.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
 import MetricCard from "@/components/platform/MetricCard.vue";
 import StatusPill from "@/components/platform/StatusPill.vue";
-import { buildMlflowTraceUrl } from "@/services/observability/langfuse-url";
+import RunEvidenceDetail from "@/modules/evaluation/components/RunEvidenceDetail.vue";
 import type {
   EvalRunCaseItem,
   EvalRunItem,
+  EvalRunProgress,
   EvalSuiteItem,
 } from "@/services/evaluation/studio";
 
@@ -31,12 +31,13 @@ const emit = defineEmits<{
   openDiagnosis: [runId: string];
   rerunSuite: [suiteId: string];
   toggleSandbox: [];
+  deleteRun: [run: EvalRunItem];
+  openLogs: [run: EvalRunItem];
+  openSuiteHistory: [suiteId: string, suiteName: string, items: EvalRunItem[]];
 }>();
 
 const selectedCompareIds = ref<string[]>([]);
 const expandedSuites = ref<Record<string, boolean>>({});
-const expandedCaseId = ref<string | null>(null);
-const reviewNotes = ref<Record<string, string>>({});
 const expandedRunId = ref<string | null>(props.activeRun?.id ?? null);
 
 watch(
@@ -44,9 +45,21 @@ watch(
   (newId) => {
     if (newId) {
       expandedRunId.value = newId;
+    } else if (!props.runs.some((r) => r.id === expandedRunId.value)) {
+      expandedRunId.value = null;
     }
   },
   { immediate: true },
+);
+
+watch(
+  () => props.runs,
+  (rows) => {
+    const existing = new Set(rows.map((r) => r.id));
+    selectedCompareIds.value = selectedCompareIds.value.filter((id) =>
+      existing.has(id),
+    );
+  },
 );
 
 function isRunExpanded(runId: string): boolean {
@@ -62,36 +75,89 @@ function toggleRunEvidence(runId: string) {
   }
 }
 
-watch(
-  () => props.runCases,
-  (cases) => {
-    if (cases && cases.length === 1) {
-      expandedCaseId.value = cases[0].id;
-    }
-  },
-  { immediate: true },
-);
-
 function runScore(r: EvalRunItem): number | null {
   const m = r.summary_metrics as Record<string, unknown> | undefined;
   const val = m?.overall_score ?? m?.tsr_pass_at_1;
   return typeof val === "number" ? val : null;
 }
 
+function runProgress(r: EvalRunItem): EvalRunProgress {
+  const m = r.summary_metrics as Record<string, any> | undefined;
+  const p = m?.progress as Partial<EvalRunProgress> | undefined;
+  if (p && typeof p.total === "number") {
+    return {
+      total: p.total,
+      active_total: p.active_total ?? p.total,
+      done: p.done ?? 0,
+      completed: p.completed ?? 0,
+      failed: p.failed ?? 0,
+      error: p.error ?? 0,
+      running: p.running ?? 0,
+      pending: p.pending ?? 0,
+      paused: p.paused ?? 0,
+      cancelled: p.cancelled ?? 0,
+      skipped_incompatible: p.skipped_incompatible ?? 0,
+      percent: p.percent ?? 0,
+    };
+  }
+  const total = typeof m?.total_cases === "number" ? m.total_cases : 0;
+  return {
+    total,
+    active_total: total,
+    done: 0,
+    completed: 0,
+    failed: 0,
+    error: 0,
+    running: 0,
+    pending: total,
+    paused: 0,
+    cancelled: 0,
+    skipped_incompatible: 0,
+    percent: 0,
+  };
+}
+
+function latestLogLine(r: EvalRunItem): string | null {
+  const arr = (r.summary_metrics as Record<string, any> | undefined)
+    ?.recent_logs;
+  if (Array.isArray(arr) && arr.length > 0) {
+    return String(arr[arr.length - 1]);
+  }
+  return null;
+}
+
+const inFlightStatuses = new Set(["queued", "running", "rescoring", "paused"]);
+
+const inFlightRuns = computed(() =>
+  props.runs
+    .filter((r) => inFlightStatuses.has(r.status))
+    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")),
+);
+
+const historyRuns = computed(() =>
+  props.runs.filter((r) => !inFlightStatuses.has(r.status)),
+);
+
 const runningCount = computed(
   () =>
-    props.runs.filter((r) => r.status === "running" || r.status === "queued")
-      .length,
+    props.runs.filter(
+      (r) =>
+        r.status === "running" ||
+        r.status === "queued" ||
+        r.status === "rescoring",
+    ).length,
 );
 
 const averageScore = computed(() => {
-  const vals = props.runs.map(runScore).filter((v): v is number => v !== null);
+  const vals = historyRuns.value
+    .map(runScore)
+    .filter((v): v is number => v !== null);
   if (!vals.length) return "-";
   return `${Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100)}%`;
 });
 
 const bestPassRate = computed(() => {
-  const vals = props.runs
+  const vals = historyRuns.value
     .map((r) => (r.summary_metrics as Record<string, unknown>)?.tsr_pass_at_1)
     .filter((v): v is number => typeof v === "number");
   if (!vals.length) return "0%";
@@ -101,7 +167,7 @@ const bestPassRate = computed(() => {
 const groupedRuns = computed(() => {
   const suiteNameById = new Map(props.suites.map((s) => [s.id, s.name]));
   const map = new Map<string, EvalRunItem[]>();
-  for (const run of props.runs) {
+  for (const run of historyRuns.value) {
     const arr = map.get(run.suite_id) ?? [];
     arr.push(run);
     map.set(run.suite_id, arr);
@@ -132,10 +198,6 @@ const groupedRuns = computed(() => {
   });
 });
 
-const summary = computed(
-  () => (props.activeRun?.summary_metrics ?? {}) as Record<string, any>,
-);
-
 function toggleCompare(runId: string) {
   if (selectedCompareIds.value.includes(runId)) {
     selectedCompareIds.value = selectedCompareIds.value.filter(
@@ -153,8 +215,8 @@ function triggerCompare() {
     emit("compare", selectedCompareIds.value[0], selectedCompareIds.value[1]);
     return;
   }
-  if (props.runs.length >= 2) {
-    const sorted = [...props.runs].sort((a, b) =>
+  if (historyRuns.value.length >= 2) {
+    const sorted = [...historyRuns.value].sort((a, b) =>
       (b.created_at ?? "").localeCompare(a.created_at ?? ""),
     );
     emit("compare", sorted[1].id, sorted[0].id);
@@ -164,7 +226,7 @@ function triggerCompare() {
 function quickCompareRun(run: EvalRunItem, groupItems: EvalRunItem[]) {
   const peer =
     groupItems.find((item) => item.id !== run.id) ??
-    props.runs.find((item) => item.id !== run.id);
+    historyRuns.value.find((item) => item.id !== run.id);
   if (peer) {
     emit("compare", peer.id, run.id);
   } else {
@@ -174,32 +236,11 @@ function quickCompareRun(run: EvalRunItem, groupItems: EvalRunItem[]) {
 
 function statusTone(status: string) {
   if (status === "completed" || status === "success") return "success";
-  if (status === "failed" || status === "error") return "danger";
-  if (status === "running" || status === "queued") return "info";
+  if (status === "failed" || status === "error" || status === "cancelled")
+    return "danger";
+  if (status === "running" || status === "queued" || status === "rescoring")
+    return "info";
   return "warning";
-}
-
-function openMlflowTrace(rc: EvalRunCaseItem, projectId: string) {
-  const url = buildMlflowTraceUrl(rc.trace_ids?.[0] || "", {
-    threadId: rc.thread_id || undefined,
-    projectId,
-    view: rc.trace_ids?.[0] ? "trace" : "sessions",
-  });
-  if (url) window.open(url, "_blank", "noopener");
-}
-
-function caseMetrics(rc: EvalRunCaseItem) {
-  const res = rc.results as Record<string, unknown> | undefined;
-  return Array.isArray(res?.metrics)
-    ? (res.metrics as Array<Record<string, unknown>>)
-    : [];
-}
-
-function caseTranscript(rc: EvalRunCaseItem) {
-  const res = rc.results as Record<string, unknown> | undefined;
-  return Array.isArray(res?.transcript)
-    ? (res.transcript as Array<Record<string, unknown>>)
-    : [];
 }
 </script>
 
@@ -236,6 +277,148 @@ function caseTranscript(rc: EvalRunCaseItem) {
       />
     </section>
 
+    <!-- 模块 1：正在进行的打擂队列 (Active Running Queue) -->
+    <SurfaceCard v-if="inFlightRuns.length" class="p-4 space-y-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="size-2 rounded-full bg-amber-500 animate-ping" />
+          <h3 class="text-sm font-semibold">
+            正在进行的打擂队列 ({{ inFlightRuns.length }})
+          </h3>
+        </div>
+        <span class="text-xs text-gray-500">
+          支持实时进度追踪、Case 完成度核查与终端日志流
+        </span>
+      </div>
+
+      <div class="space-y-3">
+        <div
+          v-for="r in inFlightRuns"
+          :key="r.id"
+          class="rounded-xl border border-amber-300/60 dark:border-amber-700/50 bg-amber-50/20 dark:bg-amber-950/10 overflow-hidden"
+        >
+          <div class="h-1 w-full bg-amber-100 dark:bg-dark-800">
+            <div
+              class="h-full bg-amber-500 transition-all duration-300"
+              :style="{ width: `${runProgress(r).percent}%` }"
+            />
+          </div>
+
+          <div class="p-3.5 space-y-2.5 text-xs">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-mono font-semibold text-sm">
+                    打擂 #{{ r.id.slice(0, 8) }}
+                  </span>
+                  <StatusPill :tone="statusTone(r.status)">
+                    {{ r.status }} · {{ runProgress(r).percent }}%
+                  </StatusPill>
+                  <StatusPill tone="neutral">{{
+                    r.target_graph_id
+                  }}</StatusPill>
+                  <span
+                    v-if="r.suite_name"
+                    class="font-medium text-gray-700 dark:text-dark-200"
+                  >
+                    {{ r.suite_name }}
+                  </span>
+                </div>
+                <div class="text-[11px] text-gray-500 font-mono">
+                  已完成 {{ runProgress(r).done }}/{{
+                    runProgress(r).active_total ?? runProgress(r).total
+                  }}
+                  题 · 执行中 {{ runProgress(r).running }} · 待执行
+                  {{ runProgress(r).pending }} · 失败/异常
+                  {{ runProgress(r).failed + runProgress(r).error }} · 并发
+                  {{ r.concurrency }}
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-1.5">
+                <BaseButton
+                  size="sm"
+                  variant="secondary"
+                  @click="emit('openLogs', r)"
+                >
+                  📋 实时日志
+                </BaseButton>
+                <BaseButton
+                  size="sm"
+                  :variant="isRunExpanded(r.id) ? 'primary' : 'secondary'"
+                  @click="toggleRunEvidence(r.id)"
+                >
+                  {{ isRunExpanded(r.id) ? "收起详情 ▲" : "进度详情 ▼" }}
+                </BaseButton>
+                <BaseButton
+                  v-if="r.status === 'running' || r.status === 'queued'"
+                  size="sm"
+                  variant="secondary"
+                  @click="emit('control', r.id, 'pause')"
+                >
+                  ⏸ 暂停
+                </BaseButton>
+                <BaseButton
+                  v-if="r.status === 'paused'"
+                  size="sm"
+                  variant="secondary"
+                  @click="emit('control', r.id, 'resume')"
+                >
+                  ▶ 继续
+                </BaseButton>
+                <BaseButton
+                  v-if="r.status !== 'rescoring'"
+                  size="sm"
+                  variant="danger"
+                  @click="emit('control', r.id, 'cancel')"
+                >
+                  中止
+                </BaseButton>
+                <BaseButton
+                  v-if="r.status === 'paused'"
+                  size="sm"
+                  variant="danger"
+                  @click="emit('deleteRun', r)"
+                >
+                  🗑 删除
+                </BaseButton>
+              </div>
+            </div>
+
+            <div
+              class="h-1.5 w-full rounded-full bg-gray-200 dark:bg-dark-700 overflow-hidden"
+            >
+              <div
+                class="h-full bg-primary-600 transition-all duration-300"
+                :style="{ width: `${runProgress(r).percent}%` }"
+              />
+            </div>
+
+            <div
+              v-if="latestLogLine(r)"
+              class="px-2.5 py-1.5 rounded bg-slate-900/90 text-slate-200 font-mono text-[11px] truncate"
+            >
+              &gt; {{ latestLogLine(r) }}
+            </div>
+          </div>
+
+          <RunEvidenceDetail
+            v-if="isRunExpanded(r.id) && activeRun"
+            :active-run="activeRun"
+            :run-cases="runCases"
+            @collapse="toggleRunEvidence(r.id)"
+            @control="(id, action) => emit('control', id, action)"
+            @review="
+              (rcId, verdict, reason) => emit('review', rcId, verdict, reason)
+            "
+            @open-diagnosis="(id) => emit('openDiagnosis', id)"
+            @open-logs="(targetRun) => emit('openLogs', targetRun)"
+          />
+        </div>
+      </div>
+    </SurfaceCard>
+
+    <!-- 模块 2：历史打擂成果归档 -->
     <SurfaceCard class="p-4 space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
@@ -243,8 +426,8 @@ function caseTranscript(rc: EvalRunCaseItem) {
             历史打擂成果归档 ({{ groupedRuns.length }} 个评测集)
           </h3>
           <p class="text-xs text-gray-500">
-            按评测集聚合历史最高分、趋势涨跌与逐题取证（支持勾选两场或一键点「+
-            对比」直接横向 PK）
+            按评测集聚合历史最高分、各指标趋势对比与逐题取证（支持删除无效记录、查看实时日志或勾选两场横向
+            PK）
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -258,13 +441,15 @@ function caseTranscript(rc: EvalRunCaseItem) {
           <BaseButton
             size="sm"
             variant="primary"
-            :disabled="selectedCompareIds.length !== 2 && runs.length < 2"
+            :disabled="
+              selectedCompareIds.length !== 2 && historyRuns.length < 2
+            "
             @click="triggerCompare"
           >
             {{
               selectedCompareIds.length === 2
                 ? "横向对撞已选 2 场 PK"
-                : runs.length >= 2
+                : historyRuns.length >= 2
                   ? "对比最近两场 PK"
                   : `横向跨场次对撞 PK (${selectedCompareIds.length}/2)`
             }}
@@ -274,8 +459,8 @@ function caseTranscript(rc: EvalRunCaseItem) {
 
       <EmptyState
         v-if="!groupedRuns.length"
-        title="尚无评测运行记录"
-        description="请从“题库资产全景”或“考题表格汇总”点击“发起评测打擂”启动首轮并发评测。"
+        title="尚无已归档评测记录"
+        description="请从“题库资产全景”或“考题表格汇总”点击“发起评测打擂”启动并发评测，运行完成后将在此归档。"
       />
 
       <div v-else class="space-y-3">
@@ -318,6 +503,20 @@ function caseTranscript(rc: EvalRunCaseItem) {
                   }}{{ Math.round(group.delta * 1000) / 10 }}%)
                 </span>
               </span>
+              <BaseButton
+                size="sm"
+                variant="secondary"
+                @click="
+                  emit(
+                    'openSuiteHistory',
+                    group.suiteId,
+                    group.suiteName,
+                    group.items,
+                  )
+                "
+              >
+                📊 历史指标对比
+              </BaseButton>
               <button
                 type="button"
                 class="text-primary-600 hover:underline font-medium"
@@ -356,7 +555,7 @@ function caseTranscript(rc: EvalRunCaseItem) {
                     @change="toggleCompare(run.id)"
                   />
                   <div class="space-y-0.5">
-                    <div class="flex items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                       <span class="font-mono font-semibold"
                         >打擂 #{{ run.id.slice(0, 8) }}</span
                       >
@@ -372,6 +571,15 @@ function caseTranscript(rc: EvalRunCaseItem) {
                       <StatusPill tone="neutral">{{
                         run.target_graph_id
                       }}</StatusPill>
+                      <span
+                        v-if="run.version_num"
+                        class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-dark-700 font-mono text-[10px]"
+                      >
+                        v{{ run.version_num }}
+                      </span>
+                      <span v-if="run.target_model_name" class="text-gray-500">
+                        {{ run.target_model_name }}
+                      </span>
                       <span
                         >并发 {{ run.concurrency }} · k={{ run.repeat_k }}</span
                       >
@@ -389,8 +597,8 @@ function caseTranscript(rc: EvalRunCaseItem) {
                   </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-3">
-                  <div class="text-right font-mono">
+                <div class="flex flex-wrap items-center gap-2">
+                  <div class="text-right font-mono mr-1">
                     <div class="font-semibold">
                       综合
                       {{
@@ -419,6 +627,13 @@ function caseTranscript(rc: EvalRunCaseItem) {
                   <BaseButton
                     size="sm"
                     variant="secondary"
+                    @click="emit('openLogs', run)"
+                  >
+                    📋 日志
+                  </BaseButton>
+                  <BaseButton
+                    size="sm"
+                    variant="secondary"
                     @click="emit('rerunSuite', run.suite_id)"
                   >
                     重跑
@@ -426,7 +641,7 @@ function caseTranscript(rc: EvalRunCaseItem) {
                   <BaseButton
                     size="sm"
                     variant="secondary"
-                    :disabled="runs.length < 2"
+                    :disabled="historyRuns.length < 2"
                     @click="quickCompareRun(run, group.items)"
                   >
                     + 对比
@@ -436,413 +651,32 @@ function caseTranscript(rc: EvalRunCaseItem) {
                     :variant="isRunExpanded(run.id) ? 'primary' : 'secondary'"
                     @click="toggleRunEvidence(run.id)"
                   >
-                    <span class="inline-flex items-center gap-1">
-                      {{ isRunExpanded(run.id) ? "收起取证 ▲" : "查看取证 ▼" }}
-                    </span>
+                    {{ isRunExpanded(run.id) ? "收起取证 ▲" : "查看取证 ▼" }}
+                  </BaseButton>
+                  <BaseButton
+                    size="sm"
+                    variant="danger"
+                    title="彻底删除此场评测结果"
+                    @click="emit('deleteRun', run)"
+                  >
+                    🗑 删除
                   </BaseButton>
                 </div>
               </div>
 
-              <!-- 就地内联展开的白盒取证详情面板 -->
-              <div
+              <RunEvidenceDetail
                 v-if="isRunExpanded(run.id) && activeRun"
-                class="p-4 bg-gray-50/80 dark:bg-dark-900/80 border-t border-b border-primary-200/50 dark:border-primary-900/40 space-y-4"
-              >
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                  <div class="flex items-center gap-2">
-                    <h3 class="text-sm font-semibold">
-                      批次白盒取证 · #{{ activeRun.id.slice(0, 8) }}
-                    </h3>
-                    <StatusPill :tone="statusTone(activeRun.status)">{{
-                      activeRun.status
-                    }}</StatusPill>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-2">
-                    <BaseButton
-                      size="sm"
-                      variant="ghost"
-                      class="text-gray-500 hover:text-gray-700 dark:hover:text-dark-200"
-                      @click="toggleRunEvidence(run.id)"
-                    >
-                      收起取证 ▲
-                    </BaseButton>
-                    <BaseButton
-                      size="sm"
-                      variant="secondary"
-                      :disabled="
-                        activeRun.status !== 'running' &&
-                        activeRun.status !== 'queued'
-                      "
-                      @click="emit('control', activeRun.id, 'pause')"
-                    >
-                      暂停
-                    </BaseButton>
-                    <BaseButton
-                      size="sm"
-                      variant="secondary"
-                      :disabled="
-                        activeRun.status === 'running' ||
-                        activeRun.status === 'queued' ||
-                        activeRun.status === 'completed'
-                      "
-                      @click="emit('control', activeRun.id, 'resume')"
-                    >
-                      继续未完成
-                    </BaseButton>
-                    <BaseButton
-                      size="sm"
-                      variant="secondary"
-                      :disabled="
-                        activeRun.status === 'running' ||
-                        activeRun.status === 'queued'
-                      "
-                      @click="emit('control', activeRun.id, 'retry_failed')"
-                    >
-                      仅重跑失败题
-                    </BaseButton>
-                    <BaseButton
-                      size="sm"
-                      variant="secondary"
-                      :disabled="
-                        activeRun.status === 'running' ||
-                        activeRun.status === 'queued'
-                      "
-                      @click="emit('control', activeRun.id, 'rescore')"
-                    >
-                      同证据重评
-                    </BaseButton>
-                    <BaseButton
-                      size="sm"
-                      variant="primary"
-                      @click="emit('openDiagnosis', activeRun.id)"
-                    >
-                      呼出 AI 诊断专家
-                    </BaseButton>
-                  </div>
-                </div>
-
-                <section class="grid gap-3 md:grid-cols-4">
-                  <MetricCard
-                    label="TSR / Pass@1"
-                    :value="
-                      summary.tsr_pass_at_1 != null
-                        ? `${Math.round(summary.tsr_pass_at_1 * 100)}%`
-                        : '-'
-                    "
-                    :hint="`L1 规则通过率 ${summary.l1_pass_rate != null ? Math.round(summary.l1_pass_rate * 100) : 0}%`"
-                    icon="shield"
-                    tone="success"
-                  />
-                  <MetricCard
-                    label="TTFT 首字延迟 P50"
-                    :value="
-                      summary.ttft_ms?.p50 != null
-                        ? `${summary.ttft_ms.p50} ms`
-                        : '-'
-                    "
-                    :hint="`P95: ${summary.ttft_ms?.p95 ?? '-'} ms`"
-                    icon="activity"
-                    tone="primary"
-                  />
-                  <MetricCard
-                    label="死循环率"
-                    :value="
-                      summary.loop_rate != null
-                        ? `${Math.round(summary.loop_rate * 100)}%`
-                        : '0%'
-                    "
-                    hint="Trace 信号检测"
-                    icon="overview"
-                    tone="warning"
-                  />
-                  <MetricCard
-                    label="异常分层"
-                    :value="`${summary.error_breakdown?.fail ?? 0} 错 / ${summary.error_breakdown?.runtime_error ?? 0} 故障`"
-                    :hint="`裁判异常 ${summary.error_breakdown?.eval_error ?? 0}`"
-                    icon="alert"
-                    tone="primary"
-                  />
-                </section>
-
-                <div class="space-y-2">
-                  <div
-                    v-for="rc in runCases"
-                    :key="rc.id"
-                    class="rounded-lg border border-gray-200 dark:border-dark-700 overflow-hidden text-xs bg-white dark:bg-dark-800"
-                  >
-                    <div
-                      class="p-3 flex flex-wrap items-center justify-between gap-3"
-                    >
-                      <div class="flex flex-wrap items-center gap-2">
-                        <span class="font-mono font-semibold">{{
-                          rc.case_key
-                        }}</span>
-                        <span class="text-gray-400">#{{ rc.attempt_idx }}</span>
-                        <StatusPill :tone="statusTone(rc.status)">{{
-                          rc.status
-                        }}</StatusPill>
-                        <span
-                          v-if="rc.overall_score != null"
-                          class="font-semibold"
-                        >
-                          得分 {{ Math.round(rc.overall_score * 100) }}%
-                        </span>
-                        <span v-if="rc.ttft_ms != null" class="text-gray-500"
-                          >TTFT {{ rc.ttft_ms }} ms</span
-                        >
-                        <span
-                          v-if="rc.duration_ms != null"
-                          class="text-gray-500"
-                          >耗时 {{ rc.duration_ms }} ms</span
-                        >
-                        <span
-                          v-if="
-                            rc.error_category && rc.error_category !== 'none'
-                          "
-                          class="text-rose-500"
-                        >
-                          异常: {{ rc.error_category }}
-                        </span>
-                      </div>
-
-                      <div class="flex flex-wrap items-center gap-1.5">
-                        <BaseButton
-                          v-if="rc.thread_id || rc.trace_ids?.length"
-                          size="sm"
-                          variant="secondary"
-                          @click="
-                            openMlflowTrace(rc, activeRun.target_project_id)
-                          "
-                        >
-                          MLflow Trace ↗
-                        </BaseButton>
-                        <BaseButton
-                          size="sm"
-                          variant="secondary"
-                          @click="
-                            expandedCaseId =
-                              expandedCaseId === rc.id ? null : rc.id
-                          "
-                        >
-                          {{
-                            expandedCaseId === rc.id
-                              ? "收起白盒详情"
-                              : "白盒证据详情"
-                          }}
-                        </BaseButton>
-                      </div>
-                    </div>
-
-                    <div
-                      v-if="expandedCaseId === rc.id"
-                      class="p-3 bg-gray-50 dark:bg-dark-800/50 border-t border-gray-100 dark:border-dark-700 space-y-3"
-                    >
-                      <div class="grid gap-3 md:grid-cols-2">
-                        <div class="space-y-1">
-                          <div
-                            class="font-semibold text-gray-600 dark:text-dark-300"
-                          >
-                            实际回复与多轮博弈对话流水
-                          </div>
-                          <div
-                            class="p-2.5 rounded bg-white dark:bg-dark-900 border border-gray-200/70 dark:border-dark-700 whitespace-pre-wrap max-h-56 overflow-y-auto space-y-2"
-                          >
-                            <div
-                              v-if="caseTranscript(rc).length"
-                              class="space-y-1.5 border-b border-gray-100 dark:border-dark-800 pb-2"
-                            >
-                              <div
-                                v-for="(turn, idx) in caseTranscript(rc)"
-                                :key="idx"
-                                class="text-[11px]"
-                              >
-                                <span
-                                  class="font-mono font-semibold text-primary-600"
-                                >
-                                  [{{ turn.role }}]
-                                </span>
-                                <span>{{
-                                  String(turn.content || "").slice(0, 400)
-                                }}</span>
-                              </div>
-                            </div>
-                            <div>
-                              {{
-                                (rc.results as any)?.final_answer ||
-                                "尚无输出正文"
-                              }}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="space-y-1">
-                          <div
-                            class="font-semibold text-gray-600 dark:text-dark-300"
-                          >
-                            分级打分与裁判理由 (L1 + L2)
-                          </div>
-                          <div class="space-y-1.5 max-h-56 overflow-y-auto">
-                            <div
-                              v-for="m in caseMetrics(rc)"
-                              :key="String(m.name)"
-                              class="p-2 rounded bg-white dark:bg-dark-900 border border-gray-200/70 dark:border-dark-700 flex items-start justify-between gap-2"
-                            >
-                              <div>
-                                <span class="font-mono font-semibold"
-                                  >[{{ m.layer }}] {{ m.name }}</span
-                                >
-                                <p
-                                  v-if="m.reason"
-                                  class="text-[11px] text-gray-500 mt-0.5"
-                                >
-                                  {{ m.reason }}
-                                </p>
-                              </div>
-                              <StatusPill
-                                :tone="m.passed ? 'success' : 'danger'"
-                              >
-                                {{
-                                  `${m.passed ? "PASS" : "FAIL"} (${m.score ?? "-"})`
-                                }}
-                              </StatusPill>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div
-                        v-if="
-                          Array.isArray((rc.results as any)?.tool_events) &&
-                          (rc.results as any).tool_events.length
-                        "
-                        class="p-2.5 rounded bg-white dark:bg-dark-900 border border-gray-200/70 dark:border-dark-700 space-y-1.5"
-                      >
-                        <div
-                          class="font-semibold text-gray-600 dark:text-dark-300"
-                        >
-                          白盒工具调用链 ({{
-                            (rc.results as any).tool_events.length
-                          }}
-                          步)
-                        </div>
-                        <div class="flex flex-wrap gap-1.5">
-                          <span
-                            v-for="(te, tidx) in (rc.results as any)
-                              .tool_events"
-                            :key="tidx"
-                            class="px-2 py-0.5 rounded border font-mono text-[11px]"
-                            :class="
-                              te.status === 'executed'
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                                : te.status === 'blocked'
-                                  ? 'bg-amber-50 border-amber-200 text-amber-700'
-                                  : 'bg-rose-50 border-rose-200 text-rose-700'
-                            "
-                          >
-                            {{ te.name }} [{{ te.status }}]
-                          </span>
-                        </div>
-                      </div>
-
-                      <div
-                        v-if="(rc.results as any)?.simulation"
-                        class="p-2.5 rounded bg-indigo-50/40 dark:bg-indigo-950/20 border border-indigo-200/70 dark:border-indigo-900/50 space-y-1 text-[11px]"
-                      >
-                        <div
-                          class="font-semibold text-indigo-700 dark:text-indigo-300"
-                        >
-                          动态博弈与中断协商轴 (user_mode={{
-                            (rc.results as any).simulation.user_mode
-                          }}
-                          · 停机原因={{
-                            (rc.results as any).simulation.stop_reason
-                          }})
-                        </div>
-                        <div class="text-gray-600 dark:text-dark-300 font-mono">
-                          澄清表单
-                          {{
-                            (
-                              (rc.results as any).simulation
-                                .clarification_rounds || []
-                            ).length
-                          }}
-                          轮 · Plan 审阅
-                          {{
-                            (
-                              (rc.results as any).simulation
-                                .plan_review_rounds || []
-                            ).length
-                          }}
-                          轮 · 工具审批
-                          {{
-                            (
-                              (rc.results as any).simulation
-                                .approval_decisions || []
-                            ).length
-                          }}
-                          次 · 延迟夹具
-                          {{
-                            (
-                              (rc.results as any).simulation
-                                .injected_fixtures || []
-                            ).length
-                          }}
-                          批 · 事实披露
-                          {{
-                            (
-                              (rc.results as any).simulation.disclosed_events ||
-                              []
-                            ).length
-                          }}
-                          条
-                        </div>
-                      </div>
-
-                      <div
-                        class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-gray-200/70 dark:border-dark-700"
-                      >
-                        <span class="text-gray-500">L3 人工抽检标定:</span>
-                        <div class="w-56">
-                          <BaseInput
-                            :model-value="reviewNotes[rc.id] ?? ''"
-                            placeholder="填写人工复核说明..."
-                            @update:model-value="
-                              (v) => (reviewNotes[rc.id] = v)
-                            "
-                          />
-                        </div>
-                        <BaseButton
-                          size="sm"
-                          variant="secondary"
-                          @click="
-                            emit(
-                              'review',
-                              rc.id,
-                              'pass',
-                              reviewNotes[rc.id] ?? '',
-                            )
-                          "
-                        >
-                          标为通过
-                        </BaseButton>
-                        <BaseButton
-                          size="sm"
-                          variant="danger"
-                          @click="
-                            emit(
-                              'review',
-                              rc.id,
-                              'fail',
-                              reviewNotes[rc.id] ?? '',
-                            )
-                          "
-                        >
-                          标为失败
-                        </BaseButton>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                :active-run="activeRun"
+                :run-cases="runCases"
+                @collapse="toggleRunEvidence(run.id)"
+                @control="(id, action) => emit('control', id, action)"
+                @review="
+                  (rcId, verdict, reason) =>
+                    emit('review', rcId, verdict, reason)
+                "
+                @open-diagnosis="(id) => emit('openDiagnosis', id)"
+                @open-logs="(targetRun) => emit('openLogs', targetRun)"
+              />
             </template>
           </div>
         </div>

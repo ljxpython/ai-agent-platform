@@ -861,3 +861,194 @@ def test_studio_lifecycle_readiness_non_sandbox_warning_and_internal_bridges(
         "role": "assistant",
         "content": "已为您生成并落库 COP-NL-01。",
     }
+
+
+def test_delete_run_and_incremental_run_logs(monkeypatch):
+    from platform_api.modules.evaluation.models import (
+        EvalHumanReview,
+        EvalPatrolSchedule,
+        EvalRunLog,
+    )
+
+    app, factory, project_id, target_project_id, agent_id, model_id, judge_model_id = (
+        _make_app()
+    )
+    monkeypatch.setattr(
+        targets,
+        "configured_target",
+        lambda gateway, actor, pid, spec: (
+            {
+                "id": str(spec.agent_id),
+                "project_id": pid,
+                "name": "Ref Agent",
+                "graph_id": "reference_agent",
+                "status": "active",
+                "context": {},
+            },
+            {"model": {"model_id": str(spec.model_id)}},
+        ),
+    )
+    headers = {"X-Project-Id": project_id}
+    client = TestClient(app)
+
+    suite_res = client.post(
+        "/api/evaluation/studio/suites",
+        headers=headers,
+        json={
+            "name": "任务大厅删改查与日志测试集",
+            "suite_type": "curated",
+            "default_graph_id": "reference_agent",
+        },
+    )
+    assert suite_res.status_code == 201
+    suite_id = suite_res.json()["id"]
+
+    case_res = client.put(
+        f"/api/evaluation/studio/suites/{suite_id}/cases",
+        headers=headers,
+        json={
+            "case_key": "CASE-LOG-01",
+            "turns": [{"role": "user", "content": "hello"}],
+            "metrics": ["completion"],
+        },
+    )
+    assert case_res.status_code == 200
+
+    pub_res = client.post(
+        f"/api/evaluation/studio/suites/{suite_id}/publish", headers=headers, json={}
+    )
+    assert pub_res.status_code == 201
+    version_id = pub_res.json()["id"]
+
+    run_res = client.post(
+        "/api/evaluation/studio/runs",
+        headers=headers,
+        json={
+            "suite_id": suite_id,
+            "version_id": version_id,
+            "target_project_id": target_project_id,
+            "agent_id": agent_id,
+            "model_id": model_id,
+            "judge_model_id": judge_model_id,
+            "confirm_non_sandbox": True,
+        },
+    )
+    assert run_res.status_code == 201, run_res.text
+    run_id = run_res.json()["id"]
+    assert run_res.json()["summary_metrics"]["progress"]["total"] == 1
+    assert run_res.json()["summary_metrics"]["progress"]["pending"] == 1
+
+    # list_runs should return enriched model & version names
+    list_res = client.get("/api/evaluation/studio/runs", headers=headers)
+    assert list_res.status_code == 200
+    listed = next(r for r in list_res.json()["items"] if r["id"] == run_id)
+    assert listed["version_num"] == 1
+    assert listed["target_model_name"] == "DeepSeek V4 Flash"
+    assert listed["judge_model_name"] == "Judge DeepSeek V4"
+
+    # queued/running run cannot be deleted
+    blocked_del = client.delete(
+        f"/api/evaluation/studio/runs/{run_id}", headers=headers
+    )
+    assert blocked_del.status_code == 409
+    assert blocked_del.json()["error"]["code"] == "eval_run_active_cannot_delete"
+
+    # Seed incremental logs, patrol reference, and human review
+    with factory() as session:
+        rc = session.query(EvalRunCase).filter(EvalRunCase.run_id == run_id).one()
+        session.add(
+            EvalHumanReview(
+                id=str(uuid4()),
+                run_case_id=rc.id,
+                reviewer_id="u1",
+                human_verdict="pass",
+                reason="ok",
+            )
+        )
+        session.add(
+            EvalPatrolSchedule(
+                id=str(uuid4()),
+                name="daily",
+                suite_id=suite_id,
+                version_id=version_id,
+                owner_project_id=project_id,
+                target_project_id=target_project_id,
+                target_graph_id="reference_agent",
+                cron_expr="0 0 * * *",
+                last_run_id=run_id,
+                created_by="u1",
+            )
+        )
+        session.add(
+            EvalRunLog(
+                id=str(uuid4()),
+                run_id=run_id,
+                seq=1,
+                level="INFO",
+                case_key=None,
+                message="[批次] 开始执行",
+            )
+        )
+        session.add(
+            EvalRunLog(
+                id=str(uuid4()),
+                run_id=run_id,
+                seq=2,
+                level="ERROR",
+                case_key="CASE-LOG-01",
+                message="[CASE-LOG-01 #1] 执行异常",
+            )
+        )
+        session.commit()
+
+    # Query logs with cursor & filters
+    logs_all = client.get(f"/api/evaluation/studio/runs/{run_id}/logs", headers=headers)
+    assert logs_all.status_code == 200
+    assert logs_all.json()["last_seq"] == 2
+    assert len(logs_all.json()["logs"]) == 2
+
+    logs_after = client.get(
+        f"/api/evaluation/studio/runs/{run_id}/logs?after_seq=1&level=ERROR",
+        headers=headers,
+    )
+    assert logs_after.status_code == 200
+    assert len(logs_after.json()["logs"]) == 1
+    assert logs_after.json()["logs"][0]["case_key"] == "CASE-LOG-01"
+
+    # Cancel run then delete cleanly
+    cancel_res = client.post(
+        f"/api/evaluation/studio/runs/{run_id}/control",
+        headers=headers,
+        json={"action": "cancel"},
+    )
+    assert cancel_res.status_code == 200
+    assert cancel_res.json()["status"] == "cancelled"
+    assert cancel_res.json()["summary_metrics"]["progress"]["cancelled"] == 1
+
+    # Verify viewer/member cannot delete run (requires PROJECT_EVALUATION_MANAGE)
+    orig_override = app.dependency_overrides[get_actor_context]
+    app.dependency_overrides[get_actor_context] = lambda: ActorContext(
+        user_id="viewer-u",
+        project_roles={project_id: ("project_member",)},
+    )
+    denied_del = client.delete(f"/api/evaluation/studio/runs/{run_id}", headers=headers)
+    assert denied_del.status_code == 403
+    app.dependency_overrides[get_actor_context] = orig_override
+
+    ok_del = client.delete(f"/api/evaluation/studio/runs/{run_id}", headers=headers)
+    assert ok_del.status_code == 200
+    assert ok_del.json() == {"deleted": True, "run_id": run_id}
+
+    # Verify cascade cleanup & patrol reference nulled
+    after_get = client.get(f"/api/evaluation/studio/runs/{run_id}", headers=headers)
+    assert after_get.status_code == 404
+    with factory() as session:
+        assert (
+            session.query(EvalRunCase).filter(EvalRunCase.run_id == run_id).count() == 0
+        )
+        assert (
+            session.query(EvalRunLog).filter(EvalRunLog.run_id == run_id).count() == 0
+        )
+        assert session.query(EvalHumanReview).count() == 0
+        patrol = session.query(EvalPatrolSchedule).one()
+        assert patrol.last_run_id is None

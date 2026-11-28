@@ -30,6 +30,38 @@ def cohens_kappa(pairs: list[tuple[bool, bool]]) -> float | None:
     return round((po - pe) / (1.0 - pe), 4)
 
 
+def compute_progress_summary(cases: list[dict[str, Any]]) -> dict[str, Any]:
+    """Compute real-time case status progress counts and percentage."""
+    counts = {
+        "completed": 0,
+        "failed": 0,
+        "error": 0,
+        "running": 0,
+        "pending": 0,
+        "paused": 0,
+        "cancelled": 0,
+        "skipped_incompatible": 0,
+    }
+    for c in cases:
+        st = str(c.get("status") or "pending")
+        if st in counts:
+            counts[st] += 1
+        else:
+            counts["pending"] += 1
+    total = len(cases)
+    active_total = total - counts["skipped_incompatible"]
+    done = counts["completed"] + counts["failed"] + counts["error"]
+    denom = active_total if active_total > 0 else total
+    percent = int(round((done / denom) * 100)) if denom > 0 else 0
+    return {
+        "total": total,
+        "active_total": active_total,
+        "done": done,
+        **counts,
+        "percent": min(100, max(0, percent)),
+    }
+
+
 def summarize_run_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate 7D whitepaper metrics across all case attempts in a run."""
     active = [c for c in cases if c.get("status") != "skipped_incompatible"]
@@ -48,6 +80,7 @@ def summarize_run_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
                 "stream_timeout": 0,
                 "eval_error": 0,
             },
+            "metrics_breakdown": {},
             "total_cost_usd": 0.0,
             "pass_power_k": None,
         }
@@ -125,6 +158,42 @@ def summarize_run_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
                 if isinstance(tu.get(k), (int, float)):
                     tok_totals[k] += int(tu[k])
 
+    metric_groups: dict[str, dict[str, Any]] = {}
+    for c in active:
+        m_list = (c.get("results") or {}).get("metrics") or []
+        if not isinstance(m_list, list):
+            continue
+        for m in m_list:
+            if not isinstance(m, dict) or not m.get("name"):
+                continue
+            m_name = str(m["name"])
+            bucket = metric_groups.setdefault(
+                m_name,
+                {"layer": str(m.get("layer") or "L1"), "scores": [], "passed": []},
+            )
+            if isinstance(m.get("score"), (int, float)):
+                bucket["scores"].append(float(m["score"]))
+            if isinstance(m.get("passed"), bool):
+                bucket["passed"].append(m["passed"])
+
+    metrics_breakdown = {
+        name: {
+            "layer": grp["layer"],
+            "avg_score": (
+                round(sum(grp["scores"]) / len(grp["scores"]), 4)
+                if grp["scores"]
+                else None
+            ),
+            "pass_rate": (
+                round(sum(1 for p in grp["passed"] if p) / len(grp["passed"]), 4)
+                if grp["passed"]
+                else None
+            ),
+            "sample_count": max(len(grp["scores"]), len(grp["passed"])),
+        }
+        for name, grp in sorted(metric_groups.items())
+    }
+
     return {
         "total_cases": total,
         "overall_score": overall_score,
@@ -150,6 +219,7 @@ def summarize_run_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
         },
         "token_usage": tok_totals if has_token_data else None,
         "error_breakdown": breakdown,
+        "metrics_breakdown": metrics_breakdown,
         "total_cost_usd": total_cost,
         "pass_power_k": pass_power_k,
     }
